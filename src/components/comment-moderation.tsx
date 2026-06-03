@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 export type ModerationRow = {
   id: string;
@@ -18,6 +19,7 @@ export type ModerationRow = {
 
 export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   const [rows, setRows] = useState<ModerationRow[]>(initial);
+  const t = useT();
 
   async function toggleHide(row: ModerationRow) {
     const supabase = getBrowserSupabase();
@@ -28,7 +30,7 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   }
 
   async function del(row: ModerationRow) {
-    if (!confirm("Delete this comment (and its replies) permanently?")) return;
+    if (!confirm(t("admin.cmod.deleteConfirm"))) return;
     const supabase = getBrowserSupabase();
     if (!supabase) return;
     // Remove the comment and any descendants locally (DB cascades the delete).
@@ -70,7 +72,7 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   }, [rows]);
 
   if (rows.length === 0) {
-    return <p className="text-sand-100/50">No comments yet.</p>;
+    return <p className="text-sand-100/50">{t("admin.cmod.none")}</p>;
   }
 
   return (
@@ -84,7 +86,9 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
             {g.title}
           </Link>
           <span className="ml-2 text-xs text-sand-100/40">
-            {g.rows.length} comment{g.rows.length === 1 ? "" : "s"}
+            {g.rows.length === 1
+              ? t("admin.cmod.comment", { n: g.rows.length })
+              : t("admin.cmod.comments", { n: g.rows.length })}
           </span>
           <div className="mt-3">
             <Tree
@@ -118,6 +122,7 @@ function Tree({
   onToggle: (r: ModerationRow) => void;
   onDelete: (r: ModerationRow) => void;
 }) {
+  const t = useT();
   const ids = new Set(rows.map((r) => r.id));
   const children = rows
     .filter((r) => {
@@ -151,11 +156,13 @@ function Tree({
               <span className="font-medium">
                 {r.author_name}
                 {r.parent_id && (
-                  <span className="ml-2 text-xs text-sand-100/40">reply</span>
+                  <span className="ml-2 text-xs text-sand-100/40">
+                    {t("admin.cmod.reply")}
+                  </span>
                 )}
                 {r.hidden && (
                   <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs text-sand-100/60">
-                    hidden
+                    {t("admin.cmod.hidden")}
                   </span>
                 )}
               </span>
@@ -171,11 +178,11 @@ function Tree({
               >
                 {r.hidden ? (
                   <>
-                    <Eye className="size-3.5" /> Unhide
+                    <Eye className="size-3.5" /> {t("admin.cmod.unhide")}
                   </>
                 ) : (
                   <>
-                    <EyeOff className="size-3.5" /> Hide
+                    <EyeOff className="size-3.5" /> {t("admin.cmod.hide")}
                   </>
                 )}
               </button>
@@ -183,7 +190,7 @@ function Tree({
                 onClick={() => onDelete(r)}
                 className="inline-flex items-center gap-1.5 text-red-400/80 transition hover:text-red-400"
               >
-                <Trash2 className="size-3.5" /> Delete
+                <Trash2 className="size-3.5" /> {t("admin.cmod.delete")}
               </button>
             </div>
           </div>

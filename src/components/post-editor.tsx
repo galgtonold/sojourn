@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
+import { useT } from "@/components/i18n";
 
 export type EditablePost = {
   id?: string;
@@ -34,6 +35,7 @@ const EMPTY: EditablePost = {
 
 export function PostEditor({ initial }: { initial?: EditablePost }) {
   const router = useRouter();
+  const t = useT();
   const [post, setPost] = useState<EditablePost>(initial ?? EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,19 +65,19 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Save failed");
+        throw new Error(j.error ?? t("admin.editor.saveFailed"));
       }
       router.push("/admin");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(e instanceof Error ? e.message : t("admin.editor.saveFailed"));
     } finally {
       setBusy(false);
     }
   }
 
   async function remove() {
-    if (!post.id || !confirm("Delete this post permanently?")) return;
+    if (!post.id || !confirm(t("admin.editor.deleteConfirm"))) return;
     setBusy(true);
     await fetch(`/api/admin/posts/${post.id}`, { method: "DELETE" });
     router.push("/admin");
@@ -89,7 +91,7 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
     <div className="space-y-4">
       <input
         className={`${input} font-display text-lg`}
-        placeholder="Title"
+        placeholder={t("admin.editor.title")}
         value={post.title}
         onChange={(e) => set("title", e.target.value)}
         onBlur={() => !post.slug && set("slug", slugify(post.title))}
@@ -103,7 +105,7 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
         />
         <input
           className={input}
-          placeholder="Location (e.g. Kyoto, Japan)"
+          placeholder={t("admin.editor.location")}
           value={post.location}
           onChange={(e) => set("location", e.target.value)}
         />
@@ -114,26 +116,26 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
       />
       <input
         className={input}
-        placeholder="…or paste an image URL"
+        placeholder={t("admin.editor.coverUrl")}
         value={post.cover_image}
         onChange={(e) => set("cover_image", e.target.value)}
       />
       <input
         className={input}
-        placeholder="Cover alt text (describe the image for screen readers)"
+        placeholder={t("admin.editor.coverAlt")}
         value={post.cover_alt}
         onChange={(e) => set("cover_alt", e.target.value)}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <input
           className={input}
-          placeholder="Latitude"
+          placeholder={t("admin.editor.lat")}
           value={post.lat}
           onChange={(e) => set("lat", e.target.value)}
         />
         <input
           className={input}
-          placeholder="Longitude"
+          placeholder={t("admin.editor.lng")}
           value={post.lng}
           onChange={(e) => set("lng", e.target.value)}
         />
@@ -141,23 +143,18 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
       <textarea
         className={`${input} resize-y`}
         rows={2}
-        placeholder="Excerpt"
+        placeholder={t("admin.editor.excerpt")}
         value={post.excerpt}
         onChange={(e) => set("excerpt", e.target.value)}
       />
       <textarea
         className={`${input} resize-y font-mono`}
         rows={14}
-        placeholder={"Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)).\n\nPlace a gallery photo inline by putting [photo:ID] on its own line — copy a photo's tag from the Gallery section below."}
+        placeholder={t("admin.editor.body")}
         value={post.body}
         onChange={(e) => set("body", e.target.value)}
       />
-      <p className="text-xs text-sand-100/40">
-        Markdown supported. Weave in a gallery photo with{" "}
-        <code className="text-sand-100/70">[photo:ID]</code> or a poll/quiz with{" "}
-        <code className="text-sand-100/70">[ask:ID]</code> on its own line — grab
-        tags with “Copy …” in the Gallery and Polls &amp; quizzes sections below.
-      </p>
+      <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -166,7 +163,7 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
           onChange={(e) => set("published", e.target.checked)}
           className="size-4 accent-[#f56a1f]"
         />
-        Published
+        {t("admin.published")}
       </label>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
@@ -177,7 +174,8 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
           disabled={busy || !post.title}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
-          <Save className="size-4" /> {busy ? "Saving…" : "Save"}
+          <Save className="size-4" />{" "}
+          {busy ? t("admin.editor.saving") : t("admin.editor.save")}
         </button>
         {isEdit && (
           <button
@@ -185,7 +183,7 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-full border border-red-500/30 px-4 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
           >
-            <Trash2 className="size-4" /> Delete
+            <Trash2 className="size-4" /> {t("admin.editor.delete")}
           </button>
         )}
       </div>

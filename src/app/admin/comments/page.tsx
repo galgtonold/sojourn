@@ -6,6 +6,7 @@ import {
   CommentModeration,
   type ModerationRow,
 } from "@/components/comment-moderation";
+import { T } from "@/components/i18n";
 
 export const metadata = { title: "Comments" };
 export const dynamic = "force-dynamic";
@@ -46,17 +47,20 @@ export default async function CommentsAdminPage() {
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
       >
-        <ArrowLeft className="size-4" /> Dashboard
+        <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
       </Link>
-      <h1 className="mb-2 font-display text-4xl font-semibold">Comments</h1>
+      <h1 className="mb-2 font-display text-4xl font-semibold">
+        <T k="admin.cmod.title" />
+      </h1>
       <p className="mb-8 text-sm text-sand-100/50">
-        Grouped by post and threaded. Hide spam or off-topic notes (they stay in
-        the database) or delete them for good.
-        {rows.length >= 200 && " Showing the 200 most recent."}
+        <T k="admin.cmod.subtitle" />
+        {rows.length >= 200 && <T k="admin.cmod.recent200" />}
       </p>
 
       {!isSupabaseConfigured ? (
-        <p className="text-sand-100/50">Connect Supabase to moderate comments.</p>
+        <p className="text-sand-100/50">
+          <T k="admin.cmod.connect" />
+        </p>
       ) : (
         <CommentModeration initial={rows} />
       )}

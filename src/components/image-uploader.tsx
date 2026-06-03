@@ -4,13 +4,14 @@ import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 /** Single-image drag/drop uploader with preview. */
 export function ImageUploader({
   value,
   onChange,
   folder = "covers",
-  label = "Cover image",
+  label,
 }: {
   value?: string;
   onChange: (url: string) => void;
@@ -21,6 +22,7 @@ export function ImageUploader({
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -38,7 +40,9 @@ export function ImageUploader({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-sand-100/60">{label}</p>
+      <p className="text-sm text-sand-100/60">
+        {label ?? t("admin.upload.cover")}
+      </p>
 
       {value ? (
         <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-ink-800">
@@ -70,7 +74,7 @@ export function ImageUploader({
             disabled={busy}
             className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-3 py-1 text-xs text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
           >
-            {busy ? "Uploading…" : "Replace"}
+            {busy ? t("admin.upload.uploading") : t("admin.upload.replace")}
           </button>
         </div>
       ) : (
@@ -97,12 +101,12 @@ export function ImageUploader({
           {busy ? (
             <>
               <Loader2 className="size-6 animate-spin" />
-              Uploading…
+              {t("admin.upload.uploading")}
             </>
           ) : (
             <>
               <ImagePlus className="size-6" />
-              Drop an image or click to upload
+              {t("admin.upload.drop")}
             </>
           )}
         </button>

@@ -96,6 +96,127 @@ const en = {
 
   "map.title": "The whole map",
   "map.subtitle": "Every entry, pinned. Tap a marker to jump to the story.",
+
+  // Admin
+  "admin.dashboard": "Dashboard",
+  "admin.dashboardLink": "Dashboard",
+  "admin.signedInAs": "Signed in as {email}",
+  "admin.password": "Password",
+  "admin.signOut": "Sign out",
+  "admin.demoNotice":
+    "Demo mode — connect Supabase and create an admin user to manage real content.",
+  "admin.statPosts": "Posts",
+  "admin.statComments": "Comments",
+  "admin.newPost": "New post",
+  "admin.postsHeading": "Posts",
+  "admin.published": "Published",
+  "admin.draft": "Draft",
+  "admin.edit": "Edit",
+  "admin.preview": "Preview",
+  "admin.noPosts": "No posts yet.",
+  "admin.recentComments": "Recent comments",
+  "admin.moderateAll": "Moderate all →",
+  "admin.noComments": "No comments yet.",
+
+  "admin.login.subtitle": "Sign in to manage entries, photos and comments.",
+  "admin.login.demo":
+    "Demo mode: set Supabase env vars and create an admin user to enable login.",
+  "admin.login.password": "Password",
+  "admin.login.signIn": "Sign in",
+  "admin.login.signingIn": "Signing in…",
+
+  "admin.account.title": "Change password",
+  "admin.account.current": "Current password",
+  "admin.account.new": "New password (min 8 characters)",
+  "admin.account.confirm": "Confirm new password",
+  "admin.account.update": "Update password",
+  "admin.account.updating": "Updating…",
+  "admin.account.done": "Password updated. Use it next time you sign in.",
+  "admin.account.errMin": "New password must be at least 8 characters.",
+  "admin.account.errMatch": "New passwords don’t match.",
+  "admin.account.errCurrent": "Current password is incorrect.",
+  "admin.account.errGeneric": "Not available in demo mode.",
+
+  "admin.cmod.title": "Comments",
+  "admin.cmod.subtitle":
+    "Grouped by post and threaded. Hide spam or off-topic notes (they stay in the database) or delete them for good.",
+  "admin.cmod.recent200": " Showing the 200 most recent.",
+  "admin.cmod.connect": "Connect Supabase to moderate comments.",
+  "admin.cmod.none": "No comments yet.",
+  "admin.cmod.reply": "reply",
+  "admin.cmod.hidden": "hidden",
+  "admin.cmod.hide": "Hide",
+  "admin.cmod.unhide": "Unhide",
+  "admin.cmod.delete": "Delete",
+  "admin.cmod.comments": "{n} comments",
+  "admin.cmod.comment": "{n} comment",
+  "admin.cmod.deleteConfirm": "Delete this comment (and its replies) permanently?",
+
+  "admin.editor.newPost": "New post",
+  "admin.editor.editPost": "Edit post",
+  "admin.editor.title": "Title",
+  "admin.editor.location": "Location (e.g. Kyoto, Japan)",
+  "admin.editor.coverUrl": "…or paste an image URL",
+  "admin.editor.coverAlt": "Cover alt text (describe the image for screen readers)",
+  "admin.editor.lat": "Latitude",
+  "admin.editor.lng": "Longitude",
+  "admin.editor.excerpt": "Excerpt",
+  "admin.editor.body":
+    "Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)). Place a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line.",
+  "admin.editor.hint":
+    "Markdown supported. Weave in a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line — grab tags with “Copy …” in the sections below.",
+  "admin.editor.save": "Save",
+  "admin.editor.saving": "Saving…",
+  "admin.editor.delete": "Delete",
+  "admin.editor.deleteConfirm": "Delete this post permanently?",
+  "admin.editor.saveFailed": "Save failed",
+
+  "admin.upload.cover": "Cover image",
+  "admin.upload.drop": "Drop an image or click to upload",
+  "admin.upload.uploading": "Uploading…",
+  "admin.upload.replace": "Replace",
+
+  "admin.gallery.title": "Gallery",
+  "admin.gallery.subtitle":
+    "Saved automatically — uploads, captions and deletions apply instantly (no need to press Save).",
+  "admin.gallery.photos": "{n} photos",
+  "admin.gallery.caption": "Caption…",
+  "admin.gallery.alt": "Alt text…",
+  "admin.gallery.copyTag": "Copy inline tag",
+  "admin.gallery.copied": "Copied!",
+  "admin.gallery.add": "Add photos",
+  "admin.gallery.located": "Located",
+  "admin.gallery.saved": "Saved ✓",
+
+  "admin.routes.title": "Routes",
+  "admin.routes.subtitle":
+    "Upload GPX tracks to draw the journey on the map. Saved automatically.",
+  "admin.routes.upload": "Upload GPX",
+  "admin.routes.reading": "Reading…",
+  "admin.routes.track": "Track",
+
+  "admin.ask.title": "Polls & quizzes",
+  "admin.ask.subtitle":
+    "Create a block, then drop its [ask:ID] tag into the body. Saved automatically.",
+  "admin.ask.copyTag": "Copy tag",
+  "admin.ask.copied": "Copied!",
+  "admin.ask.question": "Question",
+  "admin.ask.option": "Option {n}",
+  "admin.ask.addOption": "Add option",
+  "admin.ask.explanation": "Explanation shown after answering (optional)",
+  "admin.ask.addPoll": "Add poll",
+  "admin.ask.addQuiz": "Add quiz",
+  "admin.ask.adding": "Adding…",
+  "admin.ask.errQuestion": "Add a question.",
+  "admin.ask.errOptions": "Add at least two options.",
+  "admin.ask.errCorrect": "Pick which option is correct.",
+
+  "push.enable": "Enable notifications",
+  "push.enabling": "Enabling…",
+  "push.on": "Notifications on",
+  "push.blocked": "Blocked in browser",
+  "push.unsupported": "Push not supported here.",
+  "push.setKeys": "Set VAPID keys to enable push notifications.",
 } as const;
 
 type Dict = Record<keyof typeof en, string>;
@@ -191,6 +312,131 @@ const de: Dict = {
   "map.title": "Die ganze Karte",
   "map.subtitle":
     "Jeder Beitrag, markiert. Tippe einen Marker an, um zur Geschichte zu springen.",
+
+  // Admin
+  "admin.dashboard": "Übersicht",
+  "admin.dashboardLink": "Übersicht",
+  "admin.signedInAs": "Angemeldet als {email}",
+  "admin.password": "Passwort",
+  "admin.signOut": "Abmelden",
+  "admin.demoNotice":
+    "Demo-Modus — verbinde Supabase und lege einen Admin-Benutzer an, um echte Inhalte zu verwalten.",
+  "admin.statPosts": "Beiträge",
+  "admin.statComments": "Kommentare",
+  "admin.newPost": "Neuer Beitrag",
+  "admin.postsHeading": "Beiträge",
+  "admin.published": "Veröffentlicht",
+  "admin.draft": "Entwurf",
+  "admin.edit": "Bearbeiten",
+  "admin.preview": "Vorschau",
+  "admin.noPosts": "Noch keine Beiträge.",
+  "admin.recentComments": "Neueste Kommentare",
+  "admin.moderateAll": "Alle moderieren →",
+  "admin.noComments": "Noch keine Kommentare.",
+
+  "admin.login.subtitle":
+    "Melde dich an, um Beiträge, Fotos und Kommentare zu verwalten.",
+  "admin.login.demo":
+    "Demo-Modus: Setze die Supabase-Variablen und lege einen Admin-Benutzer an, um die Anmeldung zu aktivieren.",
+  "admin.login.password": "Passwort",
+  "admin.login.signIn": "Anmelden",
+  "admin.login.signingIn": "Anmelden…",
+
+  "admin.account.title": "Passwort ändern",
+  "admin.account.current": "Aktuelles Passwort",
+  "admin.account.new": "Neues Passwort (mind. 8 Zeichen)",
+  "admin.account.confirm": "Neues Passwort bestätigen",
+  "admin.account.update": "Passwort aktualisieren",
+  "admin.account.updating": "Aktualisieren…",
+  "admin.account.done":
+    "Passwort aktualisiert. Verwende es bei der nächsten Anmeldung.",
+  "admin.account.errMin": "Neues Passwort muss mindestens 8 Zeichen haben.",
+  "admin.account.errMatch": "Neue Passwörter stimmen nicht überein.",
+  "admin.account.errCurrent": "Aktuelles Passwort ist falsch.",
+  "admin.account.errGeneric": "Im Demo-Modus nicht verfügbar.",
+
+  "admin.cmod.title": "Kommentare",
+  "admin.cmod.subtitle":
+    "Nach Beitrag gruppiert und verschachtelt. Verstecke Spam oder Themenfremdes (bleibt in der Datenbank) oder lösche es endgültig.",
+  "admin.cmod.recent200": " Es werden die 200 neuesten angezeigt.",
+  "admin.cmod.connect": "Verbinde Supabase, um Kommentare zu moderieren.",
+  "admin.cmod.none": "Noch keine Kommentare.",
+  "admin.cmod.reply": "Antwort",
+  "admin.cmod.hidden": "versteckt",
+  "admin.cmod.hide": "Verstecken",
+  "admin.cmod.unhide": "Einblenden",
+  "admin.cmod.delete": "Löschen",
+  "admin.cmod.comments": "{n} Kommentare",
+  "admin.cmod.comment": "{n} Kommentar",
+  "admin.cmod.deleteConfirm":
+    "Diesen Kommentar (und seine Antworten) endgültig löschen?",
+
+  "admin.editor.newPost": "Neuer Beitrag",
+  "admin.editor.editPost": "Beitrag bearbeiten",
+  "admin.editor.title": "Titel",
+  "admin.editor.location": "Ort (z. B. Kyoto, Japan)",
+  "admin.editor.coverUrl": "…oder Bild-URL einfügen",
+  "admin.editor.coverAlt":
+    "Alt-Text des Titelbilds (Bild für Screenreader beschreiben)",
+  "admin.editor.lat": "Breitengrad",
+  "admin.editor.lng": "Längengrad",
+  "admin.editor.excerpt": "Kurzbeschreibung",
+  "admin.editor.body":
+    "Text — Markdown möglich (## Überschriften, **fett**, > Zitate, - Listen, [Links](url)). Setze ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile.",
+  "admin.editor.hint":
+    "Markdown möglich. Binde ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile ein — Tags holst du dir über „Kopieren …“ in den Abschnitten unten.",
+  "admin.editor.save": "Speichern",
+  "admin.editor.saving": "Speichern…",
+  "admin.editor.delete": "Löschen",
+  "admin.editor.deleteConfirm": "Diesen Beitrag endgültig löschen?",
+  "admin.editor.saveFailed": "Speichern fehlgeschlagen",
+
+  "admin.upload.cover": "Titelbild",
+  "admin.upload.drop": "Bild hierher ziehen oder zum Hochladen klicken",
+  "admin.upload.uploading": "Wird hochgeladen…",
+  "admin.upload.replace": "Ersetzen",
+
+  "admin.gallery.title": "Galerie",
+  "admin.gallery.subtitle":
+    "Automatisch gespeichert — Uploads, Bildunterschriften und Löschungen wirken sofort (kein Speichern nötig).",
+  "admin.gallery.photos": "{n} Fotos",
+  "admin.gallery.caption": "Bildunterschrift…",
+  "admin.gallery.alt": "Alt-Text…",
+  "admin.gallery.copyTag": "Inline-Tag kopieren",
+  "admin.gallery.copied": "Kopiert!",
+  "admin.gallery.add": "Fotos hinzufügen",
+  "admin.gallery.located": "Verortet",
+  "admin.gallery.saved": "Gespeichert ✓",
+
+  "admin.routes.title": "Routen",
+  "admin.routes.subtitle":
+    "Lade GPX-Tracks hoch, um die Reise auf der Karte zu zeichnen. Automatisch gespeichert.",
+  "admin.routes.upload": "GPX hochladen",
+  "admin.routes.reading": "Wird gelesen…",
+  "admin.routes.track": "Track",
+
+  "admin.ask.title": "Umfragen & Quizze",
+  "admin.ask.subtitle":
+    "Erstelle einen Block und setze dann sein [ask:ID]-Tag in den Text. Automatisch gespeichert.",
+  "admin.ask.copyTag": "Tag kopieren",
+  "admin.ask.copied": "Kopiert!",
+  "admin.ask.question": "Frage",
+  "admin.ask.option": "Option {n}",
+  "admin.ask.addOption": "Option hinzufügen",
+  "admin.ask.explanation": "Erklärung nach der Antwort (optional)",
+  "admin.ask.addPoll": "Umfrage hinzufügen",
+  "admin.ask.addQuiz": "Quiz hinzufügen",
+  "admin.ask.adding": "Hinzufügen…",
+  "admin.ask.errQuestion": "Gib eine Frage ein.",
+  "admin.ask.errOptions": "Gib mindestens zwei Optionen an.",
+  "admin.ask.errCorrect": "Wähle, welche Option richtig ist.",
+
+  "push.enable": "Benachrichtigungen aktivieren",
+  "push.enabling": "Aktivieren…",
+  "push.on": "Benachrichtigungen an",
+  "push.blocked": "Im Browser blockiert",
+  "push.unsupported": "Push wird hier nicht unterstützt.",
+  "push.setKeys": "Setze VAPID-Schlüssel, um Push-Benachrichtigungen zu aktivieren.",
 };
 
 export const dictionaries: Record<Locale, Dict> = { de, en };

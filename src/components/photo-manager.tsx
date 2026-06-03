@@ -5,6 +5,7 @@ import { Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 export type ManagedPhoto = {
   id: string;
@@ -34,6 +35,7 @@ export function PhotoManager({
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const t = useT();
 
   async function copyTag(photo: ManagedPhoto) {
     try {
@@ -125,14 +127,15 @@ export function PhotoManager({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-2xl font-semibold">Gallery</h2>
+          <h2 className="font-display text-2xl font-semibold">
+            {t("admin.gallery.title")}
+          </h2>
           <p className="mt-0.5 text-sm text-sand-100/50">
-            Saved automatically — uploads, captions and deletions apply
-            instantly (no need to press Save).
+            {t("admin.gallery.subtitle")}
           </p>
         </div>
         <span className="shrink-0 text-sm text-sand-100/50">
-          {photos.length} photos
+          {t("admin.gallery.photos", { n: photos.length })}
         </span>
       </div>
 
@@ -162,27 +165,27 @@ export function PhotoManager({
                   title="Geotagged from EXIF — shows on the map"
                   className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-ink-950/70 px-2 py-0.5 text-[10px] text-lagoon-400"
                 >
-                  <MapPin className="size-3" /> Located
+                  <MapPin className="size-3" /> {t("admin.gallery.located")}
                 </span>
               )}
             </div>
             <div className="relative">
               <input
                 defaultValue={photo.caption ?? ""}
-                placeholder="Caption…"
+                placeholder={t("admin.gallery.caption")}
                 onChange={(e) => (photo.caption = e.target.value)}
                 onBlur={() => saveField(photo, "caption")}
                 className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 pr-12 text-xs outline-none focus:border-ember-400"
               />
               {savedId === photo.id && (
                 <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-lagoon-400">
-                  Saved ✓
+                  {t("admin.gallery.saved")}
                 </span>
               )}
             </div>
             <input
               defaultValue={photo.alt ?? ""}
-              placeholder="Alt text…"
+              placeholder={t("admin.gallery.alt")}
               onChange={(e) => (photo.alt = e.target.value)}
               onBlur={() => saveField(photo, "alt")}
               className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs text-sand-100/70 outline-none focus:border-ember-400"
@@ -193,7 +196,9 @@ export function PhotoManager({
               className="inline-flex items-center gap-1 text-[10px] text-ember-400 hover:underline"
             >
               <Code2 className="size-3" />
-              {copiedId === photo.id ? "Copied!" : "Copy inline tag"}
+              {copiedId === photo.id
+                ? t("admin.gallery.copied")
+                : t("admin.gallery.copyTag")}
             </button>
           </div>
         ))}
@@ -223,7 +228,7 @@ export function PhotoManager({
           ) : (
             <ImagePlus className="size-5" />
           )}
-          {busy ? "Uploading…" : "Add photos"}
+          {busy ? t("admin.upload.uploading") : t("admin.gallery.add")}
         </button>
       </div>
 
