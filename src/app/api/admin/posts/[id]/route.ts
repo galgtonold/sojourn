@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { notifyViewers } from "@/lib/notify";
+import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 
 const schema = z.object({
@@ -40,11 +42,12 @@ export async function PUT(
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const p = parsed.data;
+  const slug = p.slug || slugify(p.title);
 
   // Set published_at on the publish transition (only if not already set).
   const { data: existing } = await supabase
     .from("posts")
-    .select("published_at")
+    .select("published, published_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -52,7 +55,7 @@ export async function PUT(
     .from("posts")
     .update({
       title: p.title,
-      slug: p.slug || slugify(p.title),
+      slug,
       location: p.location || null,
       excerpt: p.excerpt || null,
       body: p.body || null,
@@ -68,6 +71,16 @@ export async function PUT(
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fire a viewer notification only when crossing from unpublished → published.
+  if (p.published && !existing?.published) {
+    notifyViewers({
+      title: `New story: ${p.title}`,
+      body: p.excerpt ?? undefined,
+      url: `${env.siteUrl}/posts/${slug}`,
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }
 

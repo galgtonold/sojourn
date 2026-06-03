@@ -8,6 +8,7 @@ import { Gallery } from "@/components/gallery";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker } from "@/components/trip-map";
+import { SubscribePrompt } from "@/components/subscribe-prompt";
 
 export const revalidate = 60;
 
@@ -148,6 +149,9 @@ export default async function PostPage({
       <section className="mx-auto max-w-3xl px-6 pb-24">
         <Comments postId={post.id} initial={comments} />
       </section>
+
+      {/* Invite readers to subscribe once they reach the end. */}
+      <SubscribePrompt />
     </article>
   );
 }

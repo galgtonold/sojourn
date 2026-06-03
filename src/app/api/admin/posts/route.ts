@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { notifyViewers } from "@/lib/notify";
+import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 
 const schema = z.object({
@@ -30,12 +32,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const p = parsed.data;
+  const slug = p.slug || slugify(p.title);
 
   const { data, error } = await supabase
     .from("posts")
     .insert({
       title: p.title,
-      slug: p.slug || slugify(p.title),
+      slug,
       location: p.location || null,
       excerpt: p.excerpt || null,
       body: p.body || null,
@@ -49,5 +52,15 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Newly published → tell readers who opted in.
+  if (p.published) {
+    notifyViewers({
+      title: `New story: ${p.title}`,
+      body: p.excerpt ?? undefined,
+      url: `${env.siteUrl}/posts/${slug}`,
+    }).catch(() => {});
+  }
+
   return NextResponse.json(data, { status: 201 });
 }

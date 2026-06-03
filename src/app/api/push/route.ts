@@ -3,14 +3,16 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
 const subscribeSchema = z.object({
   endpoint: z.string().url(),
   keys: z.object({ p256dh: z.string(), auth: z.string() }),
+  audience: z.enum(["admin", "viewer"]).default("viewer"),
   userAgent: z.string().optional(),
 });
 
-// Only the authenticated admin may register/unregister push endpoints.
-async function requireAdmin() {
+async function getUser() {
   const supabase = await getServerSupabase();
   if (!supabase) return null;
   const {
@@ -20,22 +22,29 @@ async function requireAdmin() {
 }
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
   const parsed = subscribeSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
-  const admin = getAdminSupabase();
-  if (!admin) return NextResponse.json({ error: "unconfigured" }, { status: 503 });
+  const { endpoint, keys, audience, userAgent } = parsed.data;
 
-  const { endpoint, keys, userAgent } = parsed.data;
+  // Admin subscriptions require the authenticated owner; viewer subscriptions
+  // are open to anyone (it's their own browser opting in).
+  if (audience === "admin" && !(await getUser())) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const admin = getAdminSupabase();
+  if (!admin) {
+    return NextResponse.json({ error: "unconfigured" }, { status: 503 });
+  }
+
   const { error } = await admin.from("push_subscriptions").upsert(
     {
       endpoint,
       p256dh: keys.p256dh,
       auth: keys.auth,
+      audience,
       user_agent: userAgent ?? null,
     },
     { onConflict: "endpoint" },
@@ -45,14 +54,12 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
   const { endpoint } = (await req.json().catch(() => ({}))) as {
     endpoint?: string;
   };
   if (!endpoint) return NextResponse.json({ error: "invalid" }, { status: 400 });
 
+  // Anyone may remove their own endpoint (it identifies their browser).
   const admin = getAdminSupabase();
   if (!admin) return NextResponse.json({ error: "unconfigured" }, { status: 503 });
 

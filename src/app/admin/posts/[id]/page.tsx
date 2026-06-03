@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
+import { PhotoManager } from "@/components/photo-manager";
 
 export const metadata = { title: "Edit post" };
 export const dynamic = "force-dynamic";
@@ -31,6 +32,12 @@ export default async function EditPostPage({
 
   if (error || !data) notFound();
 
+  const { data: photos } = await supabase!
+    .from("photos")
+    .select("id, url, storage_path, caption, sort_order")
+    .eq("post_id", id)
+    .order("sort_order", { ascending: true });
+
   const initial: EditablePost = {
     id: data.id,
     title: data.title ?? "",
@@ -54,6 +61,10 @@ export default async function EditPostPage({
       </Link>
       <h1 className="mb-8 font-display text-4xl font-semibold">Edit post</h1>
       <PostEditor initial={initial} />
+
+      <div className="mt-12 border-t border-white/10 pt-10">
+        <PhotoManager postId={data.id} initial={photos ?? []} />
+      </div>
     </div>
   );
 }
