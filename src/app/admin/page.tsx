@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, MessageSquare, Plus } from "lucide-react";
+import { FileText, KeyRound, MessageSquare, Plus } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getPublishedPosts } from "@/lib/content";
@@ -78,6 +78,14 @@ export default async function AdminDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <PushToggle />
+          {isSupabaseConfigured && (
+            <Link
+              href="/admin/account"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
+            >
+              <KeyRound className="size-4" /> Password
+            </Link>
+          )}
           {isSupabaseConfigured && <SignOutButton />}
         </div>
       </div>

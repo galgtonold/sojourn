@@ -63,7 +63,11 @@ export default async function EditPostPage({
       <PostEditor initial={initial} />
 
       <div className="mt-12 border-t border-white/10 pt-10">
-        <PhotoManager postId={data.id} initial={photos ?? []} />
+        <PhotoManager
+          postId={data.id}
+          slug={data.slug ?? ""}
+          initial={photos ?? []}
+        />
       </div>
     </div>
   );
