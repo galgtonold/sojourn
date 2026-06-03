@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { slugify } from "@/lib/utils";
+
+const schema = z.object({
+  title: z.string().trim().min(1),
+  slug: z.string().trim().optional(),
+  location: z.string().optional(),
+  excerpt: z.string().optional(),
+  body: z.string().optional(),
+  cover_image: z.string().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  published: z.boolean().optional(),
+});
+
+export async function POST(req: Request) {
+  const supabase = await getServerSupabase();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const parsed = schema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid" }, { status: 400 });
+  }
+  const p = parsed.data;
+
+  const { data, error } = await supabase
+    .from("posts")
+    .insert({
+      title: p.title,
+      slug: p.slug || slugify(p.title),
+      location: p.location || null,
+      excerpt: p.excerpt || null,
+      body: p.body || null,
+      cover_image: p.cover_image || null,
+      lat: p.lat ?? null,
+      lng: p.lng ?? null,
+      published: p.published ?? false,
+      published_at: p.published ? new Date().toISOString() : null,
+    })
+    .select("id")
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data, { status: 201 });
+}

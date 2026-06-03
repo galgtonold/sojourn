@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
+@theme {
+  /* Ink (near-black, slightly warm) */
+  --color-ink-950: #0a0908;
+  --color-ink-900: #12100e;
+  --color-ink-800: #1c1916;
+  --color-ink-700: #2a2521;
+  --color-ink-600: #3b342e;
+
+  /* Sand (light surfaces) */
+  --color-sand-50: #faf6f0;
+  --color-sand-100: #f2ebe0;
+  --color-sand-200: #e4d8c6;
+
+  /* Sunset accent */
+  --color-ember-300: #ffb27a;
+  --color-ember-400: #ff8f4d;
+  --color-ember-500: #f56a1f;
+  --color-ember-600: #d8500f;
+
+  /* Teal secondary (water/ice) */
+  --color-lagoon-400: #4cc9c0;
+  --color-lagoon-500: #1fb0a6;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-sand-50);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-ember-500);
+  color: var(--color-ink-950);
+}
+
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+.text-gradient-ember {
+  background: linear-gradient(
+    100deg,
+    var(--color-ember-300),
+    var(--color-ember-500) 60%,
+    var(--color-lagoon-400)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: color-mix(in oklab, var(--color-ink-900) 55%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in oklab, white 8%, transparent);
+}
+
+/* Subtle film grain over hero imagery for the "immersive" feel. */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Slow Ken-Burns drift for hero backgrounds. */
+@keyframes kenburns {
+  0% {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.18) translate3d(-1.5%, -2%, 0);
+  }
+}
+.animate-kenburns {
+  animation: kenburns 24s ease-out alternate infinite;
+}
+
+@keyframes float-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-float-up {
+  animation: float-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Hide scrollbars on horizontal rails while keeping scroll. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* MapLibre dark tweaks */
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+  opacity: 0.6;
+}
