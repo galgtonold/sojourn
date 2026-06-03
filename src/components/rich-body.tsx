@@ -4,6 +4,8 @@ import type { Interaction, Photo } from "@/lib/types";
 import { parseBody } from "@/lib/rich";
 import { Figure, mdComponents } from "@/components/prose";
 import { InteractiveBlock } from "@/components/interactive-block";
+import { Reveal } from "@/components/reveal";
+import { RevealChildren } from "@/components/reveal-children";
 
 /** Renders a post body as Markdown, with photos ([photo:…]) and polls/quizzes
  *  ([ask:…]) placed inline so everything reads interleaved. */
@@ -23,23 +25,28 @@ export function RichBody({
       {blocks.map((b, i) => {
         if (b.kind === "photo") {
           return (
-            <Figure
-              key={i}
-              src={b.photo.url ?? ""}
-              alt={b.photo.alt ?? undefined}
-              caption={b.photo.caption}
-            />
+            <Reveal key={i}>
+              <Figure
+                src={b.photo.url ?? ""}
+                alt={b.photo.alt ?? undefined}
+                caption={b.photo.caption}
+              />
+            </Reveal>
           );
         }
         if (b.kind === "interaction") {
-          return <InteractiveBlock key={i} interaction={b.interaction} />;
+          return (
+            <Reveal key={i}>
+              <InteractiveBlock interaction={b.interaction} />
+            </Reveal>
+          );
         }
         return (
-          <div key={i} className="space-y-5">
+          <RevealChildren key={i} className="space-y-5">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
               {b.text}
             </ReactMarkdown>
-          </div>
+          </RevealChildren>
         );
       })}
     </div>
