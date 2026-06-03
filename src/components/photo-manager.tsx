@@ -17,9 +17,11 @@ export type ManagedPhoto = {
 /** Gallery management for an existing post: upload, caption, delete. */
 export function PhotoManager({
   postId,
+  slug,
   initial,
 }: {
   postId: string;
+  slug: string;
   initial: ManagedPhoto[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,6 +30,19 @@ export function PhotoManager({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  // Bust the cached public post page so gallery changes appear immediately.
+  async function revalidate() {
+    try {
+      await fetch("/api/admin/revalidate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: `/posts/${slug}` }),
+      });
+    } catch {
+      // best effort
+    }
+  }
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -57,6 +72,7 @@ export function PhotoManager({
         added.push(data as ManagedPhoto);
       }
       setPhotos((p) => [...p, ...added]);
+      revalidate();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -72,6 +88,7 @@ export function PhotoManager({
     if (photo.storage_path) {
       await supabase.storage.from("photos").remove([photo.storage_path]);
     }
+    revalidate();
   }
 
   async function saveCaption(photo: ManagedPhoto) {

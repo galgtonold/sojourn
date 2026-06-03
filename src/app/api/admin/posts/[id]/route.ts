@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
+
+function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
+  revalidatePath("/");
+  revalidatePath("/map");
+  revalidatePath("/trips");
+  if (slug) revalidatePath(`/posts/${slug}`);
+  if (alsoSlug && alsoSlug !== slug) revalidatePath(`/posts/${alsoSlug}`);
+}
 
 const schema = z.object({
   title: z.string().trim().min(1),
@@ -47,7 +56,7 @@ export async function PUT(
   // Set published_at on the publish transition (only if not already set).
   const { data: existing } = await supabase
     .from("posts")
-    .select("published, published_at")
+    .select("published, published_at, slug")
     .eq("id", id)
     .maybeSingle();
 
@@ -72,6 +81,9 @@ export async function PUT(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Instantly refresh public pages (incl. the old slug if it changed).
+  revalidatePublic(slug, existing?.slug);
+
   // Fire a viewer notification only when crossing from unpublished → published.
   if (p.published && !existing?.published) {
     notifyViewers({
@@ -95,7 +107,15 @@ export async function DELETE(
   }
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  const { data: existing } = await supabase
+    .from("posts")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("posts").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidatePublic(existing?.slug);
   return NextResponse.json({ ok: true });
 }

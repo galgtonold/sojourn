@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
@@ -52,6 +53,12 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Refresh the cached public pages immediately.
+  revalidatePath("/");
+  revalidatePath("/map");
+  revalidatePath("/trips");
+  revalidatePath(`/posts/${slug}`);
 
   // Newly published → tell readers who opted in.
   if (p.published) {
