@@ -53,6 +53,11 @@ export default async function EditPostPage({
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
 
+  const { data: trips } = await supabase!
+    .from("trips")
+    .select("id, title")
+    .order("start_date", { ascending: false });
+
   const initial: EditablePost = {
     id: data.id,
     title: data.title ?? "",
@@ -62,6 +67,7 @@ export default async function EditPostPage({
     body: data.body ?? "",
     cover_image: data.cover_image ?? "",
     cover_alt: data.cover_alt ?? "",
+    trip_id: data.trip_id ?? "",
     lat: data.lat != null ? String(data.lat) : "",
     lng: data.lng != null ? String(data.lng) : "",
     published: Boolean(data.published),
@@ -88,7 +94,7 @@ export default async function EditPostPage({
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
-      <PostEditor initial={initial} />
+      <PostEditor initial={initial} trips={trips ?? []} />
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <TrackManager

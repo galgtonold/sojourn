@@ -15,6 +15,7 @@ export type EditablePost = {
   body: string;
   cover_image: string;
   cover_alt: string;
+  trip_id: string;
   lat: string;
   lng: string;
   published: boolean;
@@ -28,12 +29,19 @@ const EMPTY: EditablePost = {
   body: "",
   cover_image: "",
   cover_alt: "",
+  trip_id: "",
   lat: "",
   lng: "",
   published: false,
 };
 
-export function PostEditor({ initial }: { initial?: EditablePost }) {
+export function PostEditor({
+  initial,
+  trips = [],
+}: {
+  initial?: EditablePost;
+  trips?: { id: string; title: string }[];
+}) {
   const router = useRouter();
   const t = useT();
   const [post, setPost] = useState<EditablePost>(initial ?? EMPTY);
@@ -51,6 +59,7 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
     const payload = {
       ...post,
       slug: post.slug || slugify(post.title),
+      trip_id: post.trip_id || null,
       lat: post.lat ? Number(post.lat) : null,
       lng: post.lng ? Number(post.lng) : null,
     };
@@ -110,6 +119,23 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
           onChange={(e) => set("location", e.target.value)}
         />
       </div>
+      {trips.length > 0 && (
+        <label className="block text-sm text-sand-100/60">
+          {t("admin.editor.trip")}
+          <select
+            value={post.trip_id}
+            onChange={(e) => set("trip_id", e.target.value)}
+            className={`${input} mt-1`}
+          >
+            <option value="">{t("admin.editor.tripNone")}</option>
+            {trips.map((tr) => (
+              <option key={tr.id} value={tr.id}>
+                {tr.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <ImageUploader
         value={post.cover_image}
         onChange={(url) => set("cover_image", url)}

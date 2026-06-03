@@ -1,11 +1,21 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PostEditor } from "@/components/post-editor";
+import { getServerSupabase } from "@/lib/supabase/server";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "New post" };
+export const dynamic = "force-dynamic";
 
-export default function NewPostPage() {
+export default async function NewPostPage() {
+  const supabase = await getServerSupabase();
+  const { data: trips } = supabase
+    ? await supabase
+        .from("trips")
+        .select("id, title")
+        .order("start_date", { ascending: false })
+    : { data: [] as { id: string; title: string }[] };
+
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
       <Link
@@ -17,7 +27,7 @@ export default function NewPostPage() {
       <h1 className="mb-8 font-display text-4xl font-semibold">
         <T k="admin.editor.newPost" />
       </h1>
-      <PostEditor />
+      <PostEditor trips={trips ?? []} />
     </div>
   );
 }
