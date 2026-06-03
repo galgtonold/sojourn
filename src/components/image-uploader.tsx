@@ -50,10 +50,16 @@ export function ImageUploader({
             sizes="(max-width: 768px) 100vw, 700px"
             className="object-cover"
           />
+          {busy && (
+            <div className="absolute inset-0 grid place-items-center gap-2 bg-ink-950/70 text-sm text-sand-50">
+              <Loader2 className="size-6 animate-spin" />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950"
+            disabled={busy}
+            className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
             aria-label="Remove image"
           >
             <X className="size-4" />
@@ -61,9 +67,10 @@ export function ImageUploader({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-3 py-1 text-xs text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950"
+            disabled={busy}
+            className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-3 py-1 text-xs text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
           >
-            Replace
+            {busy ? "Uploading…" : "Replace"}
           </button>
         </div>
       ) : (

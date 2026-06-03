@@ -27,6 +27,7 @@ export function PhotoManager({
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -79,13 +80,26 @@ export function PhotoManager({
       ?.from("photos")
       .update({ caption: photo.caption })
       .eq("id", photo.id);
+    setSavedId(photo.id);
+    setTimeout(
+      () => setSavedId((id) => (id === photo.id ? null : id)),
+      1500,
+    );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Gallery</h2>
-        <span className="text-sm text-sand-100/50">{photos.length} photos</span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-semibold">Gallery</h2>
+          <p className="mt-0.5 text-sm text-sand-100/50">
+            Saved automatically — uploads, captions and deletions apply
+            instantly (no need to press Save).
+          </p>
+        </div>
+        <span className="shrink-0 text-sm text-sand-100/50">
+          {photos.length} photos
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -110,13 +124,20 @@ export function PhotoManager({
                 <Trash2 className="size-4" />
               </button>
             </div>
-            <input
-              defaultValue={photo.caption ?? ""}
-              placeholder="Caption…"
-              onChange={(e) => (photo.caption = e.target.value)}
-              onBlur={() => saveCaption(photo)}
-              className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs outline-none focus:border-ember-400"
-            />
+            <div className="relative">
+              <input
+                defaultValue={photo.caption ?? ""}
+                placeholder="Caption…"
+                onChange={(e) => (photo.caption = e.target.value)}
+                onBlur={() => saveCaption(photo)}
+                className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 pr-12 text-xs outline-none focus:border-ember-400"
+              />
+              {savedId === photo.id && (
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-lagoon-400">
+                  Saved ✓
+                </span>
+              )}
+            </div>
           </div>
         ))}
 
