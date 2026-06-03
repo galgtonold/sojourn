@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
 import { PhotoManager } from "@/components/photo-manager";
+import { TrackManager } from "@/components/track-manager";
 
 export const metadata = { title: "Edit post" };
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, lat, lng, published",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published",
     )
     .eq("id", id)
     .maybeSingle();
@@ -34,9 +35,15 @@ export default async function EditPostPage({
 
   const { data: photos } = await supabase!
     .from("photos")
-    .select("id, url, storage_path, caption, alt, sort_order")
+    .select("id, url, storage_path, caption, alt, lat, lng, sort_order")
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
+
+  const { data: tracks } = await supabase!
+    .from("tracks")
+    .select("id, name, distance_m")
+    .eq("post_id", id)
+    .order("created_at", { ascending: true });
 
   const initial: EditablePost = {
     id: data.id,
@@ -72,6 +79,15 @@ export default async function EditPostPage({
         </a>
       </div>
       <PostEditor initial={initial} />
+
+      <div className="mt-12 border-t border-white/10 pt-10">
+        <TrackManager
+          postId={data.id}
+          tripId={data.trip_id ?? null}
+          slug={data.slug ?? ""}
+          initial={tracks ?? []}
+        />
+      </div>
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <PhotoManager

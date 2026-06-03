@@ -19,6 +19,15 @@ export type GeoPoint = {
   sort_order: number;
 };
 
+export type Track = {
+  id: string;
+  name: string | null;
+  distance_m: number | null;
+  // Parsed GPX as a GeoJSON FeatureCollection of LineStrings.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  geojson: any;
+};
+
 export type Photo = {
   id: string;
   url: string | null;
@@ -69,6 +78,7 @@ export type PostWithRelations = Post & {
   trip: Trip | null;
   photos: Photo[];
   locations: GeoPoint[];
+  tracks: Track[];
   reactions: ReactionSummary;
   comment_count: number;
 };

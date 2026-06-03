@@ -44,6 +44,13 @@ function hydratePost(row: any): PostWithRelations {
     locations: (row.locations ?? []).sort(
       (a: GeoPoint, b: GeoPoint) => a.sort_order - b.sort_order,
     ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tracks: (row.tracks ?? []).map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      distance_m: t.distance_m,
+      geojson: t.geojson,
+    })),
     reactions: summarizeReactions(row.reactions),
     comment_count: row.comments?.[0]?.count ?? 0,
   };
@@ -54,6 +61,7 @@ const POST_SELECT = `
   trip:trips(*),
   photos(*),
   locations(*),
+  tracks(*),
   reactions(kind),
   comments(count)
 `;

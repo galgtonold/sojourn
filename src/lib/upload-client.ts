@@ -5,9 +5,47 @@
 // Before upload we downscale + re-encode to WebP so we never store giant
 // originals (smaller storage, faster optimizer source). Falls back to the
 // untouched file if the browser can't process it (e.g. HEIC).
+import exifr from "exifr";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB hard cap on the original
+
+export type UploadResult = {
+  url: string;
+  path: string;
+  lat: number | null;
+  lng: number | null;
+  takenAt: string | null;
+};
+
+// Pull GPS + capture time from the ORIGINAL file (downscaling to WebP strips
+// EXIF, so this must run first). Best-effort — returns nulls on any failure.
+async function readExif(
+  file: File,
+): Promise<{ lat: number | null; lng: number | null; takenAt: string | null }> {
+  let lat: number | null = null;
+  let lng: number | null = null;
+  let takenAt: string | null = null;
+  try {
+    const gps = await exifr.gps(file);
+    if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
+      lat = gps.latitude;
+      lng = gps.longitude;
+    }
+  } catch {
+    /* no gps */
+  }
+  try {
+    const meta = await exifr.parse(file, ["DateTimeOriginal"]);
+    if (meta?.DateTimeOriginal) {
+      const d = new Date(meta.DateTimeOriginal);
+      if (!Number.isNaN(d.getTime())) takenAt = d.toISOString();
+    }
+  } catch {
+    /* no date */
+  }
+  return { lat, lng, takenAt };
+}
 
 async function downscale(
   file: File,
@@ -55,11 +93,13 @@ export async function uploadImage(
   file: File,
   folder = "uploads",
   opts: { maxDim?: number; quality?: number } = {},
-): Promise<{ url: string; path: string }> {
+): Promise<UploadResult> {
   const supabase = getBrowserSupabase();
   if (!supabase) throw new Error("Storage isn’t available (demo mode).");
   if (!file.type.startsWith("image/")) throw new Error("That isn’t an image.");
   if (file.size > MAX_BYTES) throw new Error("Image is larger than 25 MB.");
+
+  const exif = await readExif(file);
 
   const { blob, ext, type } = await downscale(
     file,
@@ -76,5 +116,5 @@ export async function uploadImage(
   if (error) throw new Error(error.message);
 
   const { data } = supabase.storage.from("photos").getPublicUrl(path);
-  return { url: data.publicUrl, path };
+  return { url: data.publicUrl, path, ...exif };
 }
