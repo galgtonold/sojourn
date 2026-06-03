@@ -1,0 +1,85 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Compass } from "lucide-react";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/env";
+
+export default function AdminLogin() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    const supabase = getBrowserSupabase();
+    if (!supabase) {
+      setError("Supabase isn't configured yet (demo mode).");
+      setBusy(false);
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+      return;
+    }
+    router.push("/admin");
+    router.refresh();
+  }
+
+  return (
+    <div className="grid min-h-dvh place-items-center px-6">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-4 rounded-3xl bg-ink-900 p-8 ring-1 ring-white/10"
+      >
+        <div className="flex items-center gap-2">
+          <Compass className="size-6 text-ember-400" />
+          <h1 className="font-display text-2xl font-semibold">Admin</h1>
+        </div>
+        <p className="text-sm text-sand-100/50">
+          Sign in to manage entries, photos and comments.
+        </p>
+
+        {!isSupabaseConfigured && (
+          <p className="rounded-xl bg-ember-600/15 p-3 text-xs text-ember-300">
+            Demo mode: set Supabase env vars and create an admin user to enable
+            login.
+          </p>
+        )}
+
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
+        />
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
+        />
+
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-full bg-ember-500 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
+        >
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+    </div>
+  );
+}
