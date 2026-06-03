@@ -153,9 +153,10 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
         onChange={(e) => set("body", e.target.value)}
       />
       <p className="text-xs text-sand-100/40">
-        Markdown supported. Drop <code className="text-sand-100/70">[photo:ID]</code>{" "}
-        on its own line to weave a gallery photo into the story — grab a photo&rsquo;s
-        tag with “Copy inline tag” in the Gallery below.
+        Markdown supported. Weave in a gallery photo with{" "}
+        <code className="text-sand-100/70">[photo:ID]</code> or a poll/quiz with{" "}
+        <code className="text-sand-100/70">[ask:ID]</code> on its own line — grab
+        tags with “Copy …” in the Gallery and Polls &amp; quizzes sections below.
       </p>
 
       <label className="flex items-center gap-2 text-sm">

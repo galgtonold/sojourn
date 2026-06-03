@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getComments, getPostForPreview } from "@/lib/content";
+import { getComments, getInteractions, getPostForPreview } from "@/lib/content";
 import { PostView } from "@/components/post-view";
 
 export const metadata = { title: "Preview" };
@@ -14,6 +14,16 @@ export default async function PreviewPage({
   const post = await getPostForPreview(id);
   if (!post) notFound();
 
-  const comments = await getComments(post.id);
-  return <PostView post={post} comments={comments} preview />;
+  const [comments, interactions] = await Promise.all([
+    getComments(post.id),
+    getInteractions(post.id),
+  ]);
+  return (
+    <PostView
+      post={post}
+      comments={comments}
+      interactions={interactions}
+      preview
+    />
+  );
 }

@@ -8,6 +8,7 @@
 import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getAdminSupabase } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
@@ -238,6 +239,24 @@ export async function getComments(postId: string): Promise<Comment[]> {
   } catch {
     return [];
   }
+}
+
+// Inline interactive blocks for a post — fetched via the service role so the
+// correct answer / explanation never reach the client. Returns only safe
+// fields. No-ops without a service role (interactions just won't render).
+export async function getInteractions(
+  postId: string,
+): Promise<import("@/lib/types").Interaction[]> {
+  const supabase = getAdminSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("interactions")
+    .select("id, kind, question, options, sort_order")
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+  if (error || !data) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data as any;
 }
 
 // Authenticated (admin) fetch of any post by id — including drafts — for the

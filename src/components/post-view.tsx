@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
-import type { Comment, PostWithRelations } from "@/lib/types";
+import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
 import { formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
@@ -16,10 +16,12 @@ import { SubscribePrompt } from "@/components/subscribe-prompt";
 export function PostView({
   post,
   comments,
+  interactions = [],
   preview = false,
 }: {
   post: PostWithRelations;
   comments: Comment[];
+  interactions?: Interaction[];
   preview?: boolean;
 }) {
   const usedPhotoIds = referencedPhotoIds(post.body ?? "", post.photos);
@@ -111,7 +113,11 @@ export function PostView({
             {post.excerpt}
           </p>
         )}
-        <RichBody body={post.body ?? ""} photos={post.photos} />
+        <RichBody
+          body={post.body ?? ""}
+          photos={post.photos}
+          interactions={interactions}
+        />
 
         <div className="mt-12 border-t border-white/10 pt-8">
           <Reactions postId={post.id} initial={post.reactions} />

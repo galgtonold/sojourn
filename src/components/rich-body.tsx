@@ -1,8 +1,9 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Photo } from "@/lib/types";
+import type { Interaction, Photo } from "@/lib/types";
 import { parseBody } from "@/lib/rich";
 import { optimizedSrc } from "@/lib/utils";
+import { InteractiveBlock } from "@/components/interactive-block";
 
 function Figure({
   src,
@@ -80,28 +81,43 @@ const components: Components = {
     typeof src === "string" ? <Figure src={src} alt={alt} caption={alt} /> : null,
 };
 
-/** Renders a post body as Markdown with photos placed inline via [photo:…]. */
-export function RichBody({ body, photos }: { body: string; photos: Photo[] }) {
-  const blocks = parseBody(body ?? "", photos);
+/** Renders a post body as Markdown, with photos ([photo:…]) and polls/quizzes
+ *  ([ask:…]) placed inline so everything reads interleaved. */
+export function RichBody({
+  body,
+  photos,
+  interactions = [],
+}: {
+  body: string;
+  photos: Photo[];
+  interactions?: Interaction[];
+}) {
+  const blocks = parseBody(body ?? "", photos, interactions);
 
   return (
     <div className="space-y-6 text-lg text-sand-100/80">
-      {blocks.map((b, i) =>
-        b.kind === "photo" ? (
-          <Figure
-            key={i}
-            src={b.photo.url ?? ""}
-            alt={b.photo.alt ?? undefined}
-            caption={b.photo.caption}
-          />
-        ) : (
+      {blocks.map((b, i) => {
+        if (b.kind === "photo") {
+          return (
+            <Figure
+              key={i}
+              src={b.photo.url ?? ""}
+              alt={b.photo.alt ?? undefined}
+              caption={b.photo.caption}
+            />
+          );
+        }
+        if (b.kind === "interaction") {
+          return <InteractiveBlock key={i} interaction={b.interaction} />;
+        }
+        return (
           <div key={i} className="space-y-5">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
               {b.text}
             </ReactMarkdown>
           </div>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

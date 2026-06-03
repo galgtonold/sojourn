@@ -1,11 +1,12 @@
-import type { Photo } from "@/lib/types";
+import type { Interaction, Photo } from "@/lib/types";
 
-// Inline photo tag: [photo:<id-or-1-based-index>]
-const PHOTO_RE = /\[photo:([^\]\s]+)\]/g;
+// Inline tags: [photo:<id-or-index>] and [ask:<id-or-index>]
+const TAG_RE = /\[(photo|ask):([^\]\s]+)\]/g;
 
 export type Block =
   | { kind: "md"; text: string }
-  | { kind: "photo"; photo: Photo };
+  | { kind: "photo"; photo: Photo }
+  | { kind: "interaction"; interaction: Interaction };
 
 export function resolvePhoto(ref: string, photos: Photo[]): Photo | null {
   const byId = photos.find((p) => p.id === ref);
@@ -15,19 +16,43 @@ export function resolvePhoto(ref: string, photos: Photo[]): Photo | null {
   return null;
 }
 
-// Splits a body into Markdown segments and inline-photo blocks, so prose and
-// images can be rendered interleaved. Unresolved tags are left in the text.
-export function parseBody(body: string, photos: Photo[]): Block[] {
+function resolveInteraction(
+  ref: string,
+  interactions: Interaction[],
+): Interaction | null {
+  const byId = interactions.find((it) => it.id === ref);
+  if (byId) return byId;
+  const n = Number(ref);
+  if (Number.isInteger(n) && n >= 1 && n <= interactions.length)
+    return interactions[n - 1];
+  return null;
+}
+
+// Splits a body into Markdown, inline photos, and inline interactions, so prose,
+// images and polls/quizzes render interleaved. Unresolved tags stay as text.
+export function parseBody(
+  body: string,
+  photos: Photo[],
+  interactions: Interaction[] = [],
+): Block[] {
   const blocks: Block[] = [];
   let last = 0;
-  const re = new RegExp(PHOTO_RE);
+  const re = new RegExp(TAG_RE);
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
-    const photo = resolvePhoto(m[1], photos);
-    if (!photo) continue; // leave the tag in the markdown text
+    const [, type, ref] = m;
+    const resolved =
+      type === "photo"
+        ? resolvePhoto(ref, photos)
+        : resolveInteraction(ref, interactions);
+    if (!resolved) continue;
     const before = body.slice(last, m.index);
     if (before.trim()) blocks.push({ kind: "md", text: before });
-    blocks.push({ kind: "photo", photo });
+    if (type === "photo") {
+      blocks.push({ kind: "photo", photo: resolved as Photo });
+    } else {
+      blocks.push({ kind: "interaction", interaction: resolved as Interaction });
+    }
     last = m.index + m[0].length;
   }
   const rest = body.slice(last);
@@ -41,10 +66,11 @@ export function referencedPhotoIds(
   photos: Photo[],
 ): Set<string> {
   const ids = new Set<string>();
-  const re = new RegExp(PHOTO_RE);
+  const re = new RegExp(TAG_RE);
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
-    const p = resolvePhoto(m[1], photos);
+    if (m[1] !== "photo") continue;
+    const p = resolvePhoto(m[2], photos);
     if (p) ids.add(p.id);
   }
   return ids;
