@@ -103,22 +103,13 @@ export function PostEditor({
         placeholder={t("admin.editor.title")}
         value={post.title}
         onChange={(e) => set("title", e.target.value)}
-        onBlur={() => !post.slug && set("slug", slugify(post.title))}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <input
-          className={input}
-          placeholder="slug"
-          value={post.slug}
-          onChange={(e) => set("slug", e.target.value)}
-        />
-        <input
-          className={input}
-          placeholder={t("admin.editor.location")}
-          value={post.location}
-          onChange={(e) => set("location", e.target.value)}
-        />
-      </div>
+      <input
+        className={input}
+        placeholder={t("admin.editor.location")}
+        value={post.location}
+        onChange={(e) => set("location", e.target.value)}
+      />
       {trips.length > 0 && (
         <label className="block text-sm text-sand-100/60">
           {t("admin.editor.trip")}
