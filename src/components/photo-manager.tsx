@@ -1,0 +1,163 @@
+"use client";
+import { useRef, useState } from "react";
+import Image from "next/image";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { uploadImage } from "@/lib/upload-client";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+
+export type ManagedPhoto = {
+  id: string;
+  url: string | null;
+  storage_path: string | null;
+  caption: string | null;
+  sort_order: number;
+};
+
+/** Gallery management for an existing post: upload, caption, delete. */
+export function PhotoManager({
+  postId,
+  initial,
+}: {
+  postId: string;
+  initial: ManagedPhoto[];
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [photos, setPhotos] = useState<ManagedPhoto[]>(initial);
+  const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const supabase = getBrowserSupabase();
+    if (!supabase) {
+      setError("Storage isn’t available.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      let order = photos.length;
+      const added: ManagedPhoto[] = [];
+      for (const file of Array.from(files)) {
+        const { url, path } = await uploadImage(file, postId);
+        const { data, error } = await supabase
+          .from("photos")
+          .insert({
+            post_id: postId,
+            url,
+            storage_path: path,
+            sort_order: order++,
+          })
+          .select("id, url, storage_path, caption, sort_order")
+          .single();
+        if (error) throw new Error(error.message);
+        added.push(data as ManagedPhoto);
+      }
+      setPhotos((p) => [...p, ...added]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(photo: ManagedPhoto) {
+    const supabase = getBrowserSupabase();
+    if (!supabase) return;
+    setPhotos((p) => p.filter((x) => x.id !== photo.id));
+    await supabase.from("photos").delete().eq("id", photo.id);
+    if (photo.storage_path) {
+      await supabase.storage.from("photos").remove([photo.storage_path]);
+    }
+  }
+
+  async function saveCaption(photo: ManagedPhoto) {
+    const supabase = getBrowserSupabase();
+    await supabase
+      ?.from("photos")
+      .update({ caption: photo.caption })
+      .eq("id", photo.id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-semibold">Gallery</h2>
+        <span className="text-sm text-sand-100/50">{photos.length} photos</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {photos.map((photo) => (
+          <div key={photo.id} className="space-y-1.5">
+            <div className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800">
+              {photo.url && (
+                <Image
+                  src={photo.url}
+                  alt={photo.caption ?? ""}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 33vw"
+                  className="object-cover"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => remove(photo)}
+                aria-label="Delete photo"
+                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-red-300 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+            <input
+              defaultValue={photo.caption ?? ""}
+              placeholder="Caption…"
+              onChange={(e) => (photo.caption = e.target.value)}
+              onBlur={() => saveCaption(photo)}
+              className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs outline-none focus:border-ember-400"
+            />
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            addFiles(e.dataTransfer.files);
+          }}
+          className={cn(
+            "flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-xs transition",
+            dragging
+              ? "border-ember-400 bg-ember-500/5 text-ember-300"
+              : "border-white/15 text-sand-100/50 hover:border-white/30",
+          )}
+        >
+          {busy ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <ImagePlus className="size-5" />
+          )}
+          {busy ? "Uploading…" : "Add photos"}
+        </button>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => addFiles(e.target.files)}
+      />
+      {error && <p className="text-sm text-red-400">{error}</p>}
+    </div>
+  );
+}

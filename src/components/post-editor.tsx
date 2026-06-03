@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
+import { ImageUploader } from "@/components/image-uploader";
 
 export type EditablePost = {
   id?: string;
@@ -105,9 +106,13 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
           onChange={(e) => set("location", e.target.value)}
         />
       </div>
+      <ImageUploader
+        value={post.cover_image}
+        onChange={(url) => set("cover_image", url)}
+      />
       <input
         className={input}
-        placeholder="Cover image URL"
+        placeholder="…or paste an image URL"
         value={post.cover_image}
         onChange={(e) => set("cover_image", e.target.value)}
       />

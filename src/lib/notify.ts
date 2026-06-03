@@ -1,5 +1,5 @@
-// Server-only: records an in-app notification and fans it out to the admin's
-// Web Push subscriptions. No-ops gracefully when push/Supabase aren't set up.
+// Server-only: records an in-app notification and fans out Web Push to the
+// relevant audience. No-ops gracefully when push/Supabase aren't set up.
 import "server-only";
 import webpush from "web-push";
 import { env, isPushConfigured } from "@/lib/env";
@@ -17,37 +17,31 @@ function ensureVapid() {
 }
 
 export type NotifyInput = {
-  type: string;
   title: string;
   body?: string;
   url?: string;
 };
 
-export async function notifyAdmin(input: NotifyInput): Promise<void> {
+// Sends a push payload to every subscription in an audience, pruning dead ones.
+async function fanOut(
+  audience: "admin" | "viewer",
+  payload: NotifyInput,
+): Promise<void> {
+  ensureVapid();
+  if (!isPushConfigured) return;
   const supabase = getAdminSupabase();
   if (!supabase) return;
 
-  // 1. Persist the in-app notification (best effort).
-  await supabase.from("notifications").insert({
-    type: input.type,
-    title: input.title,
-    body: input.body ?? null,
-    url: input.url ?? null,
-  });
-
-  // 2. Web Push fan-out.
-  ensureVapid();
-  if (!isPushConfigured) return;
-
   const { data: subs } = await supabase
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth");
+    .select("id, endpoint, p256dh, auth")
+    .eq("audience", audience);
   if (!subs?.length) return;
 
-  const payload = JSON.stringify({
-    title: input.title,
-    body: input.body ?? "",
-    url: input.url ?? "/",
+  const body = JSON.stringify({
+    title: payload.title,
+    body: payload.body ?? "",
+    url: payload.url ?? "/",
   });
 
   await Promise.all(
@@ -55,10 +49,9 @@ export async function notifyAdmin(input: NotifyInput): Promise<void> {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload,
+          body,
         );
       } catch (err: unknown) {
-        // 404/410 → subscription is dead; prune it.
         const code = (err as { statusCode?: number })?.statusCode;
         if (code === 404 || code === 410) {
           await supabase.from("push_subscriptions").delete().eq("id", s.id);
@@ -66,4 +59,23 @@ export async function notifyAdmin(input: NotifyInput): Promise<void> {
       }
     }),
   );
+}
+
+// Admin alert (e.g. new comment): logs an in-app notification + pushes to admin.
+export async function notifyAdmin(input: NotifyInput & { type: string }) {
+  const supabase = getAdminSupabase();
+  if (supabase) {
+    await supabase.from("notifications").insert({
+      type: input.type,
+      title: input.title,
+      body: input.body ?? null,
+      url: input.url ?? null,
+    });
+  }
+  await fanOut("admin", input);
+}
+
+// New-article alert: pushes to everyone who opted in as a viewer.
+export async function notifyViewers(input: NotifyInput) {
+  await fanOut("viewer", input);
 }
