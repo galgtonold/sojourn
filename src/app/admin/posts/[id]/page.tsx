@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
+import { InteractionManager } from "@/components/interaction-manager";
 
 export const metadata = { title: "Edit post" };
 export const dynamic = "force-dynamic";
@@ -44,6 +45,12 @@ export default async function EditPostPage({
     .select("id, name, distance_m")
     .eq("post_id", id)
     .order("created_at", { ascending: true });
+
+  const { data: interactions } = await supabase!
+    .from("interactions")
+    .select("id, kind, question, options, correct_index, explanation")
+    .eq("post_id", id)
+    .order("sort_order", { ascending: true });
 
   const initial: EditablePost = {
     id: data.id,
@@ -94,6 +101,14 @@ export default async function EditPostPage({
           postId={data.id}
           slug={data.slug ?? ""}
           initial={photos ?? []}
+        />
+      </div>
+
+      <div className="mt-12 border-t border-white/10 pt-10">
+        <InteractionManager
+          postId={data.id}
+          slug={data.slug ?? ""}
+          initial={interactions ?? []}
         />
       </div>
     </div>

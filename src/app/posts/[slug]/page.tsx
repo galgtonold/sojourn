@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import { getComments, getPostBySlug, getPublishedPosts } from "@/lib/content";
+import {
+  getComments,
+  getInteractions,
+  getPostBySlug,
+  getPublishedPosts,
+} from "@/lib/content";
 import { PostView } from "@/components/post-view";
 
 export const revalidate = 60;
@@ -37,6 +42,11 @@ export default async function PostPage({
   const post = await getPostBySlug(slug);
   if (!post) notFound();
 
-  const comments = await getComments(post.id);
-  return <PostView post={post} comments={comments} />;
+  const [comments, interactions] = await Promise.all([
+    getComments(post.id),
+    getInteractions(post.id),
+  ]);
+  return (
+    <PostView post={post} comments={comments} interactions={interactions} />
+  );
 }

@@ -83,6 +83,15 @@ export type PostWithRelations = Post & {
   comment_count: number;
 };
 
+// Public-safe shape for an inline interactive block (no correct answer).
+export type Interaction = {
+  id: string;
+  kind: "poll" | "quiz";
+  question: string;
+  options: string[];
+  sort_order: number;
+};
+
 // Lightweight shape for listings (no heavy joins) — keeps list pages scalable.
 export type PostSummary = {
   id: string;
