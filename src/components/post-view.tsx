@@ -7,6 +7,7 @@ import { Gallery } from "@/components/gallery";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
+import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 
 /** Full article view, shared by the public post page and the admin preview. */
@@ -131,6 +132,8 @@ export function PostView({
           <TripMap markers={markers} tracks={post.tracks} photos={photoPins} />
         </section>
       )}
+
+      <ElevationProfile tracks={post.tracks} />
 
       <section className="mx-auto max-w-3xl px-6 pb-24">
         <Comments postId={post.id} initial={comments} />
