@@ -3,6 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import { env } from "@/lib/env";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteChrome } from "@/components/site-chrome";
 import "./globals.css";
 
 const inter = Inter({
@@ -45,9 +46,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
-        <SiteHeader />
-        <main>{children}</main>
-        <SiteFooter />
+        <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
+          {children}
+        </SiteChrome>
       </body>
     </html>
   );

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Maximize2 } from "lucide-react";
+import { ArrowRight, Camera, MapPin, Route } from "lucide-react";
 import { getPublishedPosts, getTrips } from "@/lib/content";
 import { formatDate } from "@/lib/utils";
+import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
-import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 
 export const revalidate = 60;
 
@@ -24,29 +24,14 @@ export default async function TripPage({
   if (!trip) notFound();
 
   const tripPosts = posts.filter((p) => p.trip_id === trip.id);
-  const markers: MapMarker[] = tripPosts.flatMap((p) =>
-    p.locations.map((l) => ({
-      id: l.id,
-      name: l.name,
-      lat: l.lat,
-      lng: l.lng,
-      href: `/posts/${p.slug}`,
-    })),
-  );
   const tracks = tripPosts.flatMap((p) => p.tracks);
-  const photoPins: PhotoPin[] = tripPosts.flatMap((p) =>
-    p.photos
-      .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
-      .map((ph) => ({
-        id: ph.id,
-        lat: ph.lat as number,
-        lng: ph.lng as number,
-        url: ph.url as string,
-        caption: ph.caption,
-        href: `/posts/${p.slug}`,
-      })),
+  const waypointCount = tripPosts.reduce((s, p) => s + p.locations.length, 0);
+  const photoCount = tripPosts.reduce(
+    (s, p) => s + p.photos.filter((ph) => ph.lat != null && ph.lng != null).length,
+    0,
   );
-  const hasMap = markers.length > 0 || tracks.length > 0 || photoPins.length > 0;
+  const totalDistance = tracks.reduce((s, t) => s + (t.distance_m ?? 0), 0);
+  const hasMap = tracks.length > 0 || waypointCount > 0 || photoCount > 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
@@ -64,23 +49,41 @@ export default async function TripPage({
       </p>
 
       {hasMap && (
-        <div className="mt-8">
-          <div className="mb-3 flex justify-end">
-            <Link
-              href={`/trips/${trip.slug}/map`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
-            >
-              <Maximize2 className="size-4" /> Explore the journey map
-            </Link>
+        <Link
+          href={`/trips/${trip.slug}/map`}
+          className="group mt-8 flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-ink-900 p-6 transition hover:border-ember-400/50 hover:bg-ink-800"
+        >
+          <div className="min-w-0">
+            <h2 className="font-display text-2xl font-semibold">
+              Explore the journey map
+            </h2>
+            <p className="mt-1 text-sand-100/60">
+              Walk the route step by step — every stop and photo on an
+              interactive map.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-sand-100/70">
+              {totalDistance > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Route className="size-4 text-ember-400" />
+                  {formatDistance(totalDistance)}
+                </span>
+              )}
+              {photoCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Camera className="size-4 text-ember-400" />
+                  {photoCount} located photos
+                </span>
+              )}
+              {waypointCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="size-4 text-ember-400" />
+                  {waypointCount} stops
+                </span>
+              )}
+            </div>
           </div>
-          <TripMap
-            markers={markers}
-            tracks={tracks}
-            photos={photoPins}
-            route={false}
-            className="h-[460px]"
-          />
-        </div>
+          <ArrowRight className="size-6 shrink-0 text-ember-400 transition-transform group-hover:translate-x-1" />
+        </Link>
       )}
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
