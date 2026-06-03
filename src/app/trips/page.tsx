@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/utils";
 import { Reveal } from "@/components/reveal";
 
 export const metadata = { title: "Trips" };
+export const revalidate = 60;
 
 export default async function TripsPage() {
   const trips = await getTrips();

@@ -23,10 +23,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (note: .env.production holds PUBLIC-only config and is committed)
 .env
 .env*.local
-.env.production
 
 # vercel
 .vercel

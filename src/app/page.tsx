@@ -7,6 +7,10 @@ import { PostCard } from "@/components/post-card";
 import { Reveal } from "@/components/reveal";
 import { formatDate } from "@/lib/utils";
 
+// Re-render from the database at most once a minute (ISR) so new entries and
+// edits surface without a redeploy.
+export const revalidate = 60;
+
 export default async function HomePage() {
   const posts = await getPublishedPosts();
   const [hero, ...rest] = posts;
