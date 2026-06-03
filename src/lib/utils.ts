@@ -29,13 +29,19 @@ export function formatDate(value: string | null | undefined): string {
   });
 }
 
+// Next's default allowed image widths (deviceSizes ∪ imageSizes). The optimizer
+// rejects any other width with a 400, so we snap up to the nearest allowed one.
+const NEXT_IMAGE_WIDTHS = [
+  16, 32, 48, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840,
+];
+
 /**
  * Routes a remote image through Next's optimizer (resized + WebP/AVIF) instead
- * of serving the raw original. `width` must be one of Next's configured sizes
- * (2048 is a default device size).
+ * of serving the raw original.
  */
 export function optimizedSrc(url: string, width = 2048, quality = 80): string {
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
+  const w = NEXT_IMAGE_WIDTHS.find((x) => x >= width) ?? 3840;
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=${quality}`;
 }
 
 /** Rough reading time in minutes from body text. */
