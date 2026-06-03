@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export function Comments({
   postId,
@@ -15,6 +16,27 @@ export function Comments({
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+
+  // Pull the live list on mount so we never show a stale, page-cached (ISR)
+  // snapshot. No-op in demo mode (there's no backend to read from).
+  const refresh = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const res = await fetch(
+        `/api/comments?postId=${encodeURIComponent(postId)}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const json = (await res.json()) as { comments?: Comment[] };
+      if (Array.isArray(json.comments)) setComments(json.comments);
+    } catch {
+      // keep whatever we have
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +52,10 @@ export function Comments({
       created_at: new Date().toISOString(),
     };
 
+    // Show it instantly.
+    setComments((c) => [...c, optimistic]);
+    setBody("");
+
     try {
       const res = await fetch("/api/comments", {
         method: "POST",
@@ -40,16 +66,13 @@ export function Comments({
           body: optimistic.body,
         }),
       });
-      if (!res.ok) throw new Error("failed");
-      const saved = (await res.json().catch(() => null)) as Comment | null;
-      setComments((c) => [...c, saved ?? optimistic]);
-      setBody("");
+      if (!res.ok && res.status !== 202) throw new Error("failed");
       setStatus("idle");
+      // Reconcile with the canonical server list (replaces the temp row).
+      refresh();
     } catch {
-      // In demo mode there's no backend — still show it locally.
-      setComments((c) => [...c, optimistic]);
-      setBody("");
-      setStatus("idle");
+      // Network/server error: surface it but keep their text visible.
+      setStatus("error");
     }
   }
 
@@ -98,6 +121,11 @@ export function Comments({
           rows={3}
           className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
         />
+        {status === "error" && (
+          <p className="text-sm text-red-400">
+            Couldn’t post that — please try again.
+          </p>
+        )}
         <button
           type="submit"
           disabled={status === "sending" || !body.trim()}

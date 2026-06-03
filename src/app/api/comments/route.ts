@@ -2,8 +2,31 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getPublicSupabase } from "@/lib/supabase/public";
 import { notifyAdmin } from "@/lib/notify";
 import { env } from "@/lib/env";
+
+// Never cache this handler — comments must always reflect the live DB.
+export const dynamic = "force-dynamic";
+
+// GET /api/comments?postId=… → fresh list, bypassing page-level ISR caching.
+export async function GET(req: Request) {
+  const postId = new URL(req.url).searchParams.get("postId");
+  if (!postId) return NextResponse.json({ error: "missing postId" }, { status: 400 });
+
+  const supabase = getPublicSupabase();
+  if (!supabase) return NextResponse.json({ comments: [] });
+
+  const { data, error } = await supabase
+    .from("comments")
+    .select("id, post_id, parent_id, author_name, body, created_at")
+    .eq("post_id", postId)
+    .eq("hidden", false)
+    .order("created_at", { ascending: true });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ comments: data ?? [] });
+}
 
 const schema = z.object({
   postId: z.string().min(1),
