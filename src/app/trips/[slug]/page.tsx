@@ -4,6 +4,8 @@ import { formatDate } from "@/lib/utils";
 import { PostCard } from "@/components/post-card";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 
+export const revalidate = 60;
+
 export async function generateStaticParams() {
   const trips = await getTrips();
   return trips.map((t) => ({ slug: t.slug }));

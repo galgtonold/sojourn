@@ -2,6 +2,7 @@ import { getPublishedPosts } from "@/lib/content";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 
 export const metadata = { title: "Map" };
+export const revalidate = 60;
 
 export default async function MapPage() {
   const posts = await getPublishedPosts();

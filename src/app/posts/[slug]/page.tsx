@@ -9,6 +9,8 @@ import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 
+export const revalidate = 60;
+
 export async function generateStaticParams() {
   const posts = await getPublishedPosts();
   return posts.map((p) => ({ slug: p.slug }));
