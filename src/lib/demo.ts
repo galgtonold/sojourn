@@ -85,6 +85,7 @@ We stayed until our fingers stopped working, then ran back down for coffee in El
       { id: "l1", name: "El Chaltén", lat: -49.3315, lng: -72.8863, day: 1, sort_order: 0 },
       { id: "l2", name: "Laguna de los Tres", lat: -49.2746, lng: -73.0386, day: 1, sort_order: 1 },
     ],
+    tracks: [],
     reactions: { ...emptyReactions(), heart: 34, fire: 12, wow: 8, star: 5 },
     comment_count: 3,
   },
@@ -127,6 +128,7 @@ We skipped the famous spots at midday and walked the Philosopher's Path at dawn 
       { id: "l3", name: "Tofuku-ji", lat: 34.9766, lng: 135.7741, day: 1, sort_order: 0 },
       { id: "l4", name: "Philosopher's Path", lat: 35.0271, lng: 135.7949, day: 2, sort_order: 1 },
     ],
+    tracks: [],
     reactions: { ...emptyReactions(), heart: 52, fire: 7, wow: 19, star: 11 },
     comment_count: 5,
   },
@@ -168,6 +170,7 @@ The glacier is one of the few on earth still advancing. It moves up to two metre
     locations: [
       { id: "l5", name: "Perito Moreno Glacier", lat: -50.4967, lng: -73.1377, day: 1, sort_order: 0 },
     ],
+    tracks: [],
     reactions: { ...emptyReactions(), heart: 41, fire: 3, wow: 27, star: 9 },
     comment_count: 2,
   },

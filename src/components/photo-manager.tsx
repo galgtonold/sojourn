@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ export type ManagedPhoto = {
   storage_path: string | null;
   caption: string | null;
   alt: string | null;
+  lat: number | null;
+  lng: number | null;
   sort_order: number;
 };
 
@@ -58,16 +60,19 @@ export function PhotoManager({
       let order = photos.length;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
-        const { url, path } = await uploadImage(file, postId);
+        const { url, path, lat, lng, takenAt } = await uploadImage(file, postId);
         const { data, error } = await supabase
           .from("photos")
           .insert({
             post_id: postId,
             url,
             storage_path: path,
+            lat,
+            lng,
+            taken_at: takenAt,
             sort_order: order++,
           })
-          .select("id, url, storage_path, caption, alt, sort_order")
+          .select("id, url, storage_path, caption, alt, lat, lng, sort_order")
           .single();
         if (error) throw new Error(error.message);
         added.push(data as ManagedPhoto);
@@ -141,6 +146,14 @@ export function PhotoManager({
               >
                 <Trash2 className="size-4" />
               </button>
+              {photo.lat != null && photo.lng != null && (
+                <span
+                  title="Geotagged from EXIF — shows on the map"
+                  className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-ink-950/70 px-2 py-0.5 text-[10px] text-lagoon-400"
+                >
+                  <MapPin className="size-3" /> Located
+                </span>
+              )}
             </div>
             <div className="relative">
               <input

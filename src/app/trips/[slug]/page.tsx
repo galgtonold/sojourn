@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Maximize2 } from "lucide-react";
 import { getPublishedPosts, getTrips } from "@/lib/content";
 import { formatDate } from "@/lib/utils";
 import { PostCard } from "@/components/post-card";
-import { TripMap, type MapMarker } from "@/components/trip-map";
+import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 
 export const revalidate = 60;
 
@@ -31,6 +33,20 @@ export default async function TripPage({
       href: `/posts/${p.slug}`,
     })),
   );
+  const tracks = tripPosts.flatMap((p) => p.tracks);
+  const photoPins: PhotoPin[] = tripPosts.flatMap((p) =>
+    p.photos
+      .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
+      .map((ph) => ({
+        id: ph.id,
+        lat: ph.lat as number,
+        lng: ph.lng as number,
+        url: ph.url as string,
+        caption: ph.caption,
+        href: `/posts/${p.slug}`,
+      })),
+  );
+  const hasMap = markers.length > 0 || tracks.length > 0 || photoPins.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
@@ -47,9 +63,23 @@ export default async function TripPage({
         entries
       </p>
 
-      {markers.length > 0 && (
+      {hasMap && (
         <div className="mt-8">
-          <TripMap markers={markers} className="h-[460px]" />
+          <div className="mb-3 flex justify-end">
+            <Link
+              href={`/trips/${trip.slug}/map`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
+            >
+              <Maximize2 className="size-4" /> Explore the journey map
+            </Link>
+          </div>
+          <TripMap
+            markers={markers}
+            tracks={tracks}
+            photos={photoPins}
+            route={false}
+            className="h-[460px]"
+          />
         </div>
       )}
 

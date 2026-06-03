@@ -6,7 +6,7 @@ import { formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
-import { TripMap, type MapMarker } from "@/components/trip-map";
+import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 
 /** Full article view, shared by the public post page and the admin preview. */
@@ -26,6 +26,17 @@ export function PostView({
     lat: l.lat,
     lng: l.lng,
   }));
+  const photoPins: PhotoPin[] = post.photos
+    .filter((p) => p.lat != null && p.lng != null && p.url)
+    .map((p) => ({
+      id: p.id,
+      lat: p.lat as number,
+      lng: p.lng as number,
+      url: p.url as string,
+      caption: p.caption,
+    }));
+  const hasMap =
+    markers.length > 0 || post.tracks.length > 0 || photoPins.length > 0;
 
   return (
     <article>
@@ -114,10 +125,10 @@ export function PostView({
         </section>
       )}
 
-      {markers.length > 0 && (
+      {hasMap && (
         <section className="mx-auto max-w-4xl px-6 pb-14">
           <h2 className="mb-5 font-display text-2xl font-semibold">On the map</h2>
-          <TripMap markers={markers} />
+          <TripMap markers={markers} tracks={post.tracks} photos={photoPins} />
         </section>
       )}
 

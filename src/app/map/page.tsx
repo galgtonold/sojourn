@@ -1,5 +1,5 @@
 import { getPublishedPosts } from "@/lib/content";
-import { TripMap, type MapMarker } from "@/components/trip-map";
+import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 
 export const metadata = { title: "Map" };
 export const revalidate = 60;
@@ -17,6 +17,20 @@ export default async function MapPage() {
       : [];
   });
 
+  const tracks = posts.flatMap((p) => p.tracks);
+  const photoPins: PhotoPin[] = posts.flatMap((p) =>
+    p.photos
+      .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
+      .map((ph) => ({
+        id: ph.id,
+        lat: ph.lat as number,
+        lng: ph.lng as number,
+        url: ph.url as string,
+        caption: ph.caption,
+        href: `/posts/${p.slug}`,
+      })),
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
@@ -26,7 +40,13 @@ export default async function MapPage() {
         Every entry, pinned. Tap a marker to jump to the story.
       </p>
       <div className="mt-8">
-        <TripMap markers={markers} route={false} className="h-[70dvh] min-h-[480px]" />
+        <TripMap
+          markers={markers}
+          tracks={tracks}
+          photos={photoPins}
+          route={false}
+          className="h-[70dvh] min-h-[480px]"
+        />
       </div>
     </div>
   );
