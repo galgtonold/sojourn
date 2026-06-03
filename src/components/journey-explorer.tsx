@@ -90,7 +90,13 @@ export function JourneyExplorer({
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
+    // The full-screen container can finish sizing after the map mounts; keep the
+    // canvas matched to it so it doesn't render short (leaving a black gap).
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(container.current);
+
     map.on("load", () => {
+      map.resize();
       const bounds = new maplibregl.LngLatBounds();
 
       tracks.forEach((t, i) => {
@@ -127,7 +133,10 @@ export function JourneyExplorer({
       if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 0 });
     });
 
-    return () => map.remove();
+    return () => {
+      ro.disconnect();
+      map.remove();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
