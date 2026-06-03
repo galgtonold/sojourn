@@ -5,6 +5,7 @@ import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
 import { formatDate } from "@/lib/utils";
 import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
+import { T } from "@/components/i18n";
 
 export const revalidate = 60;
 
@@ -35,7 +36,9 @@ export default async function TripPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
-      <p className="text-sm uppercase tracking-[0.25em] text-ember-300">Trip</p>
+      <p className="text-sm uppercase tracking-[0.25em] text-ember-300">
+        <T k="trips.trip" />
+      </p>
       <h1 className="mt-2 font-display text-4xl font-semibold sm:text-6xl">
         {trip.title}
       </h1>
@@ -45,7 +48,7 @@ export default async function TripPage({
       <p className="mt-2 text-sm text-sand-100/50">
         {trip.start_date && formatDate(trip.start_date)}
         {trip.end_date && ` – ${formatDate(trip.end_date)}`} · {tripPosts.length}{" "}
-        entries
+        <T k="trips.entries" />
       </p>
 
       {hasMap && (
@@ -55,11 +58,10 @@ export default async function TripPage({
         >
           <div className="min-w-0">
             <h2 className="font-display text-2xl font-semibold">
-              Explore the journey map
+              <T k="trips.exploreTitle" />
             </h2>
             <p className="mt-1 text-sand-100/60">
-              Walk the route step by step — every stop and photo on an
-              interactive map.
+              <T k="trips.exploreBody" />
             </p>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-sand-100/70">
               {totalDistance > 0 && (
@@ -71,13 +73,13 @@ export default async function TripPage({
               {photoCount > 0 && (
                 <span className="flex items-center gap-1.5">
                   <Camera className="size-4 text-ember-400" />
-                  {photoCount} located photos
+                  <T k="trips.photos" vars={{ n: photoCount }} />
                 </span>
               )}
               {waypointCount > 0 && (
                 <span className="flex items-center gap-1.5">
                   <MapPin className="size-4 text-ember-400" />
-                  {waypointCount} stops
+                  <T k="trips.stops" vars={{ n: waypointCount }} />
                 </span>
               )}
             </div>

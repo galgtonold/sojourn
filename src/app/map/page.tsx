@@ -1,5 +1,6 @@
 import { getPublishedPosts } from "@/lib/content";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
+import { T } from "@/components/i18n";
 
 export const metadata = { title: "Map" };
 export const revalidate = 60;
@@ -34,10 +35,10 @@ export default async function MapPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
-        The whole map
+        <T k="map.title" />
       </h1>
       <p className="mt-2 max-w-xl text-sand-100/60">
-        Every entry, pinned. Tap a marker to jump to the story.
+        <T k="map.subtitle" />
       </p>
       <div className="mt-8">
         <TripMap

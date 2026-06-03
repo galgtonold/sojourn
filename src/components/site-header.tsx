@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Compass, Search } from "lucide-react";
 import { env } from "@/lib/env";
+import { T, LanguageSwitcher } from "@/components/i18n";
 
 export function SiteHeader() {
   return (
@@ -19,19 +20,19 @@ export function SiteHeader() {
             href="/posts"
             className="rounded-full px-3 py-1.5 text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
           >
-            Stories
+            <T k="nav.stories" />
           </Link>
           <Link
             href="/trips"
             className="rounded-full px-3 py-1.5 text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
           >
-            Trips
+            <T k="nav.trips" />
           </Link>
           <Link
             href="/map"
             className="rounded-full px-3 py-1.5 text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
           >
-            Map
+            <T k="nav.map" />
           </Link>
           <Link
             href="/search"
@@ -40,6 +41,9 @@ export function SiteHeader() {
           >
             <Search className="size-4" />
           </Link>
+          <span className="ml-1 border-l border-white/10 pl-1">
+            <LanguageSwitcher />
+          </span>
         </nav>
       </div>
     </header>

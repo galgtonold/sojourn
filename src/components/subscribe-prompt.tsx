@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bell, X } from "lucide-react";
 import { env } from "@/lib/env";
 import { getPushState, subscribeToPush } from "@/lib/push-client";
+import { useT } from "@/components/i18n";
 
 const DISMISS_KEY = "sojourn:subprompt-dismissed";
 
@@ -21,6 +22,7 @@ export function SubscribePrompt() {
   const [status, setStatus] = useState<"idle" | "working" | "done" | "denied">(
     "idle",
   );
+  const t = useT();
 
   // Decide eligibility once on mount.
   useEffect(() => {
@@ -83,20 +85,19 @@ export function SubscribePrompt() {
               <div className="min-w-0 flex-1">
                 {status === "done" ? (
                   <p className="text-sm font-medium text-lagoon-400">
-                    You’re in — we’ll ping you when a new story drops. ✨
+                    {t("subscribe.done")}
                   </p>
                 ) : status === "denied" ? (
                   <p className="text-sm text-sand-100/70">
-                    No worries — you can enable notifications anytime from your
-                    browser settings.
+                    {t("subscribe.denied")}
                   </p>
                 ) : (
                   <>
                     <p className="text-sm font-medium text-sand-50">
-                      Enjoyed the read?
+                      {t("subscribe.title")}
                     </p>
                     <p className="mt-0.5 text-sm text-sand-100/60">
-                      Get a notification when the next story goes live.
+                      {t("subscribe.body")}
                     </p>
                     <button
                       onClick={subscribe}
@@ -104,7 +105,9 @@ export function SubscribePrompt() {
                       className="mt-3 inline-flex items-center gap-2 rounded-full bg-ember-500 px-3.5 py-1.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-60"
                     >
                       <Bell className="size-3.5" />
-                      {status === "working" ? "Enabling…" : "Notify me"}
+                      {status === "working"
+                        ? t("subscribe.working")
+                        : t("subscribe.cta")}
                     </button>
                   </>
                 )}

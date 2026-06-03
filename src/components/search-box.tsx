@@ -2,10 +2,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { useT } from "@/components/i18n";
 
 export function SearchBox({ initial = "" }: { initial?: string }) {
   const router = useRouter();
   const [value, setValue] = useState(initial);
+  const t = useT();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +22,7 @@ export function SearchBox({ initial = "" }: { initial?: string }) {
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Patagonia, glaciers, Kyoto…"
+        placeholder={t("search.placeholder")}
         className="w-full rounded-full border border-white/10 bg-ink-800 py-3.5 pl-12 pr-4 text-base outline-none transition focus:border-ember-400"
       />
     </form>

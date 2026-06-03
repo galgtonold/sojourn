@@ -5,6 +5,7 @@ import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
 import { Reveal } from "@/components/reveal";
+import { T } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
 // Re-render from the database at most once a minute (ISR) so new entries and
@@ -33,11 +34,14 @@ export default async function HomePage() {
 
         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pb-20">
           <p className="animate-float-up text-sm font-medium uppercase tracking-[0.3em] text-ember-300">
-            {env.siteName} — field notes from the road
+            {env.siteName} — <T k="home.kicker" />
           </p>
           <h1 className="animate-float-up mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.05] sm:text-7xl">
-            Stories, maps & light from{" "}
-            <span className="text-gradient-ember">everywhere we wander</span>.
+            <T k="home.heroLeadA" />{" "}
+            <span className="text-gradient-ember">
+              <T k="home.heroLeadB" />
+            </span>
+            .
           </h1>
 
           {hero && (
@@ -51,7 +55,7 @@ export default async function HomePage() {
                   {hero.location}
                 </span>
               )}
-              Read “{hero.title}”
+              <T k="home.readCta" /> “{hero.title}”
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
           )}
@@ -63,22 +67,24 @@ export default async function HomePage() {
         <Reveal className="mb-10 flex items-end justify-between">
           <div>
             <h2 className="font-display text-3xl font-semibold sm:text-4xl">
-              Latest entries
+              <T k="home.latest" />
             </h2>
             <p className="mt-2 text-sand-100/60">
-              The most recent dispatches from the trail.
+              <T k="home.latestSub" />
             </p>
           </div>
           <Link
             href="/posts"
             className="hidden items-center gap-1 text-sm text-ember-400 hover:gap-2 sm:flex"
           >
-            All entries <ArrowRight className="size-4" />
+            <T k="home.allEntries" /> <ArrowRight className="size-4" />
           </Link>
         </Reveal>
 
         {rest.length === 0 ? (
-          <p className="text-sand-100/60">No more entries yet — check back soon.</p>
+          <p className="text-sand-100/60">
+            <T k="home.noMore" />
+          </p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((post, i) => (
@@ -95,7 +101,7 @@ export default async function HomePage() {
               href="/posts"
               className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-ember-400 hover:text-ember-400"
             >
-              Browse all {total} entries
+              <T k="home.browseAll" vars={{ n: total }} />
               <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -107,18 +113,17 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-16 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-3xl font-semibold">
-              Every step, on the map
+              <T k="home.mapTitle" />
             </h2>
             <p className="mt-2 max-w-md text-sand-100/60">
-              Follow the routes, pins and detours across {total} entries and
-              counting.
+              <T k="home.mapBody" vars={{ n: total }} />
             </p>
           </div>
           <Link
             href="/map"
             className="group inline-flex items-center gap-3 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold transition hover:border-ember-400 hover:text-ember-400"
           >
-            Explore the map
+            <T k="home.exploreMap" />
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>

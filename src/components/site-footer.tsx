@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { DEMO_MODE } from "@/lib/content";
+import { T } from "@/components/i18n";
 
 export function SiteFooter() {
   return (
@@ -9,21 +10,21 @@ export function SiteFooter() {
         <div>
           <p className="font-display text-xl">{env.siteName}</p>
           <p className="mt-1 text-sm text-sand-100/50">
-            A travel journal. Built to wander, made to last.
+            <T k="footer.tagline" />
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-sand-100/70">
           <Link href="/trips" className="hover:text-ember-400">
-            Trips
+            <T k="nav.trips" />
           </Link>
           <Link href="/map" className="hover:text-ember-400">
-            Map
+            <T k="nav.map" />
           </Link>
           <Link href="/search" className="hover:text-ember-400">
-            Search
+            <T k="nav.search" />
           </Link>
           <Link href="/admin" className="hover:text-ember-400">
-            Admin
+            <T k="nav.admin" />
           </Link>
         </nav>
       </div>

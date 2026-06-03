@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getTrips } from "@/lib/content";
 import { formatDate } from "@/lib/utils";
 import { Reveal } from "@/components/reveal";
+import { T } from "@/components/i18n";
 
 export const metadata = { title: "Trips" };
 export const revalidate = 60;
@@ -13,10 +14,11 @@ export default async function TripsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
-      <h1 className="font-display text-4xl font-semibold sm:text-5xl">Trips</h1>
+      <h1 className="font-display text-4xl font-semibold sm:text-5xl">
+        <T k="trips.title" />
+      </h1>
       <p className="mt-2 max-w-xl text-sand-100/60">
-        Each journey, gathered. Routes, stories and galleries grouped by the road
-        that connected them.
+        <T k="trips.subtitle" />
       </p>
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
