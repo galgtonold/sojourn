@@ -1,8 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { MapPin } from "lucide-react";
 import type { PostSummary } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { RevealImage } from "@/components/reveal-image";
 
 export function PostCard({
   post,
@@ -17,17 +17,21 @@ export function PostCard({
       className="group relative block overflow-hidden rounded-3xl bg-ink-800"
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden">
-        {post.cover_image && (
-          <Image
+        {post.cover_image ? (
+          <RevealImage
             src={post.cover_image}
             alt={post.cover_alt ?? post.title}
             fill
             priority={priority}
             sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
+            overlay={
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+            }
           />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
       </div>
 
       <div className="absolute inset-x-0 bottom-0 p-5">
