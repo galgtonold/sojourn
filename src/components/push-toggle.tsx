@@ -1,7 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
-import { env, isPushConfigured } from "@/lib/env";
+import { env } from "@/lib/env";
+
+// Client-side, push availability depends ONLY on the public VAPID key — the
+// private key is a server secret and is never present in the browser bundle.
+const pushAvailable = Boolean(env.vapidPublicKey);
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -29,7 +33,7 @@ export function PushToggle() {
   }, []);
 
   async function enable() {
-    if (!isPushConfigured) return;
+    if (!pushAvailable) return;
     setBusy(true);
     try {
       const reg = await navigator.serviceWorker.register("/sw.js");
@@ -74,7 +78,7 @@ export function PushToggle() {
     }
   }
 
-  if (!isPushConfigured) {
+  if (!pushAvailable) {
     return (
       <p className="text-sm text-sand-100/50">
         Set VAPID keys to enable push notifications.
