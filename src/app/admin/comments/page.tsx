@@ -50,8 +50,9 @@ export default async function CommentsAdminPage() {
       </Link>
       <h1 className="mb-2 font-display text-4xl font-semibold">Comments</h1>
       <p className="mb-8 text-sm text-sand-100/50">
-        Hide spam or off-topic notes (they stay in the database), or delete them
-        for good.
+        Grouped by post and threaded. Hide spam or off-topic notes (they stay in
+        the database) or delete them for good.
+        {rows.length >= 200 && " Showing the 200 most recent."}
       </p>
 
       {!isSupabaseConfigured ? (

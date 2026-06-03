@@ -83,6 +83,19 @@ export type PostWithRelations = Post & {
   comment_count: number;
 };
 
+// Lightweight shape for listings (no heavy joins) — keeps list pages scalable.
+export type PostSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  location: string | null;
+  cover_image: string | null;
+  cover_alt: string | null;
+  trip_id: string | null;
+  published_at: string | null;
+};
+
 export const REACTION_KINDS: ReactionKind[] = ["heart", "fire", "wow", "star"];
 
 export const REACTION_EMOJI: Record<ReactionKind, string> = {

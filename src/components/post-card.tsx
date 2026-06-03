@@ -1,14 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin } from "lucide-react";
-import type { PostWithRelations } from "@/lib/types";
-import { formatDate, readingTime } from "@/lib/utils";
+import type { PostSummary } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
 export function PostCard({
   post,
   priority = false,
 }: {
-  post: PostWithRelations;
+  post: PostSummary;
   priority?: boolean;
 }) {
   return (
@@ -20,7 +20,7 @@ export function PostCard({
         {post.cover_image && (
           <Image
             src={post.cover_image}
-            alt={post.title}
+            alt={post.cover_alt ?? post.title}
             fill
             priority={priority}
             sizes="(max-width: 768px) 100vw, 33vw"
@@ -44,7 +44,7 @@ export function PostCard({
           {post.excerpt}
         </p>
         <p className="mt-3 text-xs text-sand-100/40">
-          {formatDate(post.published_at)} · {readingTime(post.body)} min read
+          {formatDate(post.published_at)}
         </p>
       </div>
     </Link>

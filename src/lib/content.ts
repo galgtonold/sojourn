@@ -15,6 +15,7 @@ import {
   type Comment,
   type GeoPoint,
   type Photo,
+  type PostSummary,
   type PostWithRelations,
   type ReactionKind,
   type ReactionSummary,
@@ -82,6 +83,62 @@ export async function getPublishedPosts(): Promise<PostWithRelations[]> {
   }
 }
 
+const SUMMARY_SELECT =
+  "id, slug, title, excerpt, location, cover_image, cover_alt, trip_id, published_at";
+
+// Lightweight, paginated listing query — only the columns a card needs.
+export async function getPostSummaries({
+  limit = 12,
+  offset = 0,
+  tripId,
+}: { limit?: number; offset?: number; tripId?: string } = {}): Promise<{
+  posts: PostSummary[];
+  total: number;
+}> {
+  const supabase = getPublicSupabase();
+  if (!supabase) {
+    const all: PostSummary[] = tripId
+      ? demoPosts.filter((p) => p.trip_id === tripId)
+      : demoPosts;
+    return { posts: all.slice(offset, offset + limit), total: all.length };
+  }
+  try {
+    let q = supabase
+      .from("posts")
+      .select(SUMMARY_SELECT, { count: "exact" })
+      .eq("published", true);
+    if (tripId) q = q.eq("trip_id", tripId);
+    const { data, error, count } = await q
+      .order("published_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error || !data) return { posts: [], total: 0 };
+    return { posts: data as PostSummary[], total: count ?? data.length };
+  } catch {
+    return { posts: [], total: 0 };
+  }
+}
+
+// All published posts for a single trip (bounded set) — used by the trip page
+// and its journey map.
+export async function getPublishedPostsByTrip(
+  tripId: string,
+): Promise<PostWithRelations[]> {
+  const supabase = getPublicSupabase();
+  if (!supabase) return demoPosts.filter((p) => p.trip_id === tripId);
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(POST_SELECT)
+      .eq("published", true)
+      .eq("trip_id", tripId)
+      .order("published_at", { ascending: false });
+    if (error || !data) return [];
+    return data.map(hydratePost);
+  } catch {
+    return [];
+  }
+}
+
 export async function getPostBySlug(
   slug: string,
 ): Promise<PostWithRelations | null> {
@@ -137,7 +194,8 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
       .from("posts")
       .select(POST_SELECT)
       .eq("published", true)
-      .textSearch("search_tsv", q, { type: "websearch", config: "simple" });
+      .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
+      .limit(50);
     if (error || !data) return [];
     return data.map(hydratePost);
   } catch {
@@ -167,14 +225,16 @@ export async function getComments(postId: string): Promise<Comment[]> {
     return demoComments.filter((c) => c.post_id === postId);
   }
   try {
+    // Newest 200 for first paint; the client paginates older ones via the API.
     const { data, error } = await supabase
       .from("comments")
       .select(COMMENT_SELECT)
       .eq("post_id", postId)
       .eq("hidden", false)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error || !data) return [];
-    return data.map(hydrateComment);
+    return data.map(hydrateComment).reverse();
   } catch {
     return [];
   }

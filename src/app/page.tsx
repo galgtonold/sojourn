@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, MapPin } from "lucide-react";
-import { getPublishedPosts } from "@/lib/content";
+import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
 import { Reveal } from "@/components/reveal";
@@ -12,7 +12,7 @@ import { formatDate } from "@/lib/utils";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const posts = await getPublishedPosts();
+  const { posts, total } = await getPostSummaries({ limit: 9 });
   const [hero, ...rest] = posts;
 
   return (
@@ -70,10 +70,10 @@ export default async function HomePage() {
             </p>
           </div>
           <Link
-            href="/trips"
+            href="/posts"
             className="hidden items-center gap-1 text-sm text-ember-400 hover:gap-2 sm:flex"
           >
-            All trips <ArrowRight className="size-4" />
+            All entries <ArrowRight className="size-4" />
           </Link>
         </Reveal>
 
@@ -88,6 +88,18 @@ export default async function HomePage() {
             ))}
           </div>
         )}
+
+        {total > posts.length && (
+          <div className="mt-10 text-center">
+            <Link
+              href="/posts"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-ember-400 hover:text-ember-400"
+            >
+              Browse all {total} entries
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* ── Map teaser ─────────────────────────────────────────────────── */}
@@ -98,8 +110,8 @@ export default async function HomePage() {
               Every step, on the map
             </h2>
             <p className="mt-2 max-w-md text-sand-100/60">
-              Follow the routes, pins and detours across {posts.length} entries
-              and counting.
+              Follow the routes, pins and detours across {total} entries and
+              counting.
             </p>
           </div>
           <Link

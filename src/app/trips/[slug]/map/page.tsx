@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getPublishedPosts, getTrips } from "@/lib/content";
+import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
 import {
   JourneyExplorer,
   type JourneyStop,
@@ -14,11 +14,11 @@ export default async function TripMapPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [trips, posts] = await Promise.all([getTrips(), getPublishedPosts()]);
+  const trips = await getTrips();
   const trip = trips.find((t) => t.slug === slug);
   if (!trip) notFound();
 
-  const tripPosts = posts.filter((p) => p.trip_id === trip.id);
+  const tripPosts = await getPublishedPostsByTrip(trip.id);
   const tracks = tripPosts.flatMap((p) => p.tracks);
 
   const waypointStops: JourneyStop[] = tripPosts.flatMap((p) =>
