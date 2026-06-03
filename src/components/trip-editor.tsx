@@ -86,13 +86,6 @@ export function TripEditor({ initial }: { initial?: EditableTrip }) {
         placeholder={t("admin.trip.title")}
         value={trip.title}
         onChange={(e) => set("title", e.target.value)}
-        onBlur={() => !trip.slug && set("slug", slugify(trip.title))}
-      />
-      <input
-        className={input}
-        placeholder="slug"
-        value={trip.slug}
-        onChange={(e) => set("slug", e.target.value)}
       />
       <ImageUploader
         value={trip.cover_image}
