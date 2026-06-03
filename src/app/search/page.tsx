@@ -1,6 +1,7 @@
 import { searchPosts } from "@/lib/content";
 import { PostCard } from "@/components/post-card";
 import { SearchBox } from "@/components/search-box";
+import { T } from "@/components/i18n";
 
 export const metadata = { title: "Search" };
 
@@ -15,9 +16,11 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
-      <h1 className="font-display text-4xl font-semibold sm:text-5xl">Search</h1>
+      <h1 className="font-display text-4xl font-semibold sm:text-5xl">
+        <T k="search.title" />
+      </h1>
       <p className="mt-2 text-sand-100/60">
-        Find a place, a trip, or a moment.
+        <T k="search.subtitle" />
       </p>
 
       <div className="mt-8 max-w-xl">
@@ -26,7 +29,10 @@ export default async function SearchPage({
 
       {query && (
         <p className="mt-8 text-sm text-sand-100/50">
-          {results.length} result{results.length === 1 ? "" : "s"} for “{query}”
+          <T
+            k={results.length === 1 ? "search.result" : "search.results"}
+            vars={{ n: results.length, q: query }}
+          />
         </p>
       )}
 

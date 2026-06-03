@@ -5,6 +5,7 @@ import {
   type ElevationSeries,
 } from "@/lib/gpx";
 import type { Track } from "@/lib/types";
+import { T } from "@/components/i18n";
 
 function ProfileChart({ series }: { series: ElevationSeries }) {
   const W = 1000;
@@ -56,7 +57,9 @@ export function ElevationProfile({ tracks }: { tracks: Track[] }) {
 
   return (
     <section className="mx-auto max-w-4xl px-6 pb-14">
-      <h2 className="mb-5 font-display text-2xl font-semibold">Elevation</h2>
+      <h2 className="mb-5 font-display text-2xl font-semibold">
+        <T k="post.elevation" />
+      </h2>
       <div className="space-y-6">
         {series.map(({ t, s }) => (
           <div

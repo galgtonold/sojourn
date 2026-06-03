@@ -5,6 +5,7 @@ import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/env";
+import { useT } from "@/components/i18n";
 
 const NAME_KEY = "sojourn:name";
 const VID_KEY = "sojourn:vid";
@@ -33,6 +34,7 @@ export function Comments({
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const limitRef = useRef(200);
+  const t = useT();
 
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -174,7 +176,7 @@ export function Comments({
               onClick={() => setReplyTo((r) => (r === c.id ? null : c.id))}
               className="inline-flex items-center gap-1.5 text-sand-100/50 transition hover:text-sand-100"
             >
-              <MessageSquare className="size-3.5" /> Reply
+              <MessageSquare className="size-3.5" /> {t("comments.reply")}
             </button>
           </div>
         </div>
@@ -187,7 +189,7 @@ export function Comments({
               onSubmit={(body) => submit(body, c.id)}
               onCancel={() => setReplyTo(null)}
               compact
-              placeholder={`Reply to ${c.author_name}…`}
+              placeholder={t("comments.replyTo", { name: c.author_name })}
             />
           </div>
         )}
@@ -210,7 +212,7 @@ export function Comments({
   return (
     <div className="space-y-6">
       <h3 className="font-display text-2xl font-semibold">
-        Comments
+        {t("comments.title")}
         <span className="ml-2 text-base font-normal text-sand-100/40">
           {total}
         </span>
@@ -221,12 +223,12 @@ export function Comments({
           onClick={loadEarlier}
           className="text-sm text-ember-400 hover:underline"
         >
-          Load earlier comments ({total - comments.length} more)
+          {t("comments.loadEarlier", { n: total - comments.length })}
         </button>
       )}
 
       {roots.length === 0 ? (
-        <p className="text-sand-100/50">Be the first to say something.</p>
+        <p className="text-sand-100/50">{t("comments.beFirst")}</p>
       ) : (
         <ul className="space-y-4">{roots.map((c) => renderNode(c, 0))}</ul>
       )}
@@ -235,7 +237,7 @@ export function Comments({
         name={name}
         onName={setAndPersistName}
         onSubmit={(body) => submit(body, null)}
-        placeholder="Leave a note…"
+        placeholder={t("comments.note")}
       />
     </div>
   );
@@ -258,6 +260,7 @@ function CommentForm({
 }) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const t = useT();
 
   async function go(e: React.FormEvent) {
     e.preventDefault();
@@ -279,7 +282,7 @@ function CommentForm({
       <input
         value={name}
         onChange={(e) => onName(e.target.value)}
-        placeholder="Your name (saved for next time)"
+        placeholder={t("comments.name")}
         maxLength={60}
         className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
       />
@@ -300,7 +303,11 @@ function CommentForm({
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
           <Send className="size-4" />
-          {sending ? "Posting…" : compact ? "Reply" : "Post comment"}
+          {sending
+            ? t("comments.posting")
+            : compact
+              ? t("comments.send")
+              : t("comments.post")}
         </button>
         {onCancel && (
           <button
@@ -308,7 +315,7 @@ function CommentForm({
             onClick={onCancel}
             className="rounded-full px-3 py-2 text-sm text-sand-100/60 hover:text-sand-100"
           >
-            Cancel
+            {t("comments.cancel")}
           </button>
         )}
       </div>

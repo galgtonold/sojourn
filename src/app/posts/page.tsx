@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
 import { PostCard } from "@/components/post-card";
+import { T } from "@/components/i18n";
 
 export const revalidate = 60;
 export const metadata = { title: "All entries" };
@@ -24,12 +25,16 @@ export default async function PostsArchive({
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
-        All entries
+        <T k="archive.title" />
       </h1>
-      <p className="mt-2 text-sand-100/60">{total} stories from the road.</p>
+      <p className="mt-2 text-sand-100/60">
+        <T k="archive.subtitle" vars={{ n: total }} />
+      </p>
 
       {posts.length === 0 ? (
-        <p className="mt-10 text-sand-100/60">Nothing here yet.</p>
+        <p className="mt-10 text-sand-100/60">
+          <T k="archive.empty" />
+        </p>
       ) : (
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post, i) => (
@@ -45,20 +50,20 @@ export default async function PostsArchive({
               href={`/posts?page=${page - 1}`}
               className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
             >
-              <ArrowLeft className="size-4" /> Newer
+              <ArrowLeft className="size-4" /> <T k="common.newer" />
             </Link>
           ) : (
             <span />
           )}
           <span className="text-sm text-sand-100/50">
-            Page {page} of {totalPages}
+            <T k="common.page" vars={{ a: page, b: totalPages }} />
           </span>
           {page < totalPages ? (
             <Link
               href={`/posts?page=${page + 1}`}
               className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
             >
-              Older <ArrowRight className="size-4" />
+              <T k="common.older" /> <ArrowRight className="size-4" />
             </Link>
           ) : (
             <span />

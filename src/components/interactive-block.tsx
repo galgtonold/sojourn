@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, Check, HelpCircle, X } from "lucide-react";
 import type { Interaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 const VID_KEY = "sojourn:vid";
 
@@ -29,6 +30,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
   const { id, kind, question, options } = interaction;
   const [state, setState] = useState<State>({ voted: false });
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     fetch(`/api/interactions?id=${id}&token=${encodeURIComponent(visitorToken())}`)
@@ -67,7 +69,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
         ) : (
           <BarChart3 className="size-3.5" />
         )}
-        {kind === "quiz" ? "Quiz" : "Poll"}
+        {kind === "quiz" ? t("quiz.label") : t("poll.label")}
       </p>
       <p className="mt-2 font-display text-xl font-semibold leading-snug">
         {question}
@@ -127,10 +129,12 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
         <p className="mt-3 text-xs text-sand-100/50">
           {kind === "quiz"
             ? gotItRight
-              ? "Nice — you got it! "
-              : "Not quite. "
-            : "Thanks for voting! "}
-          {total} {total === 1 ? "response" : "responses"}.
+              ? t("quiz.right")
+              : t("quiz.wrong")
+            : t("poll.thanks")}
+          {total === 1
+            ? t("interaction.response", { n: total })
+            : t("interaction.responses", { n: total })}
         </p>
       )}
       {voted && kind === "quiz" && state.explanation && (

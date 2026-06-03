@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteChrome } from "@/components/site-chrome";
+import { I18nProvider } from "@/components/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -44,11 +45,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="de" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
-        <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
-          {children}
-        </SiteChrome>
+        <I18nProvider>
+          <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
+            {children}
+          </SiteChrome>
+        </I18nProvider>
       </body>
     </html>
   );

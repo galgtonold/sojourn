@@ -12,6 +12,7 @@ import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
+import { T } from "@/components/i18n";
 
 /** Full article view, shared by the public post page and the admin preview. */
 export function PostView({
@@ -82,7 +83,7 @@ export function PostView({
               href="/"
               className="mb-6 inline-flex w-fit items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
             >
-              <ArrowLeft className="size-4" /> Back
+              <ArrowLeft className="size-4" /> <T k="common.back" />
             </Link>
           )}
           {post.location && (
@@ -97,11 +98,11 @@ export function PostView({
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-sand-100/60">
             <span className="flex items-center gap-1.5">
               <Calendar className="size-4" />
-              {formatDate(post.published_at) || "Unpublished"}
+              {formatDate(post.published_at) || <T k="post.unpublished" />}
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="size-4" />
-              {readingTime(post.body)} min read
+              {readingTime(post.body)} <T k="post.minRead" />
             </span>
             {post.trip && (
               <Link
@@ -144,7 +145,9 @@ export function PostView({
 
       {galleryPhotos.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 pb-14">
-          <h2 className="mb-5 font-display text-2xl font-semibold">Gallery</h2>
+          <h2 className="mb-5 font-display text-2xl font-semibold">
+            <T k="post.gallery" />
+          </h2>
           <Gallery photos={galleryPhotos} />
         </section>
       )}
@@ -157,13 +160,15 @@ export function PostView({
           )}
         >
           <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="font-display text-2xl font-semibold">On the map</h2>
+            <h2 className="font-display text-2xl font-semibold">
+              <T k="post.onMap" />
+            </h2>
             {post.trip && (
               <Link
                 href={`/trips/${post.trip.slug}/map`}
                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
               >
-                <Maximize2 className="size-4" /> Explore the journey map
+                <Maximize2 className="size-4" /> <T k="post.exploreJourney" />
               </Link>
             )}
           </div>
