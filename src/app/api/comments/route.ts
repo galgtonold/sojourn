@@ -24,23 +24,30 @@ function hydrate(row: any) {
   };
 }
 
-// GET /api/comments?postId=… → fresh threaded list, bypassing page-level ISR.
+// GET /api/comments?postId=&limit= → fresh list (newest `limit`, returned
+// chronologically) + total count, bypassing page-level ISR caching.
 export async function GET(req: Request) {
-  const postId = new URL(req.url).searchParams.get("postId");
+  const url = new URL(req.url);
+  const postId = url.searchParams.get("postId");
   if (!postId) return NextResponse.json({ error: "missing postId" }, { status: 400 });
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 200, 1), 500);
 
   const supabase = getPublicSupabase();
-  if (!supabase) return NextResponse.json({ comments: [] });
+  if (!supabase) return NextResponse.json({ comments: [], total: 0 });
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from("comments")
-    .select(COMMENT_SELECT)
+    .select(COMMENT_SELECT, { count: "exact" })
     .eq("post_id", postId)
     .eq("hidden", false)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ comments: (data ?? []).map(hydrate) });
+  return NextResponse.json({
+    comments: (data ?? []).map(hydrate).reverse(),
+    total: count ?? 0,
+  });
 }
 
 const schema = z.object({

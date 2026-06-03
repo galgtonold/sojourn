@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
@@ -28,24 +28,32 @@ export function Comments({
   initial: Comment[];
 }) {
   const [comments, setComments] = useState<Comment[]>(initial);
+  const [total, setTotal] = useState(initial.length);
   const [name, setName] = useState("");
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const limitRef = useRef(200);
 
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
       const res = await fetch(
-        `/api/comments?postId=${encodeURIComponent(postId)}`,
+        `/api/comments?postId=${encodeURIComponent(postId)}&limit=${limitRef.current}`,
         { cache: "no-store" },
       );
       if (!res.ok) return;
-      const json = (await res.json()) as { comments?: Comment[] };
+      const json = (await res.json()) as { comments?: Comment[]; total?: number };
       if (Array.isArray(json.comments)) setComments(json.comments);
+      if (typeof json.total === "number") setTotal(json.total);
     } catch {
       // keep what we have
     }
   }, [postId]);
+
+  function loadEarlier() {
+    limitRef.current += 200;
+    refresh();
+  }
 
   useEffect(() => {
     setName(localStorage.getItem(NAME_KEY) ?? "");
@@ -120,9 +128,12 @@ export function Comments({
   }
 
   const childrenOf = useMemo(() => {
+    // Promote orphans (whose parent isn't in the loaded window) to top level so
+    // nothing is hidden when comments are paginated.
+    const ids = new Set(comments.map((c) => c.id));
     const map = new Map<string | null, Comment[]>();
     for (const c of comments) {
-      const k = c.parent_id;
+      const k = c.parent_id && ids.has(c.parent_id) ? c.parent_id : null;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(c);
     }
@@ -201,9 +212,18 @@ export function Comments({
       <h3 className="font-display text-2xl font-semibold">
         Comments
         <span className="ml-2 text-base font-normal text-sand-100/40">
-          {comments.length}
+          {total}
         </span>
       </h3>
+
+      {comments.length < total && (
+        <button
+          onClick={loadEarlier}
+          className="text-sm text-ember-400 hover:underline"
+        >
+          Load earlier comments ({total - comments.length} more)
+        </button>
+      )}
 
       {roots.length === 0 ? (
         <p className="text-sand-100/50">Be the first to say something.</p>
