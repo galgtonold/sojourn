@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, PostWithRelations } from "@/lib/types";
 import { formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
@@ -128,7 +128,17 @@ export function PostView({
 
       {hasMap && (
         <section className="mx-auto max-w-4xl px-6 pb-14">
-          <h2 className="mb-5 font-display text-2xl font-semibold">On the map</h2>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl font-semibold">On the map</h2>
+            {post.trip && (
+              <Link
+                href={`/trips/${post.trip.slug}/map`}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
+              >
+                <Maximize2 className="size-4" /> Explore the journey map
+              </Link>
+            )}
+          </div>
           <TripMap markers={markers} tracks={post.tracks} photos={photoPins} />
         </section>
       )}
