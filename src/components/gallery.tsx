@@ -4,6 +4,7 @@ import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Photo } from "@/lib/types";
+import { optimizedSrc } from "@/lib/utils";
 
 export function Gallery({ photos }: { photos: Photo[] }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -111,7 +112,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
               {photos[open].url && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={photos[open].url!}
+                  src={optimizedSrc(photos[open].url!, 2048, 80)}
                   alt={photos[open].caption ?? ""}
                   className="mx-auto max-h-[80dvh] w-auto rounded-2xl object-contain"
                 />
