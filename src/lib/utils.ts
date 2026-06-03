@@ -29,6 +29,15 @@ export function formatDate(value: string | null | undefined): string {
   });
 }
 
+/**
+ * Routes a remote image through Next's optimizer (resized + WebP/AVIF) instead
+ * of serving the raw original. `width` must be one of Next's configured sizes
+ * (2048 is a default device size).
+ */
+export function optimizedSrc(url: string, width = 2048, quality = 80): string {
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
+}
+
 /** Rough reading time in minutes from body text. */
 export function readingTime(body: string | null | undefined): number {
   if (!body) return 1;
