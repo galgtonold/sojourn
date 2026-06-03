@@ -4,6 +4,8 @@ import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, PostWithRelations } from "@/lib/types";
 import { formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
+import { RichBody } from "@/components/rich-body";
+import { referencedPhotoIds } from "@/lib/rich";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
@@ -20,7 +22,8 @@ export function PostView({
   comments: Comment[];
   preview?: boolean;
 }) {
-  const paragraphs = (post.body ?? "").split(/\n{2,}/).filter(Boolean);
+  const usedPhotoIds = referencedPhotoIds(post.body ?? "", post.photos);
+  const galleryPhotos = post.photos.filter((p) => !usedPhotoIds.has(p.id));
   const markers: MapMarker[] = post.locations.map((l) => ({
     id: l.id,
     name: l.name,
@@ -108,21 +111,17 @@ export function PostView({
             {post.excerpt}
           </p>
         )}
-        <div className="space-y-6 text-lg leading-relaxed text-sand-100/80">
-          {paragraphs.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
-        </div>
+        <RichBody body={post.body ?? ""} photos={post.photos} />
 
         <div className="mt-12 border-t border-white/10 pt-8">
           <Reactions postId={post.id} initial={post.reactions} />
         </div>
       </div>
 
-      {post.photos.length > 0 && (
+      {galleryPhotos.length > 0 && (
         <section className="mx-auto max-w-4xl px-6 pb-14">
           <h2 className="mb-5 font-display text-2xl font-semibold">Gallery</h2>
-          <Gallery photos={post.photos} />
+          <Gallery photos={galleryPhotos} />
         </section>
       )}
 

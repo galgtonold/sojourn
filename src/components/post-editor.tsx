@@ -148,10 +148,15 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
       <textarea
         className={`${input} resize-y font-mono`}
         rows={14}
-        placeholder="Body (plain text / markdown — blank lines separate paragraphs)"
+        placeholder={"Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)).\n\nPlace a gallery photo inline by putting [photo:ID] on its own line — copy a photo's tag from the Gallery section below."}
         value={post.body}
         onChange={(e) => set("body", e.target.value)}
       />
+      <p className="text-xs text-sand-100/40">
+        Markdown supported. Drop <code className="text-sand-100/70">[photo:ID]</code>{" "}
+        on its own line to weave a gallery photo into the story — grab a photo&rsquo;s
+        tag with “Copy inline tag” in the Gallery below.
+      </p>
 
       <label className="flex items-center gap-2 text-sm">
         <input
