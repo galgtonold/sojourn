@@ -155,17 +155,17 @@ export function InteractionManager({
             <li
               key={it.id}
               className={cn(
-                "flex items-center justify-between gap-3 px-4 py-3",
+                "flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
                 editingId === it.id && "bg-ember-500/10",
               )}
             >
-              <span className="min-w-0">
-                <span className="mr-2 rounded-full bg-white/10 px-2 py-0.5 text-xs uppercase tracking-wide text-sand-100/60">
+              <span className="flex min-w-0 items-start gap-2">
+                <span className="mt-0.5 shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs uppercase tracking-wide text-sand-100/60">
                   {it.kind === "poll" ? t("poll.label") : t("quiz.label")}
                 </span>
-                <span className="text-sm">{it.question}</span>
+                <span className="min-w-0 break-words text-sm">{it.question}</span>
               </span>
-              <span className="flex shrink-0 items-center gap-3">
+              <span className="flex shrink-0 items-center gap-4 self-end sm:gap-3 sm:self-auto">
                 <button
                   onClick={() => startEdit(it)}
                   className="inline-flex items-center gap-1 text-xs text-sand-100/70 hover:text-sand-50"
