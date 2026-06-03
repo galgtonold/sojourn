@@ -166,7 +166,7 @@ export function JourneyExplorer({
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
-      <div ref={container} className="absolute inset-0" />
+      <div ref={container} className="h-dvh w-full" />
 
       <Link
         href={backHref}
