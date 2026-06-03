@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getPublishedPosts } from "@/lib/content";
 import { PushToggle } from "@/components/push-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
+import { T } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Admin" };
@@ -69,10 +70,12 @@ export default async function AdminDashboard() {
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-semibold">Dashboard</h1>
+          <h1 className="font-display text-4xl font-semibold">
+            <T k="admin.dashboard" />
+          </h1>
           {stats.email && (
             <p className="mt-1 text-sm text-sand-100/50">
-              Signed in as {stats.email}
+              <T k="admin.signedInAs" vars={{ email: stats.email }} />
             </p>
           )}
         </div>
@@ -83,7 +86,7 @@ export default async function AdminDashboard() {
               href="/admin/account"
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
             >
-              <KeyRound className="size-4" /> Password
+              <KeyRound className="size-4" /> <T k="admin.password" />
             </Link>
           )}
           {isSupabaseConfigured && <SignOutButton />}
@@ -92,8 +95,7 @@ export default async function AdminDashboard() {
 
       {!isSupabaseConfigured && (
         <p className="mt-6 rounded-2xl bg-ember-600/15 p-4 text-sm text-ember-300">
-          Demo mode — connect Supabase and create an admin user to manage real
-          content.
+          <T k="admin.demoNotice" />
         </p>
       )}
 
@@ -104,25 +106,31 @@ export default async function AdminDashboard() {
           <p className="mt-3 font-display text-3xl font-semibold">
             {stats.postCount}
           </p>
-          <p className="text-sm text-sand-100/50">Posts</p>
+          <p className="text-sm text-sand-100/50">
+            <T k="admin.statPosts" />
+          </p>
         </div>
         <div className="rounded-2xl bg-ink-900 p-5 ring-1 ring-white/5">
           <MessageSquare className="size-5 text-lagoon-400" />
           <p className="mt-3 font-display text-3xl font-semibold">
             {stats.commentCount}
           </p>
-          <p className="text-sm text-sand-100/50">Comments</p>
+          <p className="text-sm text-sand-100/50">
+            <T k="admin.statComments" />
+          </p>
         </div>
       </div>
 
       {/* Posts */}
       <div className="mt-10 flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Posts</h2>
+        <h2 className="font-display text-2xl font-semibold">
+          <T k="admin.postsHeading" />
+        </h2>
         <Link
           href="/admin/posts/new"
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
         >
-          <Plus className="size-4" /> New post
+          <Plus className="size-4" /> <T k="admin.newPost" />
         </Link>
       </div>
       <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
@@ -140,7 +148,7 @@ export default async function AdminDashboard() {
                     : "bg-white/10 text-sand-100/60"
                 }`}
               >
-                {p.published ? "Published" : "Draft"}
+                {p.published ? <T k="admin.published" /> : <T k="admin.draft" />}
               </span>
               <a
                 href={`/admin/posts/${p.id}/preview`}
@@ -148,30 +156,34 @@ export default async function AdminDashboard() {
                 rel="noreferrer"
                 className="text-sm text-sand-100/60 hover:underline"
               >
-                Preview
+                <T k="admin.preview" />
               </a>
               <Link
                 href={`/admin/posts/${p.id}`}
                 className="text-sm text-ember-400 hover:underline"
               >
-                Edit
+                <T k="admin.edit" />
               </Link>
             </span>
           </li>
         ))}
         {stats.posts.length === 0 && (
-          <li className="px-5 py-4 text-sand-100/50">No posts yet.</li>
+          <li className="px-5 py-4 text-sand-100/50">
+            <T k="admin.noPosts" />
+          </li>
         )}
       </ul>
 
       {/* Recent comments */}
       <div className="mt-10 flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Recent comments</h2>
+        <h2 className="font-display text-2xl font-semibold">
+          <T k="admin.recentComments" />
+        </h2>
         <Link
           href="/admin/comments"
           className="text-sm text-ember-400 hover:underline"
         >
-          Moderate all →
+          <T k="admin.moderateAll" />
         </Link>
       </div>
       <ul className="mt-4 space-y-3">
@@ -187,7 +199,9 @@ export default async function AdminDashboard() {
           </li>
         ))}
         {stats.recentComments.length === 0 && (
-          <li className="text-sand-100/50">No comments yet.</li>
+          <li className="text-sand-100/50">
+            <T k="admin.noComments" />
+          </li>
         )}
       </ul>
     </div>

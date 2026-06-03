@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useT } from "@/components/i18n";
 
 export default function AccountPage() {
+  const t = useT();
   const [email, setEmail] = useState<string | null>(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -23,16 +25,16 @@ export default function AccountPage() {
     setError(null);
 
     if (next.length < 8) {
-      setError("New password must be at least 8 characters.");
+      setError(t("admin.account.errMin"));
       return;
     }
     if (next !== confirm) {
-      setError("New passwords don’t match.");
+      setError(t("admin.account.errMatch"));
       return;
     }
     const supabase = getBrowserSupabase();
     if (!supabase || !email) {
-      setError("Not available in demo mode.");
+      setError(t("admin.account.errGeneric"));
       return;
     }
 
@@ -43,7 +45,7 @@ export default function AccountPage() {
       password: current,
     });
     if (signInErr) {
-      setError("Current password is incorrect.");
+      setError(t("admin.account.errCurrent"));
       setStatus("idle");
       return;
     }
@@ -70,15 +72,19 @@ export default function AccountPage() {
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
       >
-        <ArrowLeft className="size-4" /> Dashboard
+        <ArrowLeft className="size-4" /> {t("admin.dashboardLink")}
       </Link>
 
       <div className="mb-6 flex items-center gap-2">
         <KeyRound className="size-6 text-ember-400" />
-        <h1 className="font-display text-3xl font-semibold">Change password</h1>
+        <h1 className="font-display text-3xl font-semibold">
+          {t("admin.account.title")}
+        </h1>
       </div>
       {email && (
-        <p className="mb-6 text-sm text-sand-100/50">Signed in as {email}</p>
+        <p className="mb-6 text-sm text-sand-100/50">
+          {t("admin.signedInAs", { email })}
+        </p>
       )}
 
       <form onSubmit={submit} className="space-y-4">
@@ -88,7 +94,7 @@ export default function AccountPage() {
           required
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
-          placeholder="Current password"
+          placeholder={t("admin.account.current")}
           className={input}
         />
         <input
@@ -97,7 +103,7 @@ export default function AccountPage() {
           required
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          placeholder="New password (min 8 characters)"
+          placeholder={t("admin.account.new")}
           className={input}
         />
         <input
@@ -106,15 +112,13 @@ export default function AccountPage() {
           required
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          placeholder="Confirm new password"
+          placeholder={t("admin.account.confirm")}
           className={input}
         />
 
         {error && <p className="text-sm text-red-400">{error}</p>}
         {status === "done" && (
-          <p className="text-sm text-lagoon-400">
-            Password updated. Use it next time you sign in.
-          </p>
+          <p className="text-sm text-lagoon-400">{t("admin.account.done")}</p>
         )}
 
         <button
@@ -122,7 +126,9 @@ export default function AccountPage() {
           disabled={status === "saving"}
           className="w-full rounded-full bg-ember-500 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
-          {status === "saving" ? "Updating…" : "Update password"}
+          {status === "saving"
+            ? t("admin.account.updating")
+            : t("admin.account.update")}
         </button>
       </form>
     </div>

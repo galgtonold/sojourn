@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Code2, Plus, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 export type ManagedInteraction = {
   id: string;
@@ -31,6 +32,7 @@ export function InteractionManager({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const t = useT();
 
   async function revalidate() {
     try {
@@ -53,13 +55,13 @@ export function InteractionManager({
 
   async function add() {
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
-    if (!question.trim()) return setError("Add a question.");
-    if (cleanOptions.length < 2) return setError("Add at least two options.");
+    if (!question.trim()) return setError(t("admin.ask.errQuestion"));
+    if (cleanOptions.length < 2) return setError(t("admin.ask.errOptions"));
     if (kind === "quiz" && correctIndex >= cleanOptions.length)
-      return setError("Pick which option is correct.");
+      return setError(t("admin.ask.errCorrect"));
 
     const supabase = getBrowserSupabase();
-    if (!supabase) return setError("Not available.");
+    if (!supabase) return setError(t("admin.account.errGeneric"));
     setBusy(true);
     setError(null);
     const { data, error } = await supabase
@@ -106,10 +108,11 @@ export function InteractionManager({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-display text-2xl font-semibold">Polls & quizzes</h2>
+        <h2 className="font-display text-2xl font-semibold">
+          {t("admin.ask.title")}
+        </h2>
         <p className="mt-0.5 text-sm text-sand-100/50">
-          Create a block, then drop its <code className="text-sand-100/70">[ask:ID]</code>{" "}
-          tag into the body. Saved automatically.
+          {t("admin.ask.subtitle")}
         </p>
       </div>
 
@@ -129,7 +132,9 @@ export function InteractionManager({
                   className="inline-flex items-center gap-1 text-xs text-ember-400 hover:underline"
                 >
                   <Code2 className="size-3.5" />
-                  {copiedId === it.id ? "Copied!" : "Copy tag"}
+                  {copiedId === it.id
+                    ? t("admin.ask.copied")
+                    : t("admin.ask.copyTag")}
                 </button>
                 <button
                   onClick={() => remove(it)}
@@ -152,18 +157,18 @@ export function InteractionManager({
               key={k}
               onClick={() => setKind(k)}
               className={cn(
-                "rounded-full px-4 py-1 capitalize transition",
+                "rounded-full px-4 py-1 transition",
                 kind === k ? "bg-ember-500 text-ink-950" : "text-sand-100/70",
               )}
             >
-              {k}
+              {k === "poll" ? t("poll.label") : t("quiz.label")}
             </button>
           ))}
         </div>
 
         <input
           className={input}
-          placeholder="Question"
+          placeholder={t("admin.ask.question")}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
         />
@@ -183,7 +188,7 @@ export function InteractionManager({
               )}
               <input
                 className={input}
-                placeholder={`Option ${i + 1}`}
+                placeholder={t("admin.ask.option", { n: i + 1 })}
                 value={opt}
                 onChange={(e) =>
                   setOptions((o) => o.map((v, j) => (j === i ? e.target.value : v)))
@@ -207,7 +212,7 @@ export function InteractionManager({
             onClick={() => setOptions((o) => [...o, ""])}
             className="inline-flex items-center gap-1 text-xs text-ember-400 hover:underline"
           >
-            <Plus className="size-3.5" /> Add option
+            <Plus className="size-3.5" /> {t("admin.ask.addOption")}
           </button>
         </div>
 
@@ -215,7 +220,7 @@ export function InteractionManager({
           <textarea
             className={`${input} resize-y`}
             rows={2}
-            placeholder="Explanation shown after answering (optional)"
+            placeholder={t("admin.ask.explanation")}
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
           />
@@ -228,7 +233,12 @@ export function InteractionManager({
           disabled={busy}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
-          <Plus className="size-4" /> {busy ? "Adding…" : `Add ${kind}`}
+          <Plus className="size-4" />{" "}
+          {busy
+            ? t("admin.ask.adding")
+            : kind === "poll"
+              ? t("admin.ask.addPoll")
+              : t("admin.ask.addQuiz")}
         </button>
       </div>
     </div>

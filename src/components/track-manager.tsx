@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Loader2, Route, Trash2, Upload } from "lucide-react";
 import { parseGpx, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useT } from "@/components/i18n";
 
 export type ManagedTrack = {
   id: string;
@@ -25,6 +26,7 @@ export function TrackManager({
   const [tracks, setTracks] = useState<ManagedTrack[]>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   async function revalidate() {
     try {
@@ -86,27 +88,29 @@ export function TrackManager({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-display text-2xl font-semibold">Routes</h2>
+        <h2 className="font-display text-2xl font-semibold">
+          {t("admin.routes.title")}
+        </h2>
         <p className="mt-0.5 text-sm text-sand-100/50">
-          Upload GPX tracks to draw the journey on the map. Saved automatically.
+          {t("admin.routes.subtitle")}
         </p>
       </div>
 
       {tracks.length > 0 && (
         <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
-          {tracks.map((t) => (
-            <li key={t.id} className="flex items-center justify-between px-4 py-3">
+          {tracks.map((tk) => (
+            <li key={tk.id} className="flex items-center justify-between px-4 py-3">
               <span className="flex items-center gap-2 text-sm">
                 <Route className="size-4 text-ember-400" />
-                {t.name || "Track"}
-                {t.distance_m ? (
+                {tk.name || t("admin.routes.track")}
+                {tk.distance_m ? (
                   <span className="text-sand-100/40">
-                    · {formatDistance(t.distance_m)}
+                    · {formatDistance(tk.distance_m)}
                   </span>
                 ) : null}
               </span>
               <button
-                onClick={() => remove(t)}
+                onClick={() => remove(tk)}
                 aria-label="Delete track"
                 className="text-red-400/80 transition hover:text-red-400"
               >
@@ -124,7 +128,7 @@ export function TrackManager({
         className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 disabled:opacity-50"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-        {busy ? "Reading…" : "Upload GPX"}
+        {busy ? t("admin.routes.reading") : t("admin.routes.upload")}
       </button>
       <input
         ref={inputRef}

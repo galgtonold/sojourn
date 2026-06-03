@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
+import { useT } from "@/components/i18n";
 
 export default function AdminLogin() {
   const router = useRouter();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +44,11 @@ export default function AdminLogin() {
           <Compass className="size-6 text-ember-400" />
           <h1 className="font-display text-2xl font-semibold">Admin</h1>
         </div>
-        <p className="text-sm text-sand-100/50">
-          Sign in to manage entries, photos and comments.
-        </p>
+        <p className="text-sm text-sand-100/50">{t("admin.login.subtitle")}</p>
 
         {!isSupabaseConfigured && (
           <p className="rounded-xl bg-ember-600/15 p-3 text-xs text-ember-300">
-            Demo mode: set Supabase env vars and create an admin user to enable
-            login.
+            {t("admin.login.demo")}
           </p>
         )}
 
@@ -66,7 +65,7 @@ export default function AdminLogin() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder={t("admin.login.password")}
           className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
         />
 
@@ -77,7 +76,7 @@ export default function AdminLogin() {
           disabled={busy}
           className="w-full rounded-full bg-ember-500 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("admin.login.signingIn") : t("admin.login.signIn")}
         </button>
       </form>
     </div>

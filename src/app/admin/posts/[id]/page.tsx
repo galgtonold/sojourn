@@ -7,6 +7,7 @@ import { PostEditor, type EditablePost } from "@/components/post-editor";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
 import { InteractionManager } from "@/components/interaction-manager";
+import { T } from "@/components/i18n";
 
 export const metadata = { title: "Edit post" };
 export const dynamic = "force-dynamic";
@@ -72,17 +73,19 @@ export default async function EditPostPage({
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
       >
-        <ArrowLeft className="size-4" /> Dashboard
+        <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
       </Link>
       <div className="mb-8 flex items-center justify-between gap-4">
-        <h1 className="font-display text-4xl font-semibold">Edit post</h1>
+        <h1 className="font-display text-4xl font-semibold">
+          <T k="admin.editor.editPost" />
+        </h1>
         <a
           href={`/admin/posts/${data.id}/preview`}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
         >
-          <Eye className="size-4" /> Preview
+          <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
       <PostEditor initial={initial} />
