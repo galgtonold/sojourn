@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Code2, Plus, Trash2, X } from "lucide-react";
+import { Code2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
@@ -32,6 +32,7 @@ export function InteractionManager({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const t = useT();
 
   async function revalidate() {
@@ -47,13 +48,26 @@ export function InteractionManager({
   }
 
   function reset() {
+    setKind("poll");
     setQuestion("");
     setOptions(["", ""]);
     setCorrectIndex(0);
     setExplanation("");
+    setEditingId(null);
+    setError(null);
   }
 
-  async function add() {
+  function startEdit(it: ManagedInteraction) {
+    setEditingId(it.id);
+    setKind(it.kind);
+    setQuestion(it.question);
+    setOptions(it.options.length >= 2 ? [...it.options] : [...it.options, ""]);
+    setCorrectIndex(it.correct_index ?? 0);
+    setExplanation(it.explanation ?? "");
+    setError(null);
+  }
+
+  async function save() {
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
     if (!question.trim()) return setError(t("admin.ask.errQuestion"));
     if (cleanOptions.length < 2) return setError(t("admin.ask.errOptions"));
@@ -64,17 +78,35 @@ export function InteractionManager({
     if (!supabase) return setError(t("admin.account.errGeneric"));
     setBusy(true);
     setError(null);
+
+    const payload = {
+      kind,
+      question: question.trim(),
+      options: cleanOptions,
+      correct_index: kind === "quiz" ? correctIndex : null,
+      explanation: kind === "quiz" ? explanation.trim() || null : null,
+    };
+
+    if (editingId) {
+      const { data, error } = await supabase
+        .from("interactions")
+        .update(payload)
+        .eq("id", editingId)
+        .select("id, kind, question, options, correct_index, explanation")
+        .single();
+      setBusy(false);
+      if (error) return setError(error.message);
+      setList((l) =>
+        l.map((x) => (x.id === editingId ? (data as ManagedInteraction) : x)),
+      );
+      reset();
+      revalidate();
+      return;
+    }
+
     const { data, error } = await supabase
       .from("interactions")
-      .insert({
-        post_id: postId,
-        kind,
-        question: question.trim(),
-        options: cleanOptions,
-        correct_index: kind === "quiz" ? correctIndex : null,
-        explanation: kind === "quiz" ? explanation.trim() || null : null,
-        sort_order: list.length,
-      })
+      .insert({ post_id: postId, ...payload, sort_order: list.length })
       .select("id, kind, question, options, correct_index, explanation")
       .single();
     setBusy(false);
@@ -87,6 +119,7 @@ export function InteractionManager({
   async function remove(it: ManagedInteraction) {
     const supabase = getBrowserSupabase();
     if (!supabase) return;
+    if (editingId === it.id) reset();
     setList((l) => l.filter((x) => x.id !== it.id));
     await supabase.from("interactions").delete().eq("id", it.id);
     revalidate();
@@ -119,14 +152,26 @@ export function InteractionManager({
       {list.length > 0 && (
         <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
           {list.map((it) => (
-            <li key={it.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <li
+              key={it.id}
+              className={cn(
+                "flex items-center justify-between gap-3 px-4 py-3",
+                editingId === it.id && "bg-ember-500/10",
+              )}
+            >
               <span className="min-w-0">
                 <span className="mr-2 rounded-full bg-white/10 px-2 py-0.5 text-xs uppercase tracking-wide text-sand-100/60">
-                  {it.kind}
+                  {it.kind === "poll" ? t("poll.label") : t("quiz.label")}
                 </span>
                 <span className="text-sm">{it.question}</span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
+                <button
+                  onClick={() => startEdit(it)}
+                  className="inline-flex items-center gap-1 text-xs text-sand-100/70 hover:text-sand-50"
+                >
+                  <Pencil className="size-3.5" /> {t("admin.ask.edit")}
+                </button>
                 <button
                   onClick={() => copyTag(it.id)}
                   className="inline-flex items-center gap-1 text-xs text-ember-400 hover:underline"
@@ -228,18 +273,30 @@ export function InteractionManager({
 
         {error && <p className="text-sm text-red-400">{error}</p>}
 
-        <button
-          onClick={add}
-          disabled={busy}
-          className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
-        >
-          <Plus className="size-4" />{" "}
-          {busy
-            ? t("admin.ask.adding")
-            : kind === "poll"
-              ? t("admin.ask.addPoll")
-              : t("admin.ask.addQuiz")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={save}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
+          >
+            <Plus className="size-4" />{" "}
+            {busy
+              ? t("admin.ask.adding")
+              : editingId
+                ? t("admin.ask.save")
+                : kind === "poll"
+                  ? t("admin.ask.addPoll")
+                  : t("admin.ask.addQuiz")}
+          </button>
+          {editingId && (
+            <button
+              onClick={reset}
+              className="rounded-full px-3 py-2 text-sm text-sand-100/60 hover:text-sand-100"
+            >
+              {t("admin.ask.cancel")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
