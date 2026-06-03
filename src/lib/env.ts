@@ -9,7 +9,13 @@ export const env = {
   vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  // Prefer an explicit URL; otherwise use Vercel's stable production domain
+  // (set automatically on Vercel), falling back to localhost in dev.
+  siteUrl:
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000"),
   siteName: process.env.NEXT_PUBLIC_SITE_NAME ?? "Sojourn",
   mapStyleUrl:
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
