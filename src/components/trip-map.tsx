@@ -70,7 +70,11 @@ export function TripMap({
       "top-right",
     );
 
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(container.current);
+
     map.on("load", () => {
+      map.resize();
       const bounds = new maplibregl.LngLatBounds();
       const extend = (lng: number, lat: number) => bounds.extend([lng, lat]);
 
@@ -160,7 +164,10 @@ export function TripMap({
       }
     });
 
-    return () => map.remove();
+    return () => {
+      ro.disconnect();
+      map.remove();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
