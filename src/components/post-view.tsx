@@ -2,10 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
-import { formatDate, readingTime } from "@/lib/utils";
+import { cn, formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
-import { referencedPhotoIds } from "@/lib/rich";
+import { StoryMap } from "@/components/story-map";
+import { parseBody, referencedPhotoIds } from "@/lib/rich";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
@@ -43,6 +44,13 @@ export function PostView({
     }));
   const hasMap =
     markers.length > 0 || post.tracks.length > 0 || photoPins.length > 0;
+
+  // Scrollytelling kicks in when the body weaves in ≥2 geotagged photos.
+  const blocks = parseBody(post.body ?? "", post.photos, interactions);
+  const geoPhotoCount = blocks.filter(
+    (b) => b.kind === "photo" && b.photo.lat != null && b.photo.lng != null,
+  ).length;
+  const useStory = geoPhotoCount >= 2;
 
   return (
     <article>
@@ -107,21 +115,31 @@ export function PostView({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-14">
-        {post.excerpt && (
-          <p className="mb-8 font-display text-xl leading-relaxed text-sand-100/90">
-            {post.excerpt}
-          </p>
-        )}
-        <RichBody
-          body={post.body ?? ""}
-          photos={post.photos}
-          interactions={interactions}
+      {useStory ? (
+        <StoryMap
+          excerpt={post.excerpt}
+          blocks={blocks}
+          tracks={post.tracks}
+          markers={markers}
+          photoPins={photoPins}
         />
-
-        <div className="mt-12 border-t border-white/10 pt-8">
-          <Reactions postId={post.id} initial={post.reactions} />
+      ) : (
+        <div className="mx-auto max-w-3xl px-6 py-14">
+          {post.excerpt && (
+            <p className="mb-8 font-display text-xl leading-relaxed text-sand-100/90">
+              {post.excerpt}
+            </p>
+          )}
+          <RichBody
+            body={post.body ?? ""}
+            photos={post.photos}
+            interactions={interactions}
+          />
         </div>
+      )}
+
+      <div className="mx-auto max-w-3xl px-6 pb-14 pt-8">
+        <Reactions postId={post.id} initial={post.reactions} />
       </div>
 
       {galleryPhotos.length > 0 && (
@@ -132,7 +150,12 @@ export function PostView({
       )}
 
       {hasMap && (
-        <section className="mx-auto max-w-4xl px-6 pb-14">
+        <section
+          className={cn(
+            "mx-auto max-w-4xl px-6 pb-14",
+            useStory && "lg:hidden", // desktop already has the sticky story map
+          )}
+        >
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl font-semibold">On the map</h2>
             {post.trip && (
