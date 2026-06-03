@@ -170,9 +170,9 @@ export function JourneyExplorer({
 
       <Link
         href={backHref}
-        className="glass absolute left-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-sand-100/90 hover:text-ember-400"
+        className="glass absolute left-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-sand-50 transition hover:text-ember-400"
       >
-        <ArrowLeft className="size-4" /> {backLabel}
+        <ArrowLeft className="size-4" /> Back to {backLabel}
       </Link>
 
       {/* Stepper card */}
