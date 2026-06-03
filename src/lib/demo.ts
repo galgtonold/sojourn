@@ -43,6 +43,7 @@ export const demoPosts: PostWithRelations[] = [
 Then the wall of Fitz Roy ignites. First a thread of pink at the summit, then a flood of orange spilling down the spires faster than you can believe. Nobody speaks. Somebody, somewhere, is quietly crying.
 
 We stayed until our fingers stopped working, then ran back down for coffee in El Chaltén.`,
+    cover_alt: null,
     cover_image: img("photo-1518105779142-d975f22f1b0a"),
     trip_id: "trip-patagonia",
     location: "El Chaltén, Argentina",
@@ -62,6 +63,7 @@ We stayed until our fingers stopped working, then ran back down for coffee in El
         width: 1200,
         height: 800,
         blurhash: null,
+        alt: null,
         lat: -49.3,
         lng: -72.9,
         sort_order: 0,
@@ -73,6 +75,7 @@ We stayed until our fingers stopped working, then ran back down for coffee in El
         width: 1200,
         height: 800,
         blurhash: null,
+        alt: null,
         lat: null,
         lng: null,
         sort_order: 1,
@@ -94,6 +97,7 @@ We stayed until our fingers stopped working, then ran back down for coffee in El
     body: `Kyoto in late November is a city that has decided to show off. Every temple garden is staged like a painting, and half the city is pointing a phone at a maple tree.
 
 We skipped the famous spots at midday and walked the Philosopher's Path at dawn instead. Just us, a street cat, and the canal carrying a slow flotilla of leaves.`,
+    cover_alt: null,
     cover_image: img("photo-1493976040374-85c8e12f0c0e"),
     trip_id: "trip-japan",
     location: "Kyoto, Japan",
@@ -113,6 +117,7 @@ We skipped the famous spots at midday and walked the Philosopher's Path at dawn 
         width: 1200,
         height: 800,
         blurhash: null,
+        alt: null,
         lat: 34.9766,
         lng: 135.7741,
         sort_order: 0,
@@ -134,6 +139,7 @@ We skipped the famous spots at midday and walked the Philosopher's Path at dawn 
     body: `You hear it before you see it — a crack like a rifle shot rolling across the water. Then a slab of glacier the colour of deep ocean leans, hesitates, and collapses into Lago Argentino.
 
 The glacier is one of the few on earth still advancing. It moves up to two metres a day, which is why it's always shedding ice into the lake. We stood for hours and could not leave.`,
+    cover_alt: null,
     cover_image: img("photo-1485470733090-0aae1788d5af"),
     trip_id: "trip-patagonia",
     location: "Los Glaciares NP, Argentina",
@@ -153,6 +159,7 @@ The glacier is one of the few on earth still advancing. It moves up to two metre
         width: 1200,
         height: 800,
         blurhash: null,
+        alt: null,
         lat: -50.4967,
         lng: -73.1377,
         sort_order: 0,
@@ -171,6 +178,7 @@ export const demoComments = [
     id: "c1",
     post_id: "post-fitzroy",
     parent_id: null,
+    like_count: 0,
     author_name: "Mara",
     body: "This gave me chills. Adding it to the list immediately.",
     created_at: "2026-02-10T08:12:00Z",
@@ -179,6 +187,7 @@ export const demoComments = [
     id: "c2",
     post_id: "post-fitzroy",
     parent_id: null,
+    like_count: 0,
     author_name: "Tom",
     body: "Did you need crampons for the final section in February?",
     created_at: "2026-02-11T16:40:00Z",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
@@ -25,7 +25,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, lat, lng, published",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, lat, lng, published",
     )
     .eq("id", id)
     .maybeSingle();
@@ -34,7 +34,7 @@ export default async function EditPostPage({
 
   const { data: photos } = await supabase!
     .from("photos")
-    .select("id, url, storage_path, caption, sort_order")
+    .select("id, url, storage_path, caption, alt, sort_order")
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
 
@@ -46,6 +46,7 @@ export default async function EditPostPage({
     excerpt: data.excerpt ?? "",
     body: data.body ?? "",
     cover_image: data.cover_image ?? "",
+    cover_alt: data.cover_alt ?? "",
     lat: data.lat != null ? String(data.lat) : "",
     lng: data.lng != null ? String(data.lng) : "",
     published: Boolean(data.published),
@@ -59,7 +60,17 @@ export default async function EditPostPage({
       >
         <ArrowLeft className="size-4" /> Dashboard
       </Link>
-      <h1 className="mb-8 font-display text-4xl font-semibold">Edit post</h1>
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <h1 className="font-display text-4xl font-semibold">Edit post</h1>
+        <a
+          href={`/admin/posts/${data.id}/preview`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
+        >
+          <Eye className="size-4" /> Preview
+        </a>
+      </div>
       <PostEditor initial={initial} />
 
       <div className="mt-12 border-t border-white/10 pt-10">

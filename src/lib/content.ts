@@ -7,6 +7,7 @@
 // query failures degrade gracefully to demo content.
 import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
+import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
@@ -136,21 +137,53 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
   }
 }
 
+const COMMENT_SELECT =
+  "id, post_id, parent_id, author_name, body, created_at, comment_likes(count)";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function hydrateComment(row: any): Comment {
+  return {
+    id: row.id,
+    post_id: row.post_id,
+    parent_id: row.parent_id,
+    author_name: row.author_name,
+    body: row.body,
+    created_at: row.created_at,
+    like_count: row.comment_likes?.[0]?.count ?? 0,
+  };
+}
+
 export async function getComments(postId: string): Promise<Comment[]> {
   const supabase = getPublicSupabase();
   if (!supabase) {
-    return demoComments.filter((c) => c.post_id === postId) as Comment[];
+    return demoComments.filter((c) => c.post_id === postId);
   }
   try {
     const { data, error } = await supabase
       .from("comments")
-      .select("*")
+      .select(COMMENT_SELECT)
       .eq("post_id", postId)
       .eq("hidden", false)
       .order("created_at", { ascending: true });
     if (error || !data) return [];
-    return data as Comment[];
+    return data.map(hydrateComment);
   } catch {
     return [];
   }
+}
+
+// Authenticated (admin) fetch of any post by id — including drafts — for the
+// preview screen. Relies on RLS granting authenticated full read access.
+export async function getPostForPreview(
+  id: string,
+): Promise<PostWithRelations | null> {
+  const supabase = await getServerSupabase();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return hydratePost(data);
 }

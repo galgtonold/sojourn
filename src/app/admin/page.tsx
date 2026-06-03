@@ -142,6 +142,14 @@ export default async function AdminDashboard() {
               >
                 {p.published ? "Published" : "Draft"}
               </span>
+              <a
+                href={`/admin/posts/${p.id}/preview`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-sand-100/60 hover:underline"
+              >
+                Preview
+              </a>
               <Link
                 href={`/admin/posts/${p.id}`}
                 className="text-sm text-ember-400 hover:underline"
@@ -157,9 +165,15 @@ export default async function AdminDashboard() {
       </ul>
 
       {/* Recent comments */}
-      <h2 className="mt-10 font-display text-2xl font-semibold">
-        Recent comments
-      </h2>
+      <div className="mt-10 flex items-center justify-between">
+        <h2 className="font-display text-2xl font-semibold">Recent comments</h2>
+        <Link
+          href="/admin/comments"
+          className="text-sm text-ember-400 hover:underline"
+        >
+          Moderate all →
+        </Link>
+      </div>
       <ul className="mt-4 space-y-3">
         {stats.recentComments.map((c) => (
           <li key={c.id} className="rounded-2xl bg-ink-900 p-4 ring-1 ring-white/5">
