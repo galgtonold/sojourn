@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
+import { Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,17 @@ export function PhotoManager({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function copyTag(photo: ManagedPhoto) {
+    try {
+      await navigator.clipboard.writeText(`[photo:${photo.id}]`);
+      setCopiedId(photo.id);
+      setTimeout(() => setCopiedId((id) => (id === photo.id ? null : id)), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
 
   // Bust the cached public post page so gallery changes appear immediately.
   async function revalidate() {
@@ -176,6 +187,14 @@ export function PhotoManager({
               onBlur={() => saveField(photo, "alt")}
               className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs text-sand-100/70 outline-none focus:border-ember-400"
             />
+            <button
+              type="button"
+              onClick={() => copyTag(photo)}
+              className="inline-flex items-center gap-1 text-[10px] text-ember-400 hover:underline"
+            >
+              <Code2 className="size-3" />
+              {copiedId === photo.id ? "Copied!" : "Copy inline tag"}
+            </button>
           </div>
         ))}
 
