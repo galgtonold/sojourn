@@ -138,9 +138,10 @@ export function TripMap({
         el.style.cssText =
           "width:36px;height:36px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
-        const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#0a0908">
+        const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
           <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
           ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
+          ${p.href ? `<div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">Open story →</div>` : ""}
         </a>`;
         new maplibregl.Marker({ element: el })
           .setLngLat([p.lng, p.lat])
