@@ -23,6 +23,7 @@ export type Photo = {
   id: string;
   url: string | null;
   caption: string | null;
+  alt: string | null;
   width: number | null;
   height: number | null;
   blurhash: string | null;
@@ -38,6 +39,7 @@ export type Comment = {
   author_name: string;
   body: string;
   created_at: string;
+  like_count: number;
 };
 
 export type ReactionKind = "heart" | "fire" | "wow" | "star";
@@ -51,6 +53,7 @@ export type Post = {
   excerpt: string | null;
   body: string | null;
   cover_image: string | null;
+  cover_alt: string | null;
   trip_id: string | null;
   location: string | null;
   lat: number | null;

@@ -1,9 +1,24 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/env";
+
+const NAME_KEY = "sojourn:name";
+const VID_KEY = "sojourn:vid";
+const LIKED_KEY = "sojourn:liked-comments";
+
+function visitorToken(): string {
+  if (typeof window === "undefined") return "";
+  let t = localStorage.getItem(VID_KEY);
+  if (!t) {
+    t = crypto.randomUUID();
+    localStorage.setItem(VID_KEY, t);
+  }
+  return t;
+}
 
 export function Comments({
   postId,
@@ -14,11 +29,9 @@ export function Comments({
 }) {
   const [comments, setComments] = useState<Comment[]>(initial);
   const [name, setName] = useState("");
-  const [body, setBody] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [liked, setLiked] = useState<Set<string>>(new Set());
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
-  // Pull the live list on mount so we never show a stale, page-cached (ISR)
-  // snapshot. No-op in demo mode (there's no backend to read from).
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
@@ -30,51 +43,158 @@ export function Comments({
       const json = (await res.json()) as { comments?: Comment[] };
       if (Array.isArray(json.comments)) setComments(json.comments);
     } catch {
-      // keep whatever we have
+      // keep what we have
     }
   }, [postId]);
 
   useEffect(() => {
+    setName(localStorage.getItem(NAME_KEY) ?? "");
+    const stored = localStorage.getItem(LIKED_KEY);
+    if (stored) setLiked(new Set(JSON.parse(stored) as string[]));
     refresh();
   }, [refresh]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!body.trim()) return;
-    setStatus("sending");
+  function setAndPersistName(n: string) {
+    setName(n);
+    localStorage.setItem(NAME_KEY, n);
+  }
+
+  async function submit(body: string, parentId: string | null) {
+    const text = body.trim();
+    if (!text) return;
+    const author = name.trim() || "Anonymous";
 
     const optimistic: Comment = {
       id: `temp-${Date.now()}`,
       post_id: postId,
-      parent_id: null,
-      author_name: name.trim() || "Anonymous",
-      body: body.trim(),
+      parent_id: parentId,
+      author_name: author,
+      body: text,
       created_at: new Date().toISOString(),
+      like_count: 0,
     };
-
-    // Show it instantly.
     setComments((c) => [...c, optimistic]);
-    setBody("");
+    setReplyTo(null);
 
     try {
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          postId,
-          authorName: optimistic.author_name,
-          body: optimistic.body,
-        }),
+        body: JSON.stringify({ postId, parentId, authorName: author, body: text }),
       });
       if (!res.ok && res.status !== 202) throw new Error("failed");
-      setStatus("idle");
-      // Reconcile with the canonical server list (replaces the temp row).
       refresh();
     } catch {
-      // Network/server error: surface it but keep their text visible.
-      setStatus("error");
+      // keep optimistic copy on failure
     }
   }
+
+  async function toggleLike(id: string) {
+    if (id.startsWith("temp-")) return;
+    const isLiked = liked.has(id);
+    const next = new Set(liked);
+    if (isLiked) next.delete(id);
+    else next.add(id);
+    setLiked(next);
+    localStorage.setItem(LIKED_KEY, JSON.stringify([...next]));
+    setComments((cs) =>
+      cs.map((c) =>
+        c.id === id
+          ? { ...c, like_count: Math.max(0, c.like_count + (isLiked ? -1 : 1)) }
+          : c,
+      ),
+    );
+    try {
+      await fetch("/api/comments/like", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          commentId: id,
+          token: visitorToken(),
+          action: isLiked ? "remove" : "add",
+        }),
+      });
+    } catch {
+      // optimistic only
+    }
+  }
+
+  const childrenOf = useMemo(() => {
+    const map = new Map<string | null, Comment[]>();
+    for (const c of comments) {
+      const k = c.parent_id;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(c);
+    }
+    return map;
+  }, [comments]);
+
+  function renderNode(c: Comment, depth: number) {
+    const kids = childrenOf.get(c.id) ?? [];
+    const isLiked = liked.has(c.id);
+    return (
+      <li key={c.id} className={depth > 0 ? "mt-3" : ""}>
+        <div className="rounded-2xl bg-ink-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-sand-50">{c.author_name}</span>
+            <span className="text-xs text-sand-100/40">
+              {formatDate(c.created_at)}
+            </span>
+          </div>
+          <p className="mt-1.5 whitespace-pre-wrap text-sand-100/80">{c.body}</p>
+
+          <div className="mt-2.5 flex items-center gap-4 text-xs">
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              onClick={() => toggleLike(c.id)}
+              className={cn(
+                "inline-flex items-center gap-1.5 transition",
+                isLiked
+                  ? "text-ember-400"
+                  : "text-sand-100/50 hover:text-sand-100",
+              )}
+            >
+              <Heart className={cn("size-3.5", isLiked && "fill-current")} />
+              {c.like_count > 0 && (
+                <span className="tabular-nums">{c.like_count}</span>
+              )}
+            </motion.button>
+            <button
+              onClick={() => setReplyTo((r) => (r === c.id ? null : c.id))}
+              className="inline-flex items-center gap-1.5 text-sand-100/50 transition hover:text-sand-100"
+            >
+              <MessageSquare className="size-3.5" /> Reply
+            </button>
+          </div>
+        </div>
+
+        {replyTo === c.id && (
+          <div className="ml-4 mt-2 sm:ml-6">
+            <CommentForm
+              name={name}
+              onName={setAndPersistName}
+              onSubmit={(body) => submit(body, c.id)}
+              onCancel={() => setReplyTo(null)}
+              compact
+              placeholder={`Reply to ${c.author_name}…`}
+            />
+          </div>
+        )}
+
+        {kids.length > 0 && (
+          <ul
+            className={cn(
+              depth < 4 && "ml-4 border-l border-white/5 pl-3 sm:ml-6 sm:pl-4",
+            )}
+          >
+            {kids.map((k) => renderNode(k, depth + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
+  const roots = childrenOf.get(null) ?? [];
 
   return (
     <div className="space-y-6">
@@ -85,56 +205,93 @@ export function Comments({
         </span>
       </h3>
 
-      <ul className="space-y-4">
-        {comments.map((c) => (
-          <li key={c.id} className="rounded-2xl bg-ink-800 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sand-50">{c.author_name}</span>
-              <span className="text-xs text-sand-100/40">
-                {formatDate(c.created_at)}
-              </span>
-            </div>
-            <p className="mt-1.5 whitespace-pre-wrap text-sand-100/80">
-              {c.body}
-            </p>
-          </li>
-        ))}
-        {comments.length === 0 && (
-          <li className="text-sand-100/50">Be the first to say something.</li>
-        )}
-      </ul>
+      {roots.length === 0 ? (
+        <p className="text-sand-100/50">Be the first to say something.</p>
+      ) : (
+        <ul className="space-y-4">{roots.map((c) => renderNode(c, 0))}</ul>
+      )}
 
-      <form onSubmit={submit} className="space-y-3 rounded-2xl bg-ink-900 p-4">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name (optional)"
-          maxLength={60}
-          className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
-        />
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Leave a note…"
-          required
-          maxLength={4000}
-          rows={3}
-          className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
-        />
-        {status === "error" && (
-          <p className="text-sm text-red-400">
-            Couldn’t post that — please try again.
-          </p>
-        )}
+      <CommentForm
+        name={name}
+        onName={setAndPersistName}
+        onSubmit={(body) => submit(body, null)}
+        placeholder="Leave a note…"
+      />
+    </div>
+  );
+}
+
+function CommentForm({
+  name,
+  onName,
+  onSubmit,
+  onCancel,
+  compact = false,
+  placeholder = "Leave a note…",
+}: {
+  name: string;
+  onName: (n: string) => void;
+  onSubmit: (body: string) => Promise<void> | void;
+  onCancel?: () => void;
+  compact?: boolean;
+  placeholder?: string;
+}) {
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function go(e: React.FormEvent) {
+    e.preventDefault();
+    if (!body.trim()) return;
+    setSending(true);
+    await onSubmit(body);
+    setBody("");
+    setSending(false);
+  }
+
+  return (
+    <form
+      onSubmit={go}
+      className={cn(
+        "space-y-3 rounded-2xl bg-ink-900 p-4",
+        compact && "p-3",
+      )}
+    >
+      <input
+        value={name}
+        onChange={(e) => onName(e.target.value)}
+        placeholder="Your name (saved for next time)"
+        maxLength={60}
+        className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
+      />
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder={placeholder}
+        required
+        maxLength={4000}
+        rows={compact ? 2 : 3}
+        autoFocus={compact}
+        className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
+      />
+      <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={status === "sending" || !body.trim()}
+          disabled={sending || !body.trim()}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
           <Send className="size-4" />
-          {status === "sending" ? "Posting…" : "Post comment"}
+          {sending ? "Posting…" : compact ? "Reply" : "Post comment"}
         </button>
-      </form>
-    </div>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full px-3 py-2 text-sm text-sand-100/60 hover:text-sand-100"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </form>
   );
 }

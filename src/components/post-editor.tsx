@@ -13,6 +13,7 @@ export type EditablePost = {
   excerpt: string;
   body: string;
   cover_image: string;
+  cover_alt: string;
   lat: string;
   lng: string;
   published: boolean;
@@ -25,6 +26,7 @@ const EMPTY: EditablePost = {
   excerpt: "",
   body: "",
   cover_image: "",
+  cover_alt: "",
   lat: "",
   lng: "",
   published: false,
@@ -115,6 +117,12 @@ export function PostEditor({ initial }: { initial?: EditablePost }) {
         placeholder="…or paste an image URL"
         value={post.cover_image}
         onChange={(e) => set("cover_image", e.target.value)}
+      />
+      <input
+        className={input}
+        placeholder="Cover alt text (describe the image for screen readers)"
+        value={post.cover_alt}
+        onChange={(e) => set("cover_alt", e.target.value)}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <input

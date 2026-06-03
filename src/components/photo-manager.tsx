@@ -11,6 +11,7 @@ export type ManagedPhoto = {
   url: string | null;
   storage_path: string | null;
   caption: string | null;
+  alt: string | null;
   sort_order: number;
 };
 
@@ -66,7 +67,7 @@ export function PhotoManager({
             storage_path: path,
             sort_order: order++,
           })
-          .select("id, url, storage_path, caption, sort_order")
+          .select("id, url, storage_path, caption, alt, sort_order")
           .single();
         if (error) throw new Error(error.message);
         added.push(data as ManagedPhoto);
@@ -91,17 +92,17 @@ export function PhotoManager({
     revalidate();
   }
 
-  async function saveCaption(photo: ManagedPhoto) {
+  async function saveField(
+    photo: ManagedPhoto,
+    field: "caption" | "alt",
+  ) {
     const supabase = getBrowserSupabase();
     await supabase
       ?.from("photos")
-      .update({ caption: photo.caption })
+      .update({ [field]: photo[field] })
       .eq("id", photo.id);
     setSavedId(photo.id);
-    setTimeout(
-      () => setSavedId((id) => (id === photo.id ? null : id)),
-      1500,
-    );
+    setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
   }
 
   return (
@@ -146,7 +147,7 @@ export function PhotoManager({
                 defaultValue={photo.caption ?? ""}
                 placeholder="Caption…"
                 onChange={(e) => (photo.caption = e.target.value)}
-                onBlur={() => saveCaption(photo)}
+                onBlur={() => saveField(photo, "caption")}
                 className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 pr-12 text-xs outline-none focus:border-ember-400"
               />
               {savedId === photo.id && (
@@ -155,6 +156,13 @@ export function PhotoManager({
                 </span>
               )}
             </div>
+            <input
+              defaultValue={photo.alt ?? ""}
+              placeholder="Alt text…"
+              onChange={(e) => (photo.alt = e.target.value)}
+              onBlur={() => saveField(photo, "alt")}
+              className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs text-sand-100/70 outline-none focus:border-ember-400"
+            />
           </div>
         ))}
 

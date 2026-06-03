@@ -51,7 +51,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
             {photo.url && (
               <Image
                 src={photo.url}
-                alt={photo.caption ?? ""}
+                alt={photo.alt ?? photo.caption ?? ""}
                 fill
                 sizes="(max-width: 640px) 50vw, 33vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -113,7 +113,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={optimizedSrc(photos[open].url!, 2048, 80)}
-                  alt={photos[open].caption ?? ""}
+                  alt={photos[open].alt ?? photos[open].caption ?? ""}
                   className="mx-auto max-h-[80dvh] w-auto rounded-2xl object-contain"
                 />
               )}
