@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { FileText, KeyRound, MessageSquare, Plus } from "lucide-react";
+import { FileText, KeyRound, MapPin, MessageSquare, Plus } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getPublishedPosts } from "@/lib/content";
+import { getPublishedPosts, getTrips } from "@/lib/content";
 import { PushToggle } from "@/components/push-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import { T } from "@/components/i18n";
@@ -65,6 +65,7 @@ async function loadStats() {
 
 export default async function AdminDashboard() {
   const stats = await loadStats();
+  const trips = await getTrips();
 
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
@@ -170,6 +171,50 @@ export default async function AdminDashboard() {
         {stats.posts.length === 0 && (
           <li className="px-5 py-4 text-sand-100/50">
             <T k="admin.noPosts" />
+          </li>
+        )}
+      </ul>
+
+      {/* Trips */}
+      <div className="mt-10 flex items-center justify-between">
+        <h2 className="font-display text-2xl font-semibold">
+          <T k="admin.trip.heading" />
+        </h2>
+        <Link
+          href="/admin/trips/new"
+          className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+        >
+          <Plus className="size-4" /> <T k="admin.trip.newTrip" />
+        </Link>
+      </div>
+      <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
+        {trips.map((tr) => (
+          <li
+            key={tr.id}
+            className="flex items-center justify-between gap-3 px-5 py-3.5"
+          >
+            <span className="flex min-w-0 items-center gap-2 truncate">
+              <MapPin className="size-4 shrink-0 text-ember-400" />
+              <span className="truncate">{tr.title}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-3">
+              {tr.start_date && (
+                <span className="hidden text-xs text-sand-100/40 sm:inline">
+                  {formatDate(tr.start_date)}
+                </span>
+              )}
+              <Link
+                href={`/admin/trips/${tr.id}`}
+                className="text-sm text-ember-400 hover:underline"
+              >
+                <T k="admin.edit" />
+              </Link>
+            </span>
+          </li>
+        ))}
+        {trips.length === 0 && (
+          <li className="px-5 py-4 text-sand-100/50">
+            <T k="admin.trip.none" />
           </li>
         )}
       </ul>

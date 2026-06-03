@@ -2,30 +2,22 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { notifyViewers } from "@/lib/notify";
-import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
-  revalidatePath("/");
-  revalidatePath("/map");
   revalidatePath("/trips");
-  if (slug) revalidatePath(`/posts/${slug}`);
-  if (alsoSlug && alsoSlug !== slug) revalidatePath(`/posts/${alsoSlug}`);
+  revalidatePath("/");
+  if (slug) revalidatePath(`/trips/${slug}`);
+  if (alsoSlug && alsoSlug !== slug) revalidatePath(`/trips/${alsoSlug}`);
 }
 
 const schema = z.object({
   title: z.string().trim().min(1),
   slug: z.string().trim().optional(),
-  location: z.string().optional(),
-  excerpt: z.string().optional(),
-  body: z.string().optional(),
+  summary: z.string().optional(),
   cover_image: z.string().optional(),
-  cover_alt: z.string().optional(),
-  trip_id: z.string().uuid().nullable().optional(),
-  lat: z.number().nullable().optional(),
-  lng: z.number().nullable().optional(),
-  published: z.boolean().optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
 });
 
 async function requireUser() {
@@ -52,51 +44,30 @@ export async function PUT(
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
-  const p = parsed.data;
-  const slug = p.slug || slugify(p.title);
+  const t = parsed.data;
+  const slug = t.slug || slugify(t.title);
 
-  // Set published_at on the publish transition (only if not already set).
   const { data: existing } = await supabase
-    .from("posts")
-    .select("published, published_at, slug")
+    .from("trips")
+    .select("slug")
     .eq("id", id)
     .maybeSingle();
 
   const { error } = await supabase
-    .from("posts")
+    .from("trips")
     .update({
-      title: p.title,
+      title: t.title,
       slug,
-      location: p.location || null,
-      excerpt: p.excerpt || null,
-      body: p.body || null,
-      cover_image: p.cover_image || null,
-      cover_alt: p.cover_alt || null,
-      trip_id: p.trip_id || null,
-      lat: p.lat ?? null,
-      lng: p.lng ?? null,
-      published: p.published ?? false,
-      published_at:
-        p.published && !existing?.published_at
-          ? new Date().toISOString()
-          : existing?.published_at ?? null,
+      summary: t.summary || null,
+      cover_image: t.cover_image || null,
+      start_date: t.start_date || null,
+      end_date: t.end_date || null,
     })
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Instantly refresh public pages (incl. the old slug if it changed).
   revalidatePublic(slug, existing?.slug);
-
-  // Fire a viewer notification only when crossing from unpublished → published.
-  if (p.published && !existing?.published) {
-    notifyViewers({
-      title: `New story: ${p.title}`,
-      body: p.excerpt ?? undefined,
-      url: `${env.siteUrl}/posts/${slug}`,
-    }).catch(() => {});
-  }
-
   return NextResponse.json({ ok: true });
 }
 
@@ -112,12 +83,13 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { data: existing } = await supabase
-    .from("posts")
+    .from("trips")
     .select("slug")
     .eq("id", id)
     .maybeSingle();
 
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  // Posts keep existing (trip_id is set null by the FK), so just unpin the trip.
+  const { error } = await supabase.from("trips").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   revalidatePublic(existing?.slug);
