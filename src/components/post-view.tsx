@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
@@ -12,6 +11,7 @@ import { Comments } from "@/components/comments";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
+import { RevealImage } from "@/components/reveal-image";
 import { T } from "@/components/i18n";
 
 /** Full article view, shared by the public post page and the admin preview. */
@@ -66,13 +66,12 @@ export function PostView({
 
       <header className="relative grain h-[70dvh] min-h-[460px] w-full overflow-hidden">
         {post.cover_image && (
-          <Image
+          <RevealImage
             src={post.cover_image}
             alt={post.cover_alt ?? post.title}
             fill
             priority
             sizes="100vw"
-            className="object-cover"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-ink-950/30 via-transparent to-ink-950" />
