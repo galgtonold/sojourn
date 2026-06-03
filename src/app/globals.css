@@ -126,13 +126,15 @@ body {
   opacity: 0.6;
 }
 
-/* Dark, readable popups (default inherits the site's light text onto white). */
+/* Dark, readable popups (default inherits the site's light text onto white).
+   !important because MapLibre's stylesheet loads after this one at equal
+   specificity and would otherwise keep its white background. */
 .maplibregl-popup-content {
-  background: var(--color-ink-900);
-  color: var(--color-sand-50);
+  background: var(--color-ink-900) !important;
+  color: var(--color-sand-50) !important;
   border: 1px solid color-mix(in oklab, white 10%, transparent);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 14px !important;
+  padding: 10px 12px !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   font-family: var(--font-sans);
 }
@@ -144,16 +146,16 @@ body {
 .maplibregl-popup-anchor-top .maplibregl-popup-tip,
 .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
 .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: var(--color-ink-900);
+  border-bottom-color: var(--color-ink-900) !important;
 }
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
 .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
 .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: var(--color-ink-900);
+  border-top-color: var(--color-ink-900) !important;
 }
 .maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--color-ink-900);
+  border-right-color: var(--color-ink-900) !important;
 }
 .maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--color-ink-900);
+  border-left-color: var(--color-ink-900) !important;
 }
