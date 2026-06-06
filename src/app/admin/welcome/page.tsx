@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
 
@@ -11,36 +12,82 @@ export default function Welcome() {
   const [phase, setPhase] = useState<"checking" | "ready" | "invalid">(
     "checking",
   );
+  const [detail, setDetail] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // The invite/recovery link drops a session into the URL; wait for it.
+  // Establish a session from whatever the invite/recovery link carried.
   useEffect(() => {
     const supabase = getBrowserSupabase();
     if (!supabase) {
       setPhase("invalid");
       return;
     }
-    let settled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        settled = true;
+
+    const url = new URL(window.location.href);
+    const q = url.searchParams;
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const errorDescription =
+      q.get("error_description") || hash.get("error_description");
+    const tokenHash = q.get("token_hash");
+    const type = (q.get("type") as EmailOtpType | null) ?? "invite";
+    const code = q.get("code");
+
+    function stripUrl() {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    let cancelled = false;
+    const sub = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && !cancelled) {
+        cancelled = true;
         setPhase("ready");
       }
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) {
-        settled = true;
-        setPhase("ready");
+
+    (async () => {
+      if (errorDescription) {
+        setDetail(errorDescription);
+        setPhase("invalid");
+        return;
       }
-    });
+      try {
+        if (tokenHash) {
+          // Preferred flow (no PKCE verifier needed).
+          const { error } = await supabase.auth.verifyOtp({
+            type,
+            token_hash: tokenHash,
+          });
+          if (error) throw error;
+        } else if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+        // Implicit (#access_token) links are picked up automatically.
+        const { data } = await supabase.auth.getSession();
+        if (data.session && !cancelled) {
+          cancelled = true;
+          setPhase("ready");
+        }
+        stripUrl();
+      } catch (e) {
+        if (cancelled) return;
+        setDetail(e instanceof Error ? e.message : null);
+        setPhase("invalid");
+      }
+    })();
+
     const timer = setTimeout(() => {
-      if (!settled) setPhase("invalid");
-    }, 4000);
+      if (!cancelled) {
+        setPhase((p) => (p === "checking" ? "invalid" : p));
+      }
+    }, 5000);
+
     return () => {
-      sub.subscription.unsubscribe();
+      cancelled = true;
+      sub.data.subscription.unsubscribe();
       clearTimeout(timer);
     };
   }, []);
@@ -75,7 +122,12 @@ export default function Welcome() {
         </div>
 
         {phase === "invalid" ? (
-          <p className="text-sm text-sand-100/60">{t("admin.welcome.invalid")}</p>
+          <div className="space-y-1">
+            <p className="text-sm text-sand-100/60">
+              {t("admin.welcome.invalid")}
+            </p>
+            {detail && <p className="text-xs text-sand-100/40">{detail}</p>}
+          </div>
         ) : phase === "checking" ? (
           <p className="text-sm text-sand-100/50">…</p>
         ) : done ? (
