@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Eye } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
+import { AiDraftPanel } from "@/components/ai-draft-panel";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
 import { InteractionManager } from "@/components/interaction-manager";
@@ -29,7 +30,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, ai_notes, updated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -99,7 +100,17 @@ export default async function EditPostPage({
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
-      <PostEditor initial={initial} trips={trips} />
+      {isAiConfigured && (
+        <div className="mb-8">
+          <AiDraftPanel
+            postId={data.id}
+            initialNotes={data.ai_notes ?? ""}
+            hasBody={Boolean(data.body)}
+          />
+        </div>
+      )}
+
+      <PostEditor key={data.updated_at} initial={initial} trips={trips} />
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <TrackManager
@@ -112,6 +123,7 @@ export default async function EditPostPage({
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <PhotoManager
+          key={data.updated_at}
           postId={data.id}
           slug={data.slug ?? ""}
           initial={photos ?? []}

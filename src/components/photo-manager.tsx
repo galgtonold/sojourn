@@ -92,6 +92,15 @@ export function PhotoManager({
       }
       setPhotos((p) => [...p, ...added]);
       revalidate();
+      // Enrich each new photo (vision description + place name) in the
+      // background — best effort, never blocks the upload.
+      for (const photo of added) {
+        fetch("/api/admin/ai/enrich-photo", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoId: photo.id }),
+        }).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
