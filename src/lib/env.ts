@@ -20,6 +20,14 @@ export const env = {
   mapStyleUrl:
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
     "https://tiles.openfreemap.org/styles/liberty",
+
+  // DeepSeek (AI drafting). Model IDs are configurable so naming never blocks.
+  deepseekApiKey: process.env.DEEPSEEK_API_KEY ?? "",
+  deepseekBaseUrl: process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
+  deepseekModelFast: process.env.DEEPSEEK_MODEL_FAST ?? "deepseek-chat",
+  deepseekModelReasoner:
+    process.env.DEEPSEEK_MODEL_REASONER ?? "deepseek-reasoner",
+  deepseekModelVision: process.env.DEEPSEEK_MODEL_VISION ?? "deepseek-chat",
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -33,3 +41,5 @@ export const isServiceRoleConfigured = Boolean(
 export const isPushConfigured = Boolean(
   env.vapidPublicKey && env.vapidPrivateKey,
 );
+
+export const isAiConfigured = Boolean(env.deepseekApiKey);

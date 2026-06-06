@@ -213,6 +213,18 @@ const en = {
   "admin.welcome.invalid":
     "This link is invalid or has expired. Ask for a new invite.",
 
+  "admin.ai.title": "AI draft",
+  "admin.ai.subtitle": "From your photos, routes and notes — in your voice.",
+  "admin.ai.notes": "Notes — bullet points, route, highlights, who you were with…",
+  "admin.ai.suggestQuestions": "Suggest questions",
+  "admin.ai.answersHint":
+    "Answer a few questions for a richer draft (optional):",
+  "admin.ai.generate": "Generate draft",
+  "admin.ai.skip": "Generate draft",
+  "admin.ai.generating": "Writing…",
+  "admin.ai.done": "Draft created — review and tweak it below.",
+  "admin.ai.overwriteConfirm": "Replace the existing text with the AI draft?",
+
   "admin.upload.cover": "Cover image",
   "admin.upload.drop": "Drop an image or click to upload",
   "admin.upload.uploading": "Uploading…",
@@ -481,6 +493,20 @@ const de: Dict = {
   "admin.welcome.done": "Fertig — du wirst weitergeleitet…",
   "admin.welcome.invalid":
     "Dieser Link ist ungültig oder abgelaufen. Bitte um eine neue Einladung.",
+
+  "admin.ai.title": "KI-Entwurf",
+  "admin.ai.subtitle": "Aus deinen Fotos, Routen und Notizen — in deinem Stil.",
+  "admin.ai.notes":
+    "Notizen — Stichpunkte, Route, Höhepunkte, Begleitung …",
+  "admin.ai.suggestQuestions": "Fragen vorschlagen",
+  "admin.ai.answersHint":
+    "Beantworte ein paar Fragen für einen besseren Entwurf (optional):",
+  "admin.ai.generate": "Entwurf erstellen",
+  "admin.ai.skip": "Entwurf erstellen",
+  "admin.ai.generating": "Schreibe…",
+  "admin.ai.done": "Entwurf erstellt — unten prüfen und anpassen.",
+  "admin.ai.overwriteConfirm":
+    "Vorhandenen Text durch den KI-Entwurf ersetzen?",
 
   "admin.upload.cover": "Titelbild",
   "admin.upload.drop": "Bild hierher ziehen oder zum Hochladen klicken",
