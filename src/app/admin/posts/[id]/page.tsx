@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Eye } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getViewer } from "@/lib/auth";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
@@ -53,10 +54,14 @@ export default async function EditPostPage({
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
 
-  const { data: trips } = await supabase!
+  const viewer = await getViewer();
+  const { data: allTrips } = await supabase!
     .from("trips")
     .select("id, title")
     .order("start_date", { ascending: false });
+  const trips = viewer.isOwner
+    ? (allTrips ?? [])
+    : (allTrips ?? []).filter((t) => viewer.tripIds.includes(t.id));
 
   const initial: EditablePost = {
     id: data.id,
@@ -94,7 +99,7 @@ export default async function EditPostPage({
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
-      <PostEditor initial={initial} trips={trips ?? []} />
+      <PostEditor initial={initial} trips={trips} />
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <TrackManager

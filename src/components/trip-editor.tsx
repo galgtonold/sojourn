@@ -25,7 +25,13 @@ const EMPTY: EditableTrip = {
   end_date: "",
 };
 
-export function TripEditor({ initial }: { initial?: EditableTrip }) {
+export function TripEditor({
+  initial,
+  canDelete = true,
+}: {
+  initial?: EditableTrip;
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const t = useT();
   const [trip, setTrip] = useState<EditableTrip>(initial ?? EMPTY);
@@ -138,7 +144,7 @@ export function TripEditor({ initial }: { initial?: EditableTrip }) {
           <Save className="size-4" />{" "}
           {busy ? t("admin.editor.saving") : t("admin.editor.save")}
         </button>
-        {isEdit && (
+        {isEdit && canDelete && (
           <button
             onClick={remove}
             disabled={busy}

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getViewer } from "@/lib/auth";
 import { TripEditor, type EditableTrip } from "@/components/trip-editor";
 import { T } from "@/components/i18n";
 
@@ -17,6 +18,9 @@ export default async function EditTripPage({
   const { id } = await params;
 
   if (!isSupabaseConfigured) redirect("/admin");
+
+  const viewer = await getViewer();
+  if (!viewer.isOwner && !viewer.tripIds.includes(id)) redirect("/admin");
 
   const supabase = await getServerSupabase();
   const { data, error } = await supabase!
@@ -48,7 +52,7 @@ export default async function EditTripPage({
       <h1 className="mb-8 font-display text-4xl font-semibold">
         <T k="admin.trip.editTrip" />
       </h1>
-      <TripEditor initial={initial} />
+      <TripEditor initial={initial} canDelete={viewer.isOwner} />
     </div>
   );
 }

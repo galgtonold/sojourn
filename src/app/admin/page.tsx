@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { FileText, KeyRound, MapPin, MessageSquare, Plus } from "lucide-react";
+import { FileText, KeyRound, MapPin, MessageSquare, Plus, Users } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getPublishedPosts, getTrips } from "@/lib/content";
+import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import { T } from "@/components/i18n";
@@ -11,7 +12,7 @@ import { formatDate } from "@/lib/utils";
 export const metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
 
-async function loadStats() {
+async function loadStats(viewer: Viewer) {
   const supabase = await getServerSupabase();
   if (!supabase) {
     const posts = await getPublishedPosts();
@@ -34,38 +35,86 @@ async function loadStats() {
     };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const owner = viewer.isOwner;
+  // A member is bounded to their granted trips; a sentinel keeps `.in()` valid
+  // when they have none yet.
+  const scope = owner
+    ? null
+    : viewer.tripIds.length
+      ? viewer.tripIds
+      : ["00000000-0000-0000-0000-000000000000"];
 
-  const [{ count: postCount }, { count: commentCount }, comments, posts] =
-    await Promise.all([
-      supabase.from("posts").select("*", { count: "exact", head: true }),
-      supabase.from("comments").select("*", { count: "exact", head: true }),
+  let postsQuery = supabase
+    .from("posts")
+    .select("id, title, slug, published")
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (scope) postsQuery = postsQuery.in("trip_id", scope);
+
+  let postCountQuery = supabase
+    .from("posts")
+    .select("*", { count: "exact", head: true });
+  if (scope) postCountQuery = postCountQuery.in("trip_id", scope);
+
+  const [{ data: posts }, { count: postCount }] = await Promise.all([
+    postsQuery,
+    postCountQuery,
+  ]);
+
+  const postIds = (posts ?? []).map((p) => p.id);
+
+  // Comments: all for the owner, otherwise only on the member's posts.
+  let recentComments: {
+    id: string;
+    author_name: string;
+    body: string;
+    created_at: string;
+  }[] = [];
+  let commentCount = 0;
+  if (owner) {
+    const [c, { count }] = await Promise.all([
       supabase
         .from("comments")
         .select("id, author_name, body, created_at")
         .order("created_at", { ascending: false })
         .limit(8),
-      supabase
-        .from("posts")
-        .select("id, title, slug, published")
-        .order("updated_at", { ascending: false })
-        .limit(20),
+      supabase.from("comments").select("*", { count: "exact", head: true }),
     ]);
+    recentComments = c.data ?? [];
+    commentCount = count ?? 0;
+  } else if (postIds.length) {
+    const [c, { count }] = await Promise.all([
+      supabase
+        .from("comments")
+        .select("id, author_name, body, created_at")
+        .in("post_id", postIds)
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("comments")
+        .select("*", { count: "exact", head: true })
+        .in("post_id", postIds),
+    ]);
+    recentComments = c.data ?? [];
+    commentCount = count ?? 0;
+  }
 
   return {
-    email: user?.email ?? null,
+    email: viewer.email,
     postCount: postCount ?? 0,
-    commentCount: commentCount ?? 0,
-    recentComments: comments.data ?? [],
-    posts: posts.data ?? [],
+    commentCount,
+    recentComments,
+    posts: posts ?? [],
   };
 }
 
 export default async function AdminDashboard() {
-  const stats = await loadStats();
-  const trips = await getTrips();
+  const viewer = await getViewer();
+  const stats = await loadStats(viewer);
+  const allTrips = await getTrips();
+  const trips = viewer.isOwner
+    ? allTrips
+    : allTrips.filter((t) => viewer.tripIds.includes(t.id));
 
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
@@ -80,8 +129,16 @@ export default async function AdminDashboard() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <PushToggle />
+        <div className="flex flex-wrap items-center gap-3">
+          {viewer.isOwner && <PushToggle />}
+          {viewer.isOwner && isSupabaseConfigured && (
+            <Link
+              href="/admin/members"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
+            >
+              <Users className="size-4" /> <T k="admin.members.link" />
+            </Link>
+          )}
           {isSupabaseConfigured && (
             <Link
               href="/admin/account"
@@ -180,12 +237,14 @@ export default async function AdminDashboard() {
         <h2 className="font-display text-2xl font-semibold">
           <T k="admin.trip.heading" />
         </h2>
-        <Link
-          href="/admin/trips/new"
-          className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
-        >
-          <Plus className="size-4" /> <T k="admin.trip.newTrip" />
-        </Link>
+        {viewer.isOwner && (
+          <Link
+            href="/admin/trips/new"
+            className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+          >
+            <Plus className="size-4" /> <T k="admin.trip.newTrip" />
+          </Link>
+        )}
       </div>
       <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
         {trips.map((tr) => (

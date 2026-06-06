@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { TripEditor } from "@/components/trip-editor";
+import { getViewer } from "@/lib/auth";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "New trip" };
+export const dynamic = "force-dynamic";
 
-export default function NewTripPage() {
+export default async function NewTripPage() {
+  const viewer = await getViewer();
+  if (!viewer.isOwner) redirect("/admin");
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
       <Link

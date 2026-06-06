@@ -30,8 +30,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname.startsWith("/admin/login");
+  // The invite/recovery link establishes its session client-side, so this page
+  // must be reachable before a session cookie exists.
+  const isWelcome = pathname.startsWith("/admin/welcome");
 
-  if (pathname.startsWith("/admin") && !isLogin && !user) {
+  if (pathname.startsWith("/admin") && !isLogin && !isWelcome && !user) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
   if (isLogin && user) {

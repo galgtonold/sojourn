@@ -184,6 +184,35 @@ const en = {
   "admin.trip.end": "End date",
   "admin.trip.deleteConfirm": "Delete this trip? Its posts stay, just unlinked.",
 
+  "admin.members.heading": "Collaborators",
+  "admin.members.subtitle":
+    "Invite people and give them access to specific trips.",
+  "admin.members.link": "Collaborators",
+  "admin.members.email": "Email address",
+  "admin.members.invite": "Invite",
+  "admin.members.inviting": "Inviting…",
+  "admin.members.none": "No collaborators yet.",
+  "admin.members.noTrips": "Create a trip first to grant access.",
+  "admin.members.edit": "Edit access",
+  "admin.members.save": "Save access",
+  "admin.members.remove": "Remove",
+  "admin.members.removeConfirm":
+    "Remove this collaborator? They lose all access.",
+  "admin.members.sent": "Invite email sent.",
+  "admin.members.granted": "Access updated.",
+  "admin.members.linkFallback":
+    "Email couldn’t be sent — share this link with them:",
+  "admin.members.copy": "Copy",
+  "admin.members.copied": "Copied!",
+  "admin.members.noAccess": "No trips yet",
+
+  "admin.welcome.title": "Set your password",
+  "admin.welcome.body": "Choose a password to finish setting up your account.",
+  "admin.welcome.save": "Set password",
+  "admin.welcome.done": "All set — taking you in…",
+  "admin.welcome.invalid":
+    "This link is invalid or has expired. Ask for a new invite.",
+
   "admin.upload.cover": "Cover image",
   "admin.upload.drop": "Drop an image or click to upload",
   "admin.upload.uploading": "Uploading…",
@@ -421,6 +450,36 @@ const de: Dict = {
   "admin.trip.end": "Enddatum",
   "admin.trip.deleteConfirm":
     "Diese Reise löschen? Die Beiträge bleiben erhalten, nur die Verknüpfung wird entfernt.",
+
+  "admin.members.heading": "Mitwirkende",
+  "admin.members.subtitle":
+    "Lade Personen ein und gib ihnen Zugriff auf bestimmte Reisen.",
+  "admin.members.link": "Mitwirkende",
+  "admin.members.email": "E-Mail-Adresse",
+  "admin.members.invite": "Einladen",
+  "admin.members.inviting": "Einladen…",
+  "admin.members.none": "Noch keine Mitwirkenden.",
+  "admin.members.noTrips": "Erstelle zuerst eine Reise, um Zugriff zu gewähren.",
+  "admin.members.edit": "Zugriff bearbeiten",
+  "admin.members.save": "Zugriff speichern",
+  "admin.members.remove": "Entfernen",
+  "admin.members.removeConfirm":
+    "Diese Person entfernen? Sie verliert jeglichen Zugriff.",
+  "admin.members.sent": "Einladungs-E-Mail gesendet.",
+  "admin.members.granted": "Zugriff aktualisiert.",
+  "admin.members.linkFallback":
+    "E-Mail konnte nicht gesendet werden — teile diesen Link mit der Person:",
+  "admin.members.copy": "Kopieren",
+  "admin.members.copied": "Kopiert!",
+  "admin.members.noAccess": "Noch keine Reisen",
+
+  "admin.welcome.title": "Passwort festlegen",
+  "admin.welcome.body":
+    "Wähle ein Passwort, um die Einrichtung deines Kontos abzuschließen.",
+  "admin.welcome.save": "Passwort festlegen",
+  "admin.welcome.done": "Fertig — du wirst weitergeleitet…",
+  "admin.welcome.invalid":
+    "Dieser Link ist ungültig oder abgelaufen. Bitte um eine neue Einladung.",
 
   "admin.upload.cover": "Titelbild",
   "admin.upload.drop": "Bild hierher ziehen oder zum Hochladen klicken",

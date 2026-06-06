@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getViewer } from "@/lib/auth";
 import {
   CommentModeration,
   type ModerationRow,
@@ -14,13 +15,31 @@ export const dynamic = "force-dynamic";
 async function load(): Promise<ModerationRow[]> {
   const supabase = await getServerSupabase();
   if (!supabase) return [];
-  const { data } = await supabase
+
+  // Members only moderate comments on posts within their granted trips.
+  const viewer = await getViewer();
+  let postIds: string[] | null = null;
+  if (!viewer.isOwner) {
+    const scope = viewer.tripIds.length
+      ? viewer.tripIds
+      : ["00000000-0000-0000-0000-000000000000"];
+    const { data: myPosts } = await supabase
+      .from("posts")
+      .select("id")
+      .in("trip_id", scope);
+    postIds = (myPosts ?? []).map((p) => p.id as string);
+    if (postIds.length === 0) return [];
+  }
+
+  let query = supabase
     .from("comments")
     .select(
       "id, body, author_name, created_at, hidden, parent_id, post_id, posts(title, slug)",
     )
     .order("created_at", { ascending: false })
     .limit(200);
+  if (postIds) query = query.in("post_id", postIds);
+  const { data } = await query;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data ?? []).map((c: any) => {
