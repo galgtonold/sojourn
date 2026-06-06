@@ -55,13 +55,7 @@ export function MembersManager({
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "failed");
-      setNotice(
-        j.status === "granted"
-          ? t("admin.members.granted")
-          : j.emailed
-            ? t("admin.members.sent")
-            : t("admin.members.linkFallback"),
-      );
+      setNotice(j.status === "granted" ? t("admin.members.granted") : null);
       if (j.link) setLink(j.link);
       setEmail("");
       setPicked(new Set());
