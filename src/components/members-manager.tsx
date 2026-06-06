@@ -143,13 +143,13 @@ export function MembersManager({
             {busy ? t("admin.members.inviting") : t("admin.members.invite")}
           </button>
           {error && <span className="text-sm text-red-400">{error}</span>}
-          {notice && !link && (
-            <span className="text-sm text-lagoon-400">{notice}</span>
-          )}
+          {notice && <span className="text-sm text-lagoon-400">{notice}</span>}
         </div>
         {link && (
           <div className="space-y-1.5 rounded-xl bg-ink-800 p-3">
-            <p className="text-sm text-sand-100/70">{notice}</p>
+            <p className="text-sm text-sand-100/70">
+              {t("admin.members.linkShare")}
+            </p>
             <div className="flex items-center gap-2">
               <input
                 readOnly

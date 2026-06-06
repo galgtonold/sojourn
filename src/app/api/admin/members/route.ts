@@ -50,7 +50,6 @@ export async function POST(req: Request) {
   let userId: string | null = null;
   let status: "invited" | "granted" = "invited";
   let emailed = false;
-  let link: string | undefined;
 
   // Already a known user? Just (re)grant — they sign in normally.
   const { data: existing } = await admin
@@ -63,14 +62,13 @@ export async function POST(req: Request) {
     userId = existing.id;
     status = "granted";
   } else {
-    // New user: invite (creates the account + sends the email).
+    // New user: try to send the invite email (works once the template is set
+    // up); either way we create the account so we can hand back a working link.
     const inv = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
     if (!inv.error && inv.data?.user) {
       userId = inv.data.user.id;
       emailed = true;
     } else {
-      // Email send failed (e.g. no SMTP) — ensure the account exists and hand
-      // back a link the owner can share manually.
       const created = await admin.auth.admin.createUser({
         email,
         email_confirm: true,
@@ -90,12 +88,6 @@ export async function POST(req: Request) {
           { status: 500 },
         );
       }
-      const gen = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo },
-      });
-      link = gen.data?.properties?.action_link;
     }
   }
 
@@ -113,6 +105,22 @@ export async function POST(req: Request) {
       tripIds.map((trip_id) => ({ trip_id, user_id: userId })),
       { onConflict: "trip_id,user_id", ignoreDuplicates: true },
     );
+  }
+
+  // A direct set-password link that the welcome page verifies via token_hash —
+  // works regardless of email templates / PKCE. Returned for new invitees so
+  // the owner can always share it manually.
+  let link: string | undefined;
+  if (status === "invited") {
+    const gen = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
+    const hashed = gen.data?.properties?.hashed_token;
+    if (hashed) {
+      link = `${env.siteUrl}/admin/welcome?token_hash=${hashed}&type=recovery`;
+    }
   }
 
   return NextResponse.json({ ok: true, status, emailed, link });
