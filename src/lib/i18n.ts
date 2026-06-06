@@ -200,8 +200,8 @@ const en = {
     "Remove this collaborator? They lose all access.",
   "admin.members.sent": "Invite email sent.",
   "admin.members.granted": "Access updated.",
-  "admin.members.linkFallback":
-    "Email couldn’t be sent — share this link with them:",
+  "admin.members.linkFallback": "Couldn’t send the invite email automatically.",
+  "admin.members.linkShare": "Share this set-up link with them:",
   "admin.members.copy": "Copy",
   "admin.members.copied": "Copied!",
   "admin.members.noAccess": "No trips yet",
@@ -468,7 +468,8 @@ const de: Dict = {
   "admin.members.sent": "Einladungs-E-Mail gesendet.",
   "admin.members.granted": "Zugriff aktualisiert.",
   "admin.members.linkFallback":
-    "E-Mail konnte nicht gesendet werden — teile diesen Link mit der Person:",
+    "Die Einladungs-E-Mail konnte nicht automatisch gesendet werden.",
+  "admin.members.linkShare": "Teile diesen Einrichtungs-Link mit der Person:",
   "admin.members.copy": "Kopieren",
   "admin.members.copied": "Kopiert!",
   "admin.members.noAccess": "Noch keine Reisen",
