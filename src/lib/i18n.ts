@@ -224,6 +224,13 @@ const en = {
   "admin.ai.generating": "Writing…",
   "admin.ai.done": "Draft created — review and tweak it below.",
   "admin.ai.overwriteConfirm": "Replace the existing text with the AI draft?",
+  "admin.ai.step.enrich": "Analysing photos",
+  "admin.ai.step.outline": "Outlining",
+  "admin.ai.step.section": "Writing section {a}/{b}",
+  "admin.ai.step.captions": "Captions",
+  "admin.ai.step.save": "Saving",
+  "admin.ai.autocaption": "Auto-caption photos",
+  "admin.ai.autocaptionDone": "Captioned {n} photos.",
 
   "admin.upload.cover": "Cover image",
   "admin.upload.drop": "Drop an image or click to upload",
@@ -507,6 +514,13 @@ const de: Dict = {
   "admin.ai.done": "Entwurf erstellt — unten prüfen und anpassen.",
   "admin.ai.overwriteConfirm":
     "Vorhandenen Text durch den KI-Entwurf ersetzen?",
+  "admin.ai.step.enrich": "Fotos analysieren",
+  "admin.ai.step.outline": "Gliederung erstellen",
+  "admin.ai.step.section": "Abschnitt {a}/{b} schreiben",
+  "admin.ai.step.captions": "Bildunterschriften",
+  "admin.ai.step.save": "Speichern",
+  "admin.ai.autocaption": "Fotos automatisch beschriften",
+  "admin.ai.autocaptionDone": "{n} Fotos beschriftet.",
 
   "admin.upload.cover": "Titelbild",
   "admin.upload.drop": "Bild hierher ziehen oder zum Hochladen klicken",
