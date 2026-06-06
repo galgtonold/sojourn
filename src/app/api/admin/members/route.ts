@@ -49,7 +49,6 @@ export async function POST(req: Request) {
 
   let userId: string | null = null;
   let status: "invited" | "granted" = "invited";
-  let emailed = false;
 
   // Already a known user? Just (re)grant — they sign in normally.
   const { data: existing } = await admin
@@ -62,32 +61,26 @@ export async function POST(req: Request) {
     userId = existing.id;
     status = "granted";
   } else {
-    // New user: try to send the invite email (works once the template is set
-    // up); either way we create the account so we can hand back a working link.
-    const inv = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
-    if (!inv.error && inv.data?.user) {
-      userId = inv.data.user.id;
-      emailed = true;
-    } else {
-      const created = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-      });
-      userId = created.data?.user?.id ?? null;
-      if (!userId) {
-        const { data: again } = await admin
-          .from("profiles")
-          .select("id")
-          .ilike("email", email)
-          .maybeSingle();
-        userId = again?.id ?? null;
-      }
-      if (!userId) {
-        return NextResponse.json(
-          { error: inv.error?.message ?? "Could not create user" },
-          { status: 500 },
-        );
-      }
+    // Create a confirmed account; we hand the owner a set-up link to share
+    // (the built-in invite email can't be customised without custom SMTP).
+    const created = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    });
+    userId = created.data?.user?.id ?? null;
+    if (!userId) {
+      const { data: again } = await admin
+        .from("profiles")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+      userId = again?.id ?? null;
+    }
+    if (!userId) {
+      return NextResponse.json(
+        { error: created.error?.message ?? "Could not create user" },
+        { status: 500 },
+      );
     }
   }
 
@@ -107,9 +100,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // A direct set-password link that the welcome page verifies via token_hash —
-  // works regardless of email templates / PKCE. Returned for new invitees so
-  // the owner can always share it manually.
+  // A direct set-password link the welcome page verifies via token_hash —
+  // works regardless of email templates / PKCE.
   let link: string | undefined;
   if (status === "invited") {
     const gen = await admin.auth.admin.generateLink({
@@ -123,5 +115,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, status, emailed, link });
+  return NextResponse.json({ ok: true, status, link });
 }
