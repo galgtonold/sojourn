@@ -4,6 +4,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { isAiConfigured } from "@/lib/env";
 import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
+import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
 export const maxDuration = 60;
 
@@ -85,6 +86,12 @@ export async function POST(req: Request) {
           alt: item.alt?.trim() || null,
         })
         .eq("id", item.id);
+      // Refresh the embedding now that caption/alt are part of the photo's text.
+      await embedPhotoRecord(supabase, item.id, {
+        operation: "photo_embed",
+        postId,
+        userId: user.id,
+      });
       count++;
     }
     return NextResponse.json({ count });

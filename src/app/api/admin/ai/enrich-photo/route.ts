@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isAiConfigured } from "@/lib/env";
 import { computeEnrichment } from "@/lib/ai/enrich";
+import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
 export const maxDuration = 60;
 
@@ -55,6 +56,13 @@ export async function POST(req: Request) {
       enriched_at: new Date().toISOString(),
     })
     .eq("id", photo.id);
+
+  // Keep the photo semantically searchable as soon as it has a description.
+  await embedPhotoRecord(supabase, photo.id, {
+    operation: "photo_embed",
+    postId: photo.post_id,
+    userId: user.id,
+  });
 
   return NextResponse.json({ ok: true, ai_description, place_name });
 }

@@ -3,10 +3,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
-import { env, isEmbeddingsConfigured } from "@/lib/env";
+import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
-import { embedText, postEmbeddingInput, toVectorLiteral } from "@/lib/ai/embeddings";
+import { embedPostRecord } from "@/lib/ai/embed-records";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/");
@@ -92,29 +92,13 @@ export async function PUT(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Refresh the semantic-search embedding for this post (best-effort: never let
-  // an embeddings hiccup fail the save).
-  if (isEmbeddingsConfigured) {
-    try {
-      const vec = await embedText(
-        postEmbeddingInput({
-          title: p.title,
-          excerpt: p.excerpt,
-          location: p.location,
-          body,
-        }),
-        { operation: "post_embed", postId: id, userId: user.id },
-      );
-      if (vec) {
-        await supabase
-          .from("posts")
-          .update({ embedding: toVectorLiteral(vec), embedded_at: new Date().toISOString() })
-          .eq("id", id);
-      }
-    } catch {
-      /* search will catch up on the next backfill */
-    }
-  }
+  // Refresh the post's semantic-search embedding (best-effort, never blocks the
+  // save). No-ops when embeddings aren't configured.
+  await embedPostRecord(supabase, id, {
+    operation: "post_embed",
+    postId: id,
+    userId: user.id,
+  });
 
   // Instantly refresh public pages (incl. the old slug if it changed).
   revalidatePublic(slug, existing?.slug);
