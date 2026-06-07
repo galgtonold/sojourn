@@ -1,6 +1,13 @@
 // Server-only DeepSeek client (OpenAI-compatible Chat Completions API).
 import "server-only";
 import { env, isAiConfigured } from "@/lib/env";
+import { recordUsage } from "@/lib/ai/usage";
+
+export type UsageMeta = {
+  operation: string;
+  postId?: string | null;
+  userId?: string | null;
+};
 
 export const aiModels = {
   fast: env.deepseekModelFast,
@@ -24,6 +31,7 @@ export async function deepseekChat(opts: {
   temperature?: number;
   maxTokens?: number;
   json?: boolean;
+  meta?: UsageMeta;
 }): Promise<string> {
   if (!isAiConfigured) throw new Error("AI is not configured");
 
@@ -47,6 +55,25 @@ export async function deepseekChat(opts: {
     throw new Error(`DeepSeek ${res.status}: ${detail.slice(0, 300)}`);
   }
   const data = await res.json();
+
+  if (opts.meta && data?.usage) {
+    const u = data.usage;
+    const prompt = u.prompt_tokens ?? 0;
+    const hit = u.prompt_cache_hit_tokens ?? 0;
+    void recordUsage({
+      operation: opts.meta.operation,
+      model: opts.model,
+      postId: opts.meta.postId,
+      userId: opts.meta.userId,
+      usage: {
+        prompt_tokens: prompt,
+        completion_tokens: u.completion_tokens ?? 0,
+        cache_hit_tokens: hit,
+        cache_miss_tokens: u.prompt_cache_miss_tokens ?? Math.max(0, prompt - hit),
+      },
+    });
+  }
+
   return data?.choices?.[0]?.message?.content ?? "";
 }
 

@@ -28,6 +28,10 @@ export const env = {
   deepseekModelReasoner:
     process.env.DEEPSEEK_MODEL_REASONER ?? "deepseek-reasoner",
   deepseekModelVision: process.env.DEEPSEEK_MODEL_VISION ?? "deepseek-chat",
+  // Pricing for the cost meter — USD per 1M tokens (override to match DeepSeek).
+  aiPriceCacheHit: Number(process.env.AI_PRICE_INPUT_CACHE_HIT_USD ?? "0.07"),
+  aiPriceCacheMiss: Number(process.env.AI_PRICE_INPUT_CACHE_MISS_USD ?? "0.27"),
+  aiPriceOutput: Number(process.env.AI_PRICE_OUTPUT_USD ?? "1.10"),
 };
 
 export const isSupabaseConfigured = Boolean(

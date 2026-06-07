@@ -1,7 +1,15 @@
 import Link from "next/link";
-import { FileText, KeyRound, MapPin, MessageSquare, Plus, Users } from "lucide-react";
+import {
+  FileText,
+  Gauge,
+  KeyRound,
+  MapPin,
+  MessageSquare,
+  Plus,
+  Users,
+} from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
 import { getPublishedPosts, getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
@@ -137,6 +145,14 @@ export default async function AdminDashboard() {
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
             >
               <Users className="size-4" /> <T k="admin.members.link" />
+            </Link>
+          )}
+          {viewer.isOwner && isAiConfigured && (
+            <Link
+              href="/admin/ai-usage"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
+            >
+              <Gauge className="size-4" /> <T k="admin.usage.link" />
             </Link>
           )}
           {isSupabaseConfigured && (

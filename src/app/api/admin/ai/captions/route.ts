@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       temperature: 0.5,
       json: true,
       maxTokens: 2500,
+      meta: { operation: "captions", postId, userId: user.id },
       messages: [
         {
           role: "system",

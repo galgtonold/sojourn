@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       temperature: 0.6,
       json: true,
       maxTokens: 1500,
+      meta: { operation: "outline", postId, userId: user.id },
       messages: [
         {
           role: "system",

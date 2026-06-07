@@ -2,7 +2,7 @@
 // place name. Both are cached on the photo row so each photo is processed once.
 import "server-only";
 import { env, isAiConfigured } from "@/lib/env";
-import { deepseekChat, aiModels } from "@/lib/ai/deepseek";
+import { deepseekChat, aiModels, type UsageMeta } from "@/lib/ai/deepseek";
 import { reverseGeocode } from "@/lib/ai/geocode";
 import { optimizedSrc } from "@/lib/utils";
 
@@ -16,7 +16,10 @@ export type EnrichablePhoto = {
   enriched_at: string | null;
 };
 
-export async function describeImage(imageUrl: string): Promise<string | null> {
+export async function describeImage(
+  imageUrl: string,
+  meta?: UsageMeta,
+): Promise<string | null> {
   if (!isAiConfigured) return null;
   const abs = imageUrl.startsWith("http")
     ? imageUrl
@@ -26,6 +29,7 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
       model: aiModels.vision,
       temperature: 0.4,
       maxTokens: 400,
+      meta,
       messages: [
         {
           role: "system",
@@ -51,7 +55,10 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
 
 /** Computes (but does not persist) enrichment for a photo, skipping fields that
  *  already have a value. */
-export async function computeEnrichment(photo: EnrichablePhoto): Promise<{
+export async function computeEnrichment(
+  photo: EnrichablePhoto,
+  meta?: UsageMeta,
+): Promise<{
   ai_description: string | null;
   place_name: string | null;
 }> {
@@ -61,7 +68,7 @@ export async function computeEnrichment(photo: EnrichablePhoto): Promise<{
 
   const [description, place] = await Promise.all([
     needsDescription
-      ? describeImage(optimizedSrc(photo.url as string, 1024, 70))
+      ? describeImage(optimizedSrc(photo.url as string, 1024, 70), meta)
       : Promise.resolve(photo.ai_description),
     needsPlace
       ? reverseGeocode(photo.lat as number, photo.lng as number)
