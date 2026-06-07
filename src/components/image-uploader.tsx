@@ -49,7 +49,7 @@ export function ImageUploader({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <Image
             src={value}
-            alt="Cover preview"
+            alt={t("admin.upload.coverAlt")}
             fill
             sizes="(max-width: 768px) 100vw, 700px"
             className="object-cover"
@@ -64,7 +64,7 @@ export function ImageUploader({
             onClick={() => onChange("")}
             disabled={busy}
             className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
-            aria-label="Remove image"
+            aria-label={t("admin.upload.remove")}
           >
             <X className="size-4" />
           </button>

@@ -72,7 +72,7 @@ export function Comments({
   async function submit(body: string, parentId: string | null) {
     const text = body.trim();
     if (!text) return;
-    const author = name.trim() || "Anonymous";
+    const author = name.trim() || t("comments.anonymous");
 
     const optimistic: Comment = {
       id: `temp-${Date.now()}`,
@@ -249,7 +249,7 @@ function CommentForm({
   onSubmit,
   onCancel,
   compact = false,
-  placeholder = "Leave a note…",
+  placeholder,
 }: {
   name: string;
   onName: (n: string) => void;
@@ -289,7 +289,7 @@ function CommentForm({
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("comments.note")}
         required
         maxLength={4000}
         rows={compact ? 2 : 3}

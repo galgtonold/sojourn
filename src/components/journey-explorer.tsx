@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 import type { Track } from "@/lib/types";
 
 export type JourneyStop = {
@@ -50,6 +51,7 @@ export function JourneyExplorer({
   stops: JourneyStop[];
   tracks: Track[];
 }) {
+  const t = useT();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [index, setIndex] = useState(0);
@@ -172,7 +174,7 @@ export function JourneyExplorer({
         href={backHref}
         className="glass absolute left-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-sand-50 transition hover:text-ember-400"
       >
-        <ArrowLeft className="size-4" /> Back to {backLabel}
+        <ArrowLeft className="size-4" /> {t("journey.back", { label: backLabel })}
       </Link>
 
       {/* Stepper card */}
@@ -188,7 +190,7 @@ export function JourneyExplorer({
                 <button
                   onClick={() => setLightbox(current.photoUrl!)}
                   className="relative size-16 shrink-0 overflow-hidden rounded-xl"
-                  aria-label="Open photo"
+                  aria-label={t("journey.openPhoto")}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -215,7 +217,7 @@ export function JourneyExplorer({
                     onClick={() => setLightbox(current.photoUrl!)}
                     className="mt-0.5 text-xs text-ember-400 hover:underline"
                   >
-                    Open photo
+                    {t("journey.openPhoto")}
                   </button>
                 )}
                 {current.href && (
@@ -223,7 +225,7 @@ export function JourneyExplorer({
                     href={current.href}
                     className="ml-3 mt-0.5 inline text-xs text-sand-100/60 hover:underline"
                   >
-                    View story →
+                    {t("journey.viewStory")}
                   </Link>
                 )}
               </div>
@@ -234,14 +236,14 @@ export function JourneyExplorer({
                 onClick={() => setIndex((i) => (i - 1 + ordered.length) % ordered.length)}
                 className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-sm transition hover:border-white/25"
               >
-                <ChevronLeft className="size-4" /> Prev
+                <ChevronLeft className="size-4" /> {t("journey.prev")}
               </button>
               <div className="flex gap-1">
                 {ordered.map((s, i) => (
                   <button
                     key={s.id}
                     onClick={() => setIndex(i)}
-                    aria-label={`Go to stop ${i + 1}`}
+                    aria-label={t("journey.goToStop", { n: i + 1 })}
                     className={`size-1.5 rounded-full transition ${
                       i === index ? "bg-ember-400" : "bg-white/25 hover:bg-white/50"
                     }`}
@@ -252,7 +254,7 @@ export function JourneyExplorer({
                 onClick={() => setIndex((i) => (i + 1) % ordered.length)}
                 className="inline-flex items-center gap-1 rounded-full bg-ember-500 px-3 py-1.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
               >
-                Next <ChevronRight className="size-4" />
+                {t("journey.next")} <ChevronRight className="size-4" />
               </button>
             </div>
           </div>
@@ -267,7 +269,7 @@ export function JourneyExplorer({
         >
           <button
             onClick={() => setLightbox(null)}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20"
           >
             <X className="size-5" />

@@ -4,6 +4,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 import type { Track } from "@/lib/types";
 
 export type MapMarker = {
@@ -46,6 +47,7 @@ export function TripMap({
   route?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const container = useRef<HTMLDivElement>(null);
 
   const hasContent = markers.length > 0 || tracks.length > 0 || photos.length > 0;
@@ -145,7 +147,7 @@ export function TripMap({
         const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
           <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
           ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
-          ${p.href ? `<div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">Open story →</div>` : ""}
+          ${p.href ? `<div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">${esc(t("map.openStory"))}</div>` : ""}
         </a>`;
         new maplibregl.Marker({ element: el })
           .setLngLat([p.lng, p.lat])

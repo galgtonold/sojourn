@@ -27,8 +27,10 @@ function ProfileChart({ series }: { series: ElevationSeries }) {
       preserveAspectRatio="none"
       className="h-40 w-full"
       role="img"
-      aria-label="Elevation profile"
     >
+      <title>
+        <T k="post.elevationAria" />
+      </title>
       <defs>
         <linearGradient id="elev-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f56a1f" stopOpacity="0.45" />
@@ -68,7 +70,7 @@ export function ElevationProfile({ tracks }: { tracks: Track[] }) {
           >
             <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-sand-100/70">
               <span className="font-medium text-sand-50">
-                {t.name || "Route"}
+                {t.name || <T k="post.routeFallback" />}
               </span>
               <span>{formatDistance(s.distanceM)}</span>
               <span className="flex items-center gap-1.5">

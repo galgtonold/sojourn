@@ -56,6 +56,44 @@ const en = {
   "comments.cancel": "Cancel",
   "comments.loadEarlier": "Load earlier comments ({n} more)",
   "comments.error": "Couldn’t post that — please try again.",
+  "comments.anonymous": "Anonymous",
+
+  "common.close": "Close",
+  "common.dismiss": "Dismiss",
+
+  "journey.back": "Back to {label}",
+  "journey.openPhoto": "Open photo",
+  "journey.viewStory": "View story →",
+  "journey.prev": "Prev",
+  "journey.next": "Next",
+  "journey.goToStop": "Go to stop {n}",
+  "map.openStory": "Open story →",
+
+  "notFound.title": "Off the map",
+  "notFound.body": "This trail doesn’t lead anywhere — yet.",
+  "notFound.back": "Back to the journal",
+
+  "preview.draft": "Draft preview",
+  "preview.notPublished": "not published",
+  "preview.backToEditor": "Back to editor",
+
+  "footer.demo":
+    "Demo mode — showing bundled sample content. Configure Supabase to go live.",
+
+  "common.previous": "Previous",
+  "common.next": "Next",
+
+  "post.routeFallback": "Route",
+  "post.elevationAria": "Elevation profile",
+
+  "admin.gallery.delete": "Delete photo",
+  "admin.gallery.geotagged": "Geotagged from EXIF — shows on the map",
+  "admin.routes.delete": "Delete track",
+  "admin.upload.remove": "Remove image",
+  "admin.upload.coverAlt": "Cover preview",
+  "admin.ask.delete": "Delete",
+  "admin.ask.removeOption": "Remove option",
+  "admin.ask.markCorrect": "Mark as correct answer",
 
   "subscribe.title": "Enjoyed the read?",
   "subscribe.body": "Get a notification when the next story goes live.",
@@ -131,6 +169,8 @@ const en = {
   "admin.moderateAll": "Moderate all →",
   "admin.noComments": "No comments yet.",
 
+  "admin.login.title": "Admin",
+  "admin.login.emailPlaceholder": "you@example.com",
   "admin.login.subtitle": "Sign in to manage entries, photos and comments.",
   "admin.login.demo":
     "Demo mode: set Supabase env vars and create an admin user to enable login.",
@@ -359,6 +399,44 @@ const de: Dict = {
   "comments.cancel": "Abbrechen",
   "comments.loadEarlier": "Frühere Kommentare laden ({n} weitere)",
   "comments.error": "Konnte nicht gesendet werden — bitte erneut versuchen.",
+  "comments.anonymous": "Anonym",
+
+  "common.close": "Schließen",
+  "common.dismiss": "Ausblenden",
+
+  "journey.back": "Zurück zu {label}",
+  "journey.openPhoto": "Foto öffnen",
+  "journey.viewStory": "Beitrag ansehen →",
+  "journey.prev": "Zurück",
+  "journey.next": "Weiter",
+  "journey.goToStop": "Zu Station {n}",
+  "map.openStory": "Beitrag öffnen →",
+
+  "notFound.title": "Abseits der Karte",
+  "notFound.body": "Dieser Pfad führt (noch) nirgendwohin.",
+  "notFound.back": "Zurück zum Journal",
+
+  "preview.draft": "Entwurfsvorschau",
+  "preview.notPublished": "nicht veröffentlicht",
+  "preview.backToEditor": "Zurück zum Editor",
+
+  "footer.demo":
+    "Demo-Modus — gebündelte Beispielinhalte. Richte Supabase ein, um live zu gehen.",
+
+  "common.previous": "Zurück",
+  "common.next": "Weiter",
+
+  "post.routeFallback": "Route",
+  "post.elevationAria": "Höhenprofil",
+
+  "admin.gallery.delete": "Foto löschen",
+  "admin.gallery.geotagged": "Geotag aus EXIF — erscheint auf der Karte",
+  "admin.routes.delete": "Track löschen",
+  "admin.upload.remove": "Bild entfernen",
+  "admin.upload.coverAlt": "Cover-Vorschau",
+  "admin.ask.delete": "Löschen",
+  "admin.ask.removeOption": "Option entfernen",
+  "admin.ask.markCorrect": "Als richtige Antwort markieren",
 
   "subscribe.title": "Hat dir der Beitrag gefallen?",
   "subscribe.body":
@@ -439,6 +517,8 @@ const de: Dict = {
   "admin.moderateAll": "Alle moderieren →",
   "admin.noComments": "Noch keine Kommentare.",
 
+  "admin.login.title": "Admin",
+  "admin.login.emailPlaceholder": "you@example.com",
   "admin.login.subtitle":
     "Melde dich an, um Beiträge, Fotos und Kommentare zu verwalten.",
   "admin.login.demo":
