@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteChrome } from "@/components/site-chrome";
 import { RouteProgress } from "@/components/route-progress";
+import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { I18nProvider } from "@/components/i18n";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
     <html lang="de" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
         <I18nProvider>
+          <ServiceWorkerRegistrar />
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>

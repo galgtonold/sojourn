@@ -16,6 +16,7 @@ const en = {
   "nav.map": "Map",
   "nav.search": "Search",
   "nav.admin": "Admin",
+  "nav.menu": "Menu",
 
   "footer.tagline": "A travel journal. Built to wander, made to last.",
 
@@ -326,6 +327,7 @@ const en = {
   "admin.gallery.copyTag": "Copy inline tag",
   "admin.gallery.copied": "Copied!",
   "admin.gallery.add": "Add photos",
+  "admin.gallery.camera": "Camera",
   "admin.gallery.located": "Located",
   "admin.gallery.saved": "Saved ✓",
 
@@ -372,6 +374,7 @@ const de: Dict = {
   "nav.map": "Karte",
   "nav.search": "Suche",
   "nav.admin": "Admin",
+  "nav.menu": "Menü",
 
   "footer.tagline":
     "Ein Reisetagebuch. Zum Umherziehen gebaut, zum Bleiben gemacht.",
@@ -698,6 +701,7 @@ const de: Dict = {
   "admin.gallery.copyTag": "Inline-Tag kopieren",
   "admin.gallery.copied": "Kopiert!",
   "admin.gallery.add": "Fotos hinzufügen",
+  "admin.gallery.camera": "Kamera",
   "admin.gallery.located": "Verortet",
   "admin.gallery.saved": "Gespeichert ✓",
 
