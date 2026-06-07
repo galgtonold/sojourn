@@ -9,6 +9,9 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ai:live": "RUN_LIVE_AI=1 vitest run test/e2e/live.test.ts",
     "gen:vapid": "web-push generate-vapid-keys"
   },
   "dependencies": {
@@ -38,7 +41,8 @@
     "eslint": "^9.15.0",
     "eslint-config-next": "^15.5.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": "22.x"
