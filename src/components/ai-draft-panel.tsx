@@ -6,7 +6,12 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 
 type Lang = "de" | "en";
-type Section = { heading: string; beat: string; photo_ids: string[] };
+type Section = {
+  heading: string;
+  beat: string;
+  photo_ids: string[];
+  interaction?: { kind: "poll" | "quiz"; idea: string } | null;
+};
 type Outline = {
   title: string;
   excerpt: string;

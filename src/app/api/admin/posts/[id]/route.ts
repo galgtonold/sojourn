@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
+import { materializeInteractions } from "@/lib/ai/materialize";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/");
@@ -62,6 +63,11 @@ export async function PUT(
     .eq("id", id)
     .maybeSingle();
 
+  // Materialise inline :::poll / :::quiz blocks the author typed by hand.
+  const body = p.body
+    ? (await materializeInteractions(supabase, id, p.body)).body
+    : null;
+
   const { error } = await supabase
     .from("posts")
     .update({
@@ -69,7 +75,7 @@ export async function PUT(
       slug,
       location: p.location || null,
       excerpt: p.excerpt || null,
-      body: p.body || null,
+      body,
       cover_image: p.cover_image || null,
       cover_alt: p.cover_alt || null,
       trip_id: p.trip_id || null,

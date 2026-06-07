@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
+import { materializeInteractions } from "@/lib/ai/materialize";
 
 const schema = z.object({
   title: z.string().trim().min(1),
@@ -57,6 +58,17 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Materialise inline :::poll / :::quiz blocks now that the post has an id.
+  if (p.body && data?.id) {
+    const { body: materialized, created } = await materializeInteractions(
+      supabase,
+      data.id,
+      p.body,
+    );
+    if (created > 0)
+      await supabase.from("posts").update({ body: materialized }).eq("id", data.id);
+  }
 
   // Refresh the cached public pages immediately.
   revalidatePath("/");
