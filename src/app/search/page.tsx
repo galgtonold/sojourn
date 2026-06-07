@@ -1,5 +1,6 @@
-import { searchPosts } from "@/lib/content";
+import { searchPosts, searchPhotos } from "@/lib/content";
 import { PostCard } from "@/components/post-card";
+import { PhotoResultCard } from "@/components/photo-result-card";
 import { SearchBox } from "@/components/search-box";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
@@ -13,7 +14,11 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
-  const results = query ? await searchPosts(query) : [];
+  // Hybrid search over stories and photos, fetched in parallel.
+  const [posts, photos] = query
+    ? await Promise.all([searchPosts(query), searchPhotos(query)])
+    : [[], []];
+  const empty = query.length > 0 && posts.length === 0 && photos.length === 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
@@ -29,20 +34,37 @@ export default async function SearchPage({
         <SearchBox initial={query} />
       </div>
 
-      {query && (
-        <p className="mt-8 text-sm text-sand-100/50">
-          <T
-            k={results.length === 1 ? "search.result" : "search.results"}
-            vars={{ n: results.length, q: query }}
-          />
+      {empty && (
+        <p className="mt-10 text-sm text-sand-100/50">
+          <T k="search.noResults" vars={{ q: query }} />
         </p>
       )}
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {results.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
+      {posts.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+            <T k="search.stories" /> · {posts.length}
+          </h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {photos.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+            <T k="search.photos" /> · {photos.length}
+          </h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {photos.map((photo) => (
+              <PhotoResultCard key={photo.id} photo={photo} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
