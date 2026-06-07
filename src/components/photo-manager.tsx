@@ -15,6 +15,9 @@ export type ManagedPhoto = {
   alt: string | null;
   lat: number | null;
   lng: number | null;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
   sort_order: number;
 };
 
@@ -74,7 +77,8 @@ export function PhotoManager({
       let order = photos.length;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
-        const { url, path, lat, lng, takenAt } = await uploadImage(file, postId);
+        const { url, path, lat, lng, takenAt, width, height, blurhash } =
+          await uploadImage(file, postId);
         const { data, error } = await supabase
           .from("photos")
           .insert({
@@ -84,9 +88,14 @@ export function PhotoManager({
             lat,
             lng,
             taken_at: takenAt,
+            width,
+            height,
+            blurhash,
             sort_order: order++,
           })
-          .select("id, url, storage_path, caption, alt, lat, lng, sort_order")
+          .select(
+            "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order",
+          )
           .single();
         if (error) throw new Error(error.message);
         added.push(data as ManagedPhoto);

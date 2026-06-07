@@ -40,7 +40,9 @@ export default async function EditPostPage({
 
   const { data: photos } = await supabase!
     .from("photos")
-    .select("id, url, storage_path, caption, alt, lat, lng, sort_order")
+    .select(
+      "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order",
+    )
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
 

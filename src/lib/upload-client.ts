@@ -6,6 +6,7 @@
 // originals (smaller storage, faster optimizer source). Falls back to the
 // untouched file if the browser can't process it (e.g. HEIC).
 import exifr from "exifr";
+import { encode } from "blurhash";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB hard cap on the original
@@ -16,6 +17,9 @@ export type UploadResult = {
   lat: number | null;
   lng: number | null;
   takenAt: string | null;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
 };
 
 // Pull GPS + capture time from the ORIGINAL file (downscaling to WebP strips
@@ -45,6 +49,46 @@ async function readExif(
     /* no date */
   }
   return { lat, lng, takenAt };
+}
+
+// Capture pixel dimensions + a blurhash placeholder by decoding the image
+// once. Best-effort: returns nulls on any failure (e.g. HEIC the browser can't
+// decode), so the photo still uploads — just without a blur placeholder. The
+// blurhash columns already exist on `photos`; this is what finally fills them.
+async function readImageMeta(
+  file: File,
+): Promise<{ width: number | null; height: number | null; blurhash: string | null }> {
+  try {
+    const bitmap = await createImageBitmap(file, {
+      imageOrientation: "from-image",
+    });
+    const width = bitmap.width;
+    const height = bitmap.height;
+
+    let blurhash: string | null = null;
+    try {
+      // Encode from a tiny canvas (≤32px longest edge) — cheap, yet faithful.
+      const maxEdge = 32;
+      const scale = Math.min(1, maxEdge / Math.max(width, height));
+      const w = Math.max(1, Math.round(width * scale));
+      const h = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        blurhash = encode(data, w, h, 4, 3);
+      }
+    } catch {
+      /* blurhash is optional */
+    }
+    bitmap.close?.();
+    return { width, height, blurhash };
+  } catch {
+    return { width: null, height: null, blurhash: null };
+  }
 }
 
 async function downscale(
@@ -100,6 +144,7 @@ export async function uploadImage(
   if (file.size > MAX_BYTES) throw new Error("Image is larger than 25 MB.");
 
   const exif = await readExif(file);
+  const meta = await readImageMeta(file);
 
   const { blob, ext, type } = await downscale(
     file,
@@ -116,5 +161,5 @@ export async function uploadImage(
   if (error) throw new Error(error.message);
 
   const { data } = supabase.storage.from("photos").getPublicUrl(path);
-  return { url: data.publicUrl, path, ...exif };
+  return { url: data.publicUrl, path, ...exif, ...meta };
 }

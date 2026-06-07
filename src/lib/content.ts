@@ -174,6 +174,75 @@ export async function getTrips(): Promise<Trip[]> {
   }
 }
 
+// A single geotagged photo with just enough of its parent post to link back —
+// deliberately light (no full post hydration) so the global photo map scales.
+export type GeoPhoto = {
+  id: string;
+  lat: number;
+  lng: number;
+  url: string;
+  caption: string | null;
+  blurhash: string | null;
+  postSlug: string;
+  postTitle: string;
+};
+
+function demoGeoPhotos(): GeoPhoto[] {
+  return demoPosts.flatMap((post) =>
+    post.published
+      ? post.photos
+          .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
+          .map((ph) => ({
+            id: ph.id,
+            lat: ph.lat as number,
+            lng: ph.lng as number,
+            url: ph.url as string,
+            caption: ph.caption,
+            blurhash: ph.blurhash,
+            postSlug: post.slug,
+            postTitle: post.title,
+          }))
+      : [],
+  );
+}
+
+// Every geotagged photo across published posts, for the global photo map.
+export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
+  const supabase = getPublicSupabase();
+  if (!supabase) return demoGeoPhotos();
+  try {
+    const { data, error } = await supabase
+      .from("photos")
+      .select(
+        "id, url, caption, blurhash, lat, lng, posts!inner(slug, title, published)",
+      )
+      .not("lat", "is", null)
+      .not("lng", "is", null)
+      .eq("posts.published", true)
+      .order("taken_at", { ascending: true, nullsFirst: false });
+    if (error || !data) return demoGeoPhotos();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).flatMap((r) => {
+      const post = Array.isArray(r.posts) ? r.posts[0] : r.posts;
+      if (!r.url || r.lat == null || r.lng == null || !post) return [];
+      return [
+        {
+          id: r.id,
+          lat: r.lat,
+          lng: r.lng,
+          url: r.url,
+          caption: r.caption,
+          blurhash: r.blurhash,
+          postSlug: post.slug,
+          postTitle: post.title,
+        },
+      ];
+    });
+  } catch {
+    return demoGeoPhotos();
+  }
+}
+
 export async function searchPosts(query: string): Promise<PostWithRelations[]> {
   const q = query.trim();
   if (!q) return [];
