@@ -35,6 +35,12 @@ export function SiteHeader() {
             <T k="nav.map" />
           </Link>
           <Link
+            href="/photos"
+            className="rounded-full px-3 py-1.5 text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
+          >
+            <T k="nav.photos" />
+          </Link>
+          <Link
             href="/search"
             className="flex size-9 items-center justify-center rounded-full text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
           >
