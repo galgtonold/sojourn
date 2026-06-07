@@ -30,8 +30,7 @@ export function SiteFooter() {
       </div>
       {DEMO_MODE && (
         <div className="border-t border-white/5 bg-ember-600/10 px-6 py-2 text-center text-xs text-ember-300">
-          Demo mode — showing bundled sample content. Configure Supabase to go
-          live.
+          <T k="footer.demo" />
         </div>
       )}
     </footer>

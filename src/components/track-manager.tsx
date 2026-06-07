@@ -111,7 +111,7 @@ export function TrackManager({
               </span>
               <button
                 onClick={() => remove(tk)}
-                aria-label="Delete track"
+                aria-label={t("admin.routes.delete")}
                 className="text-red-400/80 transition hover:text-red-400"
               >
                 <Trash2 className="size-4" />

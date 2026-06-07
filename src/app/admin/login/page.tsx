@@ -20,7 +20,7 @@ export default function AdminLogin() {
     setBusy(true);
     const supabase = getBrowserSupabase();
     if (!supabase) {
-      setError("Supabase isn't configured yet (demo mode).");
+      setError(t("admin.login.demo"));
       setBusy(false);
       return;
     }
@@ -42,7 +42,9 @@ export default function AdminLogin() {
       >
         <div className="flex items-center gap-2">
           <Compass className="size-6 text-ember-400" />
-          <h1 className="font-display text-2xl font-semibold">Admin</h1>
+          <h1 className="font-display text-2xl font-semibold">
+            {t("admin.login.title")}
+          </h1>
         </div>
         <p className="text-sm text-sand-100/50">{t("admin.login.subtitle")}</p>
 
@@ -57,7 +59,7 @@ export default function AdminLogin() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder={t("admin.login.emailPlaceholder")}
           className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
         />
         <input

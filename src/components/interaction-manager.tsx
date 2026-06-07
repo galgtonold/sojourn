@@ -183,7 +183,7 @@ export function InteractionManager({
                 </button>
                 <button
                   onClick={() => remove(it)}
-                  aria-label="Delete"
+                  aria-label={t("admin.ask.delete")}
                   className="text-red-400/80 hover:text-red-400"
                 >
                   <Trash2 className="size-4" />
@@ -227,7 +227,7 @@ export function InteractionManager({
                   name="correct"
                   checked={correctIndex === i}
                   onChange={() => setCorrectIndex(i)}
-                  title="Mark as correct answer"
+                  title={t("admin.ask.markCorrect")}
                   className="size-4 accent-[#1fb0a6]"
                 />
               )}
@@ -245,7 +245,7 @@ export function InteractionManager({
                     setOptions((o) => o.filter((_, j) => j !== i));
                     setCorrectIndex((c) => (c >= i && c > 0 ? c - 1 : c));
                   }}
-                  aria-label="Remove option"
+                  aria-label={t("admin.ask.removeOption")}
                   className="text-sand-100/40 hover:text-sand-100"
                 >
                   <X className="size-4" />

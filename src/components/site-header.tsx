@@ -36,10 +36,12 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/search"
-            aria-label="Search"
             className="flex size-9 items-center justify-center rounded-full text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
           >
             <Search className="size-4" />
+            <span className="sr-only">
+              <T k="search.title" />
+            </span>
           </Link>
           <span className="ml-1 border-l border-white/10 pl-1">
             <LanguageSwitcher />

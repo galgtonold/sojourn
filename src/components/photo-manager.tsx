@@ -164,14 +164,14 @@ export function PhotoManager({
               <button
                 type="button"
                 onClick={() => remove(photo)}
-                aria-label="Delete photo"
+                aria-label={t("admin.gallery.delete")}
                 className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-red-300 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950"
               >
                 <Trash2 className="size-4" />
               </button>
               {photo.lat != null && photo.lng != null && (
                 <span
-                  title="Geotagged from EXIF — shows on the map"
+                  title={t("admin.gallery.geotagged")}
                   className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-ink-950/70 px-2 py-0.5 text-[10px] text-lagoon-400"
                 >
                   <MapPin className="size-3" /> {t("admin.gallery.located")}

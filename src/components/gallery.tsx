@@ -5,8 +5,10 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc } from "@/lib/utils";
+import { useT } from "@/components/i18n";
 
 export function Gallery({ photos }: { photos: Photo[] }) {
+  const t = useT();
   const [open, setOpen] = useState<number | null>(null);
 
   const close = useCallback(() => setOpen(null), []);
@@ -72,7 +74,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
           >
             <button
               onClick={close}
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20"
             >
               <X className="size-5" />
@@ -80,7 +82,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
             {photos.length > 1 && (
               <>
                 <button
-                  aria-label="Previous"
+                  aria-label={t("common.previous")}
                   onClick={(e) => {
                     e.stopPropagation();
                     prev();
@@ -90,7 +92,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
                   <ChevronLeft className="size-6" />
                 </button>
                 <button
-                  aria-label="Next"
+                  aria-label={t("common.next")}
                   onClick={(e) => {
                     e.stopPropagation();
                     next();

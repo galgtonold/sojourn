@@ -114,7 +114,7 @@ export function SubscribePrompt() {
               </div>
               <button
                 onClick={dismiss}
-                aria-label="Dismiss"
+                aria-label={t("common.dismiss")}
                 className="grid size-7 shrink-0 place-items-center rounded-full text-sand-100/50 transition hover:bg-white/10 hover:text-sand-50"
               >
                 <X className="size-4" />

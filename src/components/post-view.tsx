@@ -57,9 +57,16 @@ export function PostView({
     <article>
       {preview && (
         <div className="fixed inset-x-0 top-0 z-[80] bg-ember-600 px-4 py-1.5 text-center text-sm font-medium text-ink-950">
-          Draft preview{post.published ? "" : " — not published"} ·{" "}
+          <T k="preview.draft" />
+          {!post.published && (
+            <>
+              {" — "}
+              <T k="preview.notPublished" />
+            </>
+          )}
+          {" · "}
           <Link href={`/admin/posts/${post.id}`} className="underline">
-            Back to editor
+            <T k="preview.backToEditor" />
           </Link>
         </div>
       )}
