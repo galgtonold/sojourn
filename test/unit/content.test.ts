@@ -9,6 +9,7 @@ import {
   getPublishedPostsByTrip,
   getPostBySlug,
   getTrips,
+  getGeotaggedPhotos,
   searchPosts,
   searchPhotos,
   getComments,
@@ -82,6 +83,24 @@ describe("content layer (demo fallback)", () => {
     expect(withComments.length).toBeGreaterThan(0);
     expect(withComments.every((c) => c.post_id === "post-fitzroy")).toBe(true);
     expect(await getComments("no-such-post")).toEqual([]);
+  });
+
+  it("getGeotaggedPhotos returns only geotagged photos of published posts", async () => {
+    const photos = await getGeotaggedPhotos();
+    expect(photos.length).toBeGreaterThan(0);
+    // Every result is fully geotagged, has an image, and links to a real post.
+    const slugs = new Set(demoPosts.filter((p) => p.published).map((p) => p.slug));
+    for (const ph of photos) {
+      expect(Number.isFinite(ph.lat)).toBe(true);
+      expect(Number.isFinite(ph.lng)).toBe(true);
+      expect(ph.url).toBeTruthy();
+      expect(slugs.has(ph.postSlug)).toBe(true);
+    }
+    // It must not invent photos that lack coordinates.
+    const expected = demoPosts
+      .filter((p) => p.published)
+      .flatMap((p) => p.photos.filter((ph) => ph.lat != null && ph.lng != null && ph.url));
+    expect(photos.length).toBe(expected.length);
   });
 
   it("getInteractions and getPostForPreview no-op without a backend", async () => {

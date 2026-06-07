@@ -3,26 +3,11 @@ import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
+import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
 import { notifyAdmin } from "@/lib/notify";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
-
-const COMMENT_SELECT =
-  "id, post_id, parent_id, author_name, body, created_at, comment_likes(count)";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hydrate(row: any) {
-  return {
-    id: row.id,
-    post_id: row.post_id,
-    parent_id: row.parent_id,
-    author_name: row.author_name,
-    body: row.body,
-    created_at: row.created_at,
-    like_count: row.comment_likes?.[0]?.count ?? 0,
-  };
-}
 
 // GET /api/comments?postId=&limit= → fresh list (newest `limit`, returned
 // chronologically) + total count, bypassing page-level ISR caching.
@@ -45,7 +30,7 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
-    comments: (data ?? []).map(hydrate).reverse(),
+    comments: (data ?? []).map(hydrateComment).reverse(),
     total: count ?? 0,
   });
 }

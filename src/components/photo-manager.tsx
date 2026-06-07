@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
+import { Camera, Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,9 @@ export type ManagedPhoto = {
   alt: string | null;
   lat: number | null;
   lng: number | null;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
   sort_order: number;
 };
 
@@ -29,6 +32,7 @@ export function PhotoManager({
   initial: ManagedPhoto[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initial);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -73,7 +77,8 @@ export function PhotoManager({
       let order = photos.length;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
-        const { url, path, lat, lng, takenAt } = await uploadImage(file, postId);
+        const { url, path, lat, lng, takenAt, width, height, blurhash } =
+          await uploadImage(file, postId);
         const { data, error } = await supabase
           .from("photos")
           .insert({
@@ -83,9 +88,14 @@ export function PhotoManager({
             lat,
             lng,
             taken_at: takenAt,
+            width,
+            height,
+            blurhash,
             sort_order: order++,
           })
-          .select("id, url, storage_path, caption, alt, lat, lng, sort_order")
+          .select(
+            "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order",
+          )
           .single();
         if (error) throw new Error(error.message);
         added.push(data as ManagedPhoto);
@@ -143,9 +153,21 @@ export function PhotoManager({
             {t("admin.gallery.subtitle")}
           </p>
         </div>
-        <span className="shrink-0 text-sm text-sand-100/50">
-          {t("admin.gallery.photos", { n: photos.length })}
-        </span>
+        <div className="flex shrink-0 items-center gap-3">
+          {/* Camera capture — opens the camera directly on mobile; on desktop
+              this falls back to the normal file picker. */}
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-sand-100/70 transition hover:border-white/30 hover:text-sand-50 sm:hidden"
+          >
+            <Camera className="size-4" />
+            {t("admin.gallery.camera")}
+          </button>
+          <span className="text-sm text-sand-100/50">
+            {t("admin.gallery.photos", { n: photos.length })}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -165,7 +187,7 @@ export function PhotoManager({
                 type="button"
                 onClick={() => remove(photo)}
                 aria-label={t("admin.gallery.delete")}
-                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-red-300 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950"
+                className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-ink-950/70 text-red-300 transition hover:bg-ink-950 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
               >
                 <Trash2 className="size-4" />
               </button>
@@ -246,6 +268,14 @@ export function PhotoManager({
         type="file"
         accept="image/*"
         multiple
+        className="hidden"
+        onChange={(e) => addFiles(e.target.files)}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         className="hidden"
         onChange={(e) => addFiles(e.target.files)}
       />

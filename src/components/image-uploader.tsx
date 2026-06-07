@@ -63,7 +63,7 @@ export function ImageUploader({
             type="button"
             onClick={() => onChange("")}
             disabled={busy}
-            className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-ink-950/70 text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
+            className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-ink-950/70 text-sand-50 transition hover:bg-ink-950 disabled:opacity-50 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
             aria-label={t("admin.upload.remove")}
           >
             <X className="size-4" />
@@ -72,7 +72,7 @@ export function ImageUploader({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-3 py-1 text-xs text-sand-50 opacity-0 transition group-hover:opacity-100 hover:bg-ink-950 disabled:opacity-50"
+            className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-3 py-1.5 text-xs text-sand-50 transition hover:bg-ink-950 disabled:opacity-50 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
           >
             {busy ? t("admin.upload.uploading") : t("admin.upload.replace")}
           </button>

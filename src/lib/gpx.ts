@@ -22,8 +22,7 @@ function lineLength(coords: number[][]): number {
 
 export type ParsedGpx = {
   name: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  geojson: { type: "FeatureCollection"; features: any[] };
+  geojson: GeoJSON.FeatureCollection<GeoJSON.LineString>;
   distanceM: number;
   pointCount: number;
 };
@@ -57,7 +56,7 @@ export function parseGpx(xml: string): ParsedGpx {
   if (lines.length === 0) collect("rte", "rtept");
   if (lines.length === 0) throw new Error("No track points found in this GPX.");
 
-  const features = lines.map((coords) => ({
+  const features: GeoJSON.Feature<GeoJSON.LineString>[] = lines.map((coords) => ({
     type: "Feature",
     properties: {},
     geometry: { type: "LineString", coordinates: coords },
@@ -87,8 +86,9 @@ export type ElevationSeries = {
 
 // Builds a distance-vs-elevation series from a track's GeoJSON, or null if the
 // track has no elevation data.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildElevationSeries(geojson: any): ElevationSeries | null {
+export function buildElevationSeries(
+  geojson: GeoJSON.FeatureCollection<GeoJSON.LineString> | null | undefined,
+): ElevationSeries | null {
   const coords: number[][] = [];
   for (const f of geojson?.features ?? []) {
     for (const c of f.geometry?.coordinates ?? []) coords.push(c);

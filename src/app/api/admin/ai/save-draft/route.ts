@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { materializeInteractions } from "@/lib/ai/materialize";
 
 export const maxDuration = 60;
@@ -17,17 +17,10 @@ const schema = z.object({
 });
 
 // Persists the assembled draft (the client builds the body from the sections).
-export async function POST(req: Request) {
-  const supabase = await getServerSupabase();
-  if (!supabase) return NextResponse.json({ error: "not configured" }, { status: 503 });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const POST = adminRoute(schema, saveDraft);
 
-  const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid" }, { status: 400 });
-  const p = parsed.data;
+async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) {
+  const p = input;
 
   // Resolve the cover photo's URL / fallbacks.
   let cover: { url: string | null; lat: number | null; lng: number | null; place_name: string | null } | null = null;
@@ -56,5 +49,5 @@ export async function POST(req: Request) {
   const { error } = await supabase.from("posts").update(update).eq("id", p.postId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  return { ok: true };
 }
