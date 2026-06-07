@@ -146,6 +146,9 @@ const en = {
   "search.placeholder": "Patagonia, glaciers, Kyoto…",
   "search.results": "{n} results for “{q}”",
   "search.result": "{n} result for “{q}”",
+  "search.stories": "Stories",
+  "search.photos": "Photos",
+  "search.noResults": "Nothing found for “{q}”.",
 
   "trips.title": "Trips",
   "trips.subtitle":
@@ -519,6 +522,9 @@ const de: Dict = {
   "search.placeholder": "Patagonien, Gletscher, Kyoto…",
   "search.results": "{n} Treffer für „{q}“",
   "search.result": "{n} Treffer für „{q}“",
+  "search.stories": "Geschichten",
+  "search.photos": "Fotos",
+  "search.noResults": "Nichts gefunden für „{q}“.",
 
   "trips.title": "Reisen",
   "trips.subtitle":

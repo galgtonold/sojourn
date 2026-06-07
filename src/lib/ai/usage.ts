@@ -26,6 +26,9 @@ export async function recordUsage(input: {
   usage: Usage;
   postId?: string | null;
   userId?: string | null;
+  // Embeddings price per token differently from chat, so callers may supply an
+  // exact cost; otherwise it's derived from the chat cache/output rates.
+  costUsd?: number;
 }): Promise<void> {
   try {
     const admin = getAdminSupabase();
@@ -39,7 +42,7 @@ export async function recordUsage(input: {
       completion_tokens: input.usage.completion_tokens,
       cache_hit_tokens: input.usage.cache_hit_tokens,
       cache_miss_tokens: input.usage.cache_miss_tokens,
-      cost_usd: estimateCost(input.usage),
+      cost_usd: input.costUsd ?? estimateCost(input.usage),
     });
   } catch {
     /* metering is best effort */

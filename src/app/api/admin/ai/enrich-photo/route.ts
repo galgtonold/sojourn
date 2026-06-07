@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { isAiConfigured } from "@/lib/env";
 import { computeEnrichment } from "@/lib/ai/enrich";
+import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
 export const maxDuration = 60;
 
@@ -47,6 +48,13 @@ async function enrichPhoto({
       enriched_at: new Date().toISOString(),
     })
     .eq("id", photo.id);
+
+  // Keep the photo semantically searchable as soon as it has a description.
+  await embedPhotoRecord(supabase, photo.id, {
+    operation: "photo_embed",
+    postId: photo.post_id,
+    userId: user.id,
+  });
 
   return { ok: true, ai_description, place_name };
 }

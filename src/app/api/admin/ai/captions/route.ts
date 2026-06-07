@@ -2,6 +2,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
+import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
 export const maxDuration = 60;
 
@@ -77,6 +78,12 @@ async function captions({
         alt: item.alt?.trim() || null,
       })
       .eq("id", item.id);
+    // Refresh the embedding now that caption/alt are part of the photo's text.
+    await embedPhotoRecord(supabase, item.id, {
+      operation: "photo_embed",
+      postId,
+      userId: user.id,
+    });
     count++;
   }
   return { count };
