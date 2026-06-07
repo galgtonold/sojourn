@@ -1,5 +1,5 @@
 import { getGeotaggedPhotos } from "@/lib/content";
-import { TripMap, type PhotoPin } from "@/components/trip-map";
+import { PhotoExplorer } from "@/components/photo-explorer";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "Photo map" };
@@ -7,15 +7,6 @@ export const revalidate = 60;
 
 export default async function PhotosPage() {
   const photos = await getGeotaggedPhotos();
-
-  const pins: PhotoPin[] = photos.map((p) => ({
-    id: p.id,
-    lat: p.lat,
-    lng: p.lng,
-    url: p.url,
-    caption: p.caption,
-    href: `/posts/${p.postSlug}`,
-  }));
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
@@ -25,18 +16,13 @@ export default async function PhotosPage() {
       <p className="mt-2 max-w-xl text-sand-100/60">
         <T k="photos.subtitle" />
       </p>
-      {pins.length > 0 ? (
+      {photos.length > 0 ? (
         <>
           <p className="mt-1 text-sm text-sand-100/40">
-            <T k="photos.count" vars={{ n: pins.length }} />
+            <T k="photos.count" vars={{ n: photos.length }} />
           </p>
           <div className="mt-8">
-            <TripMap
-              photos={pins}
-              clusterPhotos
-              route={false}
-              className="h-[72dvh] min-h-[480px]"
-            />
+            <PhotoExplorer photos={photos} />
           </div>
         </>
       ) : (

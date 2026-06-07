@@ -154,6 +154,8 @@ const en = {
     "Every geotagged photo, where it was taken. Zoom in to explore; tap a pin to open the story.",
   "photos.count": "{n} photos on the map.",
   "photos.empty": "No geotagged photos yet.",
+  "photos.inView": "{n} in view",
+  "photos.noneInView": "No photos in view — zoom out or pan to find more.",
 
   // Admin
   "admin.dashboard": "Dashboard",
@@ -509,6 +511,9 @@ const de: Dict = {
     "Jedes Foto mit Standort, dort wo es entstand. Zoome hinein; tippe einen Pin an, um die Geschichte zu öffnen.",
   "photos.count": "{n} Fotos auf der Karte.",
   "photos.empty": "Noch keine Fotos mit Standort.",
+  "photos.inView": "{n} im Blick",
+  "photos.noneInView":
+    "Keine Fotos im Blick — zoome heraus oder verschiebe die Karte.",
 
   // Admin
   "admin.dashboard": "Übersicht",
