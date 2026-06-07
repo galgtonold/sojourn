@@ -69,6 +69,21 @@ const en = {
   "journey.goToStop": "Go to stop {n}",
   "map.openStory": "Open story →",
 
+  "meta.tagline": "a travel journal",
+  "meta.trips": "Trips",
+  "meta.map": "Map",
+  "meta.posts": "All entries",
+  "meta.journeyMap": "Journey map",
+  "meta.admin": "Admin",
+  "meta.newTrip": "New trip",
+  "meta.editTrip": "Edit trip",
+  "meta.newPost": "New post",
+  "meta.editPost": "Edit post",
+  "meta.preview": "Preview",
+  "meta.aiUsage": "AI usage",
+  "meta.members": "Collaborators",
+  "meta.comments": "Comments",
+
   "notFound.title": "Off the map",
   "notFound.body": "This trail doesn’t lead anywhere — yet.",
   "notFound.back": "Back to the journal",
@@ -412,6 +427,21 @@ const de: Dict = {
   "journey.goToStop": "Zu Station {n}",
   "map.openStory": "Beitrag öffnen →",
 
+  "meta.tagline": "ein Reisetagebuch",
+  "meta.trips": "Reisen",
+  "meta.map": "Karte",
+  "meta.posts": "Alle Beiträge",
+  "meta.journeyMap": "Reisekarte",
+  "meta.admin": "Admin",
+  "meta.newTrip": "Neue Reise",
+  "meta.editTrip": "Reise bearbeiten",
+  "meta.newPost": "Neuer Beitrag",
+  "meta.editPost": "Beitrag bearbeiten",
+  "meta.preview": "Vorschau",
+  "meta.aiUsage": "KI-Nutzung",
+  "meta.members": "Mitwirkende",
+  "meta.comments": "Kommentare",
+
   "notFound.title": "Abseits der Karte",
   "notFound.body": "Dieser Pfad führt (noch) nirgendwohin.",
   "notFound.back": "Zurück zum Journal",
@@ -725,4 +755,10 @@ export function translate(
 
 export function normalizeLocale(value: string | undefined | null): Locale {
   return value === "en" || value === "de" ? value : DEFAULT_LOCALE;
+}
+
+/** The default-locale string for a key — for static `metadata` (SSR/SEO). The
+ *  visible tab title is then localized on the client by <DocumentTitle>. */
+export function defaultTitle(key: DictKey): string {
+  return translate(DEFAULT_LOCALE, key);
 }

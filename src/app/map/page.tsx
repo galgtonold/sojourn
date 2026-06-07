@@ -1,8 +1,9 @@
 import { getPublishedPosts } from "@/lib/content";
 import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: "Map" };
+export const metadata = { title: defaultTitle("meta.map") };
 export const revalidate = 60;
 
 export default async function MapPage() {
@@ -34,6 +35,7 @@ export default async function MapPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
+      <DocumentTitle k="meta.map" />
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
         <T k="map.title" />
       </h1>

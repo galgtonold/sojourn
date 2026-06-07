@@ -9,9 +9,10 @@ import { AiDraftPanel } from "@/components/ai-draft-panel";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
 import { InteractionManager } from "@/components/interaction-manager";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: "Edit post" };
+export const metadata = { title: defaultTitle("meta.editPost") };
 export const dynamic = "force-dynamic";
 
 export default async function EditPostPage({
@@ -81,6 +82,7 @@ export default async function EditPostPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
+      <DocumentTitle k="meta.editPost" />
       <Link
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"

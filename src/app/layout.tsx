@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
+import { defaultTitle } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteChrome } from "@/components/site-chrome";
@@ -25,7 +26,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: {
-    default: `${env.siteName} — a travel journal`,
+    default: `${env.siteName} — ${defaultTitle("meta.tagline")}`,
     template: `%s · ${env.siteName}`,
   },
   description:

@@ -5,7 +5,7 @@ import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
 import { Reveal } from "@/components/reveal";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
 // Re-render from the database at most once a minute (ISR) so new entries and
@@ -18,6 +18,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <DocumentTitle k="meta.tagline" home />
       {/* ── Immersive hero ─────────────────────────────────────────────── */}
       <section className="relative grain h-dvh min-h-[640px] w-full overflow-hidden">
         {hero?.cover_image && (
