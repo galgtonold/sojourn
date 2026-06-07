@@ -14,10 +14,11 @@ import { getPublishedPosts, getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 import { formatDate } from "@/lib/utils";
 
-export const metadata = { title: "Admin" };
+export const metadata = { title: defaultTitle("meta.admin") };
 export const dynamic = "force-dynamic";
 
 async function loadStats(viewer: Viewer) {
@@ -126,6 +127,7 @@ export default async function AdminDashboard() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
+      <DocumentTitle k="meta.admin" />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl font-semibold">

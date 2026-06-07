@@ -4,9 +4,11 @@ import {
   JourneyExplorer,
   type JourneyStop,
 } from "@/components/journey-explorer";
+import { DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
 export const revalidate = 60;
-export const metadata = { title: "Journey map" };
+export const metadata = { title: defaultTitle("meta.journeyMap") };
 
 export default async function TripMapPage({
   params,
@@ -50,12 +52,15 @@ export default async function TripMapPage({
   if (stops.length === 0) notFound();
 
   return (
-    <JourneyExplorer
-      title={trip.title}
-      backHref={`/trips/${trip.slug}`}
-      backLabel={trip.title}
-      stops={stops}
-      tracks={tracks}
-    />
+    <>
+      <DocumentTitle k="meta.journeyMap" />
+      <JourneyExplorer
+        title={trip.title}
+        backHref={`/trips/${trip.slug}`}
+        backLabel={trip.title}
+        stops={stops}
+        tracks={tracks}
+      />
+    </>
   );
 }

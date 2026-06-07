@@ -16,6 +16,7 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { env } from "@/lib/env";
 
 type Vars = Record<string, string | number>;
 type Ctx = {
@@ -37,7 +38,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   // Read the saved choice on the client (server always renders the default).
   useEffect(() => {
-    setLocaleState(readCookieLocale());
+    const l = readCookieLocale();
+    setLocaleState(l);
+    document.documentElement.lang = l;
   }, []);
 
   function setLocale(l: Locale) {
@@ -67,6 +70,32 @@ export function useT() {
 /** Inline translated string — usable inside server components. */
 export function T({ k, vars }: { k: DictKey; vars?: Vars }) {
   return <>{useI18n().t(k, vars)}</>;
+}
+
+/**
+ * Localizes the document <title> on the client to match the chosen locale,
+ * matching the root layout's "%s · Site" template (or "Site — %s" for home).
+ * Pages keep their static, default-locale `metadata` for SSR/SEO; this updates
+ * the visible tab title reactively (incl. on language switch). Renders nothing.
+ */
+export function DocumentTitle({
+  k,
+  vars,
+  home = false,
+}: {
+  k: DictKey;
+  vars?: Vars;
+  home?: boolean;
+}) {
+  const { locale } = useI18n();
+  useEffect(() => {
+    const value = translate(locale, k, vars);
+    document.title = home
+      ? `${env.siteName} — ${value}`
+      : `${value} · ${env.siteName}`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale, k, home]);
+  return null;
 }
 
 export function LanguageSwitcher({ className }: { className?: string }) {

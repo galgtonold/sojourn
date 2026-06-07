@@ -5,9 +5,10 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { TripEditor, type EditableTrip } from "@/components/trip-editor";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: "Edit trip" };
+export const metadata = { title: defaultTitle("meta.editTrip") };
 export const dynamic = "force-dynamic";
 
 export default async function EditTripPage({
@@ -43,6 +44,7 @@ export default async function EditTripPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
+      <DocumentTitle k="meta.editTrip" />
       <Link
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"

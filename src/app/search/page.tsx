@@ -1,9 +1,10 @@
 import { searchPosts } from "@/lib/content";
 import { PostCard } from "@/components/post-card";
 import { SearchBox } from "@/components/search-box";
-import { T } from "@/components/i18n";
+import { T, DocumentTitle } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: "Search" };
+export const metadata = { title: defaultTitle("search.title") };
 
 export default async function SearchPage({
   searchParams,
@@ -16,6 +17,7 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
+      <DocumentTitle k="search.title" />
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
         <T k="search.title" />
       </h1>
