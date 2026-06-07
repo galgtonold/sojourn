@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { materializeInteractions } from "@/lib/ai/materialize";
 
 export const maxDuration = 60;
 
@@ -39,10 +40,13 @@ export async function POST(req: Request) {
     cover = data ?? null;
   }
 
+  // Materialise any inline :::poll / :::quiz blocks into real interactions.
+  const { body } = await materializeInteractions(supabase, p.postId, p.body);
+
   const update: Record<string, unknown> = {
     title: p.title.trim(),
     excerpt: p.excerpt?.trim() || null,
-    body: p.body,
+    body,
     location: p.location?.trim() || cover?.place_name || null,
     lat: p.lat ?? cover?.lat ?? null,
     lng: p.lng ?? cover?.lng ?? null,

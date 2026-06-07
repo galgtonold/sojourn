@@ -15,6 +15,13 @@ const schema = z.object({
   lang: z.enum(["de", "en"]).default("de"),
 });
 
+export type OutlineSection = {
+  heading: string;
+  beat: string;
+  photo_ids: string[];
+  interaction?: { kind: "poll" | "quiz"; idea: string } | null;
+};
+
 export type Outline = {
   title: string;
   excerpt: string;
@@ -22,7 +29,7 @@ export type Outline = {
   lat: number | null;
   lng: number | null;
   cover_photo_id: string | null;
-  sections: { heading: string; beat: string; photo_ids: string[] }[];
+  sections: OutlineSection[];
 };
 
 export async function POST(req: Request) {
@@ -70,21 +77,37 @@ export async function POST(req: Request) {
             `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
             "Erstelle einen chronologischen Gliederungsplan. Verteile ALLE oben " +
             "genannten Foto-IDs auf 3–6 Abschnitte (jedes Foto genau einmal, in " +
-            "zeitlicher Reihenfolge). Antworte ausschließlich als JSON:\n" +
+            "zeitlicher Reihenfolge). Wenn es sich natürlich anbietet, darf GENAU " +
+            "EIN Abschnitt eine kleine Leser-Interaktion bekommen: eine Umfrage " +
+            '("poll", Meinungsfrage ohne richtige Antwort) ODER ein Quiz ("quiz", ' +
+            "mit einer eindeutig richtigen Antwort aus dem Material). Setze dafür " +
+            '"interaction": { "kind": "poll"|"quiz", "idea": kurze Beschreibung der ' +
+            'Frage }. Sonst lass das Feld weg. Antworte ausschließlich als JSON:\n' +
             '{ "title": string, "excerpt": string, "location": string, ' +
             '"lat": number|null, "lng": number|null, "cover_photo_id": string, ' +
             '"sections": [ { "heading": string, "beat": string (1 Satz, worum es geht), ' +
-            '"photo_ids": string[] } ] }',
+            '"photo_ids": string[], "interaction"?: { "kind": "poll"|"quiz", "idea": string } } ] }',
         },
       ],
     });
     const outline = parseJsonLoose<Outline>(raw);
-    // Keep only real photo ids.
+    // Keep only real photo ids, and at most one interaction across the post.
     const valid = new Set(dossier.photos.map((p) => p.id));
-    outline.sections = (outline.sections ?? []).map((s) => ({
-      ...s,
-      photo_ids: (s.photo_ids ?? []).filter((id) => valid.has(id)),
-    }));
+    let interactionUsed = false;
+    outline.sections = (outline.sections ?? []).map((s) => {
+      const ix =
+        s.interaction &&
+        (s.interaction.kind === "poll" || s.interaction.kind === "quiz") &&
+        s.interaction.idea?.trim() &&
+        !interactionUsed
+          ? ((interactionUsed = true), s.interaction)
+          : null;
+      return {
+        ...s,
+        photo_ids: (s.photo_ids ?? []).filter((id) => valid.has(id)),
+        interaction: ix,
+      };
+    });
     // Guarantee at least one section so the pipeline can proceed.
     if (outline.sections.length === 0) {
       outline.sections = [

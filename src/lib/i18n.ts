@@ -73,6 +73,19 @@ const en = {
   "interaction.responses": "{n} responses",
   "interaction.response": "{n} response",
 
+  "litter.pendingPoll": "Poll — created when you save",
+  "litter.pendingQuiz": "Quiz — created when you save",
+  "litter.noQuestion": "(no question yet)",
+  "litter.willNotSave": "Incomplete — fix this block or it won’t be created.",
+  "litter.brokenPhoto": "Missing photo: {ref}",
+  "litter.brokenAsk": "Missing poll/quiz: {ref}",
+  "admin.litter.hint":
+    "Add a poll/quiz inline with :::poll or :::quiz … ::: (mark a quiz’s correct option with «=»). It becomes a real interaction on save.",
+  "admin.litter.pending": "{n} inline poll/quiz block(s) will be created on save.",
+  "admin.litter.brokenPhoto": "Reference [photo:{ref}] doesn’t match any photo.",
+  "admin.litter.brokenAsk": "Reference [ask:{ref}] doesn’t match any poll/quiz.",
+  "admin.litter.badBlock": "Incomplete {kind} block: {problems}.",
+
   "search.title": "Search",
   "search.subtitle": "Find a place, a trip, or a moment.",
   "search.placeholder": "Patagonia, glaciers, Kyoto…",
@@ -364,6 +377,21 @@ const de: Dict = {
   "poll.thanks": "Danke fürs Abstimmen! ",
   "interaction.responses": "{n} Antworten",
   "interaction.response": "{n} Antwort",
+
+  "litter.pendingPoll": "Umfrage — wird beim Speichern erstellt",
+  "litter.pendingQuiz": "Quiz — wird beim Speichern erstellt",
+  "litter.noQuestion": "(noch keine Frage)",
+  "litter.willNotSave":
+    "Unvollständig — korrigiere diesen Block, sonst wird er nicht erstellt.",
+  "litter.brokenPhoto": "Fehlendes Foto: {ref}",
+  "litter.brokenAsk": "Fehlende Umfrage/Quiz: {ref}",
+  "admin.litter.hint":
+    "Umfrage/Quiz direkt im Text mit :::poll oder :::quiz … ::: einfügen (richtige Quiz-Option mit «=» markieren). Wird beim Speichern zu einer echten Interaktion.",
+  "admin.litter.pending":
+    "{n} Inline-Umfrage/-Quiz-Block/-Blöcke werden beim Speichern erstellt.",
+  "admin.litter.brokenPhoto": "Verweis [photo:{ref}] passt zu keinem Foto.",
+  "admin.litter.brokenAsk": "Verweis [ask:{ref}] passt zu keiner Umfrage/Quiz.",
+  "admin.litter.badBlock": "Unvollständiger {kind}-Block: {problems}.",
 
   "search.title": "Suche",
   "search.subtitle": "Finde einen Ort, eine Reise oder einen Moment.",

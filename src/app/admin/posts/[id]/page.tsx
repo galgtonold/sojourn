@@ -110,7 +110,13 @@ export default async function EditPostPage({
         </div>
       )}
 
-      <PostEditor key={data.updated_at} initial={initial} trips={trips} />
+      <PostEditor
+        key={data.updated_at}
+        initial={initial}
+        trips={trips}
+        photoIds={(photos ?? []).map((p) => p.id)}
+        interactionIds={(interactions ?? []).map((it) => it.id)}
+      />
 
       <div className="mt-12 border-t border-white/10 pt-10">
         <TrackManager

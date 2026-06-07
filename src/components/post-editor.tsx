@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Trash2 } from "lucide-react";
+import { AlertTriangle, ListChecks, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
 import { useT } from "@/components/i18n";
+import { parseDirectives, validateBody } from "@/lib/interactions-parse";
 
 export type EditablePost = {
   id?: string;
@@ -38,9 +39,13 @@ const EMPTY: EditablePost = {
 export function PostEditor({
   initial,
   trips = [],
+  photoIds = [],
+  interactionIds = [],
 }: {
   initial?: EditablePost;
   trips?: { id: string; title: string }[];
+  photoIds?: string[];
+  interactionIds?: string[];
 }) {
   const router = useRouter();
   const t = useT();
@@ -48,6 +53,20 @@ export function PostEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = Boolean(post.id);
+
+  // Live check of the body's references and inline poll/quiz blocks.
+  const { issues, pendingCount } = useMemo(() => {
+    const ctx = {
+      photoIds,
+      photoCount: photoIds.length,
+      interactionIds,
+      interactionCount: interactionIds.length,
+    };
+    const pending = parseDirectives(post.body).filter(
+      (d) => d.problems.length === 0,
+    ).length;
+    return { issues: validateBody(post.body, ctx), pendingCount: pending };
+  }, [post.body, photoIds, interactionIds]);
 
   function set<K extends keyof EditablePost>(key: K, value: EditablePost[K]) {
     setPost((p) => ({ ...p, [key]: value }));
@@ -172,6 +191,31 @@ export function PostEditor({
         onChange={(e) => set("body", e.target.value)}
       />
       <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
+      <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
+
+      {pendingCount > 0 && (
+        <p className="flex items-center gap-2 text-xs text-ember-300">
+          <ListChecks className="size-3.5" />
+          {t("admin.litter.pending", { n: pendingCount })}
+        </p>
+      )}
+      {issues.length > 0 && (
+        <ul className="space-y-1 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+          {issues.map((iss, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              {iss.type === "unknown-photo"
+                ? t("admin.litter.brokenPhoto", { ref: iss.ref })
+                : iss.type === "unknown-ask"
+                  ? t("admin.litter.brokenAsk", { ref: iss.ref })
+                  : t("admin.litter.badBlock", {
+                      kind: iss.kind,
+                      problems: iss.problems.join(", "),
+                    })}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <label className="flex items-center gap-2 text-sm">
         <input
