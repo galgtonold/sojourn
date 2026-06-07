@@ -18,10 +18,11 @@ describe("formatDistance", () => {
 });
 
 describe("buildElevationSeries", () => {
-  const fc = (coords: number[][]) => ({
-    type: "FeatureCollection",
-    features: [{ geometry: { type: "LineString", coordinates: coords } }],
-  });
+  const fc = (coords: number[][]) =>
+    ({
+      type: "FeatureCollection",
+      features: [{ geometry: { type: "LineString", coordinates: coords } }],
+    }) as GeoJSON.FeatureCollection<GeoJSON.LineString>;
 
   it("computes ascent, descent, min/max and distance", () => {
     const s = buildElevationSeries(
@@ -53,6 +54,11 @@ describe("buildElevationSeries", () => {
 
   it("returns null for too few points", () => {
     expect(buildElevationSeries(fc([[0, 0, 100]]))).toBeNull();
-    expect(buildElevationSeries({ features: [] })).toBeNull();
+    expect(
+      buildElevationSeries({
+        type: "FeatureCollection",
+        features: [],
+      }),
+    ).toBeNull();
   });
 });

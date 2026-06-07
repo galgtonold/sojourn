@@ -24,8 +24,7 @@ export type Track = {
   name: string | null;
   distance_m: number | null;
   // Parsed GPX as a GeoJSON FeatureCollection of LineStrings.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  geojson: any;
+  geojson: GeoJSON.FeatureCollection<GeoJSON.LineString>;
 };
 
 export type Photo = {

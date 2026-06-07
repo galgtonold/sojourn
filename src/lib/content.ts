@@ -204,7 +204,7 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
   }
 }
 
-const COMMENT_SELECT =
+export const COMMENT_SELECT =
   "id, post_id, parent_id, author_name, body, created_at, comment_likes(count)";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,8 +255,7 @@ export async function getInteractions(
     .eq("post_id", postId)
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return data as any;
+  return data as import("@/lib/types").Interaction[];
 }
 
 // Authenticated (admin) fetch of any post by id — including drafts — for the

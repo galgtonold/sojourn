@@ -4,14 +4,11 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+type AdminSupabase = NonNullable<ReturnType<typeof getAdminSupabase>>;
+
 // Builds the reader-facing state for one interaction. Counts/answers are only
 // revealed once the visitor has responded.
-async function buildState(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  id: string,
-  token: string,
-) {
+async function buildState(supabase: AdminSupabase, id: string, token: string) {
   const { data: it } = await supabase
     .from("interactions")
     .select("kind, options, correct_index, explanation")

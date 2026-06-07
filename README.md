@@ -7,14 +7,19 @@ The headline feature: **it runs with zero configuration.** Clone, `npm install`,
 ## Features
 
 - **Immersive home / hero** with cinematic layout and motion (framer-motion).
-- **Post pages** with photo gallery + lightbox.
-- **Interactive trip maps** (MapLibre GL, keyless via OpenFreeMap) with pins and route lines.
+- **Post pages** with photo gallery + lightbox and scroll-driven story maps.
+- **Interactive trip maps** (MapLibre GL, keyless via OpenFreeMap) with pins, route lines, and a full-screen journey explorer.
+- **GPX tracks** with distance + elevation profiles.
 - **Reactions** — heart, fire, wow, star.
-- **Comments** on posts.
+- **Comments** with replies, likes, and an admin **moderation** surface.
+- **Interactive blocks** — inline polls and quizzes inside posts.
 - **Full-text search** across posts (Postgres `tsvector`).
 - **`/trips` and `/map`** index views.
-- **Single-admin dashboard** (`/admin`) with a post editor and a web-push toggle.
-- **Web Push notifications** (VAPID) for the admin.
+- **Admin dashboard** (`/admin`) — create/edit trips & posts, a rich editor, direct **photo upload** to Supabase Storage (with EXIF/GPS extraction), and per-trip **collaborators**.
+- **AI authoring** (optional, DeepSeek) — staged drafting pipeline, photo enrichment/captioning, with a token-cost meter.
+- **Internationalization** — German default with a DE/EN switcher across the whole UI.
+- **Web Push notifications** (VAPID) for the admin and subscribers.
+- **Installable PWA** — offline caching of visited pages and assets, add-to-home-screen.
 - **Demo mode** — bundled sample content so the app is never empty.
 - **Portable by design** — Next.js standalone output, Dockerized, no vendor lock-in.
 
@@ -187,9 +192,12 @@ All of these are optional. Leave them unset to stay in demo mode; add them to pr
 
 ## Roadmap
 
-Scaffolded and working, but room to grow:
+Built and working, but room to grow:
 
-- **Photo upload UI to Supabase Storage** — the `photos` bucket and policies exist, but cover images are currently provided as URLs; a direct upload flow in the editor is the next step.
-- **Comment moderation UI** — comments are stored; an admin moderation/approval surface would round it out.
-- **Blurhash generation** — placeholders for smoother image loading.
-- **MDX rich body rendering** — richer post bodies beyond the current rendering.
+- **Blurhash generation** — the `photos.blurhash` column exists but nothing populates it yet; generating placeholders on upload would smooth image loading.
+- **Maskable PWA icon** — ship a properly padded maskable icon variant for crisper home-screen icons on Android.
+- **Map clustering** — cluster pins on the global `/map` as trips accumulate.
+- **RSS / Atom feed** — a feed for the journal would help with reach.
+- **Share surface** — dynamic per-post Open Graph images and a native share sheet.
+
+> Several earlier roadmap items — direct **photo upload**, a **comment moderation** UI, **rich Markdown** post bodies, **AI authoring**, **collaborators**, and **i18n** — are now implemented and listed under [Features](#features).

@@ -1,7 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { isAiConfigured } from "@/lib/env";
+import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { deepseekChat, aiModels, type ChatMessage } from "@/lib/ai/deepseek";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import {
@@ -64,19 +62,14 @@ const schema = z.object({
   lang: z.enum(["de", "en"]).default("de"),
 });
 
-export async function POST(req: Request) {
-  const supabase = await getServerSupabase();
-  if (!supabase) return NextResponse.json({ error: "not configured" }, { status: 503 });
-  if (!isAiConfigured)
-    return NextResponse.json({ error: "AI is not configured" }, { status: 503 });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export const POST = adminRoute(schema, sectionRoute, { requireAi: true });
 
-  const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid" }, { status: 400 });
-  const { postId, index, total, title, section, notes, answers, lang } = parsed.data;
+async function sectionRoute({
+  supabase,
+  user,
+  input,
+}: AdminCtx<z.infer<typeof schema>>) {
+  const { postId, index, total, title, section, notes, answers, lang } = input;
 
   const [dossier, styleGuide] = await Promise.all([
     buildDossier(supabase, postId),
@@ -125,39 +118,32 @@ export async function POST(req: Request) {
   const allowedPhotoIds = new Set(section.photo_ids);
   const wantsInteraction = Boolean(section.interaction);
 
-  try {
-    const messages: ChatMessage[] = [
-      { role: "system", content: system },
-      { role: "user", content: userPrompt },
-    ];
-    let markdown = "";
-    // Generate, then let the model fix its own structural mistakes (bad photo
-    // tags, malformed poll/quiz blocks). Bounded so the pipeline can't stall.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      markdown = (
-        await deepseekChat({
-          model: aiModels.reasoner,
-          temperature: 0.8,
-          maxTokens: 3000,
-          meta: { operation: "section", postId, userId: user.id },
-          messages,
-        })
-      ).trim();
-      const problems = sectionProblems(markdown, allowedPhotoIds, wantsInteraction);
-      if (problems.length === 0) break;
-      messages.push({ role: "assistant", content: markdown });
-      messages.push({
-        role: "user",
-        content:
-          "Fix only these issues and resend the full section as pure Markdown:\n- " +
-          problems.join("\n- "),
-      });
-    }
-    return NextResponse.json({ markdown });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "AI error" },
-      { status: 502 },
-    );
+  const messages: ChatMessage[] = [
+    { role: "system", content: system },
+    { role: "user", content: userPrompt },
+  ];
+  let markdown = "";
+  // Generate, then let the model fix its own structural mistakes (bad photo
+  // tags, malformed poll/quiz blocks). Bounded so the pipeline can't stall.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    markdown = (
+      await deepseekChat({
+        model: aiModels.reasoner,
+        temperature: 0.8,
+        maxTokens: 3000,
+        meta: { operation: "section", postId, userId: user.id },
+        messages,
+      })
+    ).trim();
+    const problems = sectionProblems(markdown, allowedPhotoIds, wantsInteraction);
+    if (problems.length === 0) break;
+    messages.push({ role: "assistant", content: markdown });
+    messages.push({
+      role: "user",
+      content:
+        "Fix only these issues and resend the full section as pure Markdown:\n- " +
+        problems.join("\n- "),
+    });
   }
+  return { markdown };
 }
