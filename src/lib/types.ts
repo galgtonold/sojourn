@@ -41,6 +41,24 @@ export type Photo = {
   sort_order: number;
 };
 
+// A photo surfaced by search, carrying just enough of its parent post to render
+// a card and link back to the story it belongs to.
+export type PhotoSearchResult = {
+  id: string;
+  url: string | null;
+  caption: string | null;
+  alt: string | null;
+  ai_description: string | null;
+  place_name: string | null;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
+  lat: number | null;
+  lng: number | null;
+  post_slug: string;
+  post_title: string;
+};
+
 export type Comment = {
   id: string;
   post_id: string;

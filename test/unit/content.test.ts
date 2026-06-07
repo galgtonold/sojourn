@@ -10,6 +10,7 @@ import {
   getPostBySlug,
   getTrips,
   searchPosts,
+  searchPhotos,
   getComments,
   getInteractions,
   getPostForPreview,
@@ -58,6 +59,22 @@ describe("content layer (demo fallback)", () => {
     const needle = demoPosts[0].title.split(" ")[0];
     const hits = await searchPosts(needle);
     expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("searchPhotos matches photo captions and links to the parent post", async () => {
+    expect(await searchPhotos("   ")).toEqual([]);
+
+    // "First light on the spires" is a demo photo caption on post-fitzroy.
+    const hits = await searchPhotos("first light");
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0].post_slug).toBe(demoPosts[0].slug);
+    expect(hits[0].caption?.toLowerCase()).toContain("first light");
+  });
+
+  it("searchPhotos also matches via the parent post's location/title", async () => {
+    const hits = await searchPhotos("Argentina");
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((h) => h.post_slug && h.post_title)).toBe(true);
   });
 
   it("getComments returns only the matching post's demo comments", async () => {

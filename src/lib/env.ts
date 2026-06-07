@@ -32,6 +32,18 @@ export const env = {
   aiPriceCacheHit: Number(process.env.AI_PRICE_INPUT_CACHE_HIT_USD ?? "0.07"),
   aiPriceCacheMiss: Number(process.env.AI_PRICE_INPUT_CACHE_MISS_USD ?? "0.27"),
   aiPriceOutput: Number(process.env.AI_PRICE_OUTPUT_USD ?? "1.10"),
+
+  // Embeddings power the semantic half of hybrid search. DeepSeek has no
+  // embeddings API, so this is a separate, OpenAI-compatible /embeddings
+  // endpoint — point EMBEDDING_BASE_URL at Ollama / TEI / llama.cpp to self-host
+  // it keylessly. The column dimension in the DB must match `embeddingDim`.
+  embeddingApiKey:
+    process.env.EMBEDDING_API_KEY ?? process.env.OPENAI_API_KEY ?? "",
+  embeddingBaseUrl: process.env.EMBEDDING_BASE_URL ?? "https://api.openai.com/v1",
+  embeddingModel: process.env.EMBEDDING_MODEL ?? "text-embedding-3-small",
+  embeddingDim: Number(process.env.EMBEDDING_DIM ?? "1536"),
+  // Embedding price — USD per 1M input tokens (text-embedding-3-small default).
+  aiPriceEmbedding: Number(process.env.AI_PRICE_EMBEDDING_USD ?? "0.02"),
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -47,3 +59,7 @@ export const isPushConfigured = Boolean(
 );
 
 export const isAiConfigured = Boolean(env.deepseekApiKey);
+
+// Semantic search is optional: without it, hybrid search transparently becomes
+// pure full-text search (see search_*_hybrid RPCs and the content layer).
+export const isEmbeddingsConfigured = Boolean(env.embeddingApiKey);

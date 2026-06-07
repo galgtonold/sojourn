@@ -9,13 +9,15 @@ import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, isEmbeddingsConfigured } from "@/lib/env";
+import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
   emptyReactions,
   type Comment,
   type GeoPoint,
   type Photo,
+  type PhotoSearchResult,
   type PostSummary,
   type PostWithRelations,
   type ReactionKind,
@@ -174,6 +176,27 @@ export async function getTrips(): Promise<Trip[]> {
   }
 }
 
+// Embed the query for the semantic half of hybrid search. Returns null when no
+// embeddings provider is configured or the call fails — callers then fall back
+// to pure full-text ranking, which the RPCs handle when query_embedding is null.
+async function embedQuery(q: string): Promise<number[] | null> {
+  if (!isEmbeddingsConfigured) return null;
+  try {
+    return await embedText(q, { operation: "search_embed" });
+  } catch {
+    return null;
+  }
+}
+
+// Re-fetch full rows by id and restore the fusion ranking the RPC returned (a
+// PostgREST `in(...)` filter does not preserve order).
+function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
+  const rank = new Map(ids.map((id, i) => [id, i] as const));
+  return [...rows].sort(
+    (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),
+  );
+}
+
 export async function searchPosts(query: string): Promise<PostWithRelations[]> {
   const q = query.trim();
   if (!q) return [];
@@ -191,14 +214,120 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
   }
 
   try {
-    const { data, error } = await supabase
+    const embedding = await embedQuery(q);
+    const { data: ranked, error } = await supabase.rpc("search_posts_hybrid", {
+      query_text: q,
+      query_embedding: embedding ? toVectorLiteral(embedding) : null,
+      match_count: 50,
+    });
+    if (error) throw error;
+    const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
+    if (ids.length === 0) return [];
+
+    const { data, error: fetchErr } = await supabase
       .from("posts")
       .select(POST_SELECT)
       .eq("published", true)
-      .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
-      .limit(50);
-    if (error || !data) return [];
-    return data.map(hydratePost);
+      .in("id", ids);
+    if (fetchErr || !data) return [];
+    return orderByIds(data.map(hydratePost), ids);
+  } catch {
+    // RPC/migration not present (older deployments): plain full-text search.
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(POST_SELECT)
+        .eq("published", true)
+        .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
+        .limit(50);
+      if (error || !data) return [];
+      return data.map(hydratePost);
+    } catch {
+      return [];
+    }
+  }
+}
+
+// Columns a photo search card needs, plus its parent post for linking. The
+// `!inner` join + published filter mirror the "read photos of published posts"
+// RLS policy (belt-and-suspenders: anon can only read these rows anyway).
+const PHOTO_SEARCH_SELECT =
+  "id, url, caption, alt, ai_description, place_name, width, height, blurhash, lat, lng, post:posts!inner(slug, title, published)";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hydratePhotoResult(row: any): PhotoSearchResult {
+  const post = Array.isArray(row.post) ? row.post[0] : row.post;
+  return {
+    id: row.id,
+    url: row.url ?? null,
+    caption: row.caption ?? null,
+    alt: row.alt ?? null,
+    ai_description: row.ai_description ?? null,
+    place_name: row.place_name ?? null,
+    width: row.width ?? null,
+    height: row.height ?? null,
+    blurhash: row.blurhash ?? null,
+    lat: row.lat ?? null,
+    lng: row.lng ?? null,
+    post_slug: post?.slug ?? "",
+    post_title: post?.title ?? "",
+  };
+}
+
+export async function searchPhotos(
+  query: string,
+): Promise<PhotoSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const supabase = getPublicSupabase();
+  if (!supabase) {
+    const needle = q.toLowerCase();
+    const out: PhotoSearchResult[] = [];
+    for (const p of demoPosts) {
+      for (const ph of p.photos) {
+        const haystack = [ph.caption, ph.alt, p.location, p.title]
+          .map((x) => (x ?? "").toLowerCase())
+          .join(" ");
+        if (haystack.includes(needle)) {
+          out.push({
+            id: ph.id,
+            url: ph.url,
+            caption: ph.caption,
+            alt: ph.alt,
+            ai_description: null,
+            place_name: p.location,
+            width: ph.width,
+            height: ph.height,
+            blurhash: ph.blurhash,
+            lat: ph.lat,
+            lng: ph.lng,
+            post_slug: p.slug,
+            post_title: p.title,
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  try {
+    const embedding = await embedQuery(q);
+    const { data: ranked, error } = await supabase.rpc("search_photos_hybrid", {
+      query_text: q,
+      query_embedding: embedding ? toVectorLiteral(embedding) : null,
+      match_count: 36,
+    });
+    if (error) throw error;
+    const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
+    if (ids.length === 0) return [];
+
+    const { data, error: fetchErr } = await supabase
+      .from("photos")
+      .select(PHOTO_SEARCH_SELECT)
+      .in("id", ids);
+    if (fetchErr || !data) return [];
+    return orderByIds(data.map(hydratePhotoResult), ids);
   } catch {
     return [];
   }
