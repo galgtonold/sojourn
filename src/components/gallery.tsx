@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc } from "@/lib/utils";
+import { blurhashToDataURL } from "@/lib/blurhash";
 import { useT } from "@/components/i18n";
 
 export function Gallery({ photos }: { photos: Photo[] }) {
@@ -44,23 +45,28 @@ export function Gallery({ photos }: { photos: Photo[] }) {
   return (
     <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {photos.map((photo, i) => (
-          <button
-            key={photo.id}
-            onClick={() => setOpen(i)}
-            className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800"
-          >
-            {photo.url && (
-              <Image
-                src={photo.url}
-                alt={photo.alt ?? photo.caption ?? ""}
-                fill
-                sizes="(max-width: 640px) 50vw, 33vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            )}
-          </button>
-        ))}
+        {photos.map((photo, i) => {
+          const blur = blurhashToDataURL(photo.blurhash);
+          return (
+            <button
+              key={photo.id}
+              onClick={() => setOpen(i)}
+              className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800"
+            >
+              {photo.url && (
+                <Image
+                  src={photo.url}
+                  alt={photo.alt ?? photo.caption ?? ""}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 33vw"
+                  placeholder={blur ? "blur" : "empty"}
+                  blurDataURL={blur ?? undefined}
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <AnimatePresence>
