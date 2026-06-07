@@ -232,6 +232,18 @@ const en = {
   "admin.ai.autocaption": "Auto-caption photos",
   "admin.ai.autocaptionDone": "Captioned {n} photos.",
 
+  "admin.usage.link": "AI usage",
+  "admin.usage.title": "AI usage & cost",
+  "admin.usage.subtitle":
+    "Estimated DeepSeek spend. Token counts are exact; cost uses your configured rates.",
+  "admin.usage.month": "This month",
+  "admin.usage.total": "All-time",
+  "admin.usage.calls": "Calls",
+  "admin.usage.cacheRate": "Cache hit rate",
+  "admin.usage.byOp": "By operation",
+  "admin.usage.recent": "Recent calls",
+  "admin.usage.none": "No AI usage yet.",
+
   "admin.upload.cover": "Cover image",
   "admin.upload.drop": "Drop an image or click to upload",
   "admin.upload.uploading": "Uploading…",
@@ -521,6 +533,18 @@ const de: Dict = {
   "admin.ai.step.save": "Speichern",
   "admin.ai.autocaption": "Fotos automatisch beschriften",
   "admin.ai.autocaptionDone": "{n} Fotos beschriftet.",
+
+  "admin.usage.link": "KI-Kosten",
+  "admin.usage.title": "KI-Nutzung & Kosten",
+  "admin.usage.subtitle":
+    "Geschätzte DeepSeek-Kosten. Token-Zahlen sind exakt; die Kosten basieren auf deinen Tarifen.",
+  "admin.usage.month": "Diesen Monat",
+  "admin.usage.total": "Gesamt",
+  "admin.usage.calls": "Aufrufe",
+  "admin.usage.cacheRate": "Cache-Trefferquote",
+  "admin.usage.byOp": "Nach Vorgang",
+  "admin.usage.recent": "Letzte Aufrufe",
+  "admin.usage.none": "Noch keine KI-Nutzung.",
 
   "admin.upload.cover": "Titelbild",
   "admin.upload.drop": "Bild hierher ziehen oder zum Hochladen klicken",

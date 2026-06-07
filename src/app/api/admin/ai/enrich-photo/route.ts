@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   // RLS ensures the caller may only read/update photos within their scope.
   const { data: photo } = await supabase
     .from("photos")
-    .select("id, url, lat, lng, ai_description, place_name, enriched_at")
+    .select("id, url, lat, lng, ai_description, place_name, enriched_at, post_id")
     .eq("id", parsed.data.photoId)
     .maybeSingle();
   if (!photo) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: true });
   }
 
-  const { ai_description, place_name } = await computeEnrichment(photo);
+  const { ai_description, place_name } = await computeEnrichment(photo, {
+    operation: "enrich",
+    postId: photo.post_id,
+    userId: user.id,
+  });
 
   await supabase
     .from("photos")

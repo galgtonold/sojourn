@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       model: aiModels.reasoner,
       temperature: 0.8,
       maxTokens: 3000,
+      meta: { operation: "section", postId, userId: user.id },
       messages: [
         { role: "system", content: system },
         { role: "user", content: userPrompt },

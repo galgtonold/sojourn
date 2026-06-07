@@ -36,7 +36,11 @@ export async function POST(req: Request) {
   const batch = all.slice(0, BATCH);
   await Promise.all(
     batch.map(async (p) => {
-      const e = await computeEnrichment(p);
+      const e = await computeEnrichment(p, {
+        operation: "enrich",
+        postId: parsed.data.postId,
+        userId: user.id,
+      });
       await supabase
         .from("photos")
         .update({ ...e, enriched_at: new Date().toISOString() })
