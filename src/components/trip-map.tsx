@@ -39,12 +39,16 @@ export function TripMap({
   tracks = [],
   photos = [],
   route = true,
+  clusterPhotos = false,
   className = "h-[420px]",
 }: {
   markers?: MapMarker[];
   tracks?: Track[];
   photos?: PhotoPin[];
   route?: boolean;
+  // Render photos as a clustered GeoJSON layer instead of one DOM marker each.
+  // Essential at global scale (the /photos map) where there may be hundreds.
+  clusterPhotos?: boolean;
   className?: string;
 }) {
   const t = useT();
@@ -137,23 +141,133 @@ export function TripMap({
           .addTo(map);
       });
 
-      // Photo pins
-      photos.forEach((p) => {
-        extend(p.lng, p.lat);
-        const el = document.createElement("button");
-        el.style.cssText =
-          "width:36px;height:36px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
-        el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
-        const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
+      // Photo pins — either a clustered GeoJSON layer (global photo map) or one
+      // thumbnail DOM marker each (per-trip maps, where counts are small).
+      const photoPopupHtml = (p: {
+        url: string;
+        caption?: string | null;
+        href?: string | null;
+      }) =>
+        `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
           <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
           ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
           ${p.href ? `<div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">${esc(t("map.openStory"))}</div>` : ""}
         </a>`;
-        new maplibregl.Marker({ element: el })
-          .setLngLat([p.lng, p.lat])
-          .setPopup(new maplibregl.Popup({ offset: 20, maxWidth: "220px" }).setHTML(html))
-          .addTo(map);
-      });
+
+      if (clusterPhotos && photos.length) {
+        photos.forEach((p) => extend(p.lng, p.lat));
+        map.addSource("photos", {
+          type: "geojson",
+          cluster: true,
+          clusterRadius: 50,
+          clusterMaxZoom: 14,
+          data: {
+            type: "FeatureCollection",
+            features: photos.map((p) => ({
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+              properties: {
+                url: p.url,
+                caption: p.caption ?? "",
+                href: p.href ?? "",
+              },
+            })),
+          },
+        });
+        map.addLayer({
+          id: "photo-clusters",
+          type: "circle",
+          source: "photos",
+          filter: ["has", "point_count"],
+          paint: {
+            "circle-color": "#f56a1f",
+            "circle-opacity": 0.92,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#fff",
+            "circle-radius": ["step", ["get", "point_count"], 16, 10, 22, 50, 30],
+          },
+        });
+        map.addLayer({
+          id: "photo-cluster-count",
+          type: "symbol",
+          source: "photos",
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": ["get", "point_count_abbreviated"],
+            "text-font": ["Noto Sans Regular"],
+            "text-size": 12,
+          },
+          paint: { "text-color": "#0a0908" },
+        });
+        map.addLayer({
+          id: "photo-point",
+          type: "circle",
+          source: "photos",
+          filter: ["!", ["has", "point_count"]],
+          paint: {
+            "circle-color": "#f56a1f",
+            "circle-radius": 7,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#fff",
+          },
+        });
+
+        map.on("click", "photo-clusters", (e) => {
+          const feature = map.queryRenderedFeatures(e.point, {
+            layers: ["photo-clusters"],
+          })[0];
+          const clusterId = feature?.properties?.cluster_id;
+          if (clusterId == null) return;
+          const src = map.getSource("photos") as maplibregl.GeoJSONSource;
+          src.getClusterExpansionZoom(clusterId).then((zoom) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const coords = (feature.geometry as any).coordinates;
+            map.easeTo({ center: coords, zoom });
+          });
+        });
+        map.on("click", "photo-point", (e) => {
+          const feature = e.features?.[0];
+          if (!feature) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const coords = (feature.geometry as any).coordinates.slice();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const props = feature.properties as any;
+          new maplibregl.Popup({ offset: 14, maxWidth: "220px" })
+            .setLngLat(coords)
+            .setHTML(
+              photoPopupHtml({
+                url: props.url,
+                caption: props.caption || null,
+                href: props.href || null,
+              }),
+            )
+            .addTo(map);
+        });
+        for (const layer of ["photo-clusters", "photo-point"]) {
+          map.on("mouseenter", layer, () => {
+            map.getCanvas().style.cursor = "pointer";
+          });
+          map.on("mouseleave", layer, () => {
+            map.getCanvas().style.cursor = "";
+          });
+        }
+      } else {
+        photos.forEach((p) => {
+          extend(p.lng, p.lat);
+          const el = document.createElement("button");
+          el.style.cssText =
+            "width:36px;height:36px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
+          el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
+          new maplibregl.Marker({ element: el })
+            .setLngLat([p.lng, p.lat])
+            .setPopup(
+              new maplibregl.Popup({ offset: 20, maxWidth: "220px" }).setHTML(
+                photoPopupHtml(p),
+              ),
+            )
+            .addTo(map);
+        });
+      }
 
       if (!bounds.isEmpty()) {
         const single =
