@@ -36,5 +36,9 @@ describe("prompt builders", () => {
     expect(pollDe).toContain(":::poll");
     expect(pollDe).toContain("GENAU EINE");
     expect(pollDe).toContain("lieblingspass");
+
+    // Cover the remaining two branches (poll/EN, quiz/DE).
+    expect(interactionInstruction("poll", "x", "en")).toContain("no correct answer");
+    expect(interactionInstruction("quiz", "y", "de")).toContain("«=»");
   });
 });

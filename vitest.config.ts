@@ -22,5 +22,22 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     // Routes touch module-level singletons (env, fake DB); keep files isolated.
     isolate: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      // Focus on logic we can meaningfully unit-test (not React components,
+      // browser-only clients, or thin Supabase wrappers).
+      include: ["src/lib/**/*.ts"],
+      exclude: [
+        "src/lib/**/*.d.ts",
+        "src/lib/types.ts",
+        "src/lib/demo.ts",
+        "src/lib/supabase/**",
+        "src/lib/push-client.ts",
+        "src/lib/upload-client.ts",
+        "src/lib/notify.ts",
+        "src/lib/gpx.ts", // parseGpx needs a DOM; only pure helpers are tested
+      ],
+    },
   },
 });

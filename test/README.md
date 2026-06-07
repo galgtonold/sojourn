@@ -5,13 +5,22 @@ Run with [Vitest](https://vitest.dev):
 ```bash
 npm test          # run everything once (fast, deterministic, no network)
 npm run test:watch
+npm run test:coverage   # text + HTML report under coverage/
 ```
+
+~90 tests run in a couple of seconds and cover `src/lib` at ~95% of statements
+(100% of functions). Coverage is scoped to logic worth unit-testing — not React
+components, browser-only clients, or thin Supabase wrappers (see the `exclude`
+list in `vitest.config.ts`).
 
 ## Layout
 
-- `unit/` — pure logic: the poll/quiz parser + validator (`interactions-parse`),
-  body rendering split (`rich`), prompt builders, cost estimation, loose JSON
-  parsing. No network, no DB.
+- `unit/` — pure + lightly-faked logic. The poll/quiz parser + validator
+  (`interactions-parse`), body rendering split (`rich`), prompt/dossier builders,
+  cost estimation, loose JSON parsing, `utils` (slugify/optimizedSrc/…), `gpx`
+  maths, `i18n` translation, and the data layer's demo fallback + hydration
+  (`content`). The I/O chokepoints — `deepseekChat`, `reverseGeocode`,
+  `recordUsage`, `getViewer` — are tested with `fetch`/Supabase faked.
 - `e2e/pipeline.test.ts` — the **AI drafting pipeline end-to-end** with both
   external seams faked. It drives the real `outline → section → captions →
   save-draft` route handlers and asserts the wiring: the section route's

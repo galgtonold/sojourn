@@ -1,0 +1,74 @@
+// Exercises the data-access layer's graceful degradation: with Supabase
+// unconfigured (the default test env), every reader falls back to bundled demo
+// content. No mocks needed.
+import { describe, it, expect } from "vitest";
+import {
+  DEMO_MODE,
+  getPublishedPosts,
+  getPostSummaries,
+  getPublishedPostsByTrip,
+  getPostBySlug,
+  getTrips,
+  searchPosts,
+  getComments,
+  getInteractions,
+  getPostForPreview,
+} from "@/lib/content";
+import { demoPosts, demoTrips } from "@/lib/demo";
+
+describe("content layer (demo fallback)", () => {
+  it("is in demo mode when Supabase is unconfigured", () => {
+    expect(DEMO_MODE).toBe(true);
+  });
+
+  it("getPublishedPosts returns the demo posts", async () => {
+    const posts = await getPublishedPosts();
+    expect(posts).toEqual(demoPosts);
+  });
+
+  it("getTrips returns the demo trips", async () => {
+    expect(await getTrips()).toEqual(demoTrips);
+  });
+
+  it("getPostBySlug finds a known post and returns null otherwise", async () => {
+    const slug = demoPosts[0].slug;
+    expect((await getPostBySlug(slug))?.slug).toBe(slug);
+    expect(await getPostBySlug("does-not-exist")).toBeNull();
+  });
+
+  it("getPostSummaries paginates and filters by trip", async () => {
+    const page = await getPostSummaries({ limit: 1, offset: 0 });
+    expect(page.total).toBe(demoPosts.length);
+    expect(page.posts).toHaveLength(1);
+
+    const tripId = demoPosts[0].trip_id!;
+    const byTrip = await getPostSummaries({ tripId });
+    expect(byTrip.posts.every((p) => p.trip_id === tripId)).toBe(true);
+  });
+
+  it("getPublishedPostsByTrip filters by trip id", async () => {
+    const tripId = demoPosts[0].trip_id!;
+    const posts = await getPublishedPostsByTrip(tripId);
+    expect(posts.length).toBeGreaterThan(0);
+    expect(posts.every((p) => p.trip_id === tripId)).toBe(true);
+  });
+
+  it("searchPosts matches title/excerpt and returns [] for empty query", async () => {
+    expect(await searchPosts("   ")).toEqual([]);
+    const needle = demoPosts[0].title.split(" ")[0];
+    const hits = await searchPosts(needle);
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("getComments returns only the matching post's demo comments", async () => {
+    const withComments = await getComments("post-fitzroy");
+    expect(withComments.length).toBeGreaterThan(0);
+    expect(withComments.every((c) => c.post_id === "post-fitzroy")).toBe(true);
+    expect(await getComments("no-such-post")).toEqual([]);
+  });
+
+  it("getInteractions and getPostForPreview no-op without a backend", async () => {
+    expect(await getInteractions(demoPosts[0].id)).toEqual([]);
+    expect(await getPostForPreview(demoPosts[0].id)).toBeNull();
+  });
+});
