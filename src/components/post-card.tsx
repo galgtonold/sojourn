@@ -14,7 +14,7 @@ export function PostCard({
   return (
     <Link
       href={`/posts/${post.slug}`}
-      className="group card-edge relative block overflow-hidden rounded-3xl bg-ink-950"
+      className="group relative block overflow-hidden rounded-3xl border-2 border-ink-950 bg-ink-950"
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden">
         {post.cover_image ? (

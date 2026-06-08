@@ -51,7 +51,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
             <button
               key={photo.id}
               onClick={() => setOpen(i)}
-              className="group card-edge relative aspect-square overflow-hidden rounded-2xl bg-ink-950"
+              className="group relative aspect-square overflow-hidden rounded-2xl border-2 border-ink-950 bg-ink-950"
             >
               {photo.url && (
                 <Image

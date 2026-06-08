@@ -74,18 +74,6 @@ body {
   border: 1px solid color-mix(in oklab, white 8%, transparent);
 }
 
-/* A bright full-bleed image meets a rounded corner against the near-black page
-   with a ~1px anti-aliased seam that reads as a light fringe (worst on white
-   images). Cap the very edge with a hairline of the page colour. */
-.card-edge::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 2px var(--color-ink-950);
-  pointer-events: none;
-}
-
 /* Subtle film grain over hero imagery for the "immersive" feel. */
 .grain::after {
   content: "";
