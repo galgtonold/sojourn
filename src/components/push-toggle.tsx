@@ -62,22 +62,26 @@ export function PushToggle() {
     );
   }
 
+  if (state === "denied") {
+    return (
+      <div className="space-y-1.5">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/50">
+          <BellOff className="size-4" /> {t("push.blocked")}
+        </span>
+        <p className="max-w-xs text-xs leading-relaxed text-sand-100/50">
+          {t("push.blockedHelp")}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <button
       onClick={enable}
-      disabled={busy || state === "denied"}
+      disabled={busy}
       className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
     >
-      {state === "denied" ? (
-        <>
-          <BellOff className="size-4" /> {t("push.blocked")}
-        </>
-      ) : (
-        <>
-          <Bell className="size-4" />{" "}
-          {busy ? t("push.enabling") : t("push.enable")}
-        </>
-      )}
+      <Bell className="size-4" /> {busy ? t("push.enabling") : t("push.enable")}
     </button>
   );
 }

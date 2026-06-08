@@ -121,7 +121,7 @@ const en = {
   "subscribe.working": "Enabling…",
   "subscribe.done": "You’re in — we’ll ping you when a new story drops. ✨",
   "subscribe.denied":
-    "No worries — you can enable notifications anytime from your browser settings.",
+    "Notifications are blocked for this site. To turn them on, open your browser's site settings (the lock icon in the address bar) → Notifications → Allow.",
 
   "poll.label": "Poll",
   "quiz.label": "Quiz",
@@ -377,6 +377,8 @@ const en = {
   "push.enabling": "Enabling…",
   "push.on": "Notifications on",
   "push.blocked": "Blocked in browser",
+  "push.blockedHelp":
+    "Re-enable in your browser: the lock icon in the address bar → Site settings → Notifications → Allow, then reload.",
   "push.unsupported": "Push not supported here.",
   "push.setKeys": "Set VAPID keys to enable push notifications.",
 } as const;
@@ -498,7 +500,7 @@ const de: Dict = {
   "subscribe.done":
     "Du bist dabei — wir melden uns bei der nächsten Geschichte. ✨",
   "subscribe.denied":
-    "Kein Problem — du kannst Benachrichtigungen jederzeit in den Browser-Einstellungen aktivieren.",
+    "Benachrichtigungen sind für diese Seite blockiert. Zum Aktivieren: Website-Einstellungen im Browser öffnen (Schloss-Symbol in der Adressleiste) → Benachrichtigungen → Zulassen.",
 
   "poll.label": "Umfrage",
   "quiz.label": "Quiz",
@@ -767,6 +769,8 @@ const de: Dict = {
   "push.enabling": "Aktivieren…",
   "push.on": "Benachrichtigungen an",
   "push.blocked": "Im Browser blockiert",
+  "push.blockedHelp":
+    "Im Browser wieder aktivieren: Schloss-Symbol in der Adressleiste → Website-Einstellungen → Benachrichtigungen → Zulassen, dann neu laden.",
   "push.unsupported": "Push wird hier nicht unterstützt.",
   "push.setKeys": "Setze VAPID-Schlüssel, um Push-Benachrichtigungen zu aktivieren.",
 };

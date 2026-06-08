@@ -62,7 +62,8 @@ export function SubscribePrompt() {
       setTimeout(() => setVisible(false), 1800);
     } else {
       setStatus(res.reason === "denied" ? "denied" : "idle");
-      if (res.reason === "denied") setTimeout(dismiss, 1800);
+      // Leave the denied guidance on screen so the reader can act on it
+      // (re-enable in browser settings) — they can close it with the ✕.
     }
   }
 
