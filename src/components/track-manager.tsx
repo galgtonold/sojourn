@@ -62,6 +62,8 @@ export function TrackManager({
             name: parsed.name ?? file.name.replace(/\.gpx$/i, ""),
             geojson: parsed.geojson,
             distance_m: parsed.distanceM,
+            started_at: parsed.startedAt,
+            ended_at: parsed.endedAt,
           })
           .select("id, name, distance_m")
           .single();

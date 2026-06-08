@@ -23,6 +23,9 @@ export type Track = {
   id: string;
   name: string | null;
   distance_m: number | null;
+  // Earliest/latest GPX trackpoint <time>, when the source GPX carried them.
+  started_at?: string | null;
+  ended_at?: string | null;
   // Parsed GPX as a GeoJSON FeatureCollection of LineStrings.
   geojson: GeoJSON.FeatureCollection<GeoJSON.LineString>;
 };
@@ -37,6 +40,7 @@ export type Photo = {
   blurhash: string | null;
   lat: number | null;
   lng: number | null;
+  taken_at?: string | null;
   sort_order: number;
 };
 

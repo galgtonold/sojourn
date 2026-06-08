@@ -25,6 +25,9 @@ export type ParsedGpx = {
   geojson: GeoJSON.FeatureCollection<GeoJSON.LineString>;
   distanceM: number;
   pointCount: number;
+  // Earliest/latest trackpoint <time> (ISO), or null when the GPX has none.
+  startedAt: string | null;
+  endedAt: string | null;
 };
 
 export function parseGpx(xml: string): ParsedGpx {
@@ -38,6 +41,7 @@ export function parseGpx(xml: string): ParsedGpx {
     null;
 
   const lines: number[][][] = [];
+  const times: number[] = [];
   const collect = (segSelector: string, pointTag: string) => {
     doc.querySelectorAll(segSelector).forEach((seg) => {
       const coords: number[][] = [];
@@ -47,6 +51,8 @@ export function parseGpx(xml: string): ParsedGpx {
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         const ele = parseFloat(pt.querySelector("ele")?.textContent || "");
         coords.push(Number.isFinite(ele) ? [lon, lat, ele] : [lon, lat]);
+        const tm = Date.parse(pt.querySelector("time")?.textContent?.trim() || "");
+        if (Number.isFinite(tm)) times.push(tm);
       });
       if (coords.length > 1) lines.push(coords);
     });
@@ -67,6 +73,8 @@ export function parseGpx(xml: string): ParsedGpx {
     geojson: { type: "FeatureCollection", features },
     distanceM: lines.reduce((s, c) => s + lineLength(c), 0),
     pointCount: lines.reduce((s, c) => s + c.length, 0),
+    startedAt: times.length ? new Date(Math.min(...times)).toISOString() : null,
+    endedAt: times.length ? new Date(Math.max(...times)).toISOString() : null,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   type MapMarker,
   type PhotoPin,
   orderPhotosByTime,
+  photoConnectors,
 } from "@/components/trip-map";
 import { Figure, mdComponents } from "@/components/prose";
 import { InteractiveBlock } from "@/components/interactive-block";
@@ -104,18 +105,16 @@ export function StoryMap({
         new maplibregl.Marker({ element: el }).setLngLat([m.lng, m.lat]).addTo(map);
       });
 
-      // Connect the photos in chronological order when no GPX track already
-      // draws the route, then drop numbered pins so the sequence reads clearly.
-      if (tracks.length === 0 && ordered.length > 1) {
+      // Bridge photos to the track across the gaps it doesn't cover (before it
+      // started / after it ended); photos taken during it stay unconnected.
+      const connectors = photoConnectors(photoPins, tracks);
+      if (connectors.length) {
         map.addSource("photo-path", {
           type: "geojson",
           data: {
             type: "Feature",
             properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: ordered.map((p) => [p.lng, p.lat]),
-            },
+            geometry: { type: "MultiLineString", coordinates: connectors },
           },
         });
         map.addLayer({

@@ -39,6 +39,68 @@ export function orderPhotosByTime(photos: PhotoPin[]): PhotoPin[] {
   });
 }
 
+function trackEndpoints(t: Track): { start: number[]; end: number[] } | null {
+  const feats = t.geojson?.features ?? [];
+  const first = feats[0]?.geometry?.coordinates;
+  const last = feats[feats.length - 1]?.geometry?.coordinates;
+  const a = first?.[0];
+  const b = last?.[last.length - 1];
+  if (!a || !b) return null;
+  return { start: [a[0], a[1]], end: [b[0], b[1]] };
+}
+
+/**
+ * Dashed connector polylines that bridge photos to a *timed* GPX track:
+ * photos taken before the track started chain into its start point, photos
+ * taken after it ended chain out of its end point, and photos taken while the
+ * track was recording get no line — the track already is their path. When no
+ * track carries timestamps every photo is chained in chronological order
+ * instead; when an untimed track exists we draw nothing (we can't tell which
+ * photos it covers).
+ */
+export function photoConnectors(
+  photos: PhotoPin[],
+  tracks: Track[],
+): number[][][] {
+  const ordered = orderPhotosByTime(photos).filter(
+    (p) => Number.isFinite(p.lng) && Number.isFinite(p.lat),
+  );
+  if (ordered.length === 0) return [];
+
+  const ms = (s: string) => Date.parse(s);
+  const timed = tracks
+    .map((t) => ({ pts: trackEndpoints(t), s: t.started_at, e: t.ended_at }))
+    .filter(
+      (t): t is { pts: { start: number[]; end: number[] }; s: string; e: string } =>
+        !!t.pts &&
+        !!t.s &&
+        !!t.e &&
+        Number.isFinite(ms(t.s)) &&
+        Number.isFinite(ms(t.e)),
+    );
+
+  if (timed.length === 0) {
+    // No timed track to split on: chain all photos when there's no track at
+    // all; with only an untimed track present, leave the photos unconnected.
+    return tracks.length === 0 && ordered.length > 1
+      ? [ordered.map((p) => [p.lng, p.lat])]
+      : [];
+  }
+
+  const winStart = Math.min(...timed.map((t) => ms(t.s)));
+  const winEnd = Math.max(...timed.map((t) => ms(t.e)));
+  const startPt = timed.reduce((a, b) => (ms(a.s) <= ms(b.s) ? a : b)).pts.start;
+  const endPt = timed.reduce((a, b) => (ms(a.e) >= ms(b.e) ? a : b)).pts.end;
+
+  const pre = ordered.filter((p) => p.takenAt && ms(p.takenAt) < winStart);
+  const post = ordered.filter((p) => p.takenAt && ms(p.takenAt) > winEnd);
+
+  const lines: number[][][] = [];
+  if (pre.length) lines.push([...pre.map((p) => [p.lng, p.lat]), startPt]);
+  if (post.length) lines.push([endPt, ...post.map((p) => [p.lng, p.lat])]);
+  return lines;
+}
+
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
     c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
@@ -158,16 +220,14 @@ export function TripMap({
       // Photo pins — numbered in chronological order, and joined by a dashed
       // "photo journey" line when there's no GPX track already drawing the route.
       const orderedPhotos = connectPhotos ? orderPhotosByTime(photos) : photos;
-      if (connectPhotos && tracks.length === 0 && orderedPhotos.length > 1) {
+      const connectors = connectPhotos ? photoConnectors(photos, tracks) : [];
+      if (connectors.length) {
         map.addSource("photo-path", {
           type: "geojson",
           data: {
             type: "Feature",
             properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: orderedPhotos.map((p) => [p.lng, p.lat]),
-            },
+            geometry: { type: "MultiLineString", coordinates: connectors },
           },
         });
         map.addLayer({

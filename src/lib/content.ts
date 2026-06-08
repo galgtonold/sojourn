@@ -53,6 +53,8 @@ function hydratePost(row: any): PostWithRelations {
       id: t.id,
       name: t.name,
       distance_m: t.distance_m,
+      started_at: t.started_at ?? null,
+      ended_at: t.ended_at ?? null,
       geojson: t.geojson,
     })),
     reactions: summarizeReactions(row.reactions),
