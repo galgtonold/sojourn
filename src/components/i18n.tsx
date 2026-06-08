@@ -90,9 +90,20 @@ export function DocumentTitle({
   const { locale } = useI18n();
   useEffect(() => {
     const value = translate(locale, k, vars);
-    document.title = home
+    const title = home
       ? `${env.siteName} — ${value}`
       : `${value} · ${env.siteName}`;
+    document.title = title;
+    // A page's static-metadata <title> is rendered in the default locale for
+    // SSR/SEO and can be (re)committed after this effect during initial,
+    // heavy-page hydration (e.g. /map), clobbering the value we just set.
+    // Re-assert on the next ticks so the localized title wins.
+    const ids = [0, 300, 900].map((d) =>
+      setTimeout(() => {
+        document.title = title;
+      }, d),
+    );
+    return () => ids.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale, k, home]);
   return null;
