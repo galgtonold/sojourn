@@ -28,7 +28,7 @@ export default async function TripsPage() {
           <Reveal key={trip.id} delay={i * 0.05}>
             <Link
               href={`/trips/${trip.slug}`}
-              className="group relative block aspect-[16/10] overflow-hidden rounded-3xl border-2 border-ink-950 bg-ink-950"
+              className="group card-vignette relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-950"
             >
               {trip.cover_image && (
                 <Image
