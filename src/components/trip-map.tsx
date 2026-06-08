@@ -247,7 +247,7 @@ export function TripMap({
         extend(p.lng, p.lat);
         const el = document.createElement("button");
         el.style.cssText =
-          "position:relative;width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
+          "position:absolute;width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
         if (connectPhotos) {
           const badge = document.createElement("span");
@@ -290,7 +290,7 @@ export function TripMap({
   return (
     <div
       ref={container}
-      className={`w-full overflow-hidden rounded-3xl ring-1 ring-white/10 ${className}`}
+      className={`clip-fix w-full overflow-hidden rounded-3xl ring-1 ring-white/10 ${className}`}
     />
   );
 }

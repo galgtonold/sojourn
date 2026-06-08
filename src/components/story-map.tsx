@@ -134,7 +134,7 @@ export function StoryMap({
         bounds.extend([p.lng, p.lat]);
         const el = document.createElement("div");
         el.style.cssText =
-          "position:relative;width:34px;height:34px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
+          "position:absolute;width:34px;height:34px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 96, 70)})`;
         const badge = document.createElement("span");
         badge.textContent = String(i + 1);
@@ -251,7 +251,7 @@ export function StoryMap({
           <div className="sticky top-24 h-[calc(100vh-7rem)]">
             <div
               ref={mapContainer}
-              className="size-full overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10"
+              className="clip-fix size-full overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10"
             />
           </div>
         </div>
