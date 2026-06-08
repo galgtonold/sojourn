@@ -74,19 +74,6 @@ body {
   border: 1px solid color-mix(in oklab, white 8%, transparent);
 }
 
-/* Image cards: a soft inset vignette of the page colour darkens the image's
-   outer rim so its anti-aliased rounded edge fades into the background instead
-   of leaving a light fringe at the corners (worst on bright/white covers).
-   It darkens the image's own edge pixels rather than relocating them. */
-.card-vignette::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 8px 4px var(--color-ink-950);
-  pointer-events: none;
-}
-
 /* Subtle film grain over hero imagery for the "immersive" feel. */
 .grain::after {
   content: "";
