@@ -74,6 +74,13 @@ body {
   border: 1px solid color-mix(in oklab, white 8%, transparent);
 }
 
+/* A transformed child (e.g. a hover-zoom image) escapes its parent's rounded
+   overflow clip in Chrome, leaving a faint light fringe at the corners.
+   Promoting the clip to its own compositing layer makes it clip cleanly. */
+.clip-fix {
+  transform: translateZ(0);
+}
+
 /* Subtle film grain over hero imagery for the "immersive" feel. */
 .grain::after {
   content: "";

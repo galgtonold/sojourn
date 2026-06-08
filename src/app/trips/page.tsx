@@ -28,7 +28,7 @@ export default async function TripsPage() {
           <Reveal key={trip.id} delay={i * 0.05}>
             <Link
               href={`/trips/${trip.slug}`}
-              className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
+              className="group clip-fix relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
             >
               {trip.cover_image && (
                 <Image
