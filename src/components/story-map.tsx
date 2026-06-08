@@ -16,11 +16,14 @@ import {
 import { Figure, mdComponents } from "@/components/prose";
 import { InteractiveBlock } from "@/components/interactive-block";
 
+const DESKTOP = "(min-width: 1024px)";
+
 /**
- * Scrollytelling, one cohesive centred column on every screen size: a map
- * pinned just below the header that flies to each geotagged photo as its
- * passage scrolls into the reading zone beneath it. The narrative tucks up
- * behind the map as you read, so the map stays clear and always in view.
+ * Desktop scrollytelling: a two-column layout where the narrative scrolls on
+ * the left while a sticky map on the right flies to each geotagged photo as its
+ * passage crosses the middle of the screen. Below the lg breakpoint the map
+ * column is dropped entirely — the post renders a normal inline map instead —
+ * so phones keep the full width for reading.
  */
 export function StoryMap({
   excerpt,
@@ -39,12 +42,23 @@ export function StoryMap({
   const narrative = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const boundsRef = useRef<maplibregl.LngLatBounds | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [active, setActive] = useState<[number, number] | null>(null);
 
-  // Build the map once.
+  // Track the breakpoint so the map only ever builds while its column is shown.
   useEffect(() => {
-    if (!mapContainer.current) return;
+    const mq = window.matchMedia(DESKTOP);
+    const sync = () => setIsDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  // Build the sticky map (desktop only).
+  useEffect(() => {
+    if (!isDesktop || !mapContainer.current) return;
+    setMapReady(false);
 
     const ordered = orderPhotosByTime(photoPins);
     const start = ordered[0] ?? markers[0] ?? { lng: 0, lat: 20 };
@@ -91,7 +105,7 @@ export function StoryMap({
       });
 
       // Connect the photos in chronological order when no GPX track already
-      // draws the route, then drop numbered pins so the sequence is legible.
+      // draws the route, then drop numbered pins so the sequence reads clearly.
       if (tracks.length === 0 && ordered.length > 1) {
         map.addSource("photo-path", {
           type: "geojson",
@@ -121,7 +135,7 @@ export function StoryMap({
         bounds.extend([p.lng, p.lat]);
         const el = document.createElement("div");
         el.style.cssText =
-          "position:relative;width:32px;height:32px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
+          "position:relative;width:34px;height:34px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 96, 70)})`;
         const badge = document.createElement("span");
         badge.textContent = String(i + 1);
@@ -133,7 +147,7 @@ export function StoryMap({
 
       boundsRef.current = bounds;
       if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 60, maxZoom: 13, duration: 0 });
+        map.fitBounds(bounds, { padding: 56, maxZoom: 13, duration: 0 });
       }
       setMapReady(true);
     });
@@ -144,21 +158,22 @@ export function StoryMap({
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isDesktop]);
 
-  // Fly the map as the active step changes.
+  // Fly to the active photo as the story scrolls.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
     if (active) {
       map.flyTo({ center: active, zoom: 14.5, speed: 0.7, essential: true });
     } else if (boundsRef.current && !boundsRef.current.isEmpty()) {
-      map.fitBounds(boundsRef.current, { padding: 60, maxZoom: 13, duration: 1000 });
+      map.fitBounds(boundsRef.current, { padding: 56, maxZoom: 13, duration: 1000 });
     }
   }, [active, mapReady]);
 
-  // Whichever anchor sits in the reading zone below the sticky map is active.
+  // Activate whichever photo passage is crossing the middle of the viewport.
   useEffect(() => {
+    if (!isDesktop) return;
     const root = narrative.current;
     if (!root) return;
     const anchors = root.querySelectorAll<HTMLElement>("[data-story-anchor]");
@@ -175,67 +190,72 @@ export function StoryMap({
           break;
         }
       },
-      { rootMargin: "-66% 0px -22% 0px", threshold: 0 },
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0 },
     );
     anchors.forEach((a) => obs.observe(a));
     return () => obs.disconnect();
-  }, []);
+  }, [isDesktop]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-6 sm:px-6">
-      {/* Sticky map — pinned below the header; the narrative tucks behind it. */}
-      <div className="sticky top-20 z-20">
-        <div className="h-[44vh] min-h-[260px] overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10">
-          <div ref={mapContainer} className="size-full" />
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-14">
+        {/* Narrative — single column on mobile, left column on desktop. */}
+        <div
+          ref={narrative}
+          className="mx-auto max-w-2xl space-y-10 py-8 lg:mx-0 lg:max-w-none lg:py-14"
+        >
+          <div data-story-anchor data-target="overview">
+            {excerpt && (
+              <p className="font-display text-xl leading-relaxed text-sand-100/90">
+                {excerpt}
+              </p>
+            )}
+          </div>
 
-      {/* Narrative — reads in the zone below the map, then tucks up behind it. */}
-      <div
-        ref={narrative}
-        className="relative z-10 mx-auto max-w-2xl space-y-10 pb-[30vh] pt-10"
-      >
-        <div data-story-anchor data-target="overview">
-          {excerpt && (
-            <p className="font-display text-xl leading-relaxed text-sand-100/90">
-              {excerpt}
-            </p>
-          )}
-        </div>
-
-        {blocks.map((b, i) => {
-          if (b.kind === "interaction") {
-            return <InteractiveBlock key={i} interaction={b.interaction} />;
-          }
-          if (b.kind === "photo") {
-            const geo = b.photo.lat != null && b.photo.lng != null;
+          {blocks.map((b, i) => {
+            if (b.kind === "interaction") {
+              return <InteractiveBlock key={i} interaction={b.interaction} />;
+            }
+            if (b.kind === "photo") {
+              const geo = b.photo.lat != null && b.photo.lng != null;
+              return (
+                <div
+                  key={i}
+                  {...(geo
+                    ? {
+                        "data-story-anchor": true,
+                        "data-target": `${b.photo.lng},${b.photo.lat}`,
+                      }
+                    : {})}
+                >
+                  <Figure
+                    src={b.photo.url ?? ""}
+                    alt={b.photo.alt ?? undefined}
+                    caption={b.photo.caption}
+                  />
+                </div>
+              );
+            }
+            if (b.kind !== "md") return null;
             return (
-              <div
-                key={i}
-                {...(geo
-                  ? {
-                      "data-story-anchor": true,
-                      "data-target": `${b.photo.lng},${b.photo.lat}`,
-                    }
-                  : {})}
-              >
-                <Figure
-                  src={b.photo.url ?? ""}
-                  alt={b.photo.alt ?? undefined}
-                  caption={b.photo.caption}
-                />
+              <div key={i} className="space-y-5 text-lg text-sand-100/80">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                  {b.text}
+                </ReactMarkdown>
               </div>
             );
-          }
-          if (b.kind !== "md") return null;
-          return (
-            <div key={i} className="space-y-5 text-lg text-sand-100/80">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                {b.text}
-              </ReactMarkdown>
-            </div>
-          );
-        })}
+          })}
+        </div>
+
+        {/* Sticky map column — desktop only. */}
+        <div className="hidden lg:block">
+          <div className="sticky top-24 h-[calc(100vh-7rem)]">
+            <div
+              ref={mapContainer}
+              className="size-full overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

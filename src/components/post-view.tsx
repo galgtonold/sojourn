@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
-import { formatDate, readingTime } from "@/lib/utils";
+import { cn, formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
 import { StoryMap } from "@/components/story-map";
@@ -81,7 +81,10 @@ export function PostView({
             sizes="100vw"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-ink-950/30 via-transparent to-ink-950" />
+        {/* Top wash keeps the back-link and location chip legible. */}
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-950/50 to-transparent" />
+        {/* Long, smooth dissolve so the cover melts into the page background. */}
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ink-950 via-ink-950/25 to-transparent" />
 
         <div className="relative z-10 mx-auto flex h-full max-w-3xl flex-col justify-end px-6 pb-12">
           {!preview && (
@@ -159,8 +162,13 @@ export function PostView({
         </section>
       )}
 
-      {hasMap && !useStory && (
-        <section className="mx-auto max-w-4xl px-6 pb-14">
+      {hasMap && (
+        <section
+          className={cn(
+            "mx-auto max-w-4xl px-6 pb-14",
+            useStory && "lg:hidden", // desktop story posts show the map in the sticky column
+          )}
+        >
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl font-semibold">
               <T k="post.onMap" />
