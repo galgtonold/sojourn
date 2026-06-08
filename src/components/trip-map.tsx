@@ -23,7 +23,21 @@ export type PhotoPin = {
   url: string;
   caption?: string | null;
   href?: string;
+  takenAt?: string | null;
 };
+
+/** Chronological order (by taken_at); photos without a timestamp keep their
+ *  given order and sort last. Used to number pins and connect them in time. */
+export function orderPhotosByTime(photos: PhotoPin[]): PhotoPin[] {
+  return [...photos].sort((a, b) => {
+    const ta = a.takenAt,
+      tb = b.takenAt;
+    if (ta && tb) return ta < tb ? -1 : ta > tb ? 1 : 0;
+    if (ta) return -1;
+    if (tb) return 1;
+    return 0;
+  });
+}
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
@@ -40,12 +54,16 @@ export function TripMap({
   tracks = [],
   photos = [],
   route = true,
+  connectPhotos = false,
   className = "h-[420px]",
 }: {
   markers?: MapMarker[];
   tracks?: Track[];
   photos?: PhotoPin[];
   route?: boolean;
+  /** Number the photo pins in chronological order and, when there's no GPX
+   *  track, join them with a dashed line. For single-journey (per-post) maps. */
+  connectPhotos?: boolean;
   className?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -137,13 +155,47 @@ export function TripMap({
           .addTo(map);
       });
 
-      // Photo pins
-      photos.forEach((p) => {
+      // Photo pins — numbered in chronological order, and joined by a dashed
+      // "photo journey" line when there's no GPX track already drawing the route.
+      const orderedPhotos = connectPhotos ? orderPhotosByTime(photos) : photos;
+      if (connectPhotos && tracks.length === 0 && orderedPhotos.length > 1) {
+        map.addSource("photo-path", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: orderedPhotos.map((p) => [p.lng, p.lat]),
+            },
+          },
+        });
+        map.addLayer({
+          id: "photo-path",
+          type: "line",
+          source: "photo-path",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#f56a1f",
+            "line-width": 2.5,
+            "line-dasharray": [1.5, 1.5],
+            "line-opacity": 0.6,
+          },
+        });
+      }
+      orderedPhotos.forEach((p, i) => {
         extend(p.lng, p.lat);
         const el = document.createElement("button");
         el.style.cssText =
-          "width:36px;height:36px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
+          "position:relative;width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
+        if (connectPhotos) {
+          const badge = document.createElement("span");
+          badge.textContent = String(i + 1);
+          badge.style.cssText =
+            "position:absolute;top:-7px;left:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:9999px;background:#f56a1f;color:#0a0908;font:700 11px/1 ui-sans-serif,system-ui,sans-serif;border:2px solid #0a0908;box-shadow:0 1px 3px rgba(0,0,0,.5)";
+          el.appendChild(badge);
+        }
         const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
           <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
           ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}

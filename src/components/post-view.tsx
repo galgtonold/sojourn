@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
-import { cn, formatDate, readingTime } from "@/lib/utils";
+import { formatDate, readingTime } from "@/lib/utils";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
 import { StoryMap } from "@/components/story-map";
@@ -146,7 +146,7 @@ export function PostView({
         </div>
       )}
 
-      <div className="mx-auto max-w-3xl px-6 pb-14 pt-8">
+      <div className="mx-auto max-w-2xl px-4 pb-14 pt-8 sm:px-6">
         <Reactions postId={post.id} initial={post.reactions} />
       </div>
 
@@ -159,13 +159,8 @@ export function PostView({
         </section>
       )}
 
-      {hasMap && (
-        <section
-          className={cn(
-            "mx-auto max-w-4xl px-6 pb-14",
-            useStory && "lg:hidden", // desktop already has the sticky story map
-          )}
-        >
+      {hasMap && !useStory && (
+        <section className="mx-auto max-w-4xl px-6 pb-14">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl font-semibold">
               <T k="post.onMap" />
@@ -179,13 +174,18 @@ export function PostView({
               </Link>
             )}
           </div>
-          <TripMap markers={markers} tracks={post.tracks} photos={photoPins} />
+          <TripMap
+            markers={markers}
+            tracks={post.tracks}
+            photos={photoPins}
+            connectPhotos
+          />
         </section>
       )}
 
       <ElevationProfile tracks={post.tracks} />
 
-      <section className="mx-auto max-w-3xl px-6 pb-24">
+      <section className="mx-auto max-w-2xl px-4 pb-24 sm:px-6">
         <Comments postId={post.id} initial={comments} />
       </section>
 
