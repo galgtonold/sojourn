@@ -24,10 +24,10 @@ export const env = {
   // DeepSeek (AI drafting). Model IDs are configurable so naming never blocks.
   deepseekApiKey: process.env.DEEPSEEK_API_KEY ?? "",
   deepseekBaseUrl: process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
-  deepseekModelFast: process.env.DEEPSEEK_MODEL_FAST ?? "deepseek-chat",
+  deepseekModelFast: process.env.DEEPSEEK_MODEL_FAST ?? "deepseek-v4-flash",
   deepseekModelReasoner:
-    process.env.DEEPSEEK_MODEL_REASONER ?? "deepseek-reasoner",
-  deepseekModelVision: process.env.DEEPSEEK_MODEL_VISION ?? "deepseek-chat",
+    process.env.DEEPSEEK_MODEL_REASONER ?? "deepseek-v4-pro",
+  deepseekModelVision: process.env.DEEPSEEK_MODEL_VISION ?? "deepseek-v4-flash",
   // Pricing for the cost meter — USD per 1M tokens (override to match DeepSeek).
   aiPriceCacheHit: Number(process.env.AI_PRICE_INPUT_CACHE_HIT_USD ?? "0.07"),
   aiPriceCacheMiss: Number(process.env.AI_PRICE_INPUT_CACHE_MISS_USD ?? "0.27"),
