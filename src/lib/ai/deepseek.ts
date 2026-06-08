@@ -56,8 +56,8 @@ export async function deepseekChat(opts: {
   }
   const data = await res.json();
 
-  if (opts.meta && data?.usage) {
-    const u = data.usage;
+  if (opts.meta) {
+    const u = data?.usage ?? {};
     const prompt = u.prompt_tokens ?? 0;
     const hit = u.prompt_cache_hit_tokens ?? 0;
     void recordUsage({

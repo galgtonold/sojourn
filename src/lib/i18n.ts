@@ -62,6 +62,9 @@ const en = {
 
   "common.close": "Close",
   "common.dismiss": "Dismiss",
+  "common.confirm": "Confirm",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
 
   "journey.back": "Back to {label}",
   "journey.openPhoto": "Open photo",
@@ -434,6 +437,9 @@ const de: Dict = {
 
   "common.close": "Schließen",
   "common.dismiss": "Ausblenden",
+  "common.confirm": "Bestätigen",
+  "common.cancel": "Abbrechen",
+  "common.delete": "Löschen",
 
   "journey.back": "Zurück zu {label}",
   "journey.openPhoto": "Foto öffnen",

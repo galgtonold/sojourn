@@ -14,6 +14,18 @@ export async function generateStaticParams() {
   return trips.map((t) => ({ slug: t.slug }));
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const trips = await getTrips();
+  const trip = trips.find((t) => t.slug === slug);
+  if (!trip) return {};
+  return { title: trip.title, description: trip.summary ?? undefined };
+}
+
 export default async function TripPage({
   params,
 }: {

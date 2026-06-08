@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Check, Copy, Mail, Trash2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type Member = { id: string; email: string | null; tripIds: string[] };
 type TripOpt = { id: string; title: string };
@@ -16,6 +17,7 @@ export function MembersManager({
   trips: TripOpt[];
 }) {
   const t = useT();
+  const confirm = useConfirm();
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>(initial);
 
@@ -86,7 +88,7 @@ export function MembersManager({
   }
 
   async function remove(id: string) {
-    if (!confirm(t("admin.members.removeConfirm"))) return;
+    if (!(await confirm({ message: t("admin.members.removeConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     setMembers((m) => m.filter((x) => x.id !== id));
     await fetch(`/api/admin/members/${id}`, { method: "DELETE" });
     router.refresh();

@@ -5,6 +5,7 @@ import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export type ModerationRow = {
   id: string;
@@ -20,6 +21,7 @@ export type ModerationRow = {
 export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   const [rows, setRows] = useState<ModerationRow[]>(initial);
   const t = useT();
+  const confirm = useConfirm();
 
   async function toggleHide(row: ModerationRow) {
     const supabase = getBrowserSupabase();
@@ -30,7 +32,7 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   }
 
   async function del(row: ModerationRow) {
-    if (!confirm(t("admin.cmod.deleteConfirm"))) return;
+    if (!(await confirm({ message: t("admin.cmod.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     const supabase = getBrowserSupabase();
     if (!supabase) return;
     // Remove the comment and any descendants locally (DB cascades the delete).

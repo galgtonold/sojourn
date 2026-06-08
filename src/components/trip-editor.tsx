@@ -5,6 +5,7 @@ import { Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export type EditableTrip = {
   id?: string;
@@ -34,6 +35,7 @@ export function TripEditor({
 }) {
   const router = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const [trip, setTrip] = useState<EditableTrip>(initial ?? EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function TripEditor({
   }
 
   async function remove() {
-    if (!trip.id || !confirm(t("admin.trip.deleteConfirm"))) return;
+    if (!trip.id || !(await confirm({ message: t("admin.trip.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     setBusy(true);
     await fetch(`/api/admin/trips/${trip.id}`, { method: "DELETE" });
     router.push("/admin");

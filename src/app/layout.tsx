@@ -9,6 +9,7 @@ import { SiteChrome } from "@/components/site-chrome";
 import { RouteProgress } from "@/components/route-progress";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { I18nProvider } from "@/components/i18n";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import "./globals.css";
 
 const inter = Inter({
@@ -56,9 +57,11 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>
-          <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
-            {children}
-          </SiteChrome>
+          <ConfirmProvider>
+            <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
+              {children}
+            </SiteChrome>
+          </ConfirmProvider>
         </I18nProvider>
       </body>
     </html>

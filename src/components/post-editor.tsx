@@ -5,6 +5,7 @@ import { AlertTriangle, ListChecks, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
 
 export type EditablePost = {
@@ -49,6 +50,7 @@ export function PostEditor({
 }) {
   const router = useRouter();
   const t = useT();
+  const confirm = useConfirm();
   const [post, setPost] = useState<EditablePost>(initial ?? EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +107,7 @@ export function PostEditor({
   }
 
   async function remove() {
-    if (!post.id || !confirm(t("admin.editor.deleteConfirm"))) return;
+    if (!post.id || !(await confirm({ message: t("admin.editor.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     setBusy(true);
     await fetch(`/api/admin/posts/${post.id}`, { method: "DELETE" });
     router.push("/admin");

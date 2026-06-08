@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, MessagesSquare, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type Lang = "de" | "en";
 type Section = {
@@ -43,6 +44,7 @@ export function AiDraftPanel({
   hasBody: boolean;
 }) {
   const t = useT();
+  const confirm = useConfirm();
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("de");
   const [notes, setNotes] = useState(initialNotes);
@@ -73,7 +75,7 @@ export function AiDraftPanel({
   }
 
   async function generate() {
-    if (hasBody && !confirm(t("admin.ai.overwriteConfirm"))) return;
+    if (hasBody && !(await confirm({ message: t("admin.ai.overwriteConfirm") }))) return;
     setPhase("running");
     setError(null);
     const qa = questions.map((q, i) => ({ question: q, answer: answers[i] ?? "" }));

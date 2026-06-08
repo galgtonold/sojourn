@@ -27,7 +27,7 @@ type Ctx = {
 
 const I18nCtx = createContext<Ctx | null>(null);
 
-function readCookieLocale(): Locale {
+export function readCookieLocale(): Locale {
   if (typeof document === "undefined") return DEFAULT_LOCALE;
   const m = document.cookie.match(/(?:^|; )locale=([^;]+)/);
   return normalizeLocale(m?.[1]);
