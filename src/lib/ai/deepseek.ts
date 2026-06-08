@@ -60,7 +60,11 @@ export async function deepseekChat(opts: {
     const u = data?.usage ?? {};
     const prompt = u.prompt_tokens ?? 0;
     const hit = u.prompt_cache_hit_tokens ?? 0;
-    void recordUsage({
+    // Await (don't fire-and-forget): on fast-returning serverless routes the
+    // lambda can freeze right after the handler returns, dropping a pending
+    // background insert — which is why short calls like the outline went
+    // untracked while longer ones (sections) recorded.
+    await recordUsage({
       operation: opts.meta.operation,
       model: opts.model,
       postId: opts.meta.postId,
