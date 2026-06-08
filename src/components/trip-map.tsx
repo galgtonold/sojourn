@@ -290,7 +290,7 @@ export function TripMap({
   return (
     <div
       ref={container}
-      className={`clip-fix w-full overflow-hidden rounded-3xl ring-1 ring-white/10 ${className}`}
+      className={`w-full overflow-hidden rounded-3xl ring-1 ring-white/10 ${className}`}
     />
   );
 }

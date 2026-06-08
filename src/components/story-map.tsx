@@ -251,7 +251,7 @@ export function StoryMap({
           <div className="sticky top-24 h-[calc(100vh-7rem)]">
             <div
               ref={mapContainer}
-              className="clip-fix size-full overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10"
+              className="size-full overflow-hidden rounded-3xl bg-ink-900 shadow-xl ring-1 ring-white/10"
             />
           </div>
         </div>
