@@ -39,7 +39,7 @@ export default async function TripsPage() {
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[18%] via-ink-950/20 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6">
                 <h2 className="font-display text-3xl font-semibold">
                   {trip.title}

@@ -26,11 +26,11 @@ export function PostCard({
             sizes="(max-width: 768px) 100vw, 33vw"
             imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
             overlay={
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[18%] via-ink-950/30 to-transparent" />
             }
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[18%] via-ink-950/30 to-transparent" />
         )}
       </div>
 
