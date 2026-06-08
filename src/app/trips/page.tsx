@@ -36,7 +36,7 @@ export default async function TripsPage() {
                   alt={trip.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover"
+                  className="object-cover [clip-path:inset(2px)]"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[18%] via-ink-950/20 to-transparent" />

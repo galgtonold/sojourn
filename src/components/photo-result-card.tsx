@@ -20,6 +20,7 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
             alt={photo.alt ?? label ?? photo.post_title}
             fill
             sizes="(max-width: 768px) 50vw, 33vw"
+            imgClassName="[clip-path:inset(2px)]"
             overlay={
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[18%] via-ink-950/20 to-transparent" />
             }

@@ -61,7 +61,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
                   sizes="(max-width: 640px) 50vw, 33vw"
                   placeholder={blur ? "blur" : "empty"}
                   blurDataURL={blur ?? undefined}
-                  className="object-cover"
+                  className="object-cover [clip-path:inset(2px)]"
                 />
               )}
             </button>
