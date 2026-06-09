@@ -16,6 +16,7 @@ const schema = z.object({
   cover_image: z.string().optional(),
   cover_alt: z.string().optional(),
   trip_id: z.string().uuid().nullable().optional(),
+  date: z.string().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
   published: z.boolean().optional(),
@@ -52,7 +53,11 @@ export async function POST(req: Request) {
       lat: p.lat ?? null,
       lng: p.lng ?? null,
       published: p.published ?? false,
-      published_at: p.published ? new Date().toISOString() : null,
+      published_at: p.date
+        ? new Date(`${p.date}T12:00:00.000Z`).toISOString()
+        : p.published
+          ? new Date().toISOString()
+          : null,
     })
     .select("id")
     .single();

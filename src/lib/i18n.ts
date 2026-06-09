@@ -240,6 +240,7 @@ const en = {
   "admin.editor.editPost": "Edit post",
   "admin.editor.title": "Title",
   "admin.editor.location": "Location (e.g. Kyoto, Japan)",
+  "admin.editor.date": "Date of this entry",
   "admin.editor.coverUrl": "…or paste an image URL",
   "admin.editor.coverAlt": "Cover alt text (describe the image for screen readers)",
   "admin.editor.lat": "Latitude",
@@ -641,6 +642,7 @@ const de: Dict = {
   "admin.editor.editPost": "Beitrag bearbeiten",
   "admin.editor.title": "Titel",
   "admin.editor.location": "Ort (z. B. Kyoto, Japan)",
+  "admin.editor.date": "Datum dieses Eintrags",
   "admin.editor.coverUrl": "…oder Bild-URL einfügen",
   "admin.editor.coverAlt":
     "Alt-Text des Titelbilds (Bild für Screenreader beschreiben)",

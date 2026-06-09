@@ -31,7 +31,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, ai_notes, updated_at",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, updated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -77,6 +77,7 @@ export default async function EditPostPage({
     cover_image: data.cover_image ?? "",
     cover_alt: data.cover_alt ?? "",
     trip_id: data.trip_id ?? "",
+    date: data.published_at ? String(data.published_at).slice(0, 10) : "",
     lat: data.lat != null ? String(data.lat) : "",
     lng: data.lng != null ? String(data.lng) : "",
     published: Boolean(data.published),

@@ -19,6 +19,7 @@ export type EditablePost = {
   cover_image: string;
   cover_alt: string;
   trip_id: string;
+  date: string;
   lat: string;
   lng: string;
   published: boolean;
@@ -33,6 +34,7 @@ const EMPTY: EditablePost = {
   cover_image: "",
   cover_alt: "",
   trip_id: "",
+  date: "",
   lat: "",
   lng: "",
   published: false,
@@ -52,7 +54,9 @@ export function PostEditor({
   const router = useRouter();
   const t = useT();
   const confirm = useConfirm();
-  const [post, setPost] = useState<EditablePost>(initial ?? EMPTY);
+  const [post, setPost] = useState<EditablePost>(
+    initial ?? { ...EMPTY, date: new Date().toISOString().slice(0, 10) },
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = Boolean(post.id);
@@ -155,6 +159,15 @@ export function PostEditor({
             {t("admin.editor.tripRequiredNoTrips")}
           </p>
         )}
+      </label>
+      <label className="block text-sm text-sand-100/60">
+        {t("admin.editor.date")}
+        <input
+          type="date"
+          className={`${input} mt-1`}
+          value={post.date}
+          onChange={(e) => set("date", e.target.value)}
+        />
       </label>
       <ImageUploader
         value={post.cover_image}
