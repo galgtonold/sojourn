@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { getTrips } from "@/lib/content";
 import { formatDate } from "@/lib/utils";
 import { Reveal } from "@/components/reveal";
+import { RevealImage } from "@/components/reveal-image";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -31,12 +31,12 @@ export default async function TripsPage() {
               className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
             >
               {trip.cover_image && (
-                <Image
+                <RevealImage
                   src={trip.cover_image}
                   alt={trip.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  imgClassName="transition-transform duration-700 group-hover:scale-105"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />

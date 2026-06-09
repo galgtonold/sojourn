@@ -25,72 +25,130 @@ export type ChatMessage = {
   content: string | ContentPart[];
 };
 
-export async function deepseekChat(opts: {
+type ChatOpts = {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
   json?: boolean;
   meta?: UsageMeta;
-}): Promise<string> {
+};
+
+// One round-trip to the model. Throws on HTTP error with the status attached so
+// the caller can decide whether the failure is worth retrying.
+async function singleCompletion(
+  opts: ChatOpts,
+  messages: ChatMessage[],
+): Promise<string> {
+  const res = await fetch(`${env.deepseekBaseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${env.deepseekApiKey}`,
+    },
+    body: JSON.stringify({
+      model: opts.model,
+      messages,
+      temperature: opts.temperature ?? 0.7,
+      max_tokens: opts.maxTokens ?? 4096,
+      ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    const err = new Error(
+      `DeepSeek ${res.status}: ${detail.slice(0, 300)}`,
+    ) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+
+  if (opts.meta) {
+    const u = data?.usage ?? {};
+    const prompt = u.prompt_tokens ?? 0;
+    const hit = u.prompt_cache_hit_tokens ?? 0;
+    // Await (don't fire-and-forget): on fast-returning serverless routes the
+    // lambda can freeze right after the handler returns, dropping a pending
+    // background insert — which is why short calls like the outline went
+    // untracked while longer ones (sections) recorded.
+    await recordUsage({
+      operation: opts.meta.operation,
+      model: opts.model,
+      postId: opts.meta.postId,
+      userId: opts.meta.userId,
+      usage: {
+        prompt_tokens: prompt,
+        completion_tokens: u.completion_tokens ?? 0,
+        cache_hit_tokens: hit,
+        cache_miss_tokens:
+          u.prompt_cache_miss_tokens ?? Math.max(0, prompt - hit),
+      },
+    });
+  }
+
+  return data?.choices?.[0]?.message?.content ?? "";
+}
+
+export async function deepseekChat(opts: ChatOpts): Promise<string> {
   if (!isAiConfigured) throw new Error("AI is not configured");
 
   // JSON-mode responses occasionally come back truncated / not valid JSON.
   // Rather than fail the whole generation on a transient blip, retry a couple
-  // of times and only surface the last (still-unparseable) output.
-  const attempts = opts.json ? 3 : 1;
+  // of times before giving up.
+  const json = Boolean(opts.json);
+  const attempts = json ? 3 : 1;
   let last = "";
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const res = await fetch(`${env.deepseekBaseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${env.deepseekApiKey}`,
-      },
-      body: JSON.stringify({
-        model: opts.model,
-        messages: opts.messages,
-        temperature: opts.temperature ?? 0.7,
-        max_tokens: opts.maxTokens ?? 4096,
-        ...(opts.json ? { response_format: { type: "json_object" } } : {}),
-      }),
-    });
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
+    try {
+      last = await singleCompletion(opts, opts.messages);
+    } catch (e) {
+      const status = (e as { status?: number }).status ?? 0;
       // Retry transient upstream errors; surface client errors immediately.
-      if (attempt < attempts && res.status >= 500) continue;
-      throw new Error(`DeepSeek ${res.status}: ${detail.slice(0, 300)}`);
+      if (attempt < attempts && status >= 500) continue;
+      throw e;
     }
-    const data = await res.json();
-
-    if (opts.meta) {
-      const u = data?.usage ?? {};
-      const prompt = u.prompt_tokens ?? 0;
-      const hit = u.prompt_cache_hit_tokens ?? 0;
-      // Await (don't fire-and-forget): on fast-returning serverless routes the
-      // lambda can freeze right after the handler returns, dropping a pending
-      // background insert — which is why short calls like the outline went
-      // untracked while longer ones (sections) recorded.
-      await recordUsage({
-        operation: opts.meta.operation,
-        model: opts.model,
-        postId: opts.meta.postId,
-        userId: opts.meta.userId,
-        usage: {
-          prompt_tokens: prompt,
-          completion_tokens: u.completion_tokens ?? 0,
-          cache_hit_tokens: hit,
-          cache_miss_tokens:
-            u.prompt_cache_miss_tokens ?? Math.max(0, prompt - hit),
-        },
-      });
-    }
-
-    last = data?.choices?.[0]?.message?.content ?? "";
-    if (!opts.json || isParseableJson(last)) return last;
+    if (!json || isParseableJson(last)) return last;
     // Otherwise loop and try again for a clean JSON object.
+  }
+
+  // Still not valid JSON after the retries. Run one targeted repair pass: hand
+  // the broken text back and ask only for corrected JSON. With fresh tokens at
+  // temperature 0 this reliably fixes the common failures (code fences,
+  // trailing prose, a truncated tail) that a blind reroll tends to reproduce.
+  if (json && last.trim()) {
+    try {
+      const repaired = await singleCompletion(
+        {
+          ...opts,
+          temperature: 0,
+          maxTokens: Math.max(opts.maxTokens ?? 0, 2048),
+          meta: opts.meta
+            ? { ...opts.meta, operation: `${opts.meta.operation}:repair` }
+            : undefined,
+        },
+        [
+          {
+            role: "system",
+            content:
+              "You repair malformed JSON. Output ONLY one valid, complete, " +
+              "minified JSON object — no prose, no markdown, no code fences.",
+          },
+          {
+            role: "user",
+            content:
+              "Repair this into a single valid JSON object, preserving all " +
+              "data and completing any truncated structure:\n\n" +
+              last,
+          },
+        ],
+      );
+      if (isParseableJson(repaired)) return repaired;
+    } catch {
+      /* fall through and return the last raw output */
+    }
   }
 
   return last;

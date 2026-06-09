@@ -331,6 +331,16 @@ const en = {
   "admin.ai.step.save": "Saving",
   "admin.ai.autocaption": "Auto-caption photos",
   "admin.ai.autocaptionDone": "Captioned {n} photos.",
+  "admin.ai.workflowHint":
+    "Add your photos and GPX tracks first — the AI weaves them straight into the story. No photos yet? You can still draft from notes and attach them later.",
+  "admin.ai.err.parse": "The AI returned malformed output. Please try again.",
+  "admin.ai.err.network": "Network hiccup reaching the AI. Please try again.",
+  "admin.ai.err.rate":
+    "The AI is busy right now (rate limit). Wait a moment and retry.",
+  "admin.ai.err.noSections":
+    "The AI couldn’t write any sections. Try again, or add a few notes first.",
+  "admin.ai.warn.partial":
+    "Draft saved, but section(s) {list} failed — regenerate, or write those in by hand.",
 
   "admin.usage.link": "AI usage",
   "admin.usage.title": "AI usage & cost",
@@ -368,6 +378,9 @@ const en = {
   "admin.routes.upload": "Upload GPX",
   "admin.routes.reading": "Reading…",
   "admin.routes.track": "Track",
+  "admin.routes.rename": "Rename track",
+  "admin.routes.namePlaceholder": "Track name",
+  "admin.routes.save": "Save name",
 
   "admin.ask.title": "Polls & quizzes",
   "admin.ask.subtitle":
@@ -739,6 +752,18 @@ const de: Dict = {
   "admin.ai.step.save": "Speichern",
   "admin.ai.autocaption": "Fotos automatisch beschriften",
   "admin.ai.autocaptionDone": "{n} Fotos beschriftet.",
+  "admin.ai.workflowHint":
+    "Lade zuerst deine Fotos und GPX-Tracks hoch — die KI baut sie direkt in die Geschichte ein. Noch keine Fotos? Du kannst auch aus Notizen schreiben und sie später ergänzen.",
+  "admin.ai.err.parse":
+    "Die KI hat fehlerhafte Ausgabe geliefert. Bitte versuch es erneut.",
+  "admin.ai.err.network":
+    "Verbindungsproblem zur KI. Bitte versuch es erneut.",
+  "admin.ai.err.rate":
+    "Die KI ist gerade ausgelastet (Rate-Limit). Kurz warten und erneut versuchen.",
+  "admin.ai.err.noSections":
+    "Die KI konnte keine Abschnitte schreiben. Erneut versuchen oder zuerst ein paar Notizen ergänzen.",
+  "admin.ai.warn.partial":
+    "Entwurf gespeichert, aber Abschnitt(e) {list} sind fehlgeschlagen — neu generieren oder von Hand ergänzen.",
 
   "admin.usage.link": "KI-Kosten",
   "admin.usage.title": "KI-Nutzung & Kosten",
@@ -776,6 +801,9 @@ const de: Dict = {
   "admin.routes.upload": "GPX hochladen",
   "admin.routes.reading": "Wird gelesen…",
   "admin.routes.track": "Track",
+  "admin.routes.rename": "Track umbenennen",
+  "admin.routes.namePlaceholder": "Track-Name",
+  "admin.routes.save": "Name speichern",
 
   "admin.ask.title": "Umfragen & Quizze",
   "admin.ask.subtitle":

@@ -55,7 +55,9 @@ async function outline({
     model: aiModels.fast,
     temperature: 0.6,
     json: true,
-    maxTokens: 1500,
+    // Generous headroom: a truncated outline is the #1 cause of an unparseable
+    // response, and a half-written plan derails every section that follows.
+    maxTokens: 3000,
     meta: { operation: "outline", postId, userId: user.id },
     messages: [
       {

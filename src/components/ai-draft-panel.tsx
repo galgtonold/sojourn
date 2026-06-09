@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, MessagesSquare, Wand2 } from "lucide-react";
+import { Sparkles, Loader2, MessagesSquare, Wand2, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -34,6 +34,30 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return j as T;
 }
 
+// Retry a flaky step a few times before giving up — generation spans many model
+// calls, and a single transient blip shouldn't sink the whole run.
+async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+// Turn a raw error into something a non-engineer can act on.
+function humanError(e: unknown, t: (k: string) => string): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (/parse|json/i.test(raw)) return t("admin.ai.err.parse");
+  if (/\b(429|rate)\b/i.test(raw)) return t("admin.ai.err.rate");
+  if (/\b5\d\d\b|network|fetch|timeout|abort/i.test(raw))
+    return t("admin.ai.err.network");
+  return raw;
+}
+
 export function AiDraftPanel({
   postId,
   initialNotes,
@@ -55,6 +79,7 @@ export function AiDraftPanel({
   >("idle");
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
 
   const busy = phase === "asking" || phase === "running";
 
@@ -78,68 +103,90 @@ export function AiDraftPanel({
     if (hasBody && !(await confirm({ message: t("admin.ai.overwriteConfirm") }))) return;
     setPhase("running");
     setError(null);
+    setWarn(null);
     const qa = questions.map((q, i) => ({ question: q, answer: answers[i] ?? "" }));
     try {
-      // 1. Enrich photos in batches until none remain.
+      // 1. Enrich photos in batches until none remain (best effort — captions
+      //    can be filled later, so a hiccup here shouldn't block the draft).
       setStep(t("admin.ai.step.enrich"));
       for (let guard = 0; guard < 50; guard++) {
-        const { remaining } = await postJson<{ remaining: number }>(
-          "/api/admin/ai/enrich-post",
-          { postId },
-        );
-        if (remaining <= 0) break;
+        try {
+          const { remaining } = await postJson<{ remaining: number }>(
+            "/api/admin/ai/enrich-post",
+            { postId },
+          );
+          if (remaining <= 0) break;
+        } catch {
+          break;
+        }
       }
 
-      // 2. Outline.
+      // 2. Outline (retried — a usable plan is the backbone of the whole draft).
       setStep(t("admin.ai.step.outline"));
-      const { outline } = await postJson<{ outline: Outline }>(
-        "/api/admin/ai/outline",
-        { postId, notes, answers: qa, lang },
+      const { outline } = await withRetry(() =>
+        postJson<{ outline: Outline }>("/api/admin/ai/outline", {
+          postId,
+          notes,
+          answers: qa,
+          lang,
+        }),
       );
 
-      // 3. Write each section (one short request each).
+      // 3. Write each section (retried independently). A section that keeps
+      //    failing is skipped rather than sinking the run, so the draft still
+      //    captures everything that did write — progress is never thrown away.
       const parts: string[] = [];
+      const failed: number[] = [];
       const total = outline.sections.length;
       for (let i = 0; i < total; i++) {
         setStep(t("admin.ai.step.section", { a: i + 1, b: total }));
-        const { markdown } = await postJson<{ markdown: string }>(
-          "/api/admin/ai/section",
-          {
-            postId,
-            index: i,
-            total,
-            title: outline.title,
-            section: outline.sections[i],
-            notes,
-            answers: qa,
-            lang,
-          },
-        );
-        if (markdown) parts.push(markdown);
+        try {
+          const { markdown } = await withRetry(() =>
+            postJson<{ markdown: string }>("/api/admin/ai/section", {
+              postId,
+              index: i,
+              total,
+              title: outline.title,
+              section: outline.sections[i],
+              notes,
+              answers: qa,
+              lang,
+            }),
+          );
+          if (markdown) parts.push(markdown);
+        } catch {
+          failed.push(i + 1);
+        }
       }
 
-      // 4. Captions.
+      if (parts.length === 0) throw new Error(t("admin.ai.err.noSections"));
+
+      // 4. Captions (best effort).
       setStep(t("admin.ai.step.captions"));
       await postJson("/api/admin/ai/captions", { postId, lang }).catch(() => {});
 
-      // 5. Save the assembled draft.
+      // 5. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
-      await postJson("/api/admin/ai/save-draft", {
-        postId,
-        title: outline.title,
-        excerpt: outline.excerpt,
-        location: outline.location ?? undefined,
-        lat: outline.lat ?? null,
-        lng: outline.lng ?? null,
-        cover_photo_id: outline.cover_photo_id ?? null,
-        body: parts.join("\n\n"),
-      });
+      await withRetry(() =>
+        postJson("/api/admin/ai/save-draft", {
+          postId,
+          title: outline.title,
+          excerpt: outline.excerpt,
+          location: outline.location ?? undefined,
+          lat: outline.lat ?? null,
+          lng: outline.lng ?? null,
+          cover_photo_id: outline.cover_photo_id ?? null,
+          body: parts.join("\n\n"),
+        }),
+      );
 
       setStep(null);
+      if (failed.length)
+        setWarn(t("admin.ai.warn.partial", { list: failed.join(", ") }));
       setPhase("done");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
+      setError(humanError(e, t as (k: string) => string));
       setStep(null);
       setPhase(questions.length ? "answering" : "idle");
     }
@@ -149,6 +196,7 @@ export function AiDraftPanel({
     setPhase("running");
     setStep(t("admin.ai.autocaption"));
     setError(null);
+    setWarn(null);
     try {
       const { count } = await postJson<{ count: number }>(
         "/api/admin/ai/captions",
@@ -193,6 +241,11 @@ export function AiDraftPanel({
       </div>
       <p className="mt-1 text-sm text-sand-100/60">{t("admin.ai.subtitle")}</p>
 
+      <p className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-ink-800/60 px-3 py-2.5 text-xs text-sand-100/70">
+        <ImageUp className="mt-0.5 size-4 shrink-0 text-ember-400" />
+        <span>{t("admin.ai.workflowHint")}</span>
+      </p>
+
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
@@ -226,6 +279,7 @@ export function AiDraftPanel({
         </p>
       )}
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+      {warn && <p className="mt-3 text-sm text-amber-400">{warn}</p>}
       {phase === "done" && (
         <p className="mt-3 text-sm text-lagoon-400">{t("admin.ai.done")}</p>
       )}

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
+import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
 import { T, DocumentTitle } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
@@ -24,13 +24,13 @@ export default async function HomePage() {
       {/* ── Immersive hero ─────────────────────────────────────────────── */}
       <section className="relative grain h-dvh min-h-[640px] w-full overflow-hidden">
         {hero?.cover_image && (
-          <Image
+          <RevealImage
             src={hero.cover_image}
             alt={hero.title}
             fill
             priority
             sizes="100vw"
-            className="animate-kenburns object-cover"
+            imgClassName="animate-kenburns"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-ink-950/40 via-ink-950/30 to-ink-950" />

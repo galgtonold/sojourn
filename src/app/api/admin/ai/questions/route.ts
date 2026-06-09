@@ -33,7 +33,7 @@ async function questions({
     model: aiModels.fast,
     temperature: 0.6,
     json: true,
-    maxTokens: 700,
+    maxTokens: 1200,
     meta: { operation: "questions", postId: input.postId, userId: user.id },
     messages: [
       {

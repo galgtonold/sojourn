@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { Loader2, Route, Trash2, Upload } from "lucide-react";
+import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
 import { parseGpx, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
@@ -26,6 +26,8 @@ export function TrackManager({
   const [tracks, setTracks] = useState<ManagedTrack[]>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
   const t = useT();
 
   async function revalidate() {
@@ -87,6 +89,23 @@ export function TrackManager({
     revalidate();
   }
 
+  async function rename(track: ManagedTrack, name: string) {
+    const next = name.trim();
+    setEditingId(null);
+    if (!next || next === (track.name ?? "")) return;
+    setTracks((ts) =>
+      ts.map((x) => (x.id === track.id ? { ...x, name: next } : x)),
+    );
+    const supabase = getBrowserSupabase();
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("tracks")
+      .update({ name: next })
+      .eq("id", track.id);
+    if (error) setError(error.message);
+    else revalidate();
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -101,23 +120,66 @@ export function TrackManager({
       {tracks.length > 0 && (
         <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
           {tracks.map((tk) => (
-            <li key={tk.id} className="flex items-center justify-between px-4 py-3">
-              <span className="flex items-center gap-2 text-sm">
-                <Route className="size-4 text-ember-400" />
-                {tk.name || t("admin.routes.track")}
-                {tk.distance_m ? (
-                  <span className="text-sand-100/40">
-                    · {formatDistance(tk.distance_m)}
+            <li
+              key={tk.id}
+              className="flex items-center justify-between gap-2 px-4 py-3"
+            >
+              {editingId === tk.id ? (
+                <input
+                  autoFocus
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onBlur={() => rename(tk, draftName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") rename(tk, draftName);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  placeholder={t("admin.routes.namePlaceholder")}
+                  className="min-w-0 flex-1 rounded-lg border border-ember-400/50 bg-ink-800 px-2.5 py-1.5 text-sm outline-none focus:border-ember-400"
+                />
+              ) : (
+                <span className="flex min-w-0 items-center gap-2 text-sm">
+                  <Route className="size-4 shrink-0 text-ember-400" />
+                  <span className="truncate">
+                    {tk.name || t("admin.routes.track")}
                   </span>
-                ) : null}
+                  {tk.distance_m ? (
+                    <span className="shrink-0 text-sand-100/40">
+                      · {formatDistance(tk.distance_m)}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+              <span className="flex shrink-0 items-center gap-2">
+                {editingId === tk.id ? (
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => rename(tk, draftName)}
+                    aria-label={t("admin.routes.save")}
+                    className="text-lagoon-400 transition hover:text-lagoon-300"
+                  >
+                    <Check className="size-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingId(tk.id);
+                      setDraftName(tk.name ?? "");
+                    }}
+                    aria-label={t("admin.routes.rename")}
+                    className="text-sand-100/50 transition hover:text-ember-400"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => remove(tk)}
+                  aria-label={t("admin.routes.delete")}
+                  className="text-red-400/80 transition hover:text-red-400"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </span>
-              <button
-                onClick={() => remove(tk)}
-                aria-label={t("admin.routes.delete")}
-                className="text-red-400/80 transition hover:text-red-400"
-              >
-                <Trash2 className="size-4" />
-              </button>
             </li>
           ))}
         </ul>
