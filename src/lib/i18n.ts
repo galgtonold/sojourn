@@ -244,6 +244,8 @@ const en = {
   "admin.editor.coverAlt": "Cover alt text (describe the image for screen readers)",
   "admin.editor.lat": "Latitude",
   "admin.editor.lng": "Longitude",
+  "admin.editor.pickLocation":
+    "Tap the map to set the location, or enter coordinates below.",
   "admin.editor.excerpt": "Excerpt",
   "admin.editor.body":
     "Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)). Place a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line.",
@@ -634,6 +636,8 @@ const de: Dict = {
     "Alt-Text des Titelbilds (Bild für Screenreader beschreiben)",
   "admin.editor.lat": "Breitengrad",
   "admin.editor.lng": "Längengrad",
+  "admin.editor.pickLocation":
+    "Tippe auf die Karte, um den Ort zu setzen, oder gib unten Koordinaten ein.",
   "admin.editor.excerpt": "Kurzbeschreibung",
   "admin.editor.body":
     "Text — Markdown möglich (## Überschriften, **fett**, > Zitate, - Listen, [Links](url)). Setze ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile.",

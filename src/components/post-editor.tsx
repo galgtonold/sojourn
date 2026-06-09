@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ListChecks, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
+import { LocationPicker } from "@/components/location-picker";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
@@ -171,19 +172,30 @@ export function PostEditor({
         value={post.cover_alt}
         onChange={(e) => set("cover_alt", e.target.value)}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <input
-          className={input}
-          placeholder={t("admin.editor.lat")}
-          value={post.lat}
-          onChange={(e) => set("lat", e.target.value)}
+      <div className="space-y-2">
+        <p className="text-xs text-sand-100/40">
+          {t("admin.editor.pickLocation")}
+        </p>
+        <LocationPicker
+          lat={post.lat}
+          lng={post.lng}
+          onChange={(la, ln) => setPost((p) => ({ ...p, lat: la, lng: ln }))}
+          className="h-64 w-full overflow-hidden rounded-xl ring-1 ring-white/10"
         />
-        <input
-          className={input}
-          placeholder={t("admin.editor.lng")}
-          value={post.lng}
-          onChange={(e) => set("lng", e.target.value)}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <input
+            className={input}
+            placeholder={t("admin.editor.lat")}
+            value={post.lat}
+            onChange={(e) => set("lat", e.target.value)}
+          />
+          <input
+            className={input}
+            placeholder={t("admin.editor.lng")}
+            value={post.lng}
+            onChange={(e) => set("lng", e.target.value)}
+          />
+        </div>
       </div>
       <textarea
         className={`${input} resize-y`}
