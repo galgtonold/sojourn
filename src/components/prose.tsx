@@ -1,5 +1,5 @@
 import type { Components } from "react-markdown";
-import { optimizedSrc } from "@/lib/utils";
+import { ZoomableImage } from "@/components/zoomable-image";
 
 // Shared Markdown rendering used by both the normal post body and the story map.
 export function Figure({
@@ -13,11 +13,9 @@ export function Figure({
 }) {
   return (
     <figure className="my-8">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={optimizedSrc(src, 1600, 80)}
+      <ZoomableImage
+        src={src}
         alt={alt ?? caption ?? ""}
-        loading="lazy"
         className="w-full rounded-3xl"
       />
       {caption && (
