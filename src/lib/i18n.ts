@@ -169,7 +169,7 @@ const en = {
   "archive.empty": "Nothing here yet.",
 
   "map.title": "The whole map",
-  "map.subtitle": "Every entry, pinned. Tap a marker to jump to the story.",
+  "map.subtitle": "Every entry, pinned. Tap a marker for a preview, then open the story.",
 
   "photos.title": "Photo map",
   "photos.subtitle":
@@ -551,7 +551,7 @@ const de: Dict = {
 
   "map.title": "Die ganze Karte",
   "map.subtitle":
-    "Jeder Beitrag, markiert. Tippe einen Marker an, um zur Geschichte zu springen.",
+    "Jeder Beitrag, markiert. Tippe einen Marker für die Vorschau und öffne dann die Geschichte.",
 
   "photos.title": "Fotokarte",
   "photos.subtitle":
