@@ -10,11 +10,11 @@ import { useT } from "@/components/i18n";
  * An inline article image that opens into a full-screen lightbox on click.
  *
  * - The overlay is rendered through a portal to `document.body` so it escapes the
- *   transformed reveal-animation ancestors (a `position: fixed` child of a
- *   `transform`ed element is sized relative to that element, not the viewport).
- * - A landscape photo viewed on a portrait phone is rotated 90° so it fills the
- *   screen instead of sitting as a thin letterboxed strip; rotation is
- *   recomputed when the device is turned.
+ *   transformed reveal-animation ancestors.
+ * - The already-cached low-res image shows instantly, then the high-res version
+ *   crossfades in once it loads (no black flash while the big file downloads).
+ * - A clearly-landscape photo on a portrait phone is rotated 90° so it fills the
+ *   screen; rotation is recomputed when the device is turned.
  * - Open/close is animated (fade + scale) with Motion.
  */
 export function ZoomableImage({
@@ -30,12 +30,11 @@ export function ZoomableImage({
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [rotated, setRotated] = useState(false);
+  const [hiRes, setHiRes] = useState(false);
   const ratioRef = useRef(1); // natural width / height of the photo
 
   useEffect(() => setMounted(true), []);
 
-  // Rotate only when it genuinely fills better: a clearly-landscape photo on a
-  // portrait viewport. Recompute when the phone is turned or the window resizes.
   const shouldRotate = () =>
     window.innerHeight > window.innerWidth && ratioRef.current > 1.15;
 
@@ -56,6 +55,11 @@ export function ZoomableImage({
       document.body.style.overflow = prevOverflow;
     };
   }, [open]);
+
+  const sizeCls = rotated
+    ? "max-h-[95vw] max-w-[92dvh]"
+    : "max-h-[96dvh] max-w-[96vw]";
+  const imgCls = `rounded-lg object-contain shadow-2xl ${rotated ? "rotate-90" : ""} ${sizeCls}`;
 
   return (
     <>
@@ -96,18 +100,32 @@ export function ZoomableImage({
                 >
                   <X className="size-5" />
                 </button>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <motion.img
-                  src={optimizedSrc(src, 2560, 85)}
-                  alt={alt}
-                  initial={{ opacity: 0, scale: 0.92, rotate: rotated ? 90 : 0 }}
-                  animate={{ opacity: 1, scale: 1, rotate: rotated ? 90 : 0 }}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.94 }}
                   transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}
-                  className={`cursor-zoom-out rounded-lg object-contain shadow-2xl ${
-                    rotated ? "max-h-[95vw] max-w-[92dvh]" : "max-h-[96dvh] max-w-[96vw]"
-                  }`}
-                />
+                  className="relative cursor-zoom-out"
+                >
+                  {/* Low-res (cached from the inline image) — shows immediately. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={optimizedSrc(src, 1600, 80)}
+                    alt={alt}
+                    className={imgCls}
+                  />
+                  {/* High-res — crossfades in once it has downloaded. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={optimizedSrc(src, 2560, 85)}
+                    alt=""
+                    aria-hidden
+                    onLoad={() => setHiRes(true)}
+                    className={`absolute inset-0 transition-opacity duration-500 ${imgCls} ${
+                      hiRes ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>,
