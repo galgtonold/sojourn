@@ -215,16 +215,13 @@ export function PostView({
         </section>
       )}
 
-      <ElevationProfile
-        tracks={post.tracks}
-        wrapClassName={sectionWrap}
-        colClassName={readingCol}
-      />
+      {/* Elevation + comments span the full content width (not the narrow
+          reading column) — they read better wide and fill the space beside
+          where the sticky map sat. */}
+      <ElevationProfile tracks={post.tracks} wrapClassName={sectionWrap} />
 
       <section className={cn(sectionWrap, "pb-24")}>
-        <div className={readingCol}>
-          <Comments postId={post.id} initial={comments} />
-        </div>
+        <Comments postId={post.id} initial={comments} />
       </section>
 
       {!preview && <SubscribePrompt />}
