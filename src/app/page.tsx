@@ -14,7 +14,9 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 9 });
-  const [hero, ...rest] = posts;
+  // The newest entry headlines the hero, and still appears in the grid below so
+  // it isn't "missing" from the latest list.
+  const hero = posts[0];
 
   return (
     <>
@@ -82,13 +84,13 @@ export default async function HomePage() {
           </Link>
         </Reveal>
 
-        {rest.length === 0 ? (
+        {posts.length === 0 ? (
           <p className="text-sand-100/60">
             <T k="home.noMore" />
           </p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {rest.map((post, i) => (
+            {posts.map((post, i) => (
               <Reveal key={post.id} delay={i * 0.05}>
                 <PostCard post={post} />
               </Reveal>
