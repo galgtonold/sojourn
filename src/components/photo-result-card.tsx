@@ -11,7 +11,7 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
   return (
     <Link
       href={`/posts/${photo.post_slug}`}
-      className="group relative block overflow-hidden rounded-3xl bg-ink-950"
+      className="group relative block overflow-hidden rounded-3xl bg-ink-800"
     >
       <div className="relative aspect-square w-full overflow-hidden">
         {photo.url ? (
@@ -20,12 +20,13 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
             alt={photo.alt ?? label ?? photo.post_title}
             fill
             sizes="(max-width: 768px) 50vw, 33vw"
+            imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
             overlay={
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[20%] via-ink-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
             }
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[20%] via-ink-950/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
         )}
       </div>
 

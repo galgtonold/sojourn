@@ -28,7 +28,7 @@ export default async function TripsPage() {
           <Reveal key={trip.id} delay={i * 0.05}>
             <Link
               href={`/trips/${trip.slug}`}
-              className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-950"
+              className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
             >
               {trip.cover_image && (
                 <Image
@@ -36,10 +36,10 @@ export default async function TripsPage() {
                   alt={trip.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[20%] via-ink-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6">
                 <h2 className="font-display text-3xl font-semibold">
                   {trip.title}
