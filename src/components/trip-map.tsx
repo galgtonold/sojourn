@@ -203,17 +203,32 @@ export function TripMap({
         });
       }
 
-      // Waypoints
+      // Waypoints — a click opens the popup (the "expansion"); the post link
+      // inside it is the deliberate second action. Previously the marker
+      // navigated on click, so the popup never had a chance to show.
       markers.forEach((m, i) => {
         extend(m.lng, m.lat);
         const el = document.createElement("button");
         el.className =
           "grid place-items-center size-7 rounded-full bg-[#f56a1f] text-[#0a0908] text-xs font-bold ring-2 ring-white/80 shadow-lg cursor-pointer";
         el.textContent = String(i + 1);
-        if (m.href) el.onclick = () => (window.location.href = m.href!);
+        el.setAttribute("aria-label", m.name);
+        const link = m.href
+          ? `<a href="${m.href}" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;letter-spacing:.01em;color:#ff8f4d;text-decoration:none">${esc(translate(readCookieLocale(), "map.openStory"))}</a>`
+          : "";
+        const html = `<div style="max-width:200px;padding-right:14px">
+          <div style="font-size:13px;font-weight:600;line-height:1.35;color:#faf6f0">${esc(m.name)}</div>
+          ${link}
+        </div>`;
         new maplibregl.Marker({ element: el })
           .setLngLat([m.lng, m.lat])
-          .setPopup(new maplibregl.Popup({ offset: 18, closeButton: false }).setText(m.name))
+          .setPopup(
+            new maplibregl.Popup({
+              offset: 18,
+              closeButton: true,
+              maxWidth: "240px",
+            }).setHTML(html),
+          )
           .addTo(map);
       });
 
