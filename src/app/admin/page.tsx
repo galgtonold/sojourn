@@ -40,6 +40,7 @@ async function loadStats(viewer: Viewer) {
         title: p.title,
         slug: p.slug,
         published: p.published,
+        trip_id: p.trip_id,
       })),
     };
   }
@@ -55,7 +56,7 @@ async function loadStats(viewer: Viewer) {
 
   let postsQuery = supabase
     .from("posts")
-    .select("id, title, slug, published")
+    .select("id, title, slug, published, trip_id")
     .order("updated_at", { ascending: false })
     .limit(20);
   if (scope) postsQuery = postsQuery.in("trip_id", scope);
@@ -124,6 +125,7 @@ export default async function AdminDashboard() {
   const trips = viewer.isOwner
     ? allTrips
     : allTrips.filter((t) => viewer.tripIds.includes(t.id));
+  const tripById = new Map(allTrips.map((t) => [t.id, t.title] as const));
 
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
@@ -210,39 +212,54 @@ export default async function AdminDashboard() {
         </Link>
       </div>
       <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
-        {stats.posts.map((p) => (
-          <li
-            key={p.id}
-            className="flex items-center justify-between px-5 py-3.5"
-          >
-            <span className="truncate">{p.title}</span>
-            <span className="flex items-center gap-3">
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs ${
-                  p.published
-                    ? "bg-lagoon-500/15 text-lagoon-400"
-                    : "bg-white/10 text-sand-100/60"
-                }`}
-              >
-                {p.published ? <T k="admin.published" /> : <T k="admin.draft" />}
+        {stats.posts.map((p) => {
+          const tripTitle = p.trip_id ? tripById.get(p.trip_id) : null;
+          return (
+            <li
+              key={p.id}
+              className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
+              <div className="min-w-0">
+                <span className="block truncate font-medium">{p.title}</span>
+                {tripTitle && (
+                  <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-sand-100/40">
+                    <MapPin className="size-3 shrink-0 text-ember-400/70" />
+                    {tripTitle}
+                  </span>
+                )}
+              </div>
+              <span className="flex shrink-0 items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs ${
+                    p.published
+                      ? "bg-lagoon-500/15 text-lagoon-400"
+                      : "bg-white/10 text-sand-100/60"
+                  }`}
+                >
+                  {p.published ? (
+                    <T k="admin.published" />
+                  ) : (
+                    <T k="admin.draft" />
+                  )}
+                </span>
+                <a
+                  href={`/admin/posts/${p.id}/preview`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-sand-100/60 hover:underline"
+                >
+                  <T k="admin.preview" />
+                </a>
+                <Link
+                  href={`/admin/posts/${p.id}`}
+                  className="text-sm text-ember-400 hover:underline"
+                >
+                  <T k="admin.edit" />
+                </Link>
               </span>
-              <a
-                href={`/admin/posts/${p.id}/preview`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-sand-100/60 hover:underline"
-              >
-                <T k="admin.preview" />
-              </a>
-              <Link
-                href={`/admin/posts/${p.id}`}
-                className="text-sm text-ember-400 hover:underline"
-              >
-                <T k="admin.edit" />
-              </Link>
-            </span>
-          </li>
-        ))}
+            </li>
+          );
+        })}
         {stats.posts.length === 0 && (
           <li className="px-5 py-4 text-sand-100/50">
             <T k="admin.noPosts" />

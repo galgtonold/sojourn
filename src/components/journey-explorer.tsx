@@ -24,6 +24,7 @@ export type JourneyStop = {
   lng: number;
   photoUrl?: string | null;
   caption?: string | null;
+  takenAt?: string | null;
   href?: string;
 };
 
@@ -59,6 +60,17 @@ export function JourneyExplorer({
 
   // Order the stops along the route so "next" walks the journey in sequence.
   const ordered = useMemo(() => {
+    // Chronological order (by photo time) is the most intuitive way to walk a
+    // multi-day journey — use it whenever every stop carries a timestamp.
+    if (
+      stops.length > 0 &&
+      stops.every((s) => s.takenAt && Number.isFinite(Date.parse(s.takenAt)))
+    ) {
+      return [...stops].sort(
+        (a, b) =>
+          Date.parse(a.takenAt as string) - Date.parse(b.takenAt as string),
+      );
+    }
     const coords: number[][] = [];
     for (const t of tracks)
       for (const f of t.geojson?.features ?? [])
