@@ -14,9 +14,9 @@ export function PostCard({
   return (
     <Link
       href={`/posts/${post.slug}`}
-      className="group relative block overflow-hidden rounded-3xl bg-ink-800"
+      className="group relative block overflow-hidden rounded-3xl bg-ink-950"
     >
-      <div className="relative aspect-[4/5] w-full overflow-hidden">
+      <div className="relative aspect-[4/5] w-full overflow-hidden [clip-path:inset(2px)]">
         {post.cover_image ? (
           <RevealImage
             src={post.cover_image}
