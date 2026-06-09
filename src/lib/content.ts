@@ -64,7 +64,7 @@ function hydratePost(row: any): PostWithRelations {
 
 const POST_SELECT = `
   *,
-  trip:trips(*),
+  trip:trips(id, slug, title, summary, cover_image, start_date, end_date),
   photos(*),
   locations(*),
   tracks(*),
@@ -169,7 +169,7 @@ export async function getTrips(): Promise<Trip[]> {
   try {
     const { data, error } = await supabase
       .from("trips")
-      .select("*")
+      .select("id, slug, title, summary, cover_image, start_date, end_date")
       .order("start_date", { ascending: false });
     if (error || !data) return demoTrips;
     return data as Trip[];

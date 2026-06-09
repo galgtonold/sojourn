@@ -26,7 +26,7 @@ export default async function EditTripPage({
   const supabase = await getServerSupabase();
   const { data, error } = await supabase!
     .from("trips")
-    .select("id, title, slug, summary, cover_image, start_date, end_date")
+    .select("id, title, slug, summary, ai_context, cover_image, start_date, end_date")
     .eq("id", id)
     .maybeSingle();
 
@@ -37,6 +37,7 @@ export default async function EditTripPage({
     title: data.title ?? "",
     slug: data.slug ?? "",
     summary: data.summary ?? "",
+    ai_context: data.ai_context ?? "",
     cover_image: data.cover_image ?? "",
     start_date: data.start_date ?? "",
     end_date: data.end_date ?? "",

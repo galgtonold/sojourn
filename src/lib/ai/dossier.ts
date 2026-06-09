@@ -38,7 +38,7 @@ export async function buildDossier(
 ): Promise<Dossier> {
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, location, ai_notes, trip_id, trips(title, summary, start_date, end_date)")
+    .select("id, title, location, ai_notes, trip_id, trips(title, summary, ai_context, start_date, end_date)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -77,7 +77,13 @@ export async function buildDossier(
   const trip = (Array.isArray((post as any)?.trips)
     ? (post as any).trips[0]
     : (post as any)?.trips) as
-    | { title?: string; summary?: string; start_date?: string; end_date?: string }
+    | {
+        title?: string;
+        summary?: string;
+        ai_context?: string;
+        start_date?: string;
+        end_date?: string;
+      }
     | undefined;
 
   const lines: string[] = [];
@@ -87,6 +93,8 @@ export async function buildDossier(
       `Zeitraum: ${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`,
     );
   if (trip?.summary) lines.push(`Reise-Kontext: ${trip.summary}`);
+  if (trip?.ai_context)
+    lines.push(`Reise-Hintergrund (Autor, intern): ${trip.ai_context}`);
   if (post?.location) lines.push(`Ort (grob): ${post.location}`);
 
   lines.push("", "Fotos in zeitlicher Reihenfolge (mit echten IDs):");

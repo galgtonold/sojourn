@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
+import { AiContextRefiner } from "@/components/ai-context-refiner";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -12,6 +13,7 @@ export type EditableTrip = {
   title: string;
   slug: string;
   summary: string;
+  ai_context: string;
   cover_image: string;
   start_date: string;
   end_date: string;
@@ -21,6 +23,7 @@ const EMPTY: EditableTrip = {
   title: "",
   slug: "",
   summary: "",
+  ai_context: "",
   cover_image: "",
   start_date: "",
   end_date: "",
@@ -114,6 +117,33 @@ export function TripEditor({
         value={trip.summary}
         onChange={(e) => set("summary", e.target.value)}
       />
+
+      {/* Internal context — never shown to readers, only feeds AI generation. */}
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-ink-900/40 p-3">
+        <div>
+          <p className="text-sm font-medium text-sand-100/80">
+            {t("admin.trip.aiContext")}
+          </p>
+          <p className="text-xs text-sand-100/40">
+            {t("admin.trip.aiContextHint")}
+          </p>
+        </div>
+        <textarea
+          className={`${input} resize-y`}
+          rows={5}
+          placeholder={t("admin.trip.aiContextPlaceholder")}
+          value={trip.ai_context}
+          onChange={(e) => set("ai_context", e.target.value)}
+        />
+        <AiContextRefiner
+          tripId={trip.id}
+          title={trip.title}
+          summary={trip.summary}
+          context={trip.ai_context}
+          onApply={(c) => set("ai_context", c)}
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm text-sand-100/60">
           {t("admin.trip.start")}

@@ -269,6 +269,16 @@ const en = {
   "admin.trip.title": "Trip title",
   "admin.trip.cover": "Cover image",
   "admin.trip.summary": "Summary",
+  "admin.trip.aiContext": "Internal AI context",
+  "admin.trip.aiContextHint":
+    "Not shown to readers — used to ground AI-generated posts (who's travelling, goals, style, recurring details).",
+  "admin.trip.aiContextPlaceholder":
+    "Participants, motivation, travel style, recurring themes…",
+  "admin.trip.aiRefineTitle": "Refine with AI",
+  "admin.trip.aiAsk": "Ask me questions",
+  "admin.trip.aiThinking": "Thinking…",
+  "admin.trip.aiGenerate": "Generate context",
+  "admin.trip.aiWriting": "Writing…",
   "admin.trip.start": "Start date",
   "admin.trip.end": "End date",
   "admin.trip.deleteConfirm": "Delete this trip? Its posts stay, just unlinked.",
@@ -661,6 +671,16 @@ const de: Dict = {
   "admin.trip.title": "Titel der Reise",
   "admin.trip.cover": "Titelbild",
   "admin.trip.summary": "Zusammenfassung",
+  "admin.trip.aiContext": "Interner KI-Kontext",
+  "admin.trip.aiContextHint":
+    "Nicht öffentlich — Grundlage für KI-generierte Beiträge (wer mitreist, Ziele, Stil, wiederkehrende Details).",
+  "admin.trip.aiContextPlaceholder":
+    "Teilnehmer, Motivation, Reisestil, wiederkehrende Themen…",
+  "admin.trip.aiRefineTitle": "Mit KI verfeinern",
+  "admin.trip.aiAsk": "Stell mir Fragen",
+  "admin.trip.aiThinking": "Denke nach…",
+  "admin.trip.aiGenerate": "Kontext generieren",
+  "admin.trip.aiWriting": "Schreibe…",
   "admin.trip.start": "Startdatum",
   "admin.trip.end": "Enddatum",
   "admin.trip.deleteConfirm":
