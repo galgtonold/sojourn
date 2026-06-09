@@ -218,3 +218,33 @@ body {
 .maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: var(--color-ink-900) !important;
 }
+
+/* Photo popups: the image runs full-bleed to the card edges and the close
+   control is overlaid on it as a circular scrim (MapLibre's default glyph
+   floats awkwardly in the dark padding strip above the image). Scoped to
+   .photo-popup so text-only waypoint popups keep their normal padding. */
+.photo-popup .maplibregl-popup-content {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.photo-popup .maplibregl-popup-close-button {
+  position: absolute;
+  inset: 7px 7px auto auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 9999px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-sand-50);
+  background: rgba(10, 9, 8, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s ease;
+}
+.photo-popup .maplibregl-popup-close-button:hover {
+  background: rgba(10, 9, 8, 0.8);
+}

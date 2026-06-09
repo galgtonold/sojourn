@@ -256,14 +256,29 @@ export function TripMap({
             "position:absolute;top:-7px;left:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:9999px;background:#f56a1f;color:#0a0908;font:700 11px/1 ui-sans-serif,system-ui,sans-serif;border:2px solid #0a0908;box-shadow:0 1px 3px rgba(0,0,0,.5)";
           el.appendChild(badge);
         }
-        const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:200px;text-decoration:none;color:#faf6f0">
-          <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
-          ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
-          ${p.href ? `<div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">${esc(translate(readCookieLocale(), "map.openStory"))}</div>` : ""}
+        const caption = p.caption
+          ? `<div style="font-size:12.5px;line-height:1.4">${esc(p.caption)}</div>`
+          : "";
+        const open = p.href
+          ? `<div style="margin-top:${p.caption ? "8px" : "0"};font-size:11px;font-weight:600;letter-spacing:.01em;color:#ff8f4d">${esc(translate(readCookieLocale(), "map.openStory"))}</div>`
+          : "";
+        const body =
+          caption || open
+            ? `<div style="padding:11px 13px 12px">${caption}${open}</div>`
+            : "";
+        const html = `<a ${p.href ? `href="${p.href}"` : ""} style="display:block;width:220px;text-decoration:none;color:#faf6f0">
+          <img src="${optimizedSrc(p.url, 440, 70)}" style="width:100%;height:132px;object-fit:cover;display:block" alt="" />
+          ${body}
         </a>`;
         new maplibregl.Marker({ element: el })
           .setLngLat([p.lng, p.lat])
-          .setPopup(new maplibregl.Popup({ offset: 20, maxWidth: "220px" }).setHTML(html))
+          .setPopup(
+            new maplibregl.Popup({
+              offset: 20,
+              maxWidth: "248px",
+              className: "photo-popup",
+            }).setHTML(html),
+          )
           .addTo(map);
       });
 
