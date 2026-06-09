@@ -51,7 +51,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
             <button
               key={photo.id}
               onClick={() => setOpen(i)}
-              className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-950"
+              className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800"
             >
               {photo.url && (
                 <Image
@@ -61,7 +61,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
                   sizes="(max-width: 640px) 50vw, 33vw"
                   placeholder={blur ? "blur" : "empty"}
                   blurDataURL={blur ?? undefined}
-                  className="object-cover [clip-path:inset(2px)]"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               )}
             </button>
