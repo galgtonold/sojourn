@@ -256,6 +256,9 @@ const en = {
   "admin.editor.saveFailed": "Save failed",
   "admin.editor.trip": "Trip",
   "admin.editor.tripNone": "— No trip —",
+  "admin.editor.selectTrip": "Select a trip…",
+  "admin.editor.tripRequiredNoTrips":
+    "Every article needs a trip so it stays discoverable — create one first.",
 
   "admin.trip.heading": "Trips",
   "admin.trip.newTrip": "New trip",
@@ -643,6 +646,9 @@ const de: Dict = {
   "admin.editor.saveFailed": "Speichern fehlgeschlagen",
   "admin.editor.trip": "Reise",
   "admin.editor.tripNone": "— Keine Reise —",
+  "admin.editor.selectTrip": "Reise wählen…",
+  "admin.editor.tripRequiredNoTrips":
+    "Jeder Beitrag braucht eine Reise, damit er auffindbar bleibt — leg zuerst eine an.",
 
   "admin.trip.heading": "Reisen",
   "admin.trip.newTrip": "Neue Reise",

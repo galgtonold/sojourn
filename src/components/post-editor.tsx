@@ -131,23 +131,30 @@ export function PostEditor({
         value={post.location}
         onChange={(e) => set("location", e.target.value)}
       />
-      {trips.length > 0 && (
-        <label className="block text-sm text-sand-100/60">
-          {t("admin.editor.trip")}
+      <label className="block text-sm text-sand-100/60">
+        {t("admin.editor.trip")}
+        {trips.length > 0 ? (
           <select
             value={post.trip_id}
             onChange={(e) => set("trip_id", e.target.value)}
             className={`${input} mt-1`}
+            required
           >
-            <option value="">{t("admin.editor.tripNone")}</option>
+            <option value="" disabled>
+              {t("admin.editor.selectTrip")}
+            </option>
             {trips.map((tr) => (
               <option key={tr.id} value={tr.id}>
                 {tr.title}
               </option>
             ))}
           </select>
-        </label>
-      )}
+        ) : (
+          <p className="mt-1 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2.5 text-sm text-ember-200">
+            {t("admin.editor.tripRequiredNoTrips")}
+          </p>
+        )}
+      </label>
       <ImageUploader
         value={post.cover_image}
         onChange={(url) => set("cover_image", url)}
@@ -234,7 +241,7 @@ export function PostEditor({
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={save}
-          disabled={busy || !post.title}
+          disabled={busy || !post.title || !post.trip_id}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
           <Save className="size-4" />{" "}
