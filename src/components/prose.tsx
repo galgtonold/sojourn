@@ -6,13 +6,15 @@ export function Figure({
   src,
   caption,
   alt,
+  id,
 }: {
   src: string;
   caption?: string | null;
   alt?: string;
+  id?: string;
 }) {
   return (
-    <figure className="my-8">
+    <figure id={id} className="my-8 scroll-mt-24">
       <ZoomableImage
         src={src}
         alt={alt ?? caption ?? ""}

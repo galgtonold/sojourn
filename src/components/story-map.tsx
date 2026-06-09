@@ -228,6 +228,7 @@ export function StoryMap({
                     : {})}
                 >
                   <Figure
+                    id={`photo-${b.photo.id}`}
                     src={b.photo.url ?? ""}
                     alt={b.photo.alt ?? undefined}
                     caption={b.photo.caption}

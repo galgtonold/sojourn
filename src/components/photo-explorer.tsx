@@ -56,7 +56,7 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
         essential: true,
       });
       popupRef.current?.remove();
-      const html = `<a href="/posts/${esc(p.postSlug)}" style="display:block;width:200px;text-decoration:none;color:#faf6f0">
+      const html = `<a href="/posts/${esc(p.postSlug)}#photo-${esc(p.id)}" style="display:block;width:200px;text-decoration:none;color:#faf6f0">
           <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
           ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
           <div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">${esc(t("map.openStory"))}</div>
@@ -96,6 +96,46 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
       );
     };
 
+    // Un-clustered photos render as circular thumbnail markers (HTML), created
+    // once and reconciled on every render — clusters stay as the circle layer.
+    const markers: Record<string, maplibregl.Marker> = {};
+    let onScreen: Record<string, maplibregl.Marker> = {};
+    const makeThumb = (p: GeoPhoto) => {
+      const el = document.createElement("button");
+      el.setAttribute("aria-label", p.caption ?? p.postTitle ?? "");
+      el.style.cssText =
+        "width:42px;height:42px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer;display:block;padding:0";
+      el.style.backgroundImage = `url(${optimizedSrc(p.url, 96, 65)})`;
+      el.onmouseenter = () => setSelectedId(p.id);
+      el.onclick = (ev) => {
+        ev.stopPropagation();
+        focusRef.current(p.id);
+      };
+      return el;
+    };
+    const updateMarkers = () => {
+      const next: Record<string, maplibregl.Marker> = {};
+      for (const f of map.querySourceFeatures("photos")) {
+        const props = f.properties ?? {};
+        if (props.cluster) continue;
+        const id = props.id as string;
+        if (!id || next[id]) continue;
+        let marker = markers[id];
+        if (!marker) {
+          const p = photoById.get(id);
+          if (!p) continue;
+          marker = markers[id] = new maplibregl.Marker({
+            element: makeThumb(p),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          }).setLngLat((f.geometry as any).coordinates);
+        }
+        next[id] = marker;
+        if (!onScreen[id]) marker.addTo(map);
+      }
+      for (const id in onScreen) if (!next[id]) onScreen[id].remove();
+      onScreen = next;
+    };
+
     map.on("load", () => {
       map.resize();
       const bounds = new maplibregl.LngLatBounds();
@@ -104,8 +144,8 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
       map.addSource("photos", {
         type: "geojson",
         cluster: true,
-        clusterRadius: 50,
-        clusterMaxZoom: 14,
+        clusterRadius: 40,
+        clusterMaxZoom: 12,
         data: {
           type: "FeatureCollection",
           features: photos.map((p) => ({
@@ -151,21 +191,10 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
         type: "circle",
         source: "selected",
         paint: {
-          "circle-radius": 15,
+          "circle-radius": 27,
           "circle-color": "#f56a1f",
-          "circle-opacity": 0.35,
-        },
-      });
-      map.addLayer({
-        id: "photo-point",
-        type: "circle",
-        source: "photos",
-        filter: ["!", ["has", "point_count"]],
-        paint: {
-          "circle-color": "#f56a1f",
-          "circle-radius": 7,
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#fff",
+          "circle-opacity": 0.45,
+          "circle-blur": 0.35,
         },
       });
 
@@ -192,24 +221,23 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
           map.easeTo({ center: (feature.geometry as any).coordinates, zoom });
         });
       });
-      map.on("click", "photo-point", (e) => {
-        const id = e.features?.[0]?.properties?.id;
-        if (typeof id === "string") focusRef.current(id);
+      map.on("mouseenter", "photo-clusters", () => {
+        map.getCanvas().style.cursor = "pointer";
       });
-      for (const layer of ["photo-clusters", "photo-point"]) {
-        map.on("mouseenter", layer, () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", layer, () => {
-          map.getCanvas().style.cursor = "";
-        });
-      }
+      map.on("mouseleave", "photo-clusters", () => {
+        map.getCanvas().style.cursor = "";
+      });
+      // Keep the thumbnail markers in sync with the un-clustered leaves.
+      map.on("render", () => {
+        if (map.isSourceLoaded("photos")) updateMarkers();
+      });
     });
 
     return () => {
       ro.disconnect();
       popupRef.current?.remove();
       popupRef.current = null;
+      for (const id in markers) markers[id].remove();
       map.remove();
       mapRef.current = null;
     };
