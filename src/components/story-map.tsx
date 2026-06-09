@@ -196,7 +196,7 @@ export function StoryMap({
   }, [isDesktop]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+    <div className="mx-auto max-w-6xl px-6">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-14">
         {/* Narrative — single column on mobile, left column on desktop. */}
         <div

@@ -5,6 +5,7 @@ import {
   type ElevationSeries,
 } from "@/lib/gpx";
 import type { Track } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { T } from "@/components/i18n";
 
 function ProfileChart({ series }: { series: ElevationSeries }) {
@@ -50,7 +51,15 @@ function ProfileChart({ series }: { series: ElevationSeries }) {
 }
 
 /** Renders a distance-vs-elevation chart per track that carries elevation. */
-export function ElevationProfile({ tracks }: { tracks: Track[] }) {
+export function ElevationProfile({
+  tracks,
+  wrapClassName = "mx-auto max-w-3xl px-6",
+  colClassName = "",
+}: {
+  tracks: Track[];
+  wrapClassName?: string;
+  colClassName?: string;
+}) {
   const series = tracks
     .map((t) => ({ t, s: buildElevationSeries(t.geojson) }))
     .filter((x): x is { t: Track; s: ElevationSeries } => x.s !== null);
@@ -58,11 +67,12 @@ export function ElevationProfile({ tracks }: { tracks: Track[] }) {
   if (series.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-4xl px-6 pb-14">
-      <h2 className="mb-5 font-display text-2xl font-semibold">
-        <T k="post.elevation" />
-      </h2>
-      <div className="space-y-6">
+    <section className={cn(wrapClassName, "pb-14")}>
+      <div className={colClassName}>
+        <h2 className="mb-5 font-display text-2xl font-semibold">
+          <T k="post.elevation" />
+        </h2>
+        <div className="space-y-6">
         {series.map(({ t, s }) => (
           <div
             key={t.id}
@@ -89,6 +99,7 @@ export function ElevationProfile({ tracks }: { tracks: Track[] }) {
             <ProfileChart series={s} />
           </div>
         ))}
+        </div>
       </div>
     </section>
   );
