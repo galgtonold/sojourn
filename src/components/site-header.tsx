@@ -18,6 +18,9 @@ export function SiteHeader() {
   const t = useT();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // The draft-preview banner is a fixed h-9 strip at the very top; drop the
+  // header below it on the preview route so they don't overlap.
+  const isPreview = /^\/admin\/posts\/[^/]+\/preview\/?$/.test(pathname ?? "");
 
   // Close the mobile menu whenever the route changes.
   useEffect(() => {
@@ -25,7 +28,7 @@ export function SiteHeader() {
   }, [pathname]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className={cn("fixed inset-x-0 z-50", isPreview ? "top-9" : "top-0")}>
       <div className="glass mx-auto mt-3 max-w-6xl rounded-3xl px-4 py-2.5 sm:rounded-full sm:px-6">
         <div className="flex items-center justify-between">
           <Link

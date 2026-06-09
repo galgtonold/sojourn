@@ -66,7 +66,7 @@ export function PostView({
   return (
     <article>
       {preview && (
-        <div className="fixed inset-x-0 top-0 z-[80] bg-ember-600 px-4 py-1.5 text-center text-sm font-medium text-ink-950">
+        <div className="fixed inset-x-0 top-0 z-[100] grid h-9 place-items-center bg-ember-600 px-4 text-center text-sm font-medium text-ink-950">
           <T k="preview.draft" />
           {!post.published && (
             <>
