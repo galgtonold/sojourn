@@ -32,12 +32,12 @@ export function Figure({
 export const mdComponents: Components = {
   p: ({ children }) => <p className="leading-relaxed">{children}</p>,
   h2: ({ children }) => (
-    <h2 className="mt-10 font-display text-3xl font-semibold text-sand-50">
+    <h2 className="font-display text-3xl font-semibold text-sand-50">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mt-8 font-display text-2xl font-semibold text-sand-50">
+    <h3 className="font-display text-2xl font-semibold text-sand-50">
       {children}
     </h3>
   ),

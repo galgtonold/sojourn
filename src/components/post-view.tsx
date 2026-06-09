@@ -150,12 +150,12 @@ export function PostView({
         </div>
       )}
 
-      <div className="mx-auto max-w-2xl px-4 pb-14 pt-8 sm:px-6">
+      <div className="mx-auto max-w-3xl px-6 pb-14 pt-8">
         <Reactions postId={post.id} initial={post.reactions} />
       </div>
 
       {galleryPhotos.length > 0 && (
-        <section className="mx-auto max-w-4xl px-6 pb-14">
+        <section className="mx-auto max-w-3xl px-6 pb-14">
           <h2 className="mb-5 font-display text-2xl font-semibold">
             <T k="post.gallery" />
           </h2>
@@ -166,7 +166,7 @@ export function PostView({
       {hasMap && (
         <section
           className={cn(
-            "mx-auto max-w-4xl px-6 pb-14",
+            "mx-auto max-w-3xl px-6 pb-14",
             useStory && "lg:hidden", // desktop story posts show the map in the sticky column
           )}
         >
@@ -194,7 +194,7 @@ export function PostView({
 
       <ElevationProfile tracks={post.tracks} />
 
-      <section className="mx-auto max-w-2xl px-4 pb-24 sm:px-6">
+      <section className="mx-auto max-w-3xl px-6 pb-24">
         <Comments postId={post.id} initial={comments} />
       </section>
 

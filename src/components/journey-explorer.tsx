@@ -180,9 +180,12 @@ export function JourneyExplorer({
       {/* Stepper card */}
       {current && (
         <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
-          <div className="glass mx-auto w-full max-w-md rounded-2xl p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ember-300">
-              {title} · {index + 1} / {ordered.length}
+          <div className="glass w-full rounded-2xl p-4 sm:w-96">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-ember-300">
+              <span className="truncate">{title}</span>
+              <span className="shrink-0 text-ember-300/70">
+                · {index + 1} / {ordered.length}
+              </span>
             </p>
 
             <div className="mt-2 flex items-center gap-3">
@@ -206,27 +209,32 @@ export function JourneyExplorer({
               )}
 
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate font-display text-lg font-semibold">
+                <p className="flex min-w-0 items-center gap-1.5 font-display text-lg font-semibold">
                   {current.type === "photo" && (
                     <Camera className="size-4 shrink-0 text-ember-400" />
                   )}
-                  {current.name}
+                  <span className="truncate">{current.name}</span>
                 </p>
-                {current.type === "photo" && current.photoUrl && (
-                  <button
-                    onClick={() => setLightbox(current.photoUrl!)}
-                    className="mt-0.5 text-xs text-ember-400 hover:underline"
-                  >
-                    {t("journey.openPhoto")}
-                  </button>
-                )}
-                {current.href && (
-                  <Link
-                    href={current.href}
-                    className="ml-3 mt-0.5 inline text-xs text-sand-100/60 hover:underline"
-                  >
-                    {t("journey.viewStory")}
-                  </Link>
+                {(current.href ||
+                  (current.type === "photo" && current.photoUrl)) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                    {current.type === "photo" && current.photoUrl && (
+                      <button
+                        onClick={() => setLightbox(current.photoUrl!)}
+                        className="text-ember-400 hover:underline"
+                      >
+                        {t("journey.openPhoto")}
+                      </button>
+                    )}
+                    {current.href && (
+                      <Link
+                        href={current.href}
+                        className="text-sand-100/60 hover:underline"
+                      >
+                        {t("journey.viewStory")}
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

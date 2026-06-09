@@ -94,7 +94,10 @@ export function RichBody({
           );
         }
         return (
-          <RevealChildren key={i} className="space-y-5">
+          <RevealChildren
+            key={i}
+            className="[&>*+*]:mt-5 [&>*+h2]:mt-10 [&>*+h3]:mt-8 [&>*+figure]:mt-8"
+          >
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
               {b.text}
             </ReactMarkdown>

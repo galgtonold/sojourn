@@ -237,7 +237,10 @@ export function StoryMap({
             }
             if (b.kind !== "md") return null;
             return (
-              <div key={i} className="space-y-5 text-lg text-sand-100/80">
+              <div
+                key={i}
+                className="text-lg text-sand-100/80 [&>*+*]:mt-5 [&>*+h2]:mt-10 [&>*+h3]:mt-8 [&>*+figure]:mt-8"
+              >
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                   {b.text}
                 </ReactMarkdown>
