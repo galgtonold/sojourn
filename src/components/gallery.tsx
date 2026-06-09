@@ -61,7 +61,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
                   sizes="(max-width: 640px) 50vw, 33vw"
                   placeholder={blur ? "blur" : "empty"}
                   blurDataURL={blur ?? undefined}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover"
                 />
               )}
             </button>

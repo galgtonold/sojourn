@@ -36,7 +36,7 @@ export default async function TripsPage() {
                   alt={trip.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="object-cover"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[20%] via-ink-950/40 to-transparent" />

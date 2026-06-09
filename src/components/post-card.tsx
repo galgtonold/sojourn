@@ -24,7 +24,6 @@ export function PostCard({
             fill
             priority={priority}
             sizes="(max-width: 768px) 100vw, 33vw"
-            imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
             overlay={
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 from-[20%] via-ink-950/40 to-transparent" />
             }
