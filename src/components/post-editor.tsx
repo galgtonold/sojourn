@@ -1,11 +1,17 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ListChecks, MapPin, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
+import type { Photo } from "@/lib/types";
 import { ImageUploader } from "@/components/image-uploader";
 import { LocationDialog } from "@/components/location-dialog";
-import { MarkdownEditor } from "@/components/markdown-editor";
+import {
+  MarkdownEditor,
+  type MarkdownEditorHandle,
+} from "@/components/markdown-editor";
+import { PhotoPalette } from "@/components/photo-palette";
+import { EditorPreview } from "@/components/editor-preview";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
@@ -44,11 +50,13 @@ const EMPTY: EditablePost = {
 export function PostEditor({
   initial,
   trips = [],
+  photos = [],
   photoIds = [],
   interactionIds = [],
 }: {
   initial?: EditablePost;
   trips?: { id: string; title: string }[];
+  photos?: Photo[];
   photoIds?: string[];
   interactionIds?: string[];
 }) {
@@ -62,6 +70,7 @@ export function PostEditor({
   const [error, setError] = useState<string | null>(null);
   const [locOpen, setLocOpen] = useState(false);
   const isEdit = Boolean(post.id);
+  const editorRef = useRef<MarkdownEditorHandle>(null);
 
   // Live check of the body's references and inline poll/quiz blocks.
   const { issues, pendingCount } = useMemo(() => {
@@ -219,12 +228,21 @@ export function PostEditor({
         value={post.excerpt}
         onChange={(e) => set("excerpt", e.target.value)}
       />
+      <PhotoPalette
+        photos={photos}
+        body={post.body}
+        onInsert={(tag) =>
+          editorRef.current?.insertAtCursor(tag, { block: true })
+        }
+      />
       <MarkdownEditor
+        ref={editorRef}
         value={post.body}
         onChange={(v) => set("body", v)}
         placeholder={t("admin.editor.body")}
         rows={14}
       />
+      <EditorPreview body={post.body} photos={photos} />
       <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
       <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
 

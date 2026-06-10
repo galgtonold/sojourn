@@ -5,6 +5,7 @@ import {
   type DraftSaved,
 } from "@/components/ai-draft-panel";
 import { PostEditor, type EditablePost } from "@/components/post-editor";
+import type { Photo } from "@/lib/types";
 
 /**
  * Owns the editable-post state so the AI draft panel and the editor stay in
@@ -19,6 +20,7 @@ export function PostEditWorkspace({
   initialNotes,
   aiConfigured,
   trips,
+  photos,
   photoIds,
   interactionIds,
 }: {
@@ -27,6 +29,7 @@ export function PostEditWorkspace({
   initialNotes: string;
   aiConfigured: boolean;
   trips: { id: string; title: string }[];
+  photos: Photo[];
   photoIds: string[];
   interactionIds: string[];
 }) {
@@ -64,6 +67,7 @@ export function PostEditWorkspace({
         key={version}
         initial={editorInitial}
         trips={trips}
+        photos={photos}
         photoIds={photoIds}
         interactionIds={interactionIds}
       />

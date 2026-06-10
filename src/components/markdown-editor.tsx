@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 // Inline styles (not Tailwind classes) because the highlighted markup is
@@ -48,19 +48,53 @@ function highlight(src: string): string {
  * a transparent-text textarea, kept pixel-aligned (same font/size/padding/wrap)
  * and scroll-synced. The caret + placeholder stay visible.
  */
-export function MarkdownEditor({
-  value,
-  onChange,
-  placeholder,
-  rows = 14,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
-}) {
+export type MarkdownEditorHandle = {
+  /** Insert text at the caret (replacing any selection). `block: true` puts it
+   *  on its own line — used for [photo:…] / [ask:…] tags. */
+  insertAtCursor: (text: string, opts?: { block?: boolean }) => void;
+};
+
+export const MarkdownEditor = forwardRef<
+  MarkdownEditorHandle,
+  {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    rows?: number;
+  }
+>(function MarkdownEditor({ value, onChange, placeholder, rows = 14 }, ref) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertAtCursor(text, opts) {
+        const ta = taRef.current;
+        const start = ta?.selectionStart ?? value.length;
+        const end = ta?.selectionEnd ?? value.length;
+        let ins = text;
+        if (opts?.block) {
+          const before = value.slice(0, start);
+          const after = value.slice(end);
+          ins =
+            (before && !before.endsWith("\n") ? "\n" : "") +
+            text +
+            (after && !after.startsWith("\n") ? "\n" : "");
+        }
+        onChange(value.slice(0, start) + ins + value.slice(end));
+        const caret = start + ins.length;
+        requestAnimationFrame(() => {
+          const el = taRef.current;
+          if (el) {
+            el.focus();
+            el.setSelectionRange(caret, caret);
+          }
+        });
+      },
+    }),
+    [value, onChange],
+  );
 
   function syncScroll() {
     const ta = taRef.current;
@@ -103,4 +137,4 @@ export function MarkdownEditor({
       />
     </div>
   );
-}
+});

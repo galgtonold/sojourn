@@ -111,6 +111,7 @@ export default async function EditPostPage({
         initialNotes={data.ai_notes ?? ""}
         aiConfigured={isAiConfigured}
         trips={trips}
+        photos={photos ?? []}
         photoIds={(photos ?? []).map((p) => p.id)}
         interactionIds={(interactions ?? []).map((it) => it.id)}
       />

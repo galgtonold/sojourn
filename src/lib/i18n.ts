@@ -266,6 +266,11 @@ const en = {
     "Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)). Place a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line.",
   "admin.editor.hint":
     "Markdown supported. Weave in a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line — grab tags with “Copy …” in the sections below.",
+  "admin.editor.palette":
+    "Insert a photo — click a thumbnail to drop its tag at the cursor.",
+  "admin.editor.preview": "Preview — how your photo references map.",
+  "admin.editor.photoChip": "Photo",
+  "admin.editor.interactionChip": "Interaction",
   "admin.editor.save": "Save",
   "admin.editor.saving": "Saving…",
   "admin.editor.delete": "Delete",
@@ -706,6 +711,11 @@ const de: Dict = {
     "Text — Markdown möglich (## Überschriften, **fett**, > Zitate, - Listen, [Links](url)). Setze ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile.",
   "admin.editor.hint":
     "Markdown möglich. Binde ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile ein — Tags holst du dir über „Kopieren …“ in den Abschnitten unten.",
+  "admin.editor.palette":
+    "Foto einfügen — Klick aufs Vorschaubild setzt das Tag an der Cursorposition.",
+  "admin.editor.preview": "Vorschau — so sind die Foto-Verweise zugeordnet.",
+  "admin.editor.photoChip": "Foto",
+  "admin.editor.interactionChip": "Interaktion",
   "admin.editor.save": "Speichern",
   "admin.editor.saving": "Speichern…",
   "admin.editor.delete": "Löschen",
