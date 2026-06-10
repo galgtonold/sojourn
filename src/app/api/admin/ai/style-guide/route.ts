@@ -1,0 +1,55 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
+import { aiModels, deepseekChat, type ChatMessage } from "@/lib/ai/deepseek";
+import { getViewer } from "@/lib/auth";
+
+export const maxDuration = 60;
+
+const schema = z.object({});
+
+export const POST = adminRoute(schema, proposeStyle, { requireAi: true });
+
+// Distils a draft writing-style guide from the author's recent posts so they
+// have a starting point to edit, rather than describing their own voice cold.
+// Owner-only: the style guide is a blog-wide setting, not a per-member one.
+async function proposeStyle({ supabase, user }: AdminCtx<z.infer<typeof schema>>) {
+  const viewer = await getViewer();
+  if (!viewer.isOwner)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const { data } = await supabase
+    .from("posts")
+    .select("title, body")
+    .eq("published", true)
+    .order("published_at", { ascending: false })
+    .limit(4);
+
+  const samples = (data ?? [])
+    .map((p) => `### ${p.title}\n${(p.body ?? "").slice(0, 1500)}`)
+    .join("\n\n");
+
+  const system =
+    "Du bist ein erfahrener Lektor. Analysiere die Schreibstimme des Autors und " +
+    "fasse sie als knappen, umsetzbaren Stil-Leitfaden zusammen: Ton, Perspektive, " +
+    "Satzrhythmus, typischer Wortschatz, Eigenheiten, Dos & Don'ts. Antworte auf " +
+    "Deutsch als 6–10 kurze Stichpunkte (jeweils eine Zeile mit „- “), ohne Vorrede.";
+  const userMsg = samples
+    ? `Frühere Beiträge des Autors:\n\n${samples}`
+    : "Es gibt noch keine veröffentlichten Beiträge. Schlage einen warmen, persönlichen Reisetagebuch-Stil als Ausgangspunkt vor.";
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: system },
+    { role: "user", content: userMsg },
+  ];
+
+  const style = await deepseekChat({
+    model: aiModels.reasoner,
+    temperature: 0.5,
+    maxTokens: 800,
+    messages,
+    meta: { operation: "style-guide", userId: user.id },
+  });
+
+  return { style: style.trim() };
+}

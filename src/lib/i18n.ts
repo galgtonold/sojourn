@@ -210,6 +210,16 @@ const en = {
     "“{title}” will be permanently deleted with its photos, routes and comments. This can't be undone.",
   "admin.nav.membersSub": "Invite & manage editors",
   "admin.nav.usageSub": "AI spend & tokens",
+  "admin.nav.settingsSub": "Tone & vocabulary for AI drafts",
+  "admin.settings.title": "Writing style",
+  "admin.settings.link": "Writing style",
+  "admin.settings.styleHeading": "Blog writing style",
+  "admin.settings.styleIntro":
+    "This guidance steers every AI draft — tone, voice, and vocabulary across the whole blog. It's internal and never shown to readers.",
+  "admin.settings.stylePlaceholder":
+    "e.g. Warm first-person plural, short sentences, concrete sensory detail, dry humour, no marketing-speak …",
+  "admin.settings.propose": "Propose from my posts",
+  "admin.settings.saved": "Saved",
   "admin.recentComments": "Recent comments",
   "admin.moderateAll": "Moderate all →",
   "admin.noComments": "No comments yet.",
@@ -651,6 +661,16 @@ const de: Dict = {
     "„{title}“ wird mit allen Fotos, Routen und Kommentaren endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
   "admin.nav.membersSub": "Mitwirkende einladen & verwalten",
   "admin.nav.usageSub": "KI-Kosten & Tokens",
+  "admin.nav.settingsSub": "Ton & Wortschatz für KI-Entwürfe",
+  "admin.settings.title": "Schreibstil",
+  "admin.settings.link": "Schreibstil",
+  "admin.settings.styleHeading": "Schreibstil des Blogs",
+  "admin.settings.styleIntro":
+    "Diese Vorgabe leitet jeden KI-Entwurf — Ton, Stimme und Wortschatz im ganzen Blog. Sie ist intern und wird Lesern nie gezeigt.",
+  "admin.settings.stylePlaceholder":
+    "z. B. Warme Wir-Perspektive, kurze Sätze, konkrete Sinneseindrücke, trockener Humor, kein Werbe-Sprech …",
+  "admin.settings.propose": "Aus meinen Beiträgen vorschlagen",
+  "admin.settings.saved": "Gespeichert",
   "admin.recentComments": "Neueste Kommentare",
   "admin.moderateAll": "Alle moderieren →",
   "admin.noComments": "Noch keine Kommentare.",

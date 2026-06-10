@@ -170,31 +170,53 @@ export async function buildDossier(
   return { postId, photos, text: lines.join("\n") };
 }
 
-/** A short voice guide from the author's most recent published posts. */
+/**
+ * The voice guide fed into generation: the author's binding, blog-wide style
+ * directive (site_settings.writing_style) first, then a few recent posts as
+ * concrete reinforcement, falling back to a sensible default.
+ */
 export async function buildStyleGuide(
   supabase: SupabaseClient,
   excludePostId: string,
 ): Promise<string> {
-  const { data } = await supabase
-    .from("posts")
-    .select("title, body")
-    .eq("published", true)
-    .neq("id", excludePostId)
-    .order("published_at", { ascending: false })
-    .limit(2);
+  const [{ data: settings }, { data }] = await Promise.all([
+    supabase
+      .from("site_settings")
+      .select("writing_style")
+      .eq("id", 1)
+      .maybeSingle(),
+    supabase
+      .from("posts")
+      .select("title, body")
+      .eq("published", true)
+      .neq("id", excludePostId)
+      .order("published_at", { ascending: false })
+      .limit(2),
+  ]);
 
-  if (!data || data.length === 0) {
+  const parts: string[] = [];
+  const style = ((settings?.writing_style as string) ?? "").trim();
+  if (style)
+    parts.push(
+      "Verbindliche Stil-Vorgabe des Autors für den gesamten Blog — befolge sie eng:\n" +
+        style,
+    );
+
+  if (data && data.length) {
+    const samples = data
+      .map((p) => `### ${p.title}\n${(p.body ?? "").slice(0, 1200)}`)
+      .join("\n\n");
+    parts.push(
+      "Orientiere dich außerdem an Stimme, Satzrhythmus und Wortschatz dieser " +
+        "früheren Beiträge des Autors:\n\n" +
+        samples,
+    );
+  }
+
+  if (parts.length === 0)
     return (
       "Schreibe in einer warmen, persönlichen Reisetagebuch-Stimme aus der " +
       "Wir-Perspektive, bildhaft aber nicht kitschig."
     );
-  }
-  const samples = data
-    .map((p) => `### ${p.title}\n${(p.body ?? "").slice(0, 1200)}`)
-    .join("\n\n");
-  return (
-    "Orientiere dich eng an der Stimme, dem Satzrhythmus und dem Wortschatz " +
-    "dieser früheren Beiträge des Autors:\n\n" +
-    samples
-  );
+  return parts.join("\n\n");
 }

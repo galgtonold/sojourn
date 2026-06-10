@@ -6,6 +6,7 @@ import {
   KeyRound,
   MapPin,
   MessageSquare,
+  PenLine,
   Plus,
   Users,
 } from "lucide-react";
@@ -226,6 +227,23 @@ export default async function AdminDashboard() {
               </p>
               <p className="mt-0.5 text-sm text-sand-100/50">
                 <T k="admin.nav.usageSub" />
+              </p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
+          </Link>
+        )}
+
+        {viewer.isOwner && isSupabaseConfigured && (
+          <Link href="/admin/settings" className={navCard}>
+            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
+              <PenLine className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold leading-tight">
+                <T k="admin.settings.link" />
+              </p>
+              <p className="mt-0.5 text-sm text-sand-100/50">
+                <T k="admin.nav.settingsSub" />
               </p>
             </div>
             <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
