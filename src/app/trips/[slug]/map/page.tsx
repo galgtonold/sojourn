@@ -43,6 +43,7 @@ export default async function TripMapPage({
         lat: ph.lat as number,
         lng: ph.lng as number,
         photoUrl: ph.url,
+        blurhash: ph.blurhash,
         caption: ph.caption,
         takenAt: ph.taken_at,
         href: `/posts/${p.slug}`,

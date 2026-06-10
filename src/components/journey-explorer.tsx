@@ -3,16 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import {
-  ArrowLeft,
-  Camera,
-  ChevronLeft,
-  ChevronRight,
-  MapPin,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
+import { buildConnectorSegments } from "@/lib/journey-connector";
+import { blurhashToDataURL } from "@/lib/blurhash";
+import { BlurImg } from "@/components/blur-img";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { useT } from "@/components/i18n";
 import type { Track } from "@/lib/types";
 
@@ -23,6 +20,7 @@ export type JourneyStop = {
   lat: number;
   lng: number;
   photoUrl?: string | null;
+  blurhash?: string | null;
   caption?: string | null;
   takenAt?: string | null;
   href?: string;
@@ -56,7 +54,7 @@ export function JourneyExplorer({
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [index, setIndex] = useState(0);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<JourneyStop | null>(null);
 
   // Order the stops along the route so "next" walks the journey in sequence.
   const ordered = useMemo(() => {
@@ -90,6 +88,26 @@ export function JourneyExplorer({
     };
     return [...stops].sort((a, b) => key(a) - key(b));
   }, [stops, tracks]);
+
+  // The dashed connector only bridges the gaps the solid GPX tracks leave —
+  // it never retraces a track and never hangs off a photo taken mid-track.
+  // Falls back to a single line through every stop when no GPX timestamps exist.
+  const connectorSegments = useMemo(() => {
+    const trackInput = tracks.map((tr) => ({
+      startedAt: tr.started_at,
+      endedAt: tr.ended_at,
+      coords: (tr.geojson?.features ?? []).flatMap(
+        (f) => f.geometry?.coordinates ?? [],
+      ),
+    }));
+    const photoInput = stops
+      .filter((s) => s.type === "photo")
+      .map((s) => ({ takenAt: s.takenAt, lng: s.lng, lat: s.lat }));
+    const segs = buildConnectorSegments(trackInput, photoInput);
+    if (segs.length === 0 && ordered.length > 1)
+      return [ordered.map((s) => [s.lng, s.lat])];
+    return segs;
+  }, [tracks, stops, ordered]);
 
   // Build the map once.
   useEffect(() => {
@@ -127,18 +145,19 @@ export function JourneyExplorer({
           for (const c of f.geometry?.coordinates ?? []) bounds.extend([c[0], c[1]]);
       });
 
-      // Dashed line tracing the chronological walk between stops — ties the
-      // days together even where there's no recorded GPX track.
-      if (ordered.length > 1) {
+      // Dashed orange line bridging only the gaps the solid tracks leave
+      // (overnight hops, transfers between recorded segments) — one feature per
+      // gap, so it never retraces a track or links mid-track photos.
+      if (connectorSegments.length > 0) {
         map.addSource("journey-connector", {
           type: "geojson",
           data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: ordered.map((s) => [s.lng, s.lat]),
-            },
+            type: "FeatureCollection",
+            features: connectorSegments.map((coordinates) => ({
+              type: "Feature" as const,
+              properties: {},
+              geometry: { type: "LineString" as const, coordinates },
+            })),
           },
         });
         map.addLayer({
@@ -147,10 +166,10 @@ export function JourneyExplorer({
           source: "journey-connector",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#f7ead6",
-            "line-width": 2,
-            "line-opacity": 0.7,
-            "line-dasharray": [1.5, 1.4],
+            "line-color": "#ffb454",
+            "line-width": 2.5,
+            "line-opacity": 0.95,
+            "line-dasharray": [2, 1.8],
           },
         });
       }
@@ -164,7 +183,18 @@ export function JourneyExplorer({
         if (s.type === "photo" && s.photoUrl) {
           el.style.cssText =
             "width:30px;height:30px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.45);cursor:pointer";
-          el.style.backgroundImage = `url(${optimizedSrc(s.photoUrl, 96, 70)})`;
+          // Paint the blurhash instantly, then swap in the real thumbnail once
+          // it has loaded — no black dot while the image downloads.
+          const placeholder = blurhashToDataURL(s.blurhash, 24, 24);
+          const real = optimizedSrc(s.photoUrl, 96, 70);
+          el.style.backgroundImage = `url(${placeholder ?? real})`;
+          if (placeholder) {
+            const pre = new Image();
+            pre.onload = () => {
+              el.style.backgroundImage = `url(${real})`;
+            };
+            pre.src = real;
+          }
         } else {
           el.className =
             "grid place-items-center size-6 rounded-full bg-[#f56a1f] text-[#0a0908] text-[10px] font-bold ring-2 ring-white/80 shadow cursor-pointer";
@@ -204,10 +234,7 @@ export function JourneyExplorer({
   // Keyboard navigation.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (lightbox) {
-        if (e.key === "Escape") setLightbox(null);
-        return;
-      }
+      if (lightbox) return; // the lightbox handles its own keys
       if (e.key === "ArrowRight") setIndex((i) => (i + 1) % ordered.length);
       if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + ordered.length) % ordered.length);
     };
@@ -242,15 +269,14 @@ export function JourneyExplorer({
             <div className="mt-2 flex items-center gap-3">
               {current.type === "photo" && current.photoUrl ? (
                 <button
-                  onClick={() => setLightbox(current.photoUrl!)}
+                  onClick={() => setLightbox(current)}
                   className="relative size-16 shrink-0 overflow-hidden rounded-xl"
                   aria-label={t("journey.openPhoto")}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <BlurImg
                     src={optimizedSrc(current.photoUrl, 256, 70)}
+                    blurhash={current.blurhash}
                     alt={current.caption ?? ""}
-                    className="size-full object-cover"
                   />
                 </button>
               ) : (
@@ -271,7 +297,7 @@ export function JourneyExplorer({
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
                     {current.type === "photo" && current.photoUrl && (
                       <button
-                        onClick={() => setLightbox(current.photoUrl!)}
+                        onClick={() => setLightbox(current)}
                         className="text-ember-400 hover:underline"
                       >
                         {t("journey.openPhoto")}
@@ -346,28 +372,14 @@ export function JourneyExplorer({
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/95 p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            onClick={() => setLightbox(null)}
-            aria-label={t("common.close")}
-            className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20"
-          >
-            <X className="size-5" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={optimizedSrc(lightbox, 2048, 80)}
-            alt=""
-            className="max-h-[88dvh] w-auto rounded-2xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {/* Shared full-screen viewer (rotation + progressive load). */}
+      <ImageLightbox
+        open={!!lightbox}
+        src={lightbox?.photoUrl ?? null}
+        blurhash={lightbox?.blurhash}
+        alt={lightbox?.caption ?? ""}
+        onClose={() => setLightbox(null)}
+      />
     </div>
   );
 }
