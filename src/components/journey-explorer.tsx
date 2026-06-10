@@ -127,24 +127,61 @@ export function JourneyExplorer({
           for (const c of f.geometry?.coordinates ?? []) bounds.extend([c[0], c[1]]);
       });
 
+      // Dashed line tracing the chronological walk between stops — ties the
+      // days together even where there's no recorded GPX track.
+      if (ordered.length > 1) {
+        map.addSource("journey-connector", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: ordered.map((s) => [s.lng, s.lat]),
+            },
+          },
+        });
+        map.addLayer({
+          id: "journey-connector",
+          type: "line",
+          source: "journey-connector",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#f7ead6",
+            "line-width": 2,
+            "line-opacity": 0.7,
+            "line-dasharray": [1.5, 1.4],
+          },
+        });
+      }
+
+      // Smaller markers keep dense stretches (many photos close together) from
+      // overlapping and spilling past the map edges.
       ordered.forEach((s, i) => {
         bounds.extend([s.lng, s.lat]);
         const el = document.createElement("button");
         el.setAttribute("aria-label", s.name);
         if (s.type === "photo" && s.photoUrl) {
           el.style.cssText =
-            "width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
-          el.style.backgroundImage = `url(${optimizedSrc(s.photoUrl, 128, 70)})`;
+            "width:30px;height:30px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.45);cursor:pointer";
+          el.style.backgroundImage = `url(${optimizedSrc(s.photoUrl, 96, 70)})`;
         } else {
           el.className =
-            "grid place-items-center size-7 rounded-full bg-[#f56a1f] text-[#0a0908] text-xs font-bold ring-2 ring-white/80 shadow-lg cursor-pointer";
+            "grid place-items-center size-6 rounded-full bg-[#f56a1f] text-[#0a0908] text-[10px] font-bold ring-2 ring-white/80 shadow cursor-pointer";
           el.textContent = String(i + 1);
         }
         el.onclick = () => setIndex(i);
         new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
       });
 
-      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 0 });
+      // Generous padding (especially a tall bottom gutter for the stepper card)
+      // keeps edge markers fully on-screen instead of clipped.
+      if (!bounds.isEmpty())
+        map.fitBounds(bounds, {
+          padding: { top: 72, bottom: 240, left: 56, right: 56 },
+          maxZoom: 14,
+          duration: 0,
+        });
     });
 
     return () => {

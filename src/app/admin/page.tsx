@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   FileText,
   Gauge,
   KeyRound,
@@ -35,43 +36,21 @@ async function loadStats(viewer: Viewer) {
         body: string;
         created_at: string;
       }[],
-      posts: posts.map((p) => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-        published: p.published,
-        trip_id: p.trip_id,
-      })),
     };
   }
 
   const owner = viewer.isOwner;
-  // A member is bounded to their granted trips; a sentinel keeps `.in()` valid
-  // when they have none yet.
   const scope = owner
     ? null
     : viewer.tripIds.length
       ? viewer.tripIds
       : ["00000000-0000-0000-0000-000000000000"];
 
-  let postsQuery = supabase
-    .from("posts")
-    .select("id, title, slug, published, trip_id")
-    .order("updated_at", { ascending: false })
-    .limit(20);
-  if (scope) postsQuery = postsQuery.in("trip_id", scope);
-
   let postCountQuery = supabase
     .from("posts")
     .select("*", { count: "exact", head: true });
   if (scope) postCountQuery = postCountQuery.in("trip_id", scope);
-
-  const [{ data: posts }, { count: postCount }] = await Promise.all([
-    postsQuery,
-    postCountQuery,
-  ]);
-
-  const postIds = (posts ?? []).map((p) => p.id);
+  const { count: postCount } = await postCountQuery;
 
   // Comments: all for the owner, otherwise only on the member's posts.
   let recentComments: {
@@ -87,26 +66,33 @@ async function loadStats(viewer: Viewer) {
         .from("comments")
         .select("id, author_name, body, created_at")
         .order("created_at", { ascending: false })
-        .limit(8),
+        .limit(6),
       supabase.from("comments").select("*", { count: "exact", head: true }),
     ]);
     recentComments = c.data ?? [];
     commentCount = count ?? 0;
-  } else if (postIds.length) {
-    const [c, { count }] = await Promise.all([
-      supabase
-        .from("comments")
-        .select("id, author_name, body, created_at")
-        .in("post_id", postIds)
-        .order("created_at", { ascending: false })
-        .limit(8),
-      supabase
-        .from("comments")
-        .select("*", { count: "exact", head: true })
-        .in("post_id", postIds),
-    ]);
-    recentComments = c.data ?? [];
-    commentCount = count ?? 0;
+  } else {
+    const { data: myPosts } = await supabase
+      .from("posts")
+      .select("id")
+      .in("trip_id", scope ?? []);
+    const postIds = (myPosts ?? []).map((p) => p.id);
+    if (postIds.length) {
+      const [c, { count }] = await Promise.all([
+        supabase
+          .from("comments")
+          .select("id, author_name, body, created_at")
+          .in("post_id", postIds)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase
+          .from("comments")
+          .select("*", { count: "exact", head: true })
+          .in("post_id", postIds),
+      ]);
+      recentComments = c.data ?? [];
+      commentCount = count ?? 0;
+    }
   }
 
   return {
@@ -114,7 +100,6 @@ async function loadStats(viewer: Viewer) {
     postCount: postCount ?? 0,
     commentCount,
     recentComments,
-    posts: posts ?? [],
   };
 }
 
@@ -125,7 +110,9 @@ export default async function AdminDashboard() {
   const trips = viewer.isOwner
     ? allTrips
     : allTrips.filter((t) => viewer.tripIds.includes(t.id));
-  const tripById = new Map(allTrips.map((t) => [t.id, t.title] as const));
+
+  const navCard =
+    "group flex items-center gap-4 rounded-2xl bg-ink-900 p-5 ring-1 ring-white/5 transition hover:ring-white/15";
 
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-28">
@@ -141,24 +128,8 @@ export default async function AdminDashboard() {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {viewer.isOwner && <PushToggle />}
-          {viewer.isOwner && isSupabaseConfigured && (
-            <Link
-              href="/admin/members"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
-            >
-              <Users className="size-4" /> <T k="admin.members.link" />
-            </Link>
-          )}
-          {viewer.isOwner && isAiConfigured && (
-            <Link
-              href="/admin/ai-usage"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
-            >
-              <Gauge className="size-4" /> <T k="admin.usage.link" />
-            </Link>
-          )}
           {isSupabaseConfigured && (
             <Link
               href="/admin/account"
@@ -177,95 +148,90 @@ export default async function AdminDashboard() {
         </p>
       )}
 
-      {/* Stats */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl bg-ink-900 p-5 ring-1 ring-white/5">
-          <FileText className="size-5 text-ember-400" />
-          <p className="mt-3 font-display text-3xl font-semibold">
-            {stats.postCount}
-          </p>
-          <p className="text-sm text-sand-100/50">
-            <T k="admin.statPosts" />
-          </p>
-        </div>
-        <div className="rounded-2xl bg-ink-900 p-5 ring-1 ring-white/5">
-          <MessageSquare className="size-5 text-lagoon-400" />
-          <p className="mt-3 font-display text-3xl font-semibold">
-            {stats.commentCount}
-          </p>
-          <p className="text-sm text-sand-100/50">
-            <T k="admin.statComments" />
-          </p>
-        </div>
-      </div>
-
-      {/* Posts */}
-      <div className="mt-10 flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">
-          <T k="admin.postsHeading" />
-        </h2>
+      {/* Primary actions */}
+      <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/admin/posts/new"
-          className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+          className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
         >
           <Plus className="size-4" /> <T k="admin.newPost" />
         </Link>
-      </div>
-      <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-2xl bg-ink-900 ring-1 ring-white/5">
-        {stats.posts.map((p) => {
-          const tripTitle = p.trip_id ? tripById.get(p.trip_id) : null;
-          return (
-            <li
-              key={p.id}
-              className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-            >
-              <div className="min-w-0">
-                <span className="block truncate font-medium">{p.title}</span>
-                {tripTitle && (
-                  <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-sand-100/40">
-                    <MapPin className="size-3 shrink-0 text-ember-400/70" />
-                    {tripTitle}
-                  </span>
-                )}
-              </div>
-              <span className="flex shrink-0 items-center gap-3">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs ${
-                    p.published
-                      ? "bg-lagoon-500/15 text-lagoon-400"
-                      : "bg-white/10 text-sand-100/60"
-                  }`}
-                >
-                  {p.published ? (
-                    <T k="admin.published" />
-                  ) : (
-                    <T k="admin.draft" />
-                  )}
-                </span>
-                <a
-                  href={`/admin/posts/${p.id}/preview`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-sand-100/60 hover:underline"
-                >
-                  <T k="admin.preview" />
-                </a>
-                <Link
-                  href={`/admin/posts/${p.id}`}
-                  className="text-sm text-ember-400 hover:underline"
-                >
-                  <T k="admin.edit" />
-                </Link>
-              </span>
-            </li>
-          );
-        })}
-        {stats.posts.length === 0 && (
-          <li className="px-5 py-4 text-sand-100/50">
-            <T k="admin.noPosts" />
-          </li>
+        {viewer.isOwner && (
+          <Link
+            href="/admin/trips/new"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:border-ember-400 hover:text-ember-400"
+          >
+            <Plus className="size-4" /> <T k="admin.trip.newTrip" />
+          </Link>
         )}
-      </ul>
+      </div>
+
+      {/* Section navigation — each card doubles as an at-a-glance stat. */}
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/admin/posts" className={navCard}>
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-ember-500/15 text-ember-400">
+            <FileText className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-2xl font-semibold leading-none">
+              {stats.postCount}
+            </p>
+            <p className="mt-1 text-sm text-sand-100/60">
+              <T k="admin.statPosts" />
+            </p>
+          </div>
+          <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
+        </Link>
+
+        <Link href="/admin/comments" className={navCard}>
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-lagoon-500/15 text-lagoon-400">
+            <MessageSquare className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-2xl font-semibold leading-none">
+              {stats.commentCount}
+            </p>
+            <p className="mt-1 text-sm text-sand-100/60">
+              <T k="admin.statComments" />
+            </p>
+          </div>
+          <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
+        </Link>
+
+        {viewer.isOwner && isSupabaseConfigured && (
+          <Link href="/admin/members" className={navCard}>
+            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
+              <Users className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold leading-tight">
+                <T k="admin.members.link" />
+              </p>
+              <p className="mt-0.5 text-sm text-sand-100/50">
+                <T k="admin.nav.membersSub" />
+              </p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
+          </Link>
+        )}
+
+        {viewer.isOwner && isAiConfigured && (
+          <Link href="/admin/ai-usage" className={navCard}>
+            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
+              <Gauge className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold leading-tight">
+                <T k="admin.usage.link" />
+              </p>
+              <p className="mt-0.5 text-sm text-sand-100/50">
+                <T k="admin.nav.usageSub" />
+              </p>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
+          </Link>
+        )}
+      </div>
 
       {/* Trips */}
       <div className="mt-10 flex items-center justify-between">
@@ -275,7 +241,7 @@ export default async function AdminDashboard() {
         {viewer.isOwner && (
           <Link
             href="/admin/trips/new"
-            className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+            className="inline-flex items-center gap-1.5 text-sm text-ember-400 hover:underline"
           >
             <Plus className="size-4" /> <T k="admin.trip.newTrip" />
           </Link>
@@ -327,14 +293,17 @@ export default async function AdminDashboard() {
       </div>
       <ul className="mt-4 space-y-3">
         {stats.recentComments.map((c) => (
-          <li key={c.id} className="rounded-2xl bg-ink-900 p-4 ring-1 ring-white/5">
+          <li
+            key={c.id}
+            className="rounded-2xl bg-ink-900 p-4 ring-1 ring-white/5"
+          >
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{c.author_name}</span>
               <span className="text-sand-100/40">
                 {formatDate(c.created_at)}
               </span>
             </div>
-            <p className="mt-1 text-sand-100/80">{c.body}</p>
+            <p className="mt-1 line-clamp-2 text-sand-100/80">{c.body}</p>
           </li>
         ))}
         {stats.recentComments.length === 0 && (

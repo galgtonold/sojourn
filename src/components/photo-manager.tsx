@@ -6,6 +6,7 @@ import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { LocationDialog } from "@/components/location-dialog";
 
 export type ManagedPhoto = {
   id: string;
@@ -39,7 +40,21 @@ export function PhotoManager({
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [locPhoto, setLocPhoto] = useState<ManagedPhoto | null>(null);
   const t = useT();
+
+  async function saveLocation(photo: ManagedPhoto, latS: string, lngS: string) {
+    const lat = latS.trim() === "" ? null : Number(latS);
+    const lng = lngS.trim() === "" ? null : Number(lngS);
+    if (lat != null && !Number.isFinite(lat)) return;
+    if (lng != null && !Number.isFinite(lng)) return;
+    setPhotos((ps) =>
+      ps.map((x) => (x.id === photo.id ? { ...x, lat, lng } : x)),
+    );
+    const supabase = getBrowserSupabase();
+    await supabase?.from("photos").update({ lat, lng }).eq("id", photo.id);
+    revalidate();
+  }
 
   async function copyTag(photo: ManagedPhoto) {
     try {
@@ -221,16 +236,28 @@ export function PhotoManager({
               onBlur={() => saveField(photo, "alt")}
               className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs text-sand-100/70 outline-none focus:border-ember-400"
             />
-            <button
-              type="button"
-              onClick={() => copyTag(photo)}
-              className="inline-flex items-center gap-1 text-[10px] text-ember-400 hover:underline"
-            >
-              <Code2 className="size-3" />
-              {copiedId === photo.id
-                ? t("admin.gallery.copied")
-                : t("admin.gallery.copyTag")}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => copyTag(photo)}
+                className="inline-flex items-center gap-1 text-[10px] text-ember-400 hover:underline"
+              >
+                <Code2 className="size-3" />
+                {copiedId === photo.id
+                  ? t("admin.gallery.copied")
+                  : t("admin.gallery.copyTag")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocPhoto(photo)}
+                className="inline-flex items-center gap-1 text-[10px] text-sand-100/60 transition hover:text-ember-400 hover:underline"
+              >
+                <MapPin className="size-3" />
+                {photo.lat != null
+                  ? t("admin.location.change")
+                  : t("admin.location.set")}
+              </button>
+            </div>
           </div>
         ))}
 
@@ -280,6 +307,16 @@ export function PhotoManager({
         onChange={(e) => addFiles(e.target.files)}
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
+
+      <LocationDialog
+        open={!!locPhoto}
+        title={t("admin.location.photoTitle")}
+        initialLat={locPhoto?.lat != null ? String(locPhoto.lat) : ""}
+        initialLng={locPhoto?.lng != null ? String(locPhoto.lng) : ""}
+        onClose={() => setLocPhoto(null)}
+        onSave={(la, ln) => locPhoto && saveLocation(locPhoto, la, ln)}
+        allowClear
+      />
     </div>
   );
 }

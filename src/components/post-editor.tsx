@@ -1,10 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ListChecks, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, ListChecks, MapPin, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { ImageUploader } from "@/components/image-uploader";
-import { LocationPicker } from "@/components/location-picker";
+import { LocationDialog } from "@/components/location-dialog";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
@@ -59,6 +60,7 @@ export function PostEditor({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locOpen, setLocOpen] = useState(false);
   const isEdit = Boolean(post.id);
 
   // Live check of the body's references and inline poll/quiz blocks.
@@ -185,31 +187,31 @@ export function PostEditor({
         value={post.cover_alt}
         onChange={(e) => set("cover_alt", e.target.value)}
       />
-      <div className="space-y-2">
-        <p className="text-xs text-sand-100/40">
-          {t("admin.editor.pickLocation")}
-        </p>
-        <LocationPicker
-          lat={post.lat}
-          lng={post.lng}
-          onChange={(la, ln) => setPost((p) => ({ ...p, lat: la, lng: ln }))}
-          className="h-64 w-full overflow-hidden rounded-xl ring-1 ring-white/10"
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <input
-            className={input}
-            placeholder={t("admin.editor.lat")}
-            value={post.lat}
-            onChange={(e) => set("lat", e.target.value)}
-          />
-          <input
-            className={input}
-            placeholder={t("admin.editor.lng")}
-            value={post.lng}
-            onChange={(e) => set("lng", e.target.value)}
-          />
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => setLocOpen(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-left text-sm transition hover:border-ember-400"
+      >
+        <MapPin className="size-4 shrink-0 text-ember-400" />
+        <span className="flex-1 truncate text-sand-100/80">
+          {post.lat && post.lng
+            ? `${post.lat}, ${post.lng}`
+            : t("admin.location.none")}
+        </span>
+        <span className="shrink-0 text-xs font-medium text-ember-400">
+          {post.lat && post.lng
+            ? t("admin.location.change")
+            : t("admin.location.set")}
+        </span>
+      </button>
+      <LocationDialog
+        open={locOpen}
+        initialLat={post.lat}
+        initialLng={post.lng}
+        onClose={() => setLocOpen(false)}
+        onSave={(la, ln) => setPost((p) => ({ ...p, lat: la, lng: ln }))}
+        allowClear
+      />
       <textarea
         className={`${input} resize-y`}
         rows={2}
@@ -217,12 +219,11 @@ export function PostEditor({
         value={post.excerpt}
         onChange={(e) => set("excerpt", e.target.value)}
       />
-      <textarea
-        className={`${input} resize-y font-mono`}
-        rows={14}
-        placeholder={t("admin.editor.body")}
+      <MarkdownEditor
         value={post.body}
-        onChange={(e) => set("body", e.target.value)}
+        onChange={(v) => set("body", v)}
+        placeholder={t("admin.editor.body")}
+        rows={14}
       />
       <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
       <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
