@@ -44,6 +44,21 @@ export const env = {
   embeddingDim: Number(process.env.EMBEDDING_DIM ?? "1536"),
   // Embedding price — USD per 1M input tokens (text-embedding-3-small default).
   aiPriceEmbedding: Number(process.env.AI_PRICE_EMBEDDING_USD ?? "0.02"),
+
+  // Vision (photo descriptions). DeepSeek's API has no image input, so photo
+  // descriptions go through a separate OpenAI-compatible chat endpoint. Defaults
+  // to the same provider that already serves embeddings (typically OpenAI) with
+  // a vision-capable model — set VISION_* to point elsewhere.
+  visionApiKey:
+    process.env.VISION_API_KEY ??
+    process.env.EMBEDDING_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    "",
+  visionBaseUrl:
+    process.env.VISION_BASE_URL ??
+    process.env.EMBEDDING_BASE_URL ??
+    "https://api.openai.com/v1",
+  visionModel: process.env.VISION_MODEL ?? "gpt-4o-mini",
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -63,3 +78,7 @@ export const isAiConfigured = Boolean(env.deepseekApiKey);
 // Semantic search is optional: without it, hybrid search transparently becomes
 // pure full-text search (see search_*_hybrid RPCs and the content layer).
 export const isEmbeddingsConfigured = Boolean(env.embeddingApiKey);
+
+// Photo descriptions need a vision-capable model (DeepSeek has none); enabled as
+// soon as a key is available (it falls back to the embeddings provider).
+export const isVisionConfigured = Boolean(env.visionApiKey);

@@ -54,6 +54,18 @@ export async function buildDossier(
     .select("name, distance_m")
     .eq("post_id", postId);
 
+  // The other published entries of this trip, so the model stays consistent
+  // with what it already wrote and never reuses a quiz/poll question.
+  const { data: siblings } = post?.trip_id
+    ? await supabase
+        .from("posts")
+        .select("title, excerpt, body, published_at, interactions(question)")
+        .eq("trip_id", post.trip_id)
+        .neq("id", postId)
+        .eq("published", true)
+        .order("published_at", { ascending: true })
+    : { data: null };
+
   const photos: DossierPhoto[] = (photoRows ?? [])
     .slice()
     .sort((a, b) => {
@@ -96,6 +108,36 @@ export async function buildDossier(
   if (trip?.ai_context)
     lines.push(`Reise-Hintergrund (Autor, intern): ${trip.ai_context}`);
   if (post?.location) lines.push(`Ort (grob): ${post.location}`);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sibs = (siblings ?? []) as any[];
+  if (sibs.length) {
+    lines.push(
+      "",
+      "Bereits veröffentlichte Beiträge dieser Reise — bleibe konsistent dazu " +
+        "(Ton, Fakten, wiederkehrende Personen/Motive) und WIEDERHOLE KEINE " +
+        "bereits genutzte Quiz-/Umfragefrage:",
+    );
+    for (const s of sibs) {
+      const qs = (s.interactions ?? [])
+        .map((it: { question?: string }) => it.question)
+        .filter(Boolean);
+      const snippet = String(s.body ?? "")
+        .replace(/\[(photo|ask):[^\]]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 320);
+      lines.push(
+        `• „${s.title}“${s.excerpt ? ` — ${s.excerpt}` : ""}` +
+          (snippet ? `\n  Auszug: ${snippet}…` : "") +
+          (qs.length
+            ? `\n  Bereits genutzte Frage(n): ${qs
+                .map((q: string) => `„${q}“`)
+                .join("; ")}`
+            : ""),
+      );
+    }
+  }
 
   lines.push("", "Fotos in zeitlicher Reihenfolge (mit echten IDs):");
   photos.forEach((p, i) => {

@@ -21,6 +21,21 @@ vi.mock("@/lib/ai/deepseek", async (orig) => {
 vi.mock("@/lib/supabase/server", () => ({
   getServerSupabase: async () => sb.client,
 }));
+// Photo descriptions now go through a (separate) OpenAI-compatible vision
+// provider via fetch, so enable it and point it at a stub-able endpoint.
+vi.mock("@/lib/env", async (orig) => {
+  const actual = await orig<typeof import("@/lib/env")>();
+  return {
+    ...actual,
+    isVisionConfigured: true,
+    env: {
+      ...actual.env,
+      visionApiKey: "test-key",
+      visionBaseUrl: "http://vision.test/v1",
+      visionModel: "test-vision",
+    },
+  };
+});
 
 // Imported after the mocks above are registered (vi.mock is hoisted).
 import { POST as outline } from "@/app/api/admin/ai/outline/route";
@@ -136,10 +151,36 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
   it("enriches a pending photo via the description path (no geocoding)", async () => {
     const { postId } = setup({ photoCount: 1, enriched: false, pending: true });
 
+    // The description path calls the OpenAI-compatible vision endpoint.
+    const visionFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: "Eine weite Berglandschaft im Morgenlicht.",
+                },
+              },
+            ],
+            usage: { prompt_tokens: 10, completion_tokens: 20 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", visionFetch);
+
     const r = await call(enrichPost, { postId });
+
+    vi.unstubAllGlobals();
+
     expect(r.status).toBe(200);
     expect(r.body.processed).toBe(1);
-    expect(fake.calls.some((c) => c.operation === "enrich")).toBe(true);
+    // The vision provider was hit (model + image content part).
+    expect(visionFetch).toHaveBeenCalledWith(
+      "http://vision.test/v1/chat/completions",
+      expect.objectContaining({ method: "POST" }),
+    );
 
     const photo = store.photos[0];
     expect(photo.ai_description).toBe("Eine weite Berglandschaft im Morgenlicht.");

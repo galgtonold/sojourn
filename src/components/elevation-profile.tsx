@@ -7,48 +7,7 @@ import {
 import type { Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { T } from "@/components/i18n";
-
-function ProfileChart({ series }: { series: ElevationSeries }) {
-  const W = 1000;
-  const H = 240;
-  const pad = 8;
-  const { points, distanceM, min, max } = series;
-  const range = Math.max(1, max - min);
-  const x = (d: number) => (d / Math.max(1, distanceM)) * W;
-  const y = (e: number) => H - pad - ((e - min) / range) * (H - 2 * pad);
-
-  const line = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(p.d).toFixed(1)},${y(p.e).toFixed(1)}`)
-    .join(" ");
-  const area = `${line} L${W},${H} L0,${H} Z`;
-
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      className="h-40 w-full"
-      role="img"
-    >
-      <title>
-        <T k="post.elevationAria" />
-      </title>
-      <defs>
-        <linearGradient id="elev-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f56a1f" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#f56a1f" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#elev-fill)" />
-      <path
-        d={line}
-        fill="none"
-        stroke="#ff8f4d"
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
+import { ElevationChart } from "@/components/elevation-chart";
 
 /** Renders a distance-vs-elevation chart per track that carries elevation. */
 export function ElevationProfile({
@@ -96,7 +55,7 @@ export function ElevationProfile({
                 {Math.round(s.max)} m
               </span>
             </div>
-            <ProfileChart series={s} />
+            <ElevationChart series={s} />
           </div>
         ))}
         </div>
