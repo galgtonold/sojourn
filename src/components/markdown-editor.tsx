@@ -71,8 +71,11 @@ export function MarkdownEditor({
     }
   }
 
+  // scrollbar-gutter:stable on BOTH layers reserves the same right gutter, so
+  // the highlighted <pre> (no scrollbar) wraps at the same column as the
+  // <textarea> (which has one) instead of running wider / past the edge.
   const shared =
-    "m-0 box-border w-full whitespace-pre-wrap break-words rounded-xl border px-3 py-2.5 font-mono text-sm leading-relaxed";
+    "m-0 box-border w-full whitespace-pre-wrap break-words rounded-xl border px-3 py-2.5 font-mono text-sm leading-relaxed [scrollbar-gutter:stable]";
 
   return (
     <div className="relative">

@@ -173,6 +173,11 @@ body {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* Drop the default resize grip — on the dark UI its light glyph reads as a
+   stray white speck in the corner of textareas. The corner stays draggable. */
+::-webkit-resizer {
+  background: transparent;
+}
 
 /* Per-element scroll reveal (see RevealChildren). */
 .reveal-pending {
