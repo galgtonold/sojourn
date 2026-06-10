@@ -45,7 +45,10 @@ export default async function TripsPage() {
                   {trip.title}
                 </h2>
                 {trip.summary && (
-                  <p className="mt-1.5 max-w-md text-sand-100/70">
+                  // Clamp to two lines (like article cards) — an unclamped
+                  // summary grows the overlay upward and pushes the title off
+                  // the top of the fixed-ratio card, especially on mobile.
+                  <p className="mt-1.5 line-clamp-2 max-w-md text-sand-100/70">
                     {trip.summary}
                   </p>
                 )}
