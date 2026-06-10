@@ -10,7 +10,9 @@ import {
 } from "@/lib/ai/prompt";
 import { parseDirectives } from "@/lib/interactions-parse";
 
-export const maxDuration = 60;
+// The reasoner can take a while per section, and the self-repair loop may add a
+// retry, so give it real headroom (capped to the plan limit at deploy time).
+export const maxDuration = 180;
 
 const sectionSchema = z.object({
   heading: z.string(),
@@ -133,7 +135,7 @@ async function sectionRoute({
       await deepseekChat({
         model: aiModels.reasoner,
         temperature: 0.8,
-        maxTokens: 3000,
+        maxTokens: 2200,
         meta: { operation: "section", postId, userId: user.id },
         messages,
       })
