@@ -30,16 +30,18 @@ export default async function TripsPage() {
               href={`/trips/${trip.slug}`}
               className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
             >
-              {trip.cover_image && (
-                <RevealImage
-                  src={trip.cover_image}
-                  alt={trip.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  imgClassName="transition-transform duration-700 group-hover:scale-105"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
+              <div className="paint-group absolute inset-0">
+                {trip.cover_image && (
+                  <RevealImage
+                    src={trip.cover_image}
+                    alt={trip.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    imgClassName="transition-transform duration-700 group-hover:scale-105"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
+              </div>
               <div className="absolute inset-x-0 bottom-0 p-6">
                 <h2 className="font-display text-3xl font-semibold">
                   {trip.title}

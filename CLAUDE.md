@@ -22,9 +22,15 @@ Next.js 15 (App Router) · React 19 · Tailwind v4 · Supabase · MapLibre GL ·
 User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code strings.
 
 ## Gotchas learned the hard way
-- **Rounded image cards seam easily.** Avoid insetting the image inside a clipped/rounded
-  container and avoid hover-zoom transforms on clipped images — both reintroduce the
-  corner seam (see the "Revert … seam" commits). Full-bleed (no inset, no transform) is safe.
+- **Rounded image cards: corner fringe needs `.paint-group`.** A bright cover under a
+  dark scrim, both clipped by the card's rounded corner, leaves a 1px light arc at the
+  corners: each layer antialiases its own ~half-coverage edge pixels against the same
+  arc, so the bright cover bleeds through no matter what's painted on top. Bg tweaks,
+  insets, hairline rings and removing hover-zoom all failed (see the "Revert … seam"
+  commits). The fix: wrap the full-bleed stack (cover + placeholder + scrim) in
+  `.paint-group` (globals.css, `opacity: .999`) *inside* the clipped element — opacity
+  < 1 forces group rendering, so the stack flattens once and the clip rasterizes once.
+  Hover-zoom transforms and the blur placeholder are fine with the group in place.
 - **Tailwind v4 `space-y-*` beats per-child `mt-*`.** Its generated selector has higher
   specificity, so a heading's own `mt-10` is silently overridden, leaving headings flush
   with body text. Own block rhythm on the container with sibling selectors

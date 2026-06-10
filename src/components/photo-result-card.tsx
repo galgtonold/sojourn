@@ -13,7 +13,7 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
       href={`/posts/${photo.post_slug}#photo-${photo.id}`}
       className="group relative block overflow-hidden rounded-3xl bg-ink-800"
     >
-      <div className="relative aspect-square w-full overflow-hidden">
+      <div className="paint-group relative aspect-square w-full overflow-hidden">
         {photo.url ? (
           <RevealImage
             src={photo.url}

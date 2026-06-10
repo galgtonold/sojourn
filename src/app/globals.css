@@ -74,6 +74,18 @@ body {
   border: 1px solid color-mix(in oklab, white 8%, transparent);
 }
 
+/* Composites a card's full-bleed layers (cover, blur placeholder, scrim) into
+   one group before the ancestor's rounded clip is rasterized. Painted layer by
+   layer, each one antialiases its own ~half-coverage edge pixels against the
+   same corner arc, so a bright cover bleeds through the dark scrim as a 1px
+   light fringe no overlay/bg/inset tweak can hide. Any opacity < 1 forces
+   group rendering (flatten once, clip once) per css-color-4; .999 is visually
+   identical to 1. Apply to the wrapper of the full-bleed stack INSIDE the
+   rounded clip — on the clipping element itself it does nothing. */
+.paint-group {
+  opacity: 0.999;
+}
+
 /* Subtle film grain over hero imagery for the "immersive" feel. */
 .grain::after {
   content: "";
