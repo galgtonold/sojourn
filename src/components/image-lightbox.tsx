@@ -70,7 +70,12 @@ export function ImageLightbox({
     ? "max-h-[95vw] max-w-[92dvh]"
     : "max-h-[96dvh] max-w-[96vw]";
   const imgCls = `rounded-lg object-contain shadow-2xl ${rotated ? "rotate-90" : ""} ${sizeCls}`;
-  const backdrop = blurhashToDataURL(blurhash, 32, 32);
+  // Instant placeholder: a decoded blurhash when we have one (no network at
+  // all), otherwise a ~1 KB low-res of the same image. Either way the viewer
+  // never opens to black while the full photo downloads.
+  const backdrop =
+    blurhashToDataURL(blurhash, 32, 32) ??
+    (src ? optimizedSrc(src, 32, 25) : null);
 
   return createPortal(
     <AnimatePresence>
@@ -83,7 +88,7 @@ export function ImageLightbox({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-ink-950/95 p-2 backdrop-blur-sm sm:p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-ink-950/90 p-2 backdrop-blur-sm sm:p-4"
         >
           {/* Instant blurred backdrop — keeps the viewer from flashing black. */}
           {backdrop && (
@@ -92,7 +97,7 @@ export function ImageLightbox({
               src={backdrop}
               alt=""
               aria-hidden
-              className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-60 blur-2xl"
+              className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-70 blur-2xl"
             />
           )}
           <button
