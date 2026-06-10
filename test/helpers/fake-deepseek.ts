@@ -1,9 +1,7 @@
 // A scripted stand-in for deepseekChat(opts). It branches on opts.meta.operation
-// and the message contents so we can drive the real route handlers deterministically.
-// The "section" responder deliberately returns a broken section on the first
-// attempt (bad photo tag, and no poll when one was requested) and a clean one
-// once the route's repair loop sends its "Fix only these issues" follow-up — so
-// the repair loop is exercised for real.
+// and the message contents so we can drive the real route handlers
+// deterministically. The "section" responder returns a clean section (the
+// allowed photo + a poll when one was requested).
 import type { ChatMessage } from "@/lib/ai/deepseek";
 
 export type ChatOpts = {
@@ -12,8 +10,6 @@ export type ChatOpts = {
   json?: boolean;
   meta?: { operation?: string };
 };
-
-const BAD_PHOTO = "00000000-0000-0000-0000-000000000000";
 
 function textOf(content: ChatMessage["content"]): string {
   return typeof content === "string"
@@ -75,15 +71,8 @@ export function makeFakeDeepseek(opts: { photoIds: string[] }) {
     }
 
     if (operation === "section") {
-      // Read the allowed photo from the ORIGINAL prompt, not a repair message
-      // (which quotes the bad id back to us).
       const allowed = (userMsgs[0] ?? "").match(/\[photo:([0-9a-f-]{36})\]/)?.[1];
       const wantsPoll = /:::poll|:::quiz|exactly ONE|GENAU EINE/.test(sys);
-      const isFix = /Fix only these issues/.test(lastUser);
-      if (!isFix) {
-        // Broken on purpose: invalid photo id (+ missing poll when requested).
-        return `## Abschnitt\n\nWir brachen früh auf.\n\n[photo:${BAD_PHOTO}]\n`;
-      }
       const photoLine = allowed ? `\n[photo:${allowed}]\n` : "";
       const poll = wantsPoll
         ? "\n:::poll Welchen Pass würdest du zuerst angehen?\n- Gemmipass\n- Furkapass\n:::\n"

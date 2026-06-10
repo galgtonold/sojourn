@@ -59,6 +59,15 @@ export const env = {
     process.env.EMBEDDING_BASE_URL ??
     "https://api.openai.com/v1",
   visionModel: process.env.VISION_MODEL ?? "gpt-4o-mini",
+
+  // Async LLM jobs: slow generations run on the Supabase `llm-call` Edge
+  // Function (longer wall-clock than a Vercel function). A shared secret
+  // authenticates Next.js → the function. When unset, generation falls back to
+  // a synchronous in-route call (current behaviour).
+  edgeSharedSecret: process.env.EDGE_SHARED_SECRET ?? "",
+  edgeFunctionUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/llm-call`
+    : "",
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -82,3 +91,9 @@ export const isEmbeddingsConfigured = Boolean(env.embeddingApiKey);
 // Photo descriptions need a vision-capable model (DeepSeek has none); enabled as
 // soon as a key is available (it falls back to the embeddings provider).
 export const isVisionConfigured = Boolean(env.visionApiKey);
+
+// Offload slow generations to the Edge Function only when both the secret and
+// the function URL are present.
+export const isEdgeJobConfigured = Boolean(
+  env.edgeSharedSecret && env.edgeFunctionUrl,
+);

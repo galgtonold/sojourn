@@ -60,6 +60,24 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
   throw lastErr;
 }
 
+// Poll an enqueued LLM job until it finishes. Slow generations run on the Edge
+// Function and land asynchronously in ai_jobs, so the client waits here.
+async function pollJob(jobId: string): Promise<string> {
+  for (let i = 0; i < 100; i++) {
+    const res = await fetch(`/api/admin/ai/job/${jobId}`);
+    const j = (await res.json().catch(() => ({}))) as {
+      status?: string;
+      output?: string;
+      error?: string;
+    };
+    if (!res.ok) throw new Error(j.error ?? "poll failed");
+    if (j.status === "done") return j.output ?? "";
+    if (j.status === "error") throw new Error(j.error ?? "generation failed");
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  throw new Error("timed out");
+}
+
 // Turn a raw error into something a non-engineer can act on.
 function humanError(e: unknown, t: (k: string) => string): string {
   const raw = e instanceof Error ? e.message : String(e);
@@ -155,8 +173,10 @@ export function AiDraftPanel({
       for (let i = 0; i < total; i++) {
         setStep(t("admin.ai.step.section", { a: i + 1, b: total }));
         try {
-          const { markdown } = await withRetry(() =>
-            postJson<{ markdown: string }>("/api/admin/ai/section", {
+          // Enqueue the (slow) section generation, then poll the job for its
+          // markdown — the work runs on the Edge Function, off this request.
+          const { jobId } = await withRetry(() =>
+            postJson<{ jobId: string }>("/api/admin/ai/section", {
               postId,
               index: i,
               total,
@@ -167,6 +187,7 @@ export function AiDraftPanel({
               lang,
             }),
           );
+          const markdown = await pollJob(jobId);
           if (markdown) parts.push(markdown);
         } catch {
           failed.push(i + 1);

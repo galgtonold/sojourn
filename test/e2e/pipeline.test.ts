@@ -1,7 +1,8 @@
 // End-to-end test of the AI drafting pipeline with both external seams faked:
 // a scripted DeepSeek and an in-memory Supabase. It drives the *real* route
 // handlers in the same order the admin UI does, and asserts the wiring:
-//   - the section route's self-repair loop fixes a deliberately broken section
+//   - the section route enqueues an ai_jobs row whose synchronous fallback
+//     fills the markdown (the Edge path is exercised in prod, not here)
 //   - an AI-authored :::poll block is materialised into the interactions table
 //   - the saved body validates with no dangling references
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +22,10 @@ vi.mock("@/lib/ai/deepseek", async (orig) => {
 vi.mock("@/lib/supabase/server", () => ({
   getServerSupabase: async () => sb.client,
 }));
+// The section route enqueues an ai_jobs row via the service-role client.
+vi.mock("@/lib/supabase/admin", () => ({
+  getAdminSupabase: () => sb.client,
+}));
 // Photo descriptions now go through a (separate) OpenAI-compatible vision
 // provider via fetch, so enable it and point it at a stub-able endpoint.
 vi.mock("@/lib/env", async (orig) => {
@@ -28,6 +33,9 @@ vi.mock("@/lib/env", async (orig) => {
   return {
     ...actual,
     isVisionConfigured: true,
+    // No Edge secret in tests → enqueueLlmJob runs the synchronous fallback,
+    // which calls the faked deepseekChat and fills the ai_jobs row in-route.
+    isEdgeJobConfigured: false,
     env: {
       ...actual.env,
       visionApiKey: "test-key",
@@ -88,7 +96,8 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
     expect(o.sections).toHaveLength(2);
     expect(o.sections[0].interaction?.kind).toBe("poll");
 
-    // 3. Sections — each first comes back broken and is repaired by the route.
+    // 3. Sections — each is enqueued as a job; the synchronous fallback fills
+    //    the row in-route, so we read the markdown straight back from it.
     const parts: string[] = [];
     for (let i = 0; i < o.sections.length; i++) {
       const r = await call(section, {
@@ -102,13 +111,14 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
         lang: "de",
       });
       expect(r.status).toBe(200);
-      parts.push(r.body.markdown);
+      const job = (store.ai_jobs ?? []).find((j) => j.id === r.body.jobId);
+      parts.push((job?.output as string) ?? "");
     }
     const assembled = parts.join("\n\n");
 
-    // The repair loop ran twice per section (broken → fixed): 4 section calls.
-    expect(fake.calls.filter((c) => c.operation === "section")).toHaveLength(4);
-    // Repaired body uses a real photo and no longer the bogus placeholder id.
+    // One model call per section (no in-route repair loop any more).
+    expect(fake.calls.filter((c) => c.operation === "section")).toHaveLength(2);
+    // The body uses a real photo, not the bogus placeholder id.
     expect(assembled).not.toContain("00000000-0000-0000-0000-000000000000");
     expect(assembled).toContain(`[photo:${photoIds[0]}]`);
     // The AI authored an inline poll (still litter at this point).

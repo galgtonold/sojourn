@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { deepseekChat, aiModels, type ChatMessage } from "@/lib/ai/deepseek";
+import { aiModels, type ChatMessage } from "@/lib/ai/deepseek";
+import { enqueueLlmJob } from "@/lib/ai/jobs";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import {
   langInstruction,
@@ -8,10 +9,9 @@ import {
   interactionInstruction,
   type Lang,
 } from "@/lib/ai/prompt";
-import { parseDirectives } from "@/lib/interactions-parse";
 
-// The reasoner can take a while per section, and the self-repair loop may add a
-// retry, so give it real headroom (capped to the plan limit at deploy time).
+// The synchronous fallback runs here, so keep headroom (clamped to the plan
+// limit). With the Edge Function configured the route only enqueues + returns.
 export const maxDuration = 180;
 
 const sectionSchema = z.object({
@@ -23,36 +23,6 @@ const sectionSchema = z.object({
     .nullish(),
 });
 
-// Returns the problems with a freshly generated section, so we can re-prompt the
-// model to fix its own output (dangling photo tags, malformed poll/quiz blocks).
-function sectionProblems(
-  markdown: string,
-  allowedPhotoIds: Set<string>,
-  wantsInteraction: boolean,
-): string[] {
-  const problems: string[] = [];
-  const photoRe = /\[photo:([^\]\s]+)\]/g;
-  let m: RegExpExecArray | null;
-  while ((m = photoRe.exec(markdown)) !== null) {
-    if (!allowedPhotoIds.has(m[1]))
-      problems.push(`[photo:${m[1]}] is not an allowed photo id for this section`);
-  }
-  const directives = parseDirectives(markdown);
-  for (const d of directives) {
-    if (d.problems.includes("question"))
-      problems.push("a :::poll/:::quiz block is missing its question");
-    if (d.problems.includes("options"))
-      problems.push("a :::poll/:::quiz block needs at least two `- ` options");
-    if (d.problems.includes("correct"))
-      problems.push("the :::quiz block needs exactly one option marked with `=`");
-  }
-  if (wantsInteraction && directives.length === 0)
-    problems.push("the requested poll/quiz :::block is missing");
-  if (!wantsInteraction && directives.length > 0)
-    problems.push("remove the :::poll/:::quiz block — none was requested here");
-  return problems;
-}
-
 const schema = z.object({
   postId: z.string().uuid(),
   index: z.number().int().min(0),
@@ -60,12 +30,16 @@ const schema = z.object({
   title: z.string().optional().default(""),
   section: sectionSchema,
   notes: z.string().optional(),
-  answers: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+  answers: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional(),
   lang: z.enum(["de", "en"]).default("de"),
 });
 
 export const POST = adminRoute(schema, sectionRoute, { requireAi: true });
 
+// Builds the section prompt and enqueues the (slow) generation as a job; the
+// client polls /api/admin/ai/job/[id] for the resulting markdown.
 async function sectionRoute({
   supabase,
   user,
@@ -84,8 +58,11 @@ async function sectionRoute({
       const p = byId.get(id);
       if (!p) return null;
       // Trim the (search-grade, multi-paragraph) description to a workable
-      // length so a single section call stays well under the time limit.
-      const desc = (p.ai_description ?? "").replace(/\s+/g, " ").trim().slice(0, 480);
+      // length so the call stays well under the time limit.
+      const desc = (p.ai_description ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 480);
       return `[photo:${id}] — ${p.place_name ?? ""} — ${desc}`;
     })
     .filter(Boolean)
@@ -120,35 +97,14 @@ async function sectionRoute({
     `${qaBlock(answers, lang as Lang)}` +
     (notes?.trim() ? `\n\nNotizen: ${notes.trim()}` : "");
 
-  const allowedPhotoIds = new Set(section.photo_ids);
-  const wantsInteraction = Boolean(section.interaction);
-
   const messages: ChatMessage[] = [
     { role: "system", content: system },
     { role: "user", content: userPrompt },
   ];
-  let markdown = "";
-  // Generate, then let the model fix its own structural mistakes (bad photo
-  // tags, malformed poll/quiz blocks). Bounded so the pipeline can't stall.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    markdown = (
-      await deepseekChat({
-        model: aiModels.reasoner,
-        temperature: 0.8,
-        maxTokens: 2200,
-        meta: { operation: "section", postId, userId: user.id },
-        messages,
-      })
-    ).trim();
-    const problems = sectionProblems(markdown, allowedPhotoIds, wantsInteraction);
-    if (problems.length === 0) break;
-    messages.push({ role: "assistant", content: markdown });
-    messages.push({
-      role: "user",
-      content:
-        "Fix only these issues and resend the full section as pure Markdown:\n- " +
-        problems.join("\n- "),
-    });
-  }
-  return { markdown };
+
+  const { jobId } = await enqueueLlmJob(
+    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 2200, messages },
+    { operation: "section", postId, userId: user.id },
+  );
+  return { jobId };
 }
