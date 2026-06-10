@@ -81,7 +81,10 @@ async function sectionRoute({
     .map((id) => {
       const p = byId.get(id);
       if (!p) return null;
-      return `[photo:${id}] — ${p.place_name ?? ""} — ${p.ai_description ?? ""}`;
+      // Trim the (search-grade, multi-paragraph) description to a workable
+      // length so a single section call stays well under the time limit.
+      const desc = (p.ai_description ?? "").replace(/\s+/g, " ").trim().slice(0, 480);
+      return `[photo:${id}] — ${p.place_name ?? ""} — ${desc}`;
     })
     .filter(Boolean)
     .join("\n");

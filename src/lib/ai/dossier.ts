@@ -141,11 +141,16 @@ export async function buildDossier(
 
   lines.push("", "Fotos in zeitlicher Reihenfolge (mit echten IDs):");
   photos.forEach((p, i) => {
+    // The full description can be many paragraphs (it powers search); the
+    // outline only needs a gist, so trim it to keep the prompt fast.
+    const desc = p.ai_description
+      ? p.ai_description.replace(/\s+/g, " ").trim().slice(0, 280)
+      : "(keine Beschreibung)";
     const parts = [
       `${i + 1}. [photo:${p.id}]`,
       fmtTime(p.taken_at),
       p.place_name ?? (p.lat != null ? `${p.lat.toFixed(4)},${p.lng}` : null),
-      p.ai_description ?? "(keine Beschreibung)",
+      desc,
     ].filter(Boolean);
     lines.push(parts.join(" — "));
   });
