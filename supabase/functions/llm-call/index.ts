@@ -51,26 +51,47 @@ Deno.serve(async (req: Request) => {
       };
       const base =
         Deno.env.get("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
-      const res = await fetch(`${base}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
-        },
-        body: JSON.stringify({
-          model: job.model,
-          messages: input.messages,
-          temperature: input.temperature ?? 0.7,
-          max_tokens: input.maxTokens ?? 4096,
-          ...(input.json ? { response_format: { type: "json_object" } } : {}),
-        }),
+      const payload = JSON.stringify({
+        model: job.model,
+        messages: input.messages,
+        temperature: input.temperature ?? 0.7,
+        max_tokens: input.maxTokens ?? 4096,
+        ...(input.json ? { response_format: { type: "json_object" } } : {}),
       });
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        throw new Error(`LLM ${res.status}: ${detail.slice(0, 200)}`);
+
+      // Retry transient upstream failures (network drops, 5xx) the same way the
+      // Node client does — a single blip shouldn't lose the whole section. 4xx
+      // is deterministic, so surface it immediately.
+      let output = "";
+      let lastErr: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let retryable = true;
+        try {
+          const res = await fetch(`${base}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
+            },
+            body: payload,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            output = data?.choices?.[0]?.message?.content ?? "";
+            lastErr = null;
+            break;
+          }
+          retryable = res.status >= 500;
+          const detail = await res.text().catch(() => "");
+          throw new Error(`LLM ${res.status}: ${detail.slice(0, 200)}`);
+        } catch (e) {
+          lastErr = e;
+          if (!retryable || attempt === 2) break;
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        }
       }
-      const data = await res.json();
-      const output = data?.choices?.[0]?.message?.content ?? "";
+      if (lastErr) throw lastErr;
+
       await supabase
         .from("ai_jobs")
         .update({ status: "done", output, error: null })
