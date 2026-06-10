@@ -118,7 +118,18 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
       el.setAttribute("aria-label", p.caption ?? p.postTitle ?? "");
       el.style.cssText =
         "width:42px;height:42px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer;display:block;padding:0";
-      el.style.backgroundImage = `url(${optimizedSrc(p.url, 96, 65)})`;
+      // Paint the blurhash instantly, then swap in the real thumbnail once it
+      // loads — no white ring with an empty centre while the image downloads.
+      const placeholder = blurhashToDataURL(p.blurhash, 24, 24);
+      const real = optimizedSrc(p.url, 96, 65);
+      el.style.backgroundImage = `url(${placeholder ?? real})`;
+      if (placeholder) {
+        const pre = new Image();
+        pre.onload = () => {
+          el.style.backgroundImage = `url(${real})`;
+        };
+        pre.src = real;
+      }
       el.onmouseenter = () => setSelectedId(p.id);
       el.onclick = (ev) => {
         ev.stopPropagation();
@@ -230,9 +241,19 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
         const clusterId = feature?.properties?.cluster_id;
         if (clusterId == null) return;
         const src = map.getSource("photos") as maplibregl.GeoJSONSource;
-        src.getClusterExpansionZoom(clusterId).then((zoom) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          map.easeTo({ center: (feature.geometry as any).coordinates, zoom });
+        const count = (feature.properties?.point_count as number) ?? 100;
+        // Zoom in as far as still fits the WHOLE cluster, rather than the single
+        // split-step getClusterExpansionZoom gives (which needs many clicks
+        // through tiny sub-clusters).
+        src.getClusterLeaves(clusterId, count, 0).then((leaves) => {
+          const b = new maplibregl.LngLatBounds();
+          for (const lf of leaves) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c = (lf.geometry as any).coordinates;
+            b.extend([c[0], c[1]]);
+          }
+          if (!b.isEmpty())
+            map.fitBounds(b, { padding: 80, maxZoom: 16, duration: 600 });
         });
       });
       map.on("mouseenter", "photo-clusters", () => {
@@ -308,7 +329,7 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
         </p>
         <div
           ref={stripRef}
-          className="flex gap-2 overflow-x-auto px-4 pb-4 pt-2"
+          className="flex min-h-[6.5rem] gap-2 overflow-x-auto px-4 pb-4 pt-2"
         >
           {shown.map((p) => {
             const blur = blurhashToDataURL(p.blurhash);

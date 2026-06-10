@@ -44,9 +44,18 @@ export function optimizedSrc(url: string, width = 2048, quality = 80): string {
   return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=${quality}`;
 }
 
-/** Rough reading time in minutes from body text. */
-export function readingTime(body: string | null | undefined): number {
-  if (!body) return 1;
-  const words = body.trim().split(/\s+/).length;
-  return Math.max(1, Math.round(words / 220));
+/**
+ * Rough reading time in minutes — body words at ~220 wpm plus time to take in
+ * the photos (tapering like Medium: 12s for the first image, 11s for the next,
+ * … never below 3s), since a photo-heavy entry takes longer than its word count
+ * alone suggests.
+ */
+export function readingTime(
+  body: string | null | undefined,
+  images = 0,
+): number {
+  const words = body ? body.trim().split(/\s+/).filter(Boolean).length : 0;
+  let seconds = (words / 220) * 60;
+  for (let i = 0; i < images; i++) seconds += Math.max(3, 12 - i);
+  return Math.max(1, Math.round(seconds / 60));
 }

@@ -81,7 +81,7 @@ export function MarkdownEditor({
         aria-hidden
         className={cn(
           shared,
-          "pointer-events-none absolute inset-0 overflow-hidden border-transparent text-sand-100",
+          "pointer-events-none absolute inset-0 overflow-hidden border-transparent bg-ink-800 text-sand-100",
         )}
         dangerouslySetInnerHTML={{ __html: highlight(value) + "\n" }}
       />
@@ -95,7 +95,7 @@ export function MarkdownEditor({
         spellCheck={false}
         className={cn(
           shared,
-          "relative resize-y border-white/10 bg-ink-800 text-transparent caret-ember-400 outline-none placeholder:text-sand-100/40 focus:border-ember-400",
+          "relative resize-y border-white/10 bg-transparent text-transparent caret-ember-400 outline-none placeholder:text-sand-100/40 focus:border-ember-400",
         )}
       />
     </div>

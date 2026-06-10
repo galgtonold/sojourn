@@ -136,7 +136,8 @@ export function PostView({
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="size-4" />
-                {readingTime(post.body)} <T k="post.minRead" />
+                {readingTime(post.body, post.photos.length)}{" "}
+                <T k="post.minRead" />
               </span>
               {post.trip && (
                 <Link
