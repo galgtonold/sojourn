@@ -34,6 +34,8 @@ const schema = z.object({
     .array(z.object({ question: z.string(), answer: z.string() }))
     .optional(),
   lang: z.enum(["de", "en"]).default("de"),
+  // Photo ids a prior attempt invented — fed back so the repair pass avoids them.
+  avoidPhotoIds: z.array(z.string()).optional(),
 });
 
 export const POST = adminRoute(schema, sectionRoute, { requireAi: true });
@@ -46,6 +48,7 @@ async function sectionRoute({
   input,
 }: AdminCtx<z.infer<typeof schema>>) {
   const { postId, index, total, title, section, notes, answers, lang } = input;
+  const avoidPhotoIds = input.avoidPhotoIds ?? [];
 
   const [dossier, styleGuide] = await Promise.all([
     buildDossier(supabase, postId),
@@ -87,7 +90,12 @@ async function sectionRoute({
     "- Setze die angegebenen [photo:ID]-Tags jeweils in eine eigene Zeile, dort wo sie passen.\n" +
     "- Verwende nur die unten angegebenen Foto-IDs, erfinde keine.\n" +
     "- Schreibe NUR diesen einen Abschnitt, ohne Wiederholung. Antworte mit reinem Markdown (kein JSON)." +
-    interactionRule;
+    interactionRule +
+    (avoidPhotoIds.length
+      ? `\n\nKORREKTUR: Ein vorheriger Versuch hat diese Foto-IDs ERFUNDEN — sie existieren NICHT und dürfen NICHT vorkommen: ${avoidPhotoIds.join(
+          ", ",
+        )}. Verwende ausschließlich die unten gelisteten Foto-IDs.`
+      : "");
 
   const userPrompt =
     `Beitragstitel: ${title}\n` +

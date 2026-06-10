@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, MessagesSquare, Wand2, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { invalidPhotoRefs } from "@/lib/photo-refs";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -169,25 +170,53 @@ export function AiDraftPanel({
       //    captures everything that did write — progress is never thrown away.
       const parts: string[] = [];
       const failed: number[] = [];
+      let photoFlagged = 0;
       const total = outline.sections.length;
       for (let i = 0; i < total; i++) {
         setStep(t("admin.ai.step.section", { a: i + 1, b: total }));
         try {
+          const section = outline.sections[i];
+          const allowed = section.photo_ids ?? [];
+          const req = {
+            postId,
+            index: i,
+            total,
+            title: outline.title,
+            section,
+            notes,
+            answers: qa,
+            lang,
+          };
           // Enqueue the (slow) section generation, then poll the job for its
           // markdown — the work runs on the Edge Function, off this request.
           const { jobId } = await withRetry(() =>
-            postJson<{ jobId: string }>("/api/admin/ai/section", {
-              postId,
-              index: i,
-              total,
-              title: outline.title,
-              section: outline.sections[i],
-              notes,
-              answers: qa,
-              lang,
-            }),
+            postJson<{ jobId: string }>("/api/admin/ai/section", req),
           );
-          const markdown = await pollJob(jobId);
+          let markdown = await pollJob(jobId);
+
+          // If the model invented photo ids, feed them back for one repair pass
+          // before giving up — the section route forbids them explicitly.
+          let invalid = invalidPhotoRefs(markdown, allowed);
+          if (invalid.length) {
+            try {
+              const { jobId: repairId } = await withRetry(() =>
+                postJson<{ jobId: string }>("/api/admin/ai/section", {
+                  ...req,
+                  avoidPhotoIds: invalid,
+                }),
+              );
+              const repaired = await pollJob(repairId);
+              if (repaired) {
+                markdown = repaired;
+                invalid = invalidPhotoRefs(markdown, allowed);
+              }
+            } catch {
+              /* keep the first attempt; it's flagged below either way */
+            }
+          }
+          // Still invented after the retry — leave it in (the editor lints each
+          // dangling ref) but warn so the author knows to check.
+          if (invalid.length) photoFlagged += 1;
           if (markdown) parts.push(markdown);
         } catch {
           failed.push(i + 1);
@@ -219,8 +248,12 @@ export function AiDraftPanel({
       );
 
       setStep(null);
+      const warnings: string[] = [];
       if (failed.length)
-        setWarn(t("admin.ai.warn.partial", { list: failed.join(", ") }));
+        warnings.push(t("admin.ai.warn.partial", { list: failed.join(", ") }));
+      if (photoFlagged)
+        warnings.push(t("admin.ai.warn.photos", { n: photoFlagged }));
+      if (warnings.length) setWarn(warnings.join(" "));
       setPhase("done");
       // Re-seed the editor synchronously with what was actually saved, so a
       // publish click right after generation can't PUT the stale empty draft.

@@ -355,6 +355,8 @@ const en = {
     "The AI couldn’t write any sections. Try again, or add a few notes first.",
   "admin.ai.warn.partial":
     "Draft saved, but section(s) {list} failed — regenerate, or write those in by hand.",
+  "admin.ai.warn.photos":
+    "{n} section(s) referenced photos that don’t exist — they’re flagged in the editor below; remove or replace them.",
 
   "admin.usage.link": "AI usage",
   "admin.usage.title": "AI usage & cost",
@@ -800,6 +802,8 @@ const de: Dict = {
     "Die KI konnte keine Abschnitte schreiben. Erneut versuchen oder zuerst ein paar Notizen ergänzen.",
   "admin.ai.warn.partial":
     "Entwurf gespeichert, aber Abschnitt(e) {list} sind fehlgeschlagen — neu generieren oder von Hand ergänzen.",
+  "admin.ai.warn.photos":
+    "{n} Abschnitt(e) verweisen auf nicht vorhandene Fotos — im Editor unten markiert; bitte entfernen oder ersetzen.",
 
   "admin.usage.link": "KI-Kosten",
   "admin.usage.title": "KI-Nutzung & Kosten",

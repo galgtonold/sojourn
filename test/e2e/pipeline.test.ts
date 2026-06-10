@@ -158,6 +158,26 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
     expect(issues).toEqual([]);
   });
 
+  it("save-draft prunes interactions the regenerated body no longer references", async () => {
+    const { postId } = setup();
+    // A regenerate: one interaction is kept (referenced), one is now stale.
+    store.interactions = [
+      { id: "keep-1", post_id: postId, kind: "poll", question: "Stay?", options: ["a", "b"], sort_order: 0 },
+      { id: "orphan-1", post_id: postId, kind: "quiz", question: "Gone?", options: ["a", "b"], sort_order: 1 },
+    ];
+
+    const r = await call(saveDraft, {
+      postId,
+      title: "Regenerated",
+      body: "Neuer Text.\n\n[ask:keep-1]\n\nSchluss.",
+    });
+    expect(r.status).toBe(200);
+
+    const ids = store.interactions.map((it) => it.id);
+    expect(ids).toContain("keep-1");
+    expect(ids).not.toContain("orphan-1");
+  });
+
   it("enriches a pending photo via the description path (no geocoding)", async () => {
     const { postId } = setup({ photoCount: 1, enriched: false, pending: true });
 

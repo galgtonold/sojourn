@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 export type Row = Record<string, unknown>;
-type Filter = { kind: "eq" | "neq" | "is"; col: string; val: unknown };
+type Filter = { kind: "eq" | "neq" | "is" | "in"; col: string; val: unknown };
 
 export type FakeDb = Record<string, Row[]>;
 
@@ -57,6 +57,10 @@ class Query {
     this.filters.push({ kind: "is", col, val });
     return this;
   }
+  in(col: string, vals: unknown[]): this {
+    this.filters.push({ kind: "in", col, val: vals });
+    return this;
+  }
   order(col: string, opts?: { ascending?: boolean }): this {
     this.orderSpec = { col, ascending: opts?.ascending ?? true };
     return this;
@@ -78,6 +82,8 @@ class Query {
     return this.filters.every((f) => {
       if (f.kind === "eq") return row[f.col] === f.val;
       if (f.kind === "neq") return row[f.col] !== f.val;
+      if (f.kind === "in")
+        return Array.isArray(f.val) && f.val.includes(row[f.col]);
       return f.val === null ? row[f.col] == null : row[f.col] === f.val;
     });
   }
