@@ -4,8 +4,8 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
-import { PostEditor, type EditablePost } from "@/components/post-editor";
-import { AiDraftPanel } from "@/components/ai-draft-panel";
+import { type EditablePost } from "@/components/post-editor";
+import { PostEditWorkspace } from "@/components/post-edit-workspace";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
 import { InteractionManager } from "@/components/interaction-manager";
@@ -105,19 +105,11 @@ export default async function EditPostPage({
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
-      {isAiConfigured && (
-        <div className="mb-8">
-          <AiDraftPanel
-            postId={data.id}
-            initialNotes={data.ai_notes ?? ""}
-            hasBody={Boolean(data.body)}
-          />
-        </div>
-      )}
-
-      <PostEditor
-        key={data.updated_at}
+      <PostEditWorkspace
+        postId={data.id}
         initial={initial}
+        initialNotes={data.ai_notes ?? ""}
+        aiConfigured={isAiConfigured}
         trips={trips}
         photoIds={(photos ?? []).map((p) => p.id)}
         interactionIds={(interactions ?? []).map((it) => it.id)}

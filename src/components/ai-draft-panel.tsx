@@ -23,6 +23,18 @@ type Outline = {
   sections: Section[];
 };
 
+// The fields save-draft persisted, handed back so the editor can re-seed itself
+// the instant generation finishes (no wait for router.refresh to propagate).
+export type DraftSaved = {
+  title: string;
+  excerpt: string | null;
+  body: string;
+  location: string | null;
+  lat: number | null;
+  lng: number | null;
+  cover_image: string | null;
+};
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
@@ -62,10 +74,12 @@ export function AiDraftPanel({
   postId,
   initialNotes,
   hasBody,
+  onDraftSaved,
 }: {
   postId: string;
   initialNotes: string;
   hasBody: boolean;
+  onDraftSaved?: (saved: DraftSaved) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -167,23 +181,29 @@ export function AiDraftPanel({
 
       // 5. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
-      await withRetry(() =>
-        postJson("/api/admin/ai/save-draft", {
-          postId,
-          title: outline.title,
-          excerpt: outline.excerpt,
-          location: outline.location ?? undefined,
-          lat: outline.lat ?? null,
-          lng: outline.lng ?? null,
-          cover_photo_id: outline.cover_photo_id ?? null,
-          body: parts.join("\n\n"),
-        }),
+      const { post: saved } = await withRetry(() =>
+        postJson<{ ok: boolean; post: DraftSaved | null }>(
+          "/api/admin/ai/save-draft",
+          {
+            postId,
+            title: outline.title,
+            excerpt: outline.excerpt,
+            location: outline.location ?? undefined,
+            lat: outline.lat ?? null,
+            lng: outline.lng ?? null,
+            cover_photo_id: outline.cover_photo_id ?? null,
+            body: parts.join("\n\n"),
+          },
+        ),
       );
 
       setStep(null);
       if (failed.length)
         setWarn(t("admin.ai.warn.partial", { list: failed.join(", ") }));
       setPhase("done");
+      // Re-seed the editor synchronously with what was actually saved, so a
+      // publish click right after generation can't PUT the stale empty draft.
+      if (saved) onDraftSaved?.(saved);
       router.refresh();
     } catch (e) {
       setError(humanError(e, t as (k: string) => string));

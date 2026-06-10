@@ -46,8 +46,16 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
   };
   if (cover?.url) update.cover_image = cover.url;
 
-  const { error } = await supabase.from("posts").update(update).eq("id", p.postId);
+  // Return the persisted fields so the editor can re-seed itself immediately
+  // (the body here is the materialised version and the cover is fully resolved,
+  // so this is the authoritative draft — no refetch race).
+  const { data: saved, error } = await supabase
+    .from("posts")
+    .update(update)
+    .eq("id", p.postId)
+    .select("title, excerpt, body, location, lat, lng, cover_image")
+    .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return { ok: true };
+  return { ok: true, post: saved };
 }
