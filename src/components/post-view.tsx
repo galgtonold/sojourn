@@ -12,6 +12,7 @@ import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 import { RevealImage } from "@/components/reveal-image";
+import { BackLink } from "@/components/back-link";
 import { T } from "@/components/i18n";
 
 /** Full article view, shared by the public post page and the admin preview. */
@@ -92,9 +93,10 @@ export function PostView({
           />
         )}
         {/* Top wash keeps the back-link and location chip legible. */}
-        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-950/50 to-transparent" />
-        {/* Long, smooth dissolve so the cover melts into the page background. */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ink-950 via-ink-950/25 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-950/55 to-transparent" />
+        {/* Long, smooth dissolve so the cover melts into the page background —
+            and, crucially, keeps the title readable over bright covers. */}
+        <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent" />
 
         <div
           className={cn(
@@ -102,14 +104,21 @@ export function PostView({
             useStory ? "max-w-2xl lg:max-w-6xl" : "max-w-3xl",
           )}
         >
-          <div className={cn("w-full", readingCol)}>
+          <div
+            className={cn(
+              // A soft text shadow keeps the hero legible over bright covers,
+              // independent of the gradient (which can't cover every photo).
+              "w-full [text-shadow:0_1px_14px_rgba(10,9,8,0.6)]",
+              readingCol,
+            )}
+          >
             {!preview && (
-              <Link
-                href="/"
-                className="mb-6 inline-flex w-fit items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
+              <BackLink
+                fallback="/"
+                className="mb-6 inline-flex w-fit items-center gap-1.5 text-sm text-sand-100/80 transition hover:text-ember-400"
               >
                 <ArrowLeft className="size-4" /> <T k="common.back" />
-              </Link>
+              </BackLink>
             )}
             {post.location && (
               <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-ember-300">

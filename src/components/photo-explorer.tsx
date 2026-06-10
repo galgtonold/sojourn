@@ -56,12 +56,21 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
         essential: true,
       });
       popupRef.current?.remove();
-      const html = `<a href="/posts/${esc(p.postSlug)}#photo-${esc(p.id)}" style="display:block;width:200px;text-decoration:none;color:#faf6f0">
-          <img src="${optimizedSrc(p.url, 400, 70)}" style="width:100%;height:auto;border-radius:8px;display:block" alt="" />
-          ${p.caption ? `<div style="padding:6px 2px 0;font-size:12px;line-height:1.3">${esc(p.caption)}</div>` : ""}
-          <div style="padding:6px 2px 0;font-size:11px;color:#ff8f4d">${esc(t("map.openStory"))}</div>
+      // Same shape as the per-post TripMap photo popups (.photo-popup): a flush
+      // cover image with the caption + "open story" link in a padded footer.
+      const caption = p.caption
+        ? `<div style="font-size:12.5px;line-height:1.4">${esc(p.caption)}</div>`
+        : "";
+      const open = `<div style="margin-top:${p.caption ? "8px" : "0"};font-size:11px;font-weight:600;letter-spacing:.01em;color:#ff8f4d">${esc(t("map.openStory"))}</div>`;
+      const html = `<a href="/posts/${esc(p.postSlug)}#photo-${esc(p.id)}" style="display:block;width:220px;text-decoration:none;color:#faf6f0">
+          <img src="${optimizedSrc(p.url, 440, 70)}" style="width:100%;height:132px;object-fit:cover;display:block" alt="" />
+          <div style="padding:11px 13px 12px">${caption}${open}</div>
         </a>`;
-      popupRef.current = new maplibregl.Popup({ offset: 14, maxWidth: "220px" })
+      popupRef.current = new maplibregl.Popup({
+        offset: 20,
+        maxWidth: "248px",
+        className: "photo-popup",
+      })
         .setLngLat([p.lng, p.lat])
         .setHTML(html)
         .addTo(map);

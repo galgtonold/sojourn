@@ -28,7 +28,14 @@ export function SiteHeader() {
   }, [pathname]);
 
   return (
-    <header className={cn("fixed inset-x-0 z-50", isPreview ? "top-9" : "top-0")}>
+    <header
+      className={cn(
+        // Side padding floats the glass bar off the screen edges (most visible
+        // on mobile, where max-w-6xl would otherwise run edge-to-edge).
+        "fixed inset-x-0 z-50 px-3 sm:px-4",
+        isPreview ? "top-9" : "top-0",
+      )}
+    >
       <div className="glass mx-auto mt-3 max-w-6xl rounded-3xl px-4 py-2.5 sm:rounded-full sm:px-6">
         <div className="flex items-center justify-between">
           <Link

@@ -10,7 +10,7 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
     photo.caption || photo.place_name || photo.ai_description || photo.alt;
   return (
     <Link
-      href={`/posts/${photo.post_slug}`}
+      href={`/posts/${photo.post_slug}#photo-${photo.id}`}
       className="group relative block overflow-hidden rounded-3xl bg-ink-800"
     >
       <div className="relative aspect-square w-full overflow-hidden">
