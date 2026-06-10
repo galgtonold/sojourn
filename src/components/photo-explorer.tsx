@@ -28,6 +28,9 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
   const stripRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  // True only while a *map-originated* selection is pending, so the filmstrip
+  // reveals that thumbnail. Hovering thumbnails must NOT scroll the strip.
+  const fromMapRef = useRef(false);
 
   const photoById = useMemo(() => {
     const m = new Map<string, GeoPhoto>();
@@ -119,6 +122,7 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
       el.onmouseenter = () => setSelectedId(p.id);
       el.onclick = (ev) => {
         ev.stopPropagation();
+        fromMapRef.current = true; // a pin click should reveal its thumbnail
         focusRef.current(p.id);
       };
       return el;
@@ -276,9 +280,12 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
     });
   }, [selectedId, photoById]);
 
-  // Keep the selected thumbnail scrolled into view (e.g. when picked on the map).
+  // Reveal the selected thumbnail in the strip — but ONLY when the selection
+  // came from the map (a pin click), never on hover. Centring on every hover
+  // made the strip lurch away from the cursor.
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || !fromMapRef.current) return;
+    fromMapRef.current = false;
     const el = stripRef.current?.querySelector(`[data-id="${selectedId}"]`);
     el?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [selectedId]);

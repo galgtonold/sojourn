@@ -453,7 +453,7 @@ const de: Dict = {
   "home.kicker": "Notizen von unterwegs",
   "home.heroLeadA": "Geschichten, Karten & Licht von",
   "home.heroLeadB": "überall, wohin wir ziehen",
-  "home.readCta": "Lesen",
+  "home.readCta": "Zum Beitrag",
   "home.latest": "Neueste Beiträge",
   "home.latestSub": "Die jüngsten Eindrücke von unterwegs.",
   "home.allEntries": "Alle Beiträge",
