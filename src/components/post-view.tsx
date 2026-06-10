@@ -81,7 +81,7 @@ export function PostView({
         </div>
       )}
 
-      <header className="relative grain h-[70dvh] min-h-[460px] w-full overflow-hidden">
+      <header className="relative grain flex min-h-[70dvh] w-full flex-col overflow-hidden">
         {post.cover_image && (
           <RevealImage
             src={post.cover_image}
@@ -98,7 +98,7 @@ export function PostView({
 
         <div
           className={cn(
-            "relative z-10 mx-auto flex h-full flex-col justify-end px-6 pb-12",
+            "relative z-10 mx-auto flex w-full flex-1 flex-col justify-end px-6 pb-12 pt-24",
             useStory ? "max-w-2xl lg:max-w-6xl" : "max-w-3xl",
           )}
         >

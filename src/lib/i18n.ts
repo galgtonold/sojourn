@@ -72,6 +72,7 @@ const en = {
   "journey.prev": "Prev",
   "journey.next": "Next",
   "journey.goToStop": "Go to stop {n}",
+  "journey.scrub": "Scrub through the journey",
   "map.openStory": "Open story →",
 
   "meta.tagline": "a travel journal",
@@ -499,6 +500,7 @@ const de: Dict = {
   "journey.prev": "Zurück",
   "journey.next": "Weiter",
   "journey.goToStop": "Zu Station {n}",
+  "journey.scrub": "Durch die Reise navigieren",
   "map.openStory": "Beitrag öffnen →",
 
   "meta.tagline": "ein Reisetagebuch",

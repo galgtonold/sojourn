@@ -178,8 +178,10 @@ export function JourneyExplorer({
       // keeps edge markers fully on-screen instead of clipped.
       if (!bounds.isEmpty())
         map.fitBounds(bounds, {
-          padding: { top: 72, bottom: 240, left: 56, right: 56 },
-          maxZoom: 14,
+          // Snug fit — just clearing the back button (top) and the stepper card
+          // (bottom) so the route nearly fills the screen.
+          padding: { top: 64, bottom: 196, left: 32, right: 32 },
+          maxZoom: 15,
           duration: 0,
         });
     });
@@ -295,18 +297,44 @@ export function JourneyExplorer({
               >
                 <ChevronLeft className="size-4" /> {t("journey.prev")}
               </button>
-              <div className="flex gap-1">
-                {ordered.map((s, i) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setIndex(i)}
-                    aria-label={t("journey.goToStop", { n: i + 1 })}
-                    className={`size-1.5 rounded-full transition ${
-                      i === index ? "bg-ember-400" : "bg-white/25 hover:bg-white/50"
-                    }`}
+              {ordered.length > 12 ? (
+                // Too many stops for dots — a tap-to-seek progress bar instead.
+                <button
+                  type="button"
+                  aria-label={t("journey.scrub")}
+                  onClick={(e) => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const f = (e.clientX - r.left) / r.width;
+                    setIndex(
+                      Math.min(
+                        ordered.length - 1,
+                        Math.max(0, Math.round(f * (ordered.length - 1))),
+                      ),
+                    );
+                  }}
+                  className="relative h-1.5 w-28 overflow-hidden rounded-full bg-white/20"
+                >
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full bg-ember-400 transition-[width]"
+                    style={{ width: `${((index + 1) / ordered.length) * 100}%` }}
                   />
-                ))}
-              </div>
+                </button>
+              ) : (
+                <div className="flex gap-1">
+                  {ordered.map((s, i) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setIndex(i)}
+                      aria-label={t("journey.goToStop", { n: i + 1 })}
+                      className={`size-1.5 rounded-full transition ${
+                        i === index
+                          ? "bg-ember-400"
+                          : "bg-white/25 hover:bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
               <button
                 onClick={() => setIndex((i) => (i + 1) % ordered.length)}
                 className="inline-flex items-center gap-1 rounded-full bg-ember-500 px-3 py-1.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
