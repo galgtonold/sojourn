@@ -49,9 +49,10 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
       const map = mapRef.current;
       if (!p || !map) return;
       setSelectedId(id);
+      // Just recentre at the current zoom — zooming in would leave only this
+      // one photo in view and re-cluster everything else away.
       map.flyTo({
         center: [p.lng, p.lat],
-        zoom: Math.max(map.getZoom(), 14.5),
         speed: 0.8,
         essential: true,
       });

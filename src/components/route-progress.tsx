@@ -14,6 +14,7 @@ export function RouteProgress() {
   const [active, setActive] = useState(false);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const done = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHref = useRef<string>("");
 
   function stopTimers() {
     if (tick.current) clearInterval(tick.current);
@@ -70,6 +71,10 @@ export function RouteProgress() {
       start();
     }
     function onPop() {
+      // Ignore pops that don't change the URL — e.g. closing the image viewer,
+      // which pushes/pops a dummy same-URL entry. Those never "commit", so the
+      // bar would otherwise start and hang.
+      if (window.location.href === lastHref.current) return;
       start();
     }
     document.addEventListener("click", onClick, { capture: true });
@@ -85,6 +90,7 @@ export function RouteProgress() {
   const key = `${pathname}?${search.toString()}`;
   const first = useRef(true);
   useEffect(() => {
+    lastHref.current = window.location.href;
     if (first.current) {
       first.current = false;
       return;

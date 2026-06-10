@@ -51,16 +51,25 @@ export function ImageLightbox({
     const sync = () => setRotated(shouldRotate());
     sync();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Add a history entry so the browser / hardware Back button closes the
+    // viewer instead of leaving the page; popping it closes the viewer.
+    window.history.pushState({ ...window.history.state, lightbox: true }, "");
+    const onPop = () => onClose();
     window.addEventListener("resize", sync);
     window.addEventListener("orientationchange", sync);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("popstate", onPop);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("resize", sync);
       window.removeEventListener("orientationchange", sync);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
       document.body.style.overflow = prevOverflow;
+      // Closed via X / Esc / backdrop (not Back): consume the entry we pushed so
+      // the history stays balanced and a later Back isn't swallowed.
+      if (window.history.state?.lightbox) window.history.back();
     };
   }, [open, onClose]);
 
