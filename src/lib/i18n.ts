@@ -474,7 +474,7 @@ const de: Dict = {
   "post.exploreJourney": "Reisekarte erkunden",
 
   "comments.title": "Kommentare",
-  "comments.beFirst": "Sei der oder die Erste.",
+  "comments.beFirst": "Sei der Erste.",
   "comments.name": "Dein Name (wird gespeichert)",
   "comments.note": "Hinterlasse eine Notiz…",
   "comments.replyTo": "Antwort an {name}…",
@@ -640,7 +640,7 @@ const de: Dict = {
   "admin.posts.deleteTitle": "Beitrag löschen?",
   "admin.posts.deleteConfirm":
     "„{title}“ wird mit allen Fotos, Routen und Kommentaren endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
-  "admin.nav.membersSub": "Redakteur:innen einladen & verwalten",
+  "admin.nav.membersSub": "Mitwirkende einladen & verwalten",
   "admin.nav.usageSub": "KI-Kosten & Tokens",
   "admin.recentComments": "Neueste Kommentare",
   "admin.moderateAll": "Alle moderieren →",
