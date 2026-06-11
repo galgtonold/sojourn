@@ -43,8 +43,13 @@ async function proposeStyle({ supabase, user }: AdminCtx<z.infer<typeof schema>>
     { role: "user", content: userMsg },
   ];
 
+  // Use the fast (non-reasoning) model: the reasoner spends its token budget on
+  // chain-of-thought (reasoning_content) and, under a tight cap, returns empty
+  // content — which is exactly what happened here. A style distillation needs
+  // no deep reasoning, so the fast model (like outline/captions) is the right
+  // fit and returns the text directly.
   const style = await deepseekChat({
-    model: aiModels.reasoner,
+    model: aiModels.fast,
     temperature: 0.5,
     maxTokens: 800,
     messages,
