@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { embedPostRecord } from "@/lib/ai/embed-records";
+import { triggerPostTranslation } from "@/lib/ai/translate";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/");
@@ -101,6 +102,14 @@ export async function PUT(
     postId: id,
     userId: user.id,
   });
+
+  // Kick off background translation into the other language when published
+  // (no-op without the Edge Function, or when the content hasn't changed).
+  // Awaited only long enough to fire the call; the translation itself runs in
+  // the background and flips translation_status to 'ready' when done.
+  if (p.published) {
+    await triggerPostTranslation(id).catch(() => {});
+  }
 
   // Instantly refresh public pages (incl. the old slug if it changed).
   revalidatePublic(slug, existing?.slug);

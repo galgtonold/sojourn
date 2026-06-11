@@ -1,18 +1,13 @@
 import { notFound } from "next/navigation";
-import {
-  getComments,
-  getInteractions,
-  getPostBySlug,
-  getPublishedPosts,
-} from "@/lib/content";
+import { getComments, getInteractions, getPostBySlug } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizeInteraction, localizePostDeep } from "@/lib/i18n-content";
 import { PostView } from "@/components/post-view";
 
-export const revalidate = 60;
-
-export async function generateStaticParams() {
-  const posts = await getPublishedPosts();
-  return posts.map((p) => ({ slug: p.slug }));
-}
+// Dynamic: the body is rendered server-side, so it picks the reader's language
+// from the `locale` cookie here (UI chrome still swaps on the client). Metadata
+// stays in the source/default language for crawlers and link previews.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -39,7 +34,10 @@ export default async function PostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, locale] = await Promise.all([
+    getPostBySlug(slug),
+    getReaderLocale(),
+  ]);
   if (!post) notFound();
 
   const [comments, interactions] = await Promise.all([
@@ -47,6 +45,10 @@ export default async function PostPage({
     getInteractions(post.id),
   ]);
   return (
-    <PostView post={post} comments={comments} interactions={interactions} />
+    <PostView
+      post={localizePostDeep(post, locale)}
+      comments={comments}
+      interactions={interactions.map((it) => localizeInteraction(it, locale))}
+    />
   );
 }

@@ -1,4 +1,22 @@
 // Domain types shared across server and client.
+import type { Locale } from "@/lib/i18n";
+
+// Machine-translation bookkeeping. `i18n` holds translated fields keyed by
+// locale, carrying ONLY the non-source locale(s); read-time overlay is
+// `i18n[locale] ?? base` (see lib/i18n-content.ts).
+export type TranslationStatus = "none" | "pending" | "ready" | "error";
+export type PostTranslation = {
+  title?: string;
+  excerpt?: string | null;
+  body?: string | null;
+};
+export type TripTranslation = { title?: string; summary?: string | null };
+export type PhotoTranslation = { caption?: string | null; alt?: string | null };
+export type InteractionTranslation = {
+  question?: string;
+  options?: string[];
+  explanation?: string | null;
+};
 
 export type Trip = {
   id: string;
@@ -8,6 +26,9 @@ export type Trip = {
   cover_image: string | null;
   start_date: string | null;
   end_date: string | null;
+  source_locale?: Locale | null;
+  i18n?: Partial<Record<Locale, TripTranslation>>;
+  translation_status?: TranslationStatus;
 };
 
 export type GeoPoint = {
@@ -42,6 +63,7 @@ export type Photo = {
   lng: number | null;
   taken_at?: string | null;
   sort_order: number;
+  i18n?: Partial<Record<Locale, PhotoTranslation>>;
 };
 
 // A photo surfaced by search, carrying just enough of its parent post to render
@@ -93,6 +115,9 @@ export type Post = {
   view_count: number;
   created_at: string;
   updated_at: string;
+  source_locale?: Locale | null;
+  i18n?: Partial<Record<Locale, PostTranslation>>;
+  translation_status?: TranslationStatus;
 };
 
 export type PostWithRelations = Post & {
@@ -111,6 +136,7 @@ export type Interaction = {
   question: string;
   options: string[];
   sort_order: number;
+  i18n?: Partial<Record<Locale, InteractionTranslation>>;
 };
 
 // Lightweight shape for listings (no heavy joins) — keeps list pages scalable.

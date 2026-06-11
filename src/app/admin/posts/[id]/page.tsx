@@ -9,6 +9,7 @@ import { PostEditWorkspace } from "@/components/post-edit-workspace";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
 import { InteractionManager } from "@/components/interaction-manager";
+import { TranslationBadge } from "@/components/translation-badge";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -31,7 +32,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, updated_at",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, updated_at, translation_status, source_locale",
     )
     .eq("id", id)
     .maybeSingle();
@@ -92,7 +93,7 @@ export default async function EditPostPage({
       >
         <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
       </Link>
-      <div className="mb-8 flex items-center justify-between gap-4">
+      <div className="mb-2 flex items-center justify-between gap-4">
         <h1 className="font-display text-4xl font-semibold">
           <T k="admin.editor.editPost" />
         </h1>
@@ -104,6 +105,19 @@ export default async function EditPostPage({
         >
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
+      </div>
+      <div className="mb-8">
+        <TranslationBadge
+          postId={data.id}
+          initialStatus={
+            (data.translation_status as
+              | "none"
+              | "pending"
+              | "ready"
+              | "error") ?? "none"
+          }
+          published={Boolean(data.published)}
+        />
       </div>
       <PostEditWorkspace
         postId={data.id}

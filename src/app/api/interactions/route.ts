@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { getReaderLocale } from "@/lib/i18n-server";
+import type { Locale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +10,15 @@ type AdminSupabase = NonNullable<ReturnType<typeof getAdminSupabase>>;
 
 // Builds the reader-facing state for one interaction. Counts/answers are only
 // revealed once the visitor has responded.
-async function buildState(supabase: AdminSupabase, id: string, token: string) {
+async function buildState(
+  supabase: AdminSupabase,
+  id: string,
+  token: string,
+  locale: Locale,
+) {
   const { data: it } = await supabase
     .from("interactions")
-    .select("kind, options, correct_index, explanation")
+    .select("kind, options, correct_index, explanation, i18n")
     .eq("id", id)
     .maybeSingle();
   if (!it) return null;
@@ -43,7 +50,14 @@ async function buildState(supabase: AdminSupabase, id: string, token: string) {
     total: counts.reduce((a, b) => a + b, 0),
     yourChoice: mine.choice_index as number,
     correctIndex: it.kind === "quiz" ? (it.correct_index ?? null) : null,
-    explanation: it.kind === "quiz" ? (it.explanation ?? null) : null,
+    explanation:
+      it.kind === "quiz"
+        ? ((
+            it.i18n as Record<string, { explanation?: string | null }> | null
+          )?.[locale]?.explanation ??
+          it.explanation ??
+          null)
+        : null,
   };
 }
 
@@ -56,7 +70,7 @@ export async function GET(req: Request) {
   const supabase = getAdminSupabase();
   if (!supabase) return NextResponse.json({ voted: false });
 
-  const state = await buildState(supabase, id, token);
+  const state = await buildState(supabase, id, token, await getReaderLocale());
   if (!state) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(state);
 }
@@ -85,7 +99,7 @@ export async function POST(req: Request) {
       { onConflict: "interaction_id,visitor_token", ignoreDuplicates: true },
     );
 
-  const state = await buildState(supabase, id, token);
+  const state = await buildState(supabase, id, token, await getReaderLocale());
   if (!state) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(state);
 }

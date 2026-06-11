@@ -68,6 +68,9 @@ export const env = {
   edgeFunctionUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/llm-call`
     : "",
+  edgeTranslateUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/translate`
+    : "",
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -96,4 +99,10 @@ export const isVisionConfigured = Boolean(env.visionApiKey);
 // the function URL are present.
 export const isEdgeJobConfigured = Boolean(
   env.edgeSharedSecret && env.edgeFunctionUrl,
+);
+
+// Background content translation reuses the same shared secret + a sibling Edge
+// Function (`translate`), gated the same way as the job runner above.
+export const isEdgeTranslateConfigured = Boolean(
+  env.edgeSharedSecret && env.edgeTranslateUrl,
 );

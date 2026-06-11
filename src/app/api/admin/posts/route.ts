@@ -6,6 +6,7 @@ import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
+import { triggerPostTranslation } from "@/lib/ai/translate";
 
 const schema = z.object({
   title: z.string().trim().min(1),
@@ -73,6 +74,11 @@ export async function POST(req: Request) {
     );
     if (created > 0)
       await supabase.from("posts").update({ body: materialized }).eq("id", data.id);
+  }
+
+  // Translate into the other language when created already-published.
+  if (p.published && data?.id) {
+    await triggerPostTranslation(data.id).catch(() => {});
   }
 
   // Refresh the cached public pages immediately.

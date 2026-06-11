@@ -451,7 +451,7 @@ export async function getInteractions(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("interactions")
-    .select("id, kind, question, options, sort_order")
+    .select("id, kind, question, options, sort_order, i18n")
     .eq("post_id", postId)
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
