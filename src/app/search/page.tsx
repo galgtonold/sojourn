@@ -22,11 +22,11 @@ export default async function SearchPage({
     ? await Promise.all([searchPosts(query), searchPhotos(query)])
     : [[], []];
   const posts = rawPosts.map((p) => localizePost(p, locale));
-  const photos = rawPhotos.map((ph) => ({
+  const photos = rawPhotos.map(({ i18n, post_i18n, ...ph }) => ({
     ...ph,
-    caption: ph.i18n?.[locale]?.caption ?? ph.caption,
-    alt: ph.i18n?.[locale]?.alt ?? ph.alt,
-    post_title: ph.post_i18n?.[locale]?.title ?? ph.post_title,
+    caption: i18n?.[locale]?.caption ?? ph.caption,
+    alt: i18n?.[locale]?.alt ?? ph.alt,
+    post_title: post_i18n?.[locale]?.title ?? ph.post_title,
   }));
   const empty = query.length > 0 && posts.length === 0 && photos.length === 0;
 

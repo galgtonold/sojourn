@@ -35,16 +35,20 @@ const post = {
 } as Post;
 
 describe("localizePost", () => {
-  it("overlays the requested locale's fields", () => {
+  it("overlays the requested locale's fields and drops i18n bookkeeping", () => {
     const en = localizePost(post, "en");
     expect(en.title).toBe("Day one");
     expect(en.body).toBe("We arrived in the rain. [photo:1]");
+    // The other language's payload must not ride along to the client.
+    expect(en.i18n).toBeUndefined();
+    expect(en.source_locale).toBeUndefined();
   });
 
-  it("returns the source untouched for the source locale", () => {
+  it("returns source values for the source locale, still without i18n", () => {
     const de = localizePost(post, "de");
     expect(de.title).toBe("Tag eins");
-    expect(de).toBe(post); // no translation for `de` → same object
+    expect(de.body).toBe("Wir kamen bei Regen an. [photo:1]");
+    expect(de.i18n).toBeUndefined();
   });
 
   it("falls back per-field when a translated field is missing", () => {

@@ -14,14 +14,20 @@ import type {
   Trip,
 } from "@/lib/types";
 
+// Translation bookkeeping that must NOT survive localization: once a row is
+// localized these are consumed, and leaving them on the object would serialize
+// the OTHER language's text into any client component the row is passed to.
+const BOOKKEEPING = ["i18n", "source_locale", "translation_status"];
+
 function merge<T extends object>(base: T, tr: Partial<T> | undefined): T {
-  if (!tr) return base;
-  const patch: Partial<T> = {};
-  for (const key of Object.keys(tr) as (keyof T)[]) {
-    const v = tr[key];
-    if (v !== undefined && v !== null) patch[key] = v;
+  const out = { ...base } as Record<string, unknown>;
+  if (tr) {
+    for (const [key, v] of Object.entries(tr)) {
+      if (v !== undefined && v !== null) out[key] = v;
+    }
   }
-  return { ...base, ...patch };
+  for (const key of BOOKKEEPING) delete out[key];
+  return out as T;
 }
 
 export function localizePost<T extends Post>(post: T, locale: Locale): T {
@@ -32,15 +38,18 @@ export function localizeTrip<T extends Trip>(trip: T, locale: Locale): T {
   return merge(trip, trip.i18n?.[locale] as Partial<T> | undefined);
 }
 
-// Card listings carry only title + excerpt translations.
+// Card listings carry only title + excerpt translations. Strips the i18n
+// bookkeeping so card grids don't ship the other language to the client.
 export function localizePostSummary(s: PostSummary, locale: Locale): PostSummary {
   const tr = s.i18n?.[locale];
-  if (!tr) return s;
-  return {
+  const out = {
     ...s,
-    title: tr.title ?? s.title,
-    excerpt: tr.excerpt ?? s.excerpt,
+    title: tr?.title ?? s.title,
+    excerpt: tr?.excerpt ?? s.excerpt,
   };
+  delete out.i18n;
+  delete out.source_locale;
+  return out;
 }
 
 export function localizePhoto(photo: Photo, locale: Locale): Photo {
