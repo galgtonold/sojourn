@@ -82,6 +82,8 @@ export type PhotoSearchResult = {
   lng: number | null;
   post_slug: string;
   post_title: string;
+  i18n?: Partial<Record<Locale, PhotoTranslation>>;
+  post_i18n?: Partial<Record<Locale, PostTranslation>>;
 };
 
 export type Comment = {

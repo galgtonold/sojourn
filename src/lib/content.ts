@@ -18,12 +18,15 @@ import {
   type GeoPoint,
   type Photo,
   type PhotoSearchResult,
+  type PhotoTranslation,
   type PostSummary,
+  type PostTranslation,
   type PostWithRelations,
   type ReactionKind,
   type ReactionSummary,
   type Trip,
 } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 export const DEMO_MODE = !isSupabaseConfigured;
 
@@ -212,6 +215,8 @@ export type GeoPhoto = {
   blurhash: string | null;
   postSlug: string;
   postTitle: string;
+  i18n?: Partial<Record<Locale, PhotoTranslation>>;
+  postI18n?: Partial<Record<Locale, PostTranslation>>;
 };
 
 function demoGeoPhotos(): GeoPhoto[] {
@@ -241,7 +246,7 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
     const { data, error } = await supabase
       .from("photos")
       .select(
-        "id, url, caption, blurhash, lat, lng, posts!inner(slug, title, published)",
+        "id, url, caption, blurhash, lat, lng, i18n, posts!inner(slug, title, published, i18n)",
       )
       .not("lat", "is", null)
       .not("lng", "is", null)
@@ -262,6 +267,8 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
           blurhash: r.blurhash,
           postSlug: post.slug,
           postTitle: post.title,
+          i18n: r.i18n ?? undefined,
+          postI18n: post.i18n ?? undefined,
         },
       ];
     });
@@ -325,7 +332,7 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
 // `!inner` join + published filter mirror the "read photos of published posts"
 // RLS policy (belt-and-suspenders: anon can only read these rows anyway).
 const PHOTO_SEARCH_SELECT =
-  "id, url, caption, alt, ai_description, place_name, width, height, blurhash, lat, lng, post:posts!inner(slug, title, published)";
+  "id, url, caption, alt, ai_description, place_name, width, height, blurhash, lat, lng, i18n, post:posts!inner(slug, title, published, i18n)";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hydratePhotoResult(row: any): PhotoSearchResult {
@@ -344,6 +351,8 @@ function hydratePhotoResult(row: any): PhotoSearchResult {
     lng: row.lng ?? null,
     post_slug: post?.slug ?? "",
     post_title: post?.title ?? "",
+    i18n: row.i18n ?? undefined,
+    post_i18n: post?.i18n ?? undefined,
   };
 }
 

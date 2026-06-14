@@ -18,10 +18,16 @@ export default async function SearchPage({
   const query = (q ?? "").trim();
   const locale = await getReaderLocale();
   // Hybrid search over stories and photos, fetched in parallel.
-  const [rawPosts, photos] = query
+  const [rawPosts, rawPhotos] = query
     ? await Promise.all([searchPosts(query), searchPhotos(query)])
     : [[], []];
   const posts = rawPosts.map((p) => localizePost(p, locale));
+  const photos = rawPhotos.map((ph) => ({
+    ...ph,
+    caption: ph.i18n?.[locale]?.caption ?? ph.caption,
+    alt: ph.i18n?.[locale]?.alt ?? ph.alt,
+    post_title: ph.post_i18n?.[locale]?.title ?? ph.post_title,
+  }));
   const empty = query.length > 0 && posts.length === 0 && photos.length === 0;
 
   return (

@@ -1,12 +1,18 @@
 import { getGeotaggedPhotos } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
 import { PhotoExplorer } from "@/components/photo-explorer";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "Photo map" };
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function PhotosPage() {
-  const photos = await getGeotaggedPhotos();
+  const locale = await getReaderLocale();
+  const photos = (await getGeotaggedPhotos()).map((g) => ({
+    ...g,
+    caption: g.i18n?.[locale]?.caption ?? g.caption,
+    postTitle: g.postI18n?.[locale]?.title ?? g.postTitle,
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">

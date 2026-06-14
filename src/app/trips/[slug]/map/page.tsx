@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePostDeep, localizeTrip } from "@/lib/i18n-content";
 import {
   JourneyExplorer,
   type JourneyStop,
@@ -7,7 +9,7 @@ import {
 import { DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const metadata = { title: defaultTitle("meta.journeyMap") };
 
 export default async function TripMapPage({
@@ -16,11 +18,15 @@ export default async function TripMapPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const locale = await getReaderLocale();
   const trips = await getTrips();
-  const trip = trips.find((t) => t.slug === slug);
-  if (!trip) notFound();
+  const found = trips.find((t) => t.slug === slug);
+  if (!found) notFound();
+  const trip = localizeTrip(found, locale);
 
-  const tripPosts = await getPublishedPostsByTrip(trip.id);
+  const tripPosts = (await getPublishedPostsByTrip(trip.id)).map((p) =>
+    localizePostDeep(p, locale),
+  );
   const tracks = tripPosts.flatMap((p) => p.tracks);
 
   const waypointStops: JourneyStop[] = tripPosts.flatMap((p) =>

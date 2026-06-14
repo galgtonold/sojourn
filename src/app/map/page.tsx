@@ -1,13 +1,16 @@
 import { getPublishedPosts } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePost } from "@/lib/i18n-content";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.map") };
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
-  const posts = await getPublishedPosts();
+  const locale = await getReaderLocale();
+  const posts = (await getPublishedPosts()).map((p) => localizePost(p, locale));
 
   // One marker per post (its primary location), linking back to the entry.
   const markers: MapMarker[] = posts.flatMap((p) => {
