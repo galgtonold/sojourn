@@ -79,22 +79,34 @@ function parseJsonLoose<T>(raw: string): T {
   }
 }
 
-async function detectLocale(text: string): Promise<Locale> {
-  const out = await chat(
-    [
-      {
-        role: "system",
-        content:
-          "Identify the language of the text. Reply with exactly one word: 'de' for German or 'en' for English.",
-      },
-      { role: "user", content: text.slice(0, 600) },
-    ],
-    { maxTokens: 4, temperature: 0 },
-  );
-  const t = out.trim().toLowerCase();
-  return t.startsWith("de") || t.includes("german") || t.includes("deutsch")
-    ? "de"
-    : "en";
+// Language detection by stopword + umlaut frequency. Deterministic, free, and
+// far more reliable for de/en prose than a terse model call — which, under a
+// tiny token cap, sometimes prefaced its answer and got misparsed to the wrong
+// language.
+const DE_WORDS = new Set([
+  "der", "die", "das", "und", "ist", "wir", "mit", "nicht", "auf", "ein",
+  "eine", "den", "dem", "ich", "sich", "auch", "war", "sind", "im", "zum",
+  "zur", "uber", "durch", "aber", "noch", "schon", "wie", "uns",
+]);
+const EN_WORDS = new Set([
+  "the", "and", "we", "with", "is", "of", "to", "in", "that", "was",
+  "our", "this", "for", "on", "it", "at", "as", "but", "from", "they",
+  "were", "had", "have", "there",
+]);
+
+function countWords(haystack: string, words: Set<string>): number {
+  let n = 0;
+  for (const tok of haystack.split(/[^a-zäöüß]+/)) {
+    if (words.has(tok)) n++;
+  }
+  return n;
+}
+
+function detectLocale(text: string): Locale {
+  const t = text.toLowerCase();
+  const de = countWords(t, DE_WORDS) + (t.match(/[äöüß]/g)?.length ?? 0);
+  const en = countWords(t, EN_WORDS);
+  return de >= en ? "de" : "en";
 }
 
 async function translateBody(
@@ -196,8 +208,8 @@ async function translatePost(supabase: any, id: string): Promise<void> {
       .order("sort_order"),
   ]);
 
-  const source = await detectLocale(
-    `${post.title}\n\n${post.body ?? post.excerpt ?? ""}`,
+  const source = detectLocale(
+    `${post.title} ${post.body ?? post.excerpt ?? ""}`,
   );
   const target: Locale = source === "de" ? "en" : "de";
 
@@ -263,7 +275,7 @@ async function translateTripEntity(supabase: any, id: string): Promise<void> {
     .eq("id", id)
     .maybeSingle();
   if (!trip) return;
-  const source = await detectLocale(`${trip.title}\n\n${trip.summary ?? ""}`);
+  const source = detectLocale(`${trip.title} ${trip.summary ?? ""}`);
   const target: Locale = source === "de" ? "en" : "de";
   const t = await translateTrip(
     { title: trip.title, summary: trip.summary ?? null },
