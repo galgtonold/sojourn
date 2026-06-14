@@ -1,4 +1,6 @@
 import { searchPosts, searchPhotos } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePost } from "@/lib/i18n-content";
 import { PostCard } from "@/components/post-card";
 import { PhotoResultCard } from "@/components/photo-result-card";
 import { SearchBox } from "@/components/search-box";
@@ -14,10 +16,12 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
+  const locale = await getReaderLocale();
   // Hybrid search over stories and photos, fetched in parallel.
-  const [posts, photos] = query
+  const [rawPosts, photos] = query
     ? await Promise.all([searchPosts(query), searchPhotos(query)])
     : [[], []];
+  const posts = rawPosts.map((p) => localizePost(p, locale));
   const empty = query.length > 0 && posts.length === 0 && photos.length === 0;
 
   return (

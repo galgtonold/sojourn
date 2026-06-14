@@ -9,6 +9,7 @@ import type {
   Interaction,
   Photo,
   Post,
+  PostSummary,
   PostWithRelations,
   Trip,
 } from "@/lib/types";
@@ -29,6 +30,17 @@ export function localizePost<T extends Post>(post: T, locale: Locale): T {
 
 export function localizeTrip<T extends Trip>(trip: T, locale: Locale): T {
   return merge(trip, trip.i18n?.[locale] as Partial<T> | undefined);
+}
+
+// Card listings carry only title + excerpt translations.
+export function localizePostSummary(s: PostSummary, locale: Locale): PostSummary {
+  const tr = s.i18n?.[locale];
+  if (!tr) return s;
+  return {
+    ...s,
+    title: tr.title ?? s.title,
+    excerpt: tr.excerpt ?? s.excerpt,
+  };
 }
 
 export function localizePhoto(photo: Photo, locale: Locale): Photo {

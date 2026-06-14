@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getTrips } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizeTrip } from "@/lib/i18n-content";
 import { formatDate } from "@/lib/utils";
 import { Reveal } from "@/components/reveal";
 import { RevealImage } from "@/components/reveal-image";
@@ -8,10 +10,11 @@ import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.trips") };
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function TripsPage() {
-  const trips = await getTrips();
+  const locale = await getReaderLocale();
+  const trips = (await getTrips()).map((t) => localizeTrip(t, locale));
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">

@@ -89,7 +89,7 @@ export async function getPublishedPosts(): Promise<PostWithRelations[]> {
 }
 
 const SUMMARY_SELECT =
-  "id, slug, title, excerpt, location, cover_image, cover_alt, trip_id, published_at";
+  "id, slug, title, excerpt, location, cover_image, cover_alt, trip_id, published_at, source_locale, i18n";
 
 // Lightweight, paginated listing query — only the columns a card needs.
 export async function getPostSummaries({
@@ -169,7 +169,9 @@ export async function getTrips(): Promise<Trip[]> {
   try {
     const { data, error } = await supabase
       .from("trips")
-      .select("id, slug, title, summary, cover_image, start_date, end_date")
+      .select(
+        "id, slug, title, summary, cover_image, start_date, end_date, source_locale, i18n",
+      )
       .order("start_date", { ascending: false });
     if (error || !data) return demoTrips;
     return data as Trip[];

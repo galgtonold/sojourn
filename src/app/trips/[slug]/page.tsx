@@ -2,17 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Camera, MapPin, Route } from "lucide-react";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePost, localizeTrip } from "@/lib/i18n-content";
 import { formatDate } from "@/lib/utils";
 import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
 import { T } from "@/components/i18n";
 
-export const revalidate = 60;
-
-export async function generateStaticParams() {
-  const trips = await getTrips();
-  return trips.map((t) => ({ slug: t.slug }));
-}
+// Dynamic: trip + post-card text is localized to the reader's language.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -32,11 +30,15 @@ export default async function TripPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const locale = await getReaderLocale();
   const trips = await getTrips();
-  const trip = trips.find((t) => t.slug === slug);
-  if (!trip) notFound();
+  const found = trips.find((t) => t.slug === slug);
+  if (!found) notFound();
+  const trip = localizeTrip(found, locale);
 
-  const tripPosts = await getPublishedPostsByTrip(trip.id);
+  const tripPosts = (await getPublishedPostsByTrip(trip.id)).map((p) =>
+    localizePost(p, locale),
+  );
   const tracks = tripPosts.flatMap((p) => p.tracks);
   const waypointCount = tripPosts.reduce((s, p) => s + p.locations.length, 0);
   const photoCount = tripPosts.reduce(

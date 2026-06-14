@@ -150,6 +150,8 @@ export type PostSummary = {
   cover_alt: string | null;
   trip_id: string | null;
   published_at: string | null;
+  source_locale?: Locale | null;
+  i18n?: Partial<Record<Locale, PostTranslation>>;
 };
 
 export const REACTION_KINDS: ReactionKind[] = ["heart", "fire", "wow", "star"];

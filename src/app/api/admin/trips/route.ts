@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
+import { triggerTripTranslation } from "@/lib/ai/translate";
 
 const schema = z.object({
   title: z.string().trim().min(1),
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (data?.id) await triggerTripTranslation(data.id).catch(() => {});
 
   revalidatePath("/trips");
   revalidatePath("/");

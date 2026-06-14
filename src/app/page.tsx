@@ -2,18 +2,21 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePostSummary } from "@/lib/i18n-content";
 import { PostCard } from "@/components/post-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
 import { T, DocumentTitle } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
-// Re-render from the database at most once a minute (ISR) so new entries and
-// edits surface without a redeploy.
-export const revalidate = 60;
+// Dynamic: card text (title, excerpt) is localized to the reader's language.
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { posts, total } = await getPostSummaries({ limit: 9 });
+  const locale = await getReaderLocale();
+  const { posts: rawPosts, total } = await getPostSummaries({ limit: 9 });
+  const posts = rawPosts.map((p) => localizePostSummary(p, locale));
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];

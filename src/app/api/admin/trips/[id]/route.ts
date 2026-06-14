@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
+import { triggerTripTranslation } from "@/lib/ai/translate";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/trips");
@@ -68,6 +69,9 @@ export async function PUT(
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Translate the trip's title + summary into the other language (background).
+  await triggerTripTranslation(id).catch(() => {});
 
   revalidatePublic(slug, existing?.slug);
   return NextResponse.json({ ok: true });

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
+import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePostSummary } from "@/lib/i18n-content";
 import { PostCard } from "@/components/post-card";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const metadata = { title: defaultTitle("meta.posts") };
 
 const PER_PAGE = 12;
@@ -17,10 +19,12 @@ export default async function PostsArchive({
 }) {
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
-  const { posts, total } = await getPostSummaries({
+  const locale = await getReaderLocale();
+  const { posts: rawPosts, total } = await getPostSummaries({
     limit: PER_PAGE,
     offset: (page - 1) * PER_PAGE,
   });
+  const posts = rawPosts.map((p) => localizePostSummary(p, locale));
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   return (
