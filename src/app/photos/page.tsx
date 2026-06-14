@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function PhotosPage() {
   const locale = await getReaderLocale();
-  const photos = (await getGeotaggedPhotos()).map((g) => ({
+  // Overlay the active locale and drop the raw i18n payloads so only the chosen
+  // language ships to the client map (no other-language text in the bundle).
+  const photos = (await getGeotaggedPhotos()).map(({ i18n, postI18n, ...g }) => ({
     ...g,
-    caption: g.i18n?.[locale]?.caption ?? g.caption,
-    postTitle: g.postI18n?.[locale]?.title ?? g.postTitle,
+    caption: i18n?.[locale]?.caption ?? g.caption,
+    postTitle: postI18n?.[locale]?.title ?? g.postTitle,
   }));
 
   return (
