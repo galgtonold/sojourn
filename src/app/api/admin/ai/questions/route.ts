@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
-import { buildDossier } from "@/lib/ai/dossier";
+import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 
 export const maxDuration = 60;
 
@@ -27,7 +27,13 @@ async function questions({
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const dossier = await buildDossier(supabase, input.postId);
+  // The dossier already carries the trip context (its ai_context, summary and
+  // sibling posts); the style guide carries the author's voice — so the
+  // questions surface exactly the material this trip + style need.
+  const [dossier, styleGuide] = await Promise.all([
+    buildDossier(supabase, input.postId),
+    buildStyleGuide(supabase, input.postId),
+  ]);
 
   const raw = await deepseekChat({
     model: aiModels.fast,
@@ -45,10 +51,12 @@ async function questions({
         role: "user",
         content:
           `Hier ist das Material für einen geplanten Beitrag:\n\n${dossier.text}\n\n` +
+          `So schreibt der Autor (Stil des späteren Beitrags):\n${styleGuide}\n\n` +
           "Stelle 4–6 kurze, konkrete Fragen, deren Antworten du brauchst, um " +
-          "einen lebendigen, persönlichen Beitrag zu schreiben (z. B. Begleitung, " +
-          "Höhepunkt, eine Anekdote, Wetter/Stimmung, Beweggrund). Frage nur nach " +
-          "Dingen, die aus dem Material nicht hervorgehen. " +
+          "einen lebendigen, persönlichen Beitrag in genau diesem Stil zu " +
+          "schreiben (z. B. Begleitung, Höhepunkt, eine Anekdote, Wetter/Stimmung, " +
+          "Beweggrund). Frage nur nach Dingen, die aus dem Material nicht " +
+          "hervorgehen. " +
           'Antworte ausschließlich als JSON: {"questions": ["…", "…"]}.',
       },
     ],

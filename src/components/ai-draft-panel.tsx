@@ -118,6 +118,7 @@ export function AiDraftPanel({
 
   async function suggestQuestions() {
     setPhase("asking");
+    setStep(t("admin.ai.step.questions"));
     setError(null);
     try {
       const { questions } = await postJson<{ questions: string[] }>(
@@ -125,9 +126,11 @@ export function AiDraftPanel({
         { postId, notes, lang },
       );
       setQuestions(questions ?? []);
+      setStep(null);
       setPhase("answering");
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
+      setStep(null);
       setPhase("idle");
     }
   }
@@ -368,7 +371,11 @@ export function AiDraftPanel({
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 disabled:opacity-50"
           >
-            <MessagesSquare className="size-4" />
+            {phase === "asking" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <MessagesSquare className="size-4" />
+            )}
             {t("admin.ai.suggestQuestions")}
           </button>
         )}
