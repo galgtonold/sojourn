@@ -4,12 +4,13 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
+import { randomUUID } from "node:crypto";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { triggerPostTranslation } from "@/lib/ai/translate";
 
 const schema = z.object({
-  title: z.string().trim().min(1),
+  title: z.string().trim().optional(),
   slug: z.string().trim().optional(),
   location: z.string().optional(),
   excerpt: z.string().optional(),
@@ -38,12 +39,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const p = parsed.data;
-  const slug = p.slug || slugify(p.title);
+  // Allow a titleless draft (the "instant draft" create flow): fall back to a
+  // unique placeholder slug so the not-null/unique constraint holds. The editor
+  // re-derives the slug from the real title on first save (see post-editor).
+  const title = p.title ?? "";
+  const slug =
+    p.slug || slugify(title) || `entwurf-${randomUUID().slice(0, 8)}`;
 
   const { data, error } = await supabase
     .from("posts")
     .insert({
-      title: p.title,
+      title,
       slug,
       location: p.location || null,
       excerpt: p.excerpt || null,
@@ -90,7 +96,7 @@ export async function POST(req: Request) {
   // Newly published → tell readers who opted in.
   if (p.published) {
     notifyViewers({
-      title: `New story: ${p.title}`,
+      title: `New story: ${title}`,
       body: p.excerpt ?? undefined,
       url: `${env.siteUrl}/posts/${slug}`,
     }).catch(() => {});

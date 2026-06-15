@@ -42,7 +42,7 @@ export default async function EditPostPage({
   const { data: photos } = await supabase!
     .from("photos")
     .select(
-      "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order",
+      "id, url, storage_path, caption, alt, lat, lng, place_name, width, height, blurhash, sort_order",
     )
     .eq("post_id", id)
     .order("sort_order", { ascending: true });
@@ -68,19 +68,41 @@ export default async function EditPostPage({
     ? (allTrips ?? [])
     : (allTrips ?? []).filter((t) => viewer.tripIds.includes(t.id));
 
+  // Auto-infer the post location from the cover (or first) geotagged photo's
+  // cached place name when the post has none — so an EXIF-located photo fills in
+  // a coarse location without manual entry. (The AI draft flow does the same on
+  // generate; this covers posts edited without it.)
+  const geoPhoto =
+    (photos ?? []).find(
+      (ph) => ph.url === data.cover_image && ph.lat != null && ph.place_name,
+    ) ??
+    (photos ?? []).find(
+      (ph) => ph.lat != null && ph.lng != null && ph.place_name,
+    );
+
   const initial: EditablePost = {
     id: data.id,
     title: data.title ?? "",
     slug: data.slug ?? "",
-    location: data.location ?? "",
+    location: data.location || geoPhoto?.place_name || "",
     excerpt: data.excerpt ?? "",
     body: data.body ?? "",
     cover_image: data.cover_image ?? "",
     cover_alt: data.cover_alt ?? "",
     trip_id: data.trip_id ?? "",
     date: data.published_at ? String(data.published_at).slice(0, 10) : "",
-    lat: data.lat != null ? String(data.lat) : "",
-    lng: data.lng != null ? String(data.lng) : "",
+    lat:
+      data.lat != null
+        ? String(data.lat)
+        : geoPhoto?.lat != null
+          ? String(geoPhoto.lat)
+          : "",
+    lng:
+      data.lng != null
+        ? String(data.lng)
+        : geoPhoto?.lng != null
+          ? String(geoPhoto.lng)
+          : "",
     published: Boolean(data.published),
   };
 
@@ -119,15 +141,14 @@ export default async function EditPostPage({
           published={Boolean(data.published)}
         />
       </div>
-      <PostEditWorkspace
+      {/* AI-first order: the inputs you always provide (photos, then tracks)
+          come first, then the AI draft panel + editor that build on them, then
+          the inline polls/quizzes. */}
+      <PhotoManager
+        key={data.updated_at}
         postId={data.id}
-        initial={initial}
-        initialNotes={data.ai_notes ?? ""}
-        aiConfigured={isAiConfigured}
-        trips={trips}
-        photos={photos ?? []}
-        photoIds={(photos ?? []).map((p) => p.id)}
-        interactionIds={(interactions ?? []).map((it) => it.id)}
+        slug={data.slug ?? ""}
+        initial={photos ?? []}
       />
 
       <div className="mt-12 border-t border-white/10 pt-10">
@@ -140,11 +161,15 @@ export default async function EditPostPage({
       </div>
 
       <div className="mt-12 border-t border-white/10 pt-10">
-        <PhotoManager
-          key={data.updated_at}
+        <PostEditWorkspace
           postId={data.id}
-          slug={data.slug ?? ""}
-          initial={photos ?? []}
+          initial={initial}
+          initialNotes={data.ai_notes ?? ""}
+          aiConfigured={isAiConfigured}
+          trips={trips}
+          photos={photos ?? []}
+          photoIds={(photos ?? []).map((p) => p.id)}
+          interactionIds={(interactions ?? []).map((it) => it.id)}
         />
       </div>
 

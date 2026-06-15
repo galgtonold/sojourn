@@ -1,40 +1,45 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { PostEditor } from "@/components/post-editor";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getViewer } from "@/lib/auth";
-import { T, DocumentTitle } from "@/components/i18n";
-import { defaultTitle } from "@/lib/i18n";
+"use client";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
-export const metadata = { title: defaultTitle("meta.newPost") };
-export const dynamic = "force-dynamic";
+/**
+ * "New post" creates an empty draft immediately and drops the author into the
+ * full editor — so the photo/track uploaders and the AI draft panel (which need
+ * a real post id to attach to and generate from) are available from step one.
+ * Abandoned drafts show as untitled entries in the posts list and can be deleted.
+ */
+export default function NewPostPage() {
+  const router = useRouter();
+  const started = useRef(false);
 
-export default async function NewPostPage() {
-  const supabase = await getServerSupabase();
-  const viewer = await getViewer();
-  const { data: allTrips } = supabase
-    ? await supabase
-        .from("trips")
-        .select("id, title")
-        .order("start_date", { ascending: false })
-    : { data: [] as { id: string; title: string }[] };
-  const trips = viewer.isOwner
-    ? (allTrips ?? [])
-    : (allTrips ?? []).filter((t) => viewer.tripIds.includes(t.id));
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/posts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { id?: string };
+          if (data.id) {
+            router.replace(`/admin/posts/${data.id}`);
+            return;
+          }
+        }
+      } catch {
+        /* fall through to the dashboard */
+      }
+      router.replace("/admin");
+    })();
+  }, [router]);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
-      <DocumentTitle k="meta.newPost" />
-      <Link
-        href="/admin"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
-      >
-        <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
-      </Link>
-      <h1 className="mb-8 font-display text-4xl font-semibold">
-        <T k="admin.editor.newPost" />
-      </h1>
-      <PostEditor trips={trips} />
+    <div className="grid min-h-[70dvh] place-items-center">
+      <Loader2 className="size-8 animate-spin text-ember-400" />
     </div>
   );
 }

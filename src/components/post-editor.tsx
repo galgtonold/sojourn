@@ -95,7 +95,13 @@ export function PostEditor({
     setError(null);
     const payload = {
       ...post,
-      slug: post.slug || slugify(post.title),
+      // A fresh draft starts with a placeholder "entwurf-…" slug; re-derive it
+      // from the real title on save. A real (published) slug is preserved so a
+      // later title edit doesn't change a live URL.
+      slug:
+        post.slug && !post.slug.startsWith("entwurf-")
+          ? post.slug
+          : slugify(post.title),
       trip_id: post.trip_id || null,
       lat: post.lat ? Number(post.lat) : null,
       lng: post.lng ? Number(post.lng) : null,
