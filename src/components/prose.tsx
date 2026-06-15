@@ -7,17 +7,20 @@ export function Figure({
   caption,
   alt,
   id,
+  blurhash,
 }: {
   src: string;
   caption?: string | null;
   alt?: string;
   id?: string;
+  blurhash?: string | null;
 }) {
   return (
     <figure id={id} className="my-8 scroll-mt-24">
       <ZoomableImage
         src={src}
         alt={alt ?? caption ?? ""}
+        blurhash={blurhash}
         className="w-full rounded-3xl"
       />
       {caption && (

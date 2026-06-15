@@ -10,10 +10,12 @@ import { ImageLightbox } from "@/components/image-lightbox";
 export function ZoomableImage({
   src,
   alt = "",
+  blurhash = null,
   className,
 }: {
   src: string;
   alt?: string;
+  blurhash?: string | null;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -31,6 +33,7 @@ export function ZoomableImage({
         open={open}
         src={src}
         alt={alt}
+        blurhash={blurhash}
         onClose={() => setOpen(false)}
       />
     </>

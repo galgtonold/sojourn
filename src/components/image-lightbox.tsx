@@ -79,12 +79,14 @@ export function ImageLightbox({
     ? "max-h-[95vw] max-w-[92dvh]"
     : "max-h-[96dvh] max-w-[96vw]";
   const imgCls = `rounded-lg object-contain shadow-2xl ${rotated ? "rotate-90" : ""} ${sizeCls}`;
-  // Instant placeholder: a decoded blurhash when we have one (no network at
-  // all), otherwise a ~1 KB low-res of the same image. Either way the viewer
-  // never opens to black while the full photo downloads.
+  // Instant placeholder. With a stored blurhash, a decoded data URL — no network
+  // at all. Otherwise reuse the EXACT size the page already displayed
+  // (optimizedSrc(src,1600,80)), so the backdrop is a cache hit and paints
+  // immediately; a separate tiny size would be a cold network request (~1s) even
+  // though that very photo is already on screen.
   const backdrop =
     blurhashToDataURL(blurhash, 32, 32) ??
-    (src ? optimizedSrc(src, 32, 25) : null);
+    (src ? optimizedSrc(src, 1600, 80) : null);
 
   return createPortal(
     <AnimatePresence>

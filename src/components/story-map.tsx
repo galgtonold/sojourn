@@ -232,6 +232,7 @@ export function StoryMap({
                     src={b.photo.url ?? ""}
                     alt={b.photo.alt ?? undefined}
                     caption={b.photo.caption}
+                    blurhash={b.photo.blurhash}
                   />
                 </div>
               );
