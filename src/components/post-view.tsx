@@ -176,6 +176,10 @@ export function PostView({
         </div>
       )}
 
+      {/* Fire the subscribe prompt at the end of the article body — not at the
+          very bottom of the page, past the gallery, map and comments. */}
+      {!preview && <SubscribePrompt />}
+
       <div className={cn(sectionWrap, "pb-14 pt-8")}>
         <div className={readingCol}>
           <Reactions postId={post.id} initial={post.reactions} />
@@ -233,8 +237,6 @@ export function PostView({
       <section className={cn(sectionWrap, "pb-24")}>
         <Comments postId={post.id} initial={comments} />
       </section>
-
-      {!preview && <SubscribePrompt />}
     </article>
   );
 }
