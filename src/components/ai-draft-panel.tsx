@@ -355,7 +355,7 @@ export function AiDraftPanel({
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       {warn && <p className="mt-3 text-sm text-amber-400">{warn}</p>}
       {phase === "done" && (
-        <p className="mt-3 text-sm text-lagoon-400">{t("admin.ai.done")}</p>
+        <p className="mt-3 text-sm text-sage-400">{t("admin.ai.done")}</p>
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

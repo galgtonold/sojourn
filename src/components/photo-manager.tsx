@@ -209,7 +209,7 @@ export function PhotoManager({
               {photo.lat != null && photo.lng != null && (
                 <span
                   title={t("admin.gallery.geotagged")}
-                  className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-ink-950/70 px-2 py-0.5 text-[10px] text-lagoon-400"
+                  className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-ink-950/70 px-2 py-0.5 text-[10px] text-sage-400"
                 >
                   <MapPin className="size-3" /> {t("admin.gallery.located")}
                 </span>
@@ -224,7 +224,7 @@ export function PhotoManager({
                 className="w-full rounded-lg border border-white/10 bg-ink-800 px-2 py-1 pr-12 text-xs outline-none focus:border-ember-400"
               />
               {savedId === photo.id && (
-                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-lagoon-400">
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-sage-400">
                   {t("admin.gallery.saved")}
                 </span>
               )}

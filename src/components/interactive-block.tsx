@@ -92,7 +92,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
                 "relative w-full overflow-hidden rounded-xl border px-4 py-2.5 text-left text-sm transition",
                 !voted && "border-white/10 hover:border-ember-400",
                 voted && "cursor-default border-white/10",
-                voted && isCorrect && "border-lagoon-500/60",
+                voted && isCorrect && "border-sage-500/60",
                 voted && isWrongPick && "border-red-500/50",
                 voted && kind === "poll" && isYours && "border-ember-400/60",
               )}
@@ -101,7 +101,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
                 <span
                   className={cn(
                     "absolute inset-y-0 left-0",
-                    isCorrect ? "bg-lagoon-500/15" : "bg-ember-500/12",
+                    isCorrect ? "bg-sage-500/15" : "bg-ember-500/12",
                   )}
                   style={{ width: `${pct}%` }}
                 />
@@ -109,7 +109,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
               <span className="relative flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2">
                   {voted && isCorrect && (
-                    <Check className="size-4 shrink-0 text-lagoon-400" />
+                    <Check className="size-4 shrink-0 text-sage-400" />
                   )}
                   {isWrongPick && <X className="size-4 shrink-0 text-red-400" />}
                   {opt}

@@ -85,7 +85,7 @@ export function SubscribePrompt() {
               </div>
               <div className="min-w-0 flex-1">
                 {status === "done" ? (
-                  <p className="text-sm font-medium text-ember-300">
+                  <p className="text-sm font-medium text-sage-400">
                     {t("subscribe.done")}
                   </p>
                 ) : status === "denied" ? (

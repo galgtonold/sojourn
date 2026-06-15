@@ -67,7 +67,7 @@ export function RichBody({
               </p>
               <ul className="mt-2 space-y-1 text-sm text-sand-100/70">
                 {s.options.map((o, j) => (
-                  <li key={j} className={s.correctIndex === j ? "text-lagoon-400" : ""}>
+                  <li key={j} className={s.correctIndex === j ? "text-sage-400" : ""}>
                     • {o}
                     {s.correctIndex === j ? " ✓" : ""}
                   </li>

@@ -47,7 +47,7 @@ export function ElevationProfile({
                 {Math.round(s.ascent)} m
               </span>
               <span className="flex items-center gap-1.5">
-                <TrendingDown className="size-4 text-lagoon-400" />
+                <TrendingDown className="size-4 text-sage-400" />
                 {Math.round(s.descent)} m
               </span>
               <span className="flex items-center gap-1.5">

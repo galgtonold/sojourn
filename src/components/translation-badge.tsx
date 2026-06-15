@@ -73,7 +73,7 @@ export function TranslationBadge({
         </span>
       )}
       {status === "ready" && (
-        <span className="inline-flex items-center gap-1.5 text-lagoon-400">
+        <span className="inline-flex items-center gap-1.5 text-sage-400">
           <Check className="size-3.5" />
           {t("admin.translation.ready")}
         </span>

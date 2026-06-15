@@ -185,7 +185,7 @@ export default async function AdminDashboard() {
         </Link>
 
         <Link href="/admin/comments" className={navCard}>
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-lagoon-500/15 text-lagoon-400">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-sage-500/15 text-sage-400">
             <MessageSquare className="size-5" />
           </div>
           <div className="min-w-0 flex-1">

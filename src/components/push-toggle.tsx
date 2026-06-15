@@ -55,7 +55,7 @@ export function PushToggle() {
       <button
         onClick={disable}
         disabled={busy}
-        className="inline-flex items-center gap-2 rounded-full border border-lagoon-500/40 bg-lagoon-500/10 px-4 py-2 text-sm text-lagoon-400 transition hover:bg-lagoon-500/20 disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-full border border-sage-500/40 bg-sage-500/10 px-4 py-2 text-sm text-sage-400 transition hover:bg-sage-500/20 disabled:opacity-50"
       >
         <BellRing className="size-4" /> {t("push.on")}
       </button>

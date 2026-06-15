@@ -20,9 +20,11 @@
   --color-ember-500: #f56a1f;
   --color-ember-600: #d8500f;
 
-  /* Teal secondary (water/ice) */
-  --color-lagoon-400: #4cc9c0;
-  --color-lagoon-500: #1fb0a6;
+  /* Sage secondary — an earthy green that complements the warm ember/ink
+     palette; carries success, "correct answer", and active-state cues. */
+  --color-sage-300: #a8d0bd;
+  --color-sage-400: #7fb39c;
+  --color-sage-500: #5d9279;
 
   --font-display: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -60,8 +62,8 @@ body {
   background: linear-gradient(
     100deg,
     var(--color-ember-300),
-    var(--color-ember-500) 60%,
-    var(--color-lagoon-400)
+    var(--color-ember-500) 55%,
+    var(--color-ember-600)
   );
   -webkit-background-clip: text;
   background-clip: text;

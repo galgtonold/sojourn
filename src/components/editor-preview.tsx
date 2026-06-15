@@ -64,7 +64,7 @@ export function EditorPreview({
           return (
             <span
               key={i}
-              className="inline-flex items-center gap-1 rounded-lg border border-lagoon-400/30 bg-lagoon-500/10 px-2 py-0.5 text-xs text-lagoon-400"
+              className="inline-flex items-center gap-1 rounded-lg border border-sage-400/30 bg-sage-500/10 px-2 py-0.5 text-xs text-sage-400"
             >
               <MessageCircleQuestion className="size-3" />
               {t("admin.editor.interactionChip")}

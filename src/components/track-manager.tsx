@@ -156,7 +156,7 @@ export function TrackManager({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => rename(tk, draftName)}
                     aria-label={t("admin.routes.save")}
-                    className="text-lagoon-400 transition hover:text-lagoon-300"
+                    className="text-sage-400 transition hover:text-sage-300"
                   >
                     <Check className="size-4" />
                   </button>

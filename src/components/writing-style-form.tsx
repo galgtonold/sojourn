@@ -113,7 +113,7 @@ export function WritingStyleForm({
           </button>
         )}
         {saved && (
-          <span className="text-sm text-lagoon-400">
+          <span className="text-sm text-sage-400">
             {t("admin.settings.saved")}
           </span>
         )}

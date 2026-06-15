@@ -118,7 +118,7 @@ export default function AccountPage() {
 
         {error && <p className="text-sm text-red-400">{error}</p>}
         {status === "done" && (
-          <p className="text-sm text-lagoon-400">{t("admin.account.done")}</p>
+          <p className="text-sm text-sage-400">{t("admin.account.done")}</p>
         )}
 
         <button

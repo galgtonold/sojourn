@@ -131,7 +131,7 @@ export default function Welcome() {
         ) : phase === "checking" ? (
           <p className="text-sm text-sand-100/50">…</p>
         ) : done ? (
-          <p className="text-sm text-lagoon-400">{t("admin.welcome.done")}</p>
+          <p className="text-sm text-sage-400">{t("admin.welcome.done")}</p>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <p className="text-sm text-sand-100/60">{t("admin.welcome.body")}</p>

@@ -132,7 +132,7 @@ export function PostsAdmin({
                   <span
                     className={`rounded-full px-2 py-0.5 ${
                       p.published
-                        ? "bg-lagoon-500/15 text-lagoon-400"
+                        ? "bg-sage-500/15 text-sage-400"
                         : "bg-white/10 text-sand-100/60"
                     }`}
                   >
