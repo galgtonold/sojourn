@@ -108,7 +108,7 @@ export default async function EditPostPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
-      <DocumentTitle k="meta.editPost" />
+      <DocumentTitle k={data.title ? "meta.editPost" : "meta.newPost"} />
       <Link
         href="/admin"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
@@ -117,7 +117,7 @@ export default async function EditPostPage({
       </Link>
       <div className="mb-2 flex items-center justify-between gap-4">
         <h1 className="font-display text-4xl font-semibold">
-          <T k="admin.editor.editPost" />
+          <T k={data.title ? "admin.editor.editPost" : "admin.editor.newPost"} />
         </h1>
         <a
           href={`/admin/posts/${data.id}/preview`}
