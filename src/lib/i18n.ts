@@ -63,6 +63,7 @@ const en = {
   "common.close": "Close",
   "common.dismiss": "Dismiss",
   "common.confirm": "Confirm",
+  "common.ok": "OK",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
 
@@ -514,6 +515,7 @@ const de: Dict = {
   "common.close": "Schließen",
   "common.dismiss": "Ausblenden",
   "common.confirm": "Bestätigen",
+  "common.ok": "OK",
   "common.cancel": "Abbrechen",
   "common.delete": "Löschen",
 

@@ -279,8 +279,11 @@ export function AiDraftPanel({
       setStep(null);
       setPhase("idle");
       setError(null);
-      alert(t("admin.ai.autocaptionDone", { n: count }));
       router.refresh();
+      await confirm({
+        message: t("admin.ai.autocaptionDone", { n: count }),
+        notice: true,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
       setStep(null);

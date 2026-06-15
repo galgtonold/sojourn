@@ -18,6 +18,8 @@ export type ConfirmOptions = {
   cancelLabel?: string;
   /** Style the confirm button as destructive (red). */
   danger?: boolean;
+  /** Informational notice — a single OK button, no cancel (replaces alert). */
+  notice?: boolean;
 };
 
 type ConfirmFn = (opts: ConfirmOptions) => Promise<boolean>;
@@ -97,12 +99,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               {opts.message}
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => settle(false)}
-                className="rounded-full px-4 py-2 text-sm text-sand-100/70 transition hover:bg-white/5 hover:text-sand-50"
-              >
-                {opts.cancelLabel ?? t("common.cancel")}
-              </button>
+              {!opts.notice && (
+                <button
+                  onClick={() => settle(false)}
+                  className="rounded-full px-4 py-2 text-sm text-sand-100/70 transition hover:bg-white/5 hover:text-sand-50"
+                >
+                  {opts.cancelLabel ?? t("common.cancel")}
+                </button>
+              )}
               <button
                 autoFocus
                 onClick={() => settle(true)}
@@ -113,7 +117,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     : "bg-ember-500 text-ink-950 hover:bg-ember-400",
                 )}
               >
-                {opts.confirmLabel ?? t("common.confirm")}
+                {opts.confirmLabel ??
+                  (opts.notice ? t("common.ok") : t("common.confirm"))}
               </button>
             </div>
           </div>
