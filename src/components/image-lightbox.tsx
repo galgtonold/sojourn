@@ -99,13 +99,19 @@ export function ImageLightbox({
           transition={{ duration: 0.18 }}
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-ink-950/90 p-2 backdrop-blur-sm sm:p-4"
         >
-          {/* Instant blurred backdrop — keeps the viewer from flashing black. */}
+          {/* Instant blurred backdrop — keeps the viewer from flashing black.
+              decoding="sync" makes the (already-resolved) blurhash data URL paint
+              on the first frame instead of a few frames later; otherwise a
+              cached full image beats it and the blur appears to load *after* the
+              photo. fetchPriority helps the LQIP fallback win its own race. */}
           {backdrop && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={backdrop}
               alt=""
               aria-hidden
+              decoding="sync"
+              fetchPriority="high"
               className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-70 blur-2xl"
             />
           )}
