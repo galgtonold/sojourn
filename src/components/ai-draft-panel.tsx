@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, MessagesSquare, Wand2, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
+import {
+  maskProtectedTokens,
+  allMasksPresent,
+  restoreProtectedTokens,
+} from "@/lib/ai/token-mask";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -228,11 +233,35 @@ export function AiDraftPanel({
 
       if (parts.length === 0) throw new Error(t("admin.ai.err.noSections"));
 
-      // 4. Captions (best effort).
+      // 4. Homogenize: stitch the independently-written sections into one
+      //    coherent article (smooth transitions, drop repetition and stray
+      //    sign-offs). Best effort — photo/interaction tokens are masked so the
+      //    rewrite can't corrupt a UUID or quiz, and any failure (or a dropped
+      //    sentinel) falls back to the raw concatenation.
+      const rawBody = parts.join("\n\n");
+      let body = rawBody;
+      if (parts.length >= 2) {
+        setStep(t("admin.ai.step.homogenize"));
+        try {
+          const { masked, tokens } = maskProtectedTokens(rawBody);
+          const { jobId } = await postJson<{ jobId: string }>(
+            "/api/admin/ai/homogenize",
+            { postId, lang, body: masked },
+          );
+          const out = await pollJob(jobId);
+          if (out && allMasksPresent(out, tokens)) {
+            body = restoreProtectedTokens(out, tokens);
+          }
+        } catch {
+          /* keep the raw concatenation */
+        }
+      }
+
+      // 5. Captions (best effort).
       setStep(t("admin.ai.step.captions"));
       await postJson("/api/admin/ai/captions", { postId, lang }).catch(() => {});
 
-      // 5. Save the assembled draft (retried — never lose finished prose).
+      // 6. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
       const { post: saved } = await withRetry(() =>
         postJson<{ ok: boolean; post: DraftSaved | null }>(
@@ -245,7 +274,7 @@ export function AiDraftPanel({
             lat: outline.lat ?? null,
             lng: outline.lng ?? null,
             cover_photo_id: outline.cover_photo_id ?? null,
-            body: parts.join("\n\n"),
+            body,
           },
         ),
       );

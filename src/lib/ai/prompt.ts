@@ -1,9 +1,18 @@
 export type Lang = "de" | "en";
 
 export function langInstruction(lang: Lang): string {
+  // The source material (photo descriptions, place names) is often in English,
+  // which tends to drag short fields — title, excerpt, headings — into English
+  // even when the body comes out right. Be emphatic that EVERYTHING the model
+  // emits is in the target language regardless of the material's language.
   return lang === "en"
-    ? "Write everything in English."
-    : "Schreibe alles auf Deutsch.";
+    ? "Write EVERYTHING in English — the title, the excerpt, every heading and " +
+        "the body. Some source material (e.g. photo descriptions) may be in " +
+        "another language; render its meaning in English, never copy it verbatim."
+    : "Schreibe ALLES auf Deutsch — Titel, Beschreibung, jede Überschrift und " +
+        "den Fließtext. Ein Teil des Materials (z. B. Fotobeschreibungen) ist " +
+        "auf Englisch; gib den Inhalt sinngemäß auf Deutsch wieder, übernimm ihn " +
+        "niemals wörtlich auf Englisch.";
 }
 
 // Instructions for embedding ONE poll/quiz using the inline :::block syntax.

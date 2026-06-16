@@ -89,6 +89,9 @@ async function sectionRoute({
     "- Beginne mit einer Markdown-Zwischenüberschrift (## …). Kein H1, kein Titel.\n" +
     "- Setze die angegebenen [photo:ID]-Tags jeweils in eine eigene Zeile, dort wo sie passen.\n" +
     "- Verwende nur die unten angegebenen Foto-IDs, erfinde keine.\n" +
+    "- Dies ist EIN Abschnitt mitten in einem längeren Artikel, kein eigenständiger " +
+    "Beitrag und kein Brief: keine Anrede, keine Grußformel und keine Unterschrift " +
+    "(z. B. „Herzlich, …“, „Liebe Grüße“, Namenszeile) — weder am Anfang noch am Ende.\n" +
     "- Schreibe NUR diesen einen Abschnitt, ohne Wiederholung. Antworte mit reinem Markdown (kein JSON)." +
     interactionRule +
     (avoidPhotoIds.length
