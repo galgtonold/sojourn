@@ -10,7 +10,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useT } from "@/components/i18n";
+import { useI18n } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { formatDate, optimizedSrc } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ export function PostsAdmin({
   initial: AdminPostRow[];
   trips: Record<string, string>;
 }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const confirm = useConfirm();
   const [posts, setPosts] = useState(initial);
   const [q, setQ] = useState("");
@@ -174,7 +174,7 @@ export function PostsAdmin({
                   )}
                   {p.published_at && (
                     <span className="hidden sm:inline">
-                      {formatDate(p.published_at)}
+                      {formatDate(p.published_at, locale)}
                     </span>
                   )}
                 </div>

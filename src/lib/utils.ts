@@ -18,11 +18,16 @@ export function slugify(input: string): string {
 }
 
 /** Human date like "12 May 2026". */
-export function formatDate(value: string | null | undefined): string {
+export function formatDate(
+  value: string | null | undefined,
+  // The reader's locale; defaults to the app's default (de). Callers pass the
+  // resolved reader locale so month names match the page language.
+  locale: "de" | "en" = "de",
+): string {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", {
+  return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",

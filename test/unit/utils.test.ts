@@ -26,8 +26,12 @@ describe("slugify", () => {
 });
 
 describe("formatDate", () => {
-  it("formats an ISO date in en-GB long form", () => {
-    expect(formatDate("2026-05-12")).toBe("12 May 2026");
+  it("formats an ISO date in the given locale", () => {
+    expect(formatDate("2026-05-12", "en")).toBe("12 May 2026");
+    expect(formatDate("2026-05-12", "de")).toMatch(/^12\.? Mai 2026$/);
+  });
+  it("defaults to the app's default locale (de)", () => {
+    expect(formatDate("2026-05-12")).toMatch(/Mai 2026$/);
   });
   it("returns empty for null/undefined/invalid", () => {
     expect(formatDate(null)).toBe("");

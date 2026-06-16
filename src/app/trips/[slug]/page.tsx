@@ -60,8 +60,9 @@ export default async function TripPage({
         <p className="mt-3 max-w-2xl text-lg text-sand-100/70">{trip.summary}</p>
       )}
       <p className="mt-2 text-sm text-sand-100/50">
-        {trip.start_date && formatDate(trip.start_date)}
-        {trip.end_date && ` – ${formatDate(trip.end_date)}`} · {tripPosts.length}{" "}
+        {trip.start_date && formatDate(trip.start_date, locale)}
+        {trip.end_date && ` – ${formatDate(trip.end_date, locale)}`} ·{" "}
+        {tripPosts.length}{" "}
         <T k="trips.entries" />
       </p>
 

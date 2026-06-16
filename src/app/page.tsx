@@ -141,5 +141,6 @@ export default async function HomePage() {
 export const metadata = {
   description: `Latest travel stories and photography from ${env.siteName}. Updated ${formatDate(
     new Date().toISOString(),
+    "en",
   )}.`,
 };

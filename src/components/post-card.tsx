@@ -2,15 +2,17 @@ import Link from "next/link";
 import { MapPin } from "lucide-react";
 import type { PostSummary } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { getReaderLocale } from "@/lib/i18n-server";
 import { RevealImage } from "@/components/reveal-image";
 
-export function PostCard({
+export async function PostCard({
   post,
   priority = false,
 }: {
   post: PostSummary;
   priority?: boolean;
 }) {
+  const locale = await getReaderLocale();
   return (
     <Link
       href={`/posts/${post.slug}`}
@@ -48,7 +50,7 @@ export function PostCard({
           {post.excerpt}
         </p>
         <p className="mt-3 text-xs text-sand-100/40">
-          {formatDate(post.published_at)}
+          {formatDate(post.published_at, locale)}
         </p>
       </div>
     </Link>

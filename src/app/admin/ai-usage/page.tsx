@@ -5,6 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
+import { getReaderLocale } from "@/lib/i18n-server";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -29,6 +30,7 @@ export default async function AiUsagePage() {
   if (!isSupabaseConfigured) redirect("/admin");
   const viewer = await getViewer();
   if (!viewer.isOwner) redirect("/admin");
+  const locale = await getReaderLocale();
 
   const supabase = await getServerSupabase();
   const [{ data: summary }, { data: recent }] = await Promise.all([
@@ -115,7 +117,7 @@ export default async function AiUsagePage() {
                 </span>
                 <span className="tabular-nums">{usd(r.cost_usd)}</span>
                 <span className="hidden text-xs text-sand-100/30 sm:inline">
-                  {formatDate(r.created_at)}
+                  {formatDate(r.created_at, locale)}
                 </span>
               </span>
             </li>

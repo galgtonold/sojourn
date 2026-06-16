@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
 import { cn, formatDate, readingTime } from "@/lib/utils";
+import { getReaderLocale } from "@/lib/i18n-server";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
 import { StoryMap } from "@/components/story-map";
@@ -16,7 +17,7 @@ import { BackLink } from "@/components/back-link";
 import { T } from "@/components/i18n";
 
 /** Full article view, shared by the public post page and the admin preview. */
-export function PostView({
+export async function PostView({
   post,
   comments,
   interactions = [],
@@ -27,6 +28,7 @@ export function PostView({
   interactions?: Interaction[];
   preview?: boolean;
 }) {
+  const locale = await getReaderLocale();
   const usedPhotoIds = referencedPhotoIds(post.body ?? "", post.photos);
   const galleryPhotos = post.photos.filter((p) => !usedPhotoIds.has(p.id));
   const markers: MapMarker[] = post.locations.map((l) => ({
@@ -137,7 +139,9 @@ export function PostView({
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-sand-100/60">
               <span className="flex items-center gap-1.5">
                 <Calendar className="size-4" />
-                {formatDate(post.published_at) || <T k="post.unpublished" />}
+                {formatDate(post.published_at, locale) || (
+                  <T k="post.unpublished" />
+                )}
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="size-4" />

@@ -5,7 +5,7 @@ import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/env";
-import { useT } from "@/components/i18n";
+import { useT, useI18n } from "@/components/i18n";
 
 const NAME_KEY = "sojourn:name";
 const VID_KEY = "sojourn:vid";
@@ -34,7 +34,7 @@ export function Comments({
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const limitRef = useRef(200);
-  const t = useT();
+  const { t, locale } = useI18n();
 
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -151,7 +151,7 @@ export function Comments({
           <div className="flex items-center justify-between">
             <span className="font-medium text-sand-50">{c.author_name}</span>
             <span className="text-xs text-sand-100/40">
-              {formatDate(c.created_at)}
+              {formatDate(c.created_at, locale)}
             </span>
           </div>
           <p className="mt-1.5 whitespace-pre-wrap text-sand-100/80">{c.body}</p>

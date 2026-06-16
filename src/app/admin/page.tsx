@@ -19,6 +19,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 import { formatDate } from "@/lib/utils";
+import { getReaderLocale } from "@/lib/i18n-server";
 
 export const metadata = { title: defaultTitle("meta.admin") };
 export const dynamic = "force-dynamic";
@@ -106,6 +107,7 @@ async function loadStats(viewer: Viewer) {
 
 export default async function AdminDashboard() {
   const viewer = await getViewer();
+  const locale = await getReaderLocale();
   const stats = await loadStats(viewer);
   const allTrips = await getTrips();
   const trips = viewer.isOwner
@@ -278,7 +280,7 @@ export default async function AdminDashboard() {
             <span className="flex shrink-0 items-center gap-3">
               {tr.start_date && (
                 <span className="hidden text-xs text-sand-100/40 sm:inline">
-                  {formatDate(tr.start_date)}
+                  {formatDate(tr.start_date, locale)}
                 </span>
               )}
               <Link
@@ -318,7 +320,7 @@ export default async function AdminDashboard() {
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{c.author_name}</span>
               <span className="text-sand-100/40">
-                {formatDate(c.created_at)}
+                {formatDate(c.created_at, locale)}
               </span>
             </div>
             <p className="mt-1 line-clamp-2 text-sand-100/80">{c.body}</p>

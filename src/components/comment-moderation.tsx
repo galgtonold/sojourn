@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
-import { useT } from "@/components/i18n";
+import { useT, useI18n } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
 export type ModerationRow = {
@@ -124,7 +124,7 @@ function Tree({
   onToggle: (r: ModerationRow) => void;
   onDelete: (r: ModerationRow) => void;
 }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const ids = new Set(rows.map((r) => r.id));
   const children = rows
     .filter((r) => {
@@ -169,7 +169,7 @@ function Tree({
                 )}
               </span>
               <span className="shrink-0 text-xs text-sand-100/40">
-                {formatDate(r.created_at)}
+                {formatDate(r.created_at, locale)}
               </span>
             </div>
             <p className="mt-1 whitespace-pre-wrap text-sand-100/80">{r.body}</p>

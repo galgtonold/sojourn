@@ -58,8 +58,8 @@ export default async function TripsPage() {
                   </p>
                 )}
                 <p className="mt-3 flex items-center gap-2 text-xs text-sand-100/50">
-                  {trip.start_date && formatDate(trip.start_date)}
-                  {trip.end_date && ` – ${formatDate(trip.end_date)}`}
+                  {trip.start_date && formatDate(trip.start_date, locale)}
+                  {trip.end_date && ` – ${formatDate(trip.end_date, locale)}`}
                   <ArrowRight className="size-4 text-ember-400 transition-transform group-hover:translate-x-1" />
                 </p>
               </div>
