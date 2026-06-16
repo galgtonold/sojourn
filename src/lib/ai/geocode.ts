@@ -1,23 +1,116 @@
 // Server-only reverse geocoding. Results are cached per-photo in the DB, so
-// request volume stays well within the OpenStreetMap usage limits.
+// request volume stays well within the providers' usage limits.
 //
-// A plain reverse-geocode snaps a GPS point to the most *specific* object there
-// — inside a sculpture park that's a single artwork or a footpath, not the park
-// — which is rarely the name a visitor would give the spot. So we also ask
-// Overpass which named place the point sits *inside* (e.g. "Bruno Weber Park")
-// and prefer that, keeping the region/country from Nominatim for context.
+// A plain reverse-geocode snaps a GPS point to the most specific object there —
+// inside a sculpture park that's a single artwork or a footpath, not the park,
+// so a geotag yields a coarse/awkward name. We first ask Photon (a fast,
+// reliable komoot-hosted OSM geocoder) for the nearby named features and pick
+// the most landmark-like one (e.g. "Bruno Weber Park"); only if none is found
+// do we fall back to Nominatim's coarser address.
 import "server-only";
 import { env } from "@/lib/env";
 
-type Parts = {
-  place: string | null;
-  region: string | null;
-  country: string | null;
-  display: string | null;
+const NOTABLE_LEISURE = ["park", "garden", "nature_reserve", "common"];
+const NOTABLE_NATURAL = [
+  "peak",
+  "volcano",
+  "waterfall",
+  "glacier",
+  "bay",
+  "beach",
+  "cape",
+  "cliff",
+];
+
+// Great-circle distance in metres.
+function distanceM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+type PhotonProps = {
+  name?: string;
+  osm_key?: string;
+  osm_value?: string;
+  city?: string;
+  district?: string;
+  county?: string;
+  state?: string;
+  country?: string;
 };
 
-// Nominatim reverse geocode → coarse place + region + country.
-async function nominatimReverse(lat: number, lng: number): Promise<Parts | null> {
+// "Visitable" named feature one would name a spot by (parks, attractions,
+// landmarks, notable nature), as opposed to roads, addresses, admin areas.
+function isVisitable(p: PhotonProps): boolean {
+  const v = p.osm_value ?? "";
+  return Boolean(
+    p.name &&
+      (p.osm_key === "tourism" ||
+        (p.osm_key === "leisure" && NOTABLE_LEISURE.includes(v)) ||
+        p.osm_key === "historic" ||
+        (p.osm_key === "boundary" &&
+          (v === "national_park" || v === "protected_area")) ||
+        (p.osm_key === "natural" && NOTABLE_NATURAL.includes(v))),
+  );
+}
+
+function landmarkRank(p: PhotonProps): number {
+  const v = p.osm_value ?? "";
+  if (
+    p.osm_key === "tourism" &&
+    ["attraction", "museum", "theme_park", "zoo", "gallery", "aquarium"].includes(v)
+  )
+    return 0;
+  if (p.osm_key === "leisure" && NOTABLE_LEISURE.includes(v)) return 1;
+  if (p.osm_key === "boundary") return 2;
+  if (p.osm_key === "historic") return 3;
+  if (p.osm_key === "natural") return 4;
+  return 5; // tourism=artwork/viewpoint/picnic_site, …
+}
+
+// Photon: nearest named features → the most landmark-like one within ~500 m,
+// labelled "<name>, <city/region>, <country>".
+async function photonPlace(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url =
+      `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}` +
+      `&lang=de&limit=25`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": `Sojourn/1.0 (${env.siteUrl})` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    type Feat = { properties?: PhotonProps; geometry?: { coordinates?: number[] } };
+    const candidates: { p: PhotonProps; dist: number }[] = [];
+    for (const f of (d.features ?? []) as Feat[]) {
+      const p = f.properties ?? {};
+      const c = f.geometry?.coordinates; // [lon, lat]
+      if (!isVisitable(p) || !c || c.length < 2) continue;
+      const dist = distanceM(lat, lng, c[1], c[0]);
+      if (dist > 500) continue;
+      candidates.push({ p, dist });
+    }
+    if (!candidates.length) return null;
+    candidates.sort(
+      (a, b) => landmarkRank(a.p) - landmarkRank(b.p) || a.dist - b.dist,
+    );
+    const best = candidates[0].p;
+    const region = best.city || best.district || best.county || best.state || null;
+    return [best.name, region, best.country].filter(Boolean).join(", ") || null;
+  } catch {
+    return null;
+  }
+}
+
+// Nominatim reverse → coarse place + region + country (fallback only).
+async function nominatimReverse(lat: number, lng: number): Promise<string | null> {
   try {
     const url =
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
@@ -42,107 +135,18 @@ async function nominatimReverse(lat: number, lng: number): Promise<Parts | null>
       a.municipality ||
       a.county ||
       null;
-    return {
-      place,
-      region: a.state || a.region || null,
-      country: a.country || null,
-      display: d.display_name ?? null,
-    };
+    const label = [place, a.state || a.region || null, a.country || null]
+      .filter(Boolean)
+      .join(", ");
+    return label || d.display_name || null;
   } catch {
     return null;
   }
-}
-
-// The public Overpass endpoints are frequently overloaded (504 / multi-second
-// queues) and then return an HTML error page, so we try a couple in turn.
-const OVERPASS_ENDPOINTS = [
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass-api.de/api/interpreter",
-];
-
-// Ask Overpass which named place the point lies *within*. is_in returns the
-// enclosing areas (parks, attractions, reserves, plus admin boundaries we
-// ignore); we keep the "visitable" named ones and pick the most landmark-like.
-// Best effort: if no endpoint answers in time, the caller falls back to
-// Nominatim's coarser result.
-async function enclosingPlace(lat: number, lng: number): Promise<string | null> {
-  type Tags = Record<string, string>;
-  const query = `[out:json][timeout:20];is_in(${lat},${lng});out tags;`;
-  let elements: { tags?: Tags }[] | null = null;
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded",
-          "User-Agent": `Sojourn/1.0 (${env.siteUrl})`,
-        },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) continue;
-      const ct = res.headers?.get?.("content-type");
-      if (ct && !ct.includes("json")) continue; // overload pages are HTML
-      elements = ((await res.json()).elements ?? []) as { tags?: Tags }[];
-      break;
-    } catch {
-      // timeout / network / parse error → try the next endpoint
-    }
-  }
-  if (!elements) return null;
-
-  const NOTABLE_LEISURE = ["park", "garden", "nature_reserve", "common"];
-  const NOTABLE_NATURAL = [
-    "peak",
-    "volcano",
-    "waterfall",
-    "glacier",
-    "bay",
-    "beach",
-    "cape",
-    "cliff",
-  ];
-  const candidates = elements
-    .map((e) => e.tags ?? {})
-    .filter(
-      (t) =>
-        t.name &&
-        (t.tourism ||
-          NOTABLE_LEISURE.includes(t.leisure) ||
-          t.historic ||
-          t.boundary === "national_park" ||
-          t.boundary === "protected_area" ||
-          NOTABLE_NATURAL.includes(t.natural)),
-    );
-  if (!candidates.length) return null;
-  const rank = (t: Tags): number => {
-    if (
-      ["attraction", "museum", "theme_park", "zoo", "gallery", "aquarium"].includes(
-        t.tourism,
-      )
-    )
-      return 0;
-    if (NOTABLE_LEISURE.includes(t.leisure)) return 1;
-    if (t.boundary === "national_park" || t.boundary === "protected_area") return 2;
-    if (t.historic) return 3;
-    if (NOTABLE_NATURAL.includes(t.natural)) return 4;
-    return 5; // tourism=viewpoint/artwork/picnic_site, …
-  };
-  candidates.sort((a, b) => rank(a) - rank(b));
-  return candidates[0].name ?? null;
 }
 
 export async function reverseGeocode(
   lat: number,
   lng: number,
 ): Promise<string | null> {
-  const [base, poi] = await Promise.all([
-    nominatimReverse(lat, lng),
-    enclosingPlace(lat, lng),
-  ]);
-  // The enclosing POI (if any) is the place a visitor would name; otherwise the
-  // reverse-geocoded object. Region + country come from Nominatim for context.
-  const place = poi ?? base?.place ?? null;
-  const label = [place, base?.region, base?.country].filter(Boolean).join(", ");
-  return label || base?.display || poi || null;
+  return (await photonPlace(lat, lng)) ?? (await nominatimReverse(lat, lng));
 }

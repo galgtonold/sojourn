@@ -38,42 +38,70 @@ describe("reverseGeocode", () => {
     expect(await reverseGeocode(0, 0)).toBeNull();
   });
 
-  it("prefers an enclosing named POI (Overpass) over the snapped object", async () => {
+  it("prefers a nearby landmark (Photon) over the snapped object", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
-        if (String(url).includes("overpass")) {
+        if (String(url).includes("photon")) {
           return {
             ok: true,
             json: async () => ({
-              elements: [
-                { tags: { name: "Theaterplatz", tourism: "artwork" } },
-                { tags: { name: "Bruno Weber Park", tourism: "museum" } },
-                { tags: { name: "Aargau", boundary: "administrative" } },
+              features: [
+                {
+                  properties: {
+                    name: "Theaterplatz",
+                    osm_key: "tourism",
+                    osm_value: "artwork",
+                    city: "Dietikon",
+                    country: "Schweiz",
+                  },
+                  geometry: { coordinates: [8.38158, 47.40508] },
+                },
+                {
+                  properties: {
+                    name: "Bruno Weber Park",
+                    osm_key: "tourism",
+                    osm_value: "museum",
+                    city: "Dietikon",
+                    country: "Schweiz",
+                  },
+                  geometry: { coordinates: [8.38102, 47.40517] },
+                },
               ],
             }),
           };
         }
-        return {
-          ok: true,
-          json: async () => ({
-            address: { tourism: "Theaterplatz", state: "Aargau", country: "Schweiz" },
-          }),
-        };
+        return { ok: false }; // Nominatim shouldn't be needed
       }),
     );
-    // The museum (rank 0) beats the artwork; the admin boundary is ignored.
-    expect(await reverseGeocode(47.4, 8.38)).toBe(
-      "Bruno Weber Park, Aargau, Schweiz",
+    // The museum (rank 0) beats the artwork (rank 5), both within range.
+    expect(await reverseGeocode(47.404978, 8.381622)).toBe(
+      "Bruno Weber Park, Dietikon, Schweiz",
     );
   });
 
-  it("uses the reverse-geocoded place when no enclosing POI exists", async () => {
+  it("ignores a far-away landmark and falls back to the reverse-geocoded place", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
-        if (String(url).includes("overpass")) {
-          return { ok: true, json: async () => ({ elements: [] }) };
+        if (String(url).includes("photon")) {
+          return {
+            ok: true,
+            json: async () => ({
+              features: [
+                {
+                  // ~5 km away → beyond the 500 m radius, so it's dropped.
+                  properties: {
+                    name: "Fernes Schloss",
+                    osm_key: "historic",
+                    osm_value: "castle",
+                    country: "Schweden",
+                  },
+                  geometry: { coordinates: [14.06, 58.84] },
+                },
+              ],
+            }),
+          };
         }
         return {
           ok: true,
