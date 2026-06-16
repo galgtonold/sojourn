@@ -144,14 +144,11 @@ export function PhotoManager({
     revalidate();
   }
 
-  async function saveField(
-    photo: ManagedPhoto,
-    field: "caption" | "alt",
-  ) {
+  async function saveCaption(photo: ManagedPhoto) {
     const supabase = getBrowserSupabase();
     await supabase
       ?.from("photos")
-      .update({ [field]: photo[field] })
+      .update({ caption: photo.caption })
       .eq("id", photo.id);
     setSavedId(photo.id);
     setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
@@ -224,7 +221,7 @@ export function PhotoManager({
                 defaultValue={photo.caption ?? ""}
                 placeholder={t("admin.gallery.caption")}
                 onChange={(e) => (photo.caption = e.target.value)}
-                onBlur={() => saveField(photo, "caption")}
+                onBlur={() => saveCaption(photo)}
                 rows={2}
                 className="h-16 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug outline-none focus:border-ember-400"
               />
@@ -234,14 +231,6 @@ export function PhotoManager({
                 </span>
               )}
             </div>
-            <textarea
-              defaultValue={photo.alt ?? ""}
-              placeholder={t("admin.gallery.alt")}
-              onChange={(e) => (photo.alt = e.target.value)}
-              onBlur={() => saveField(photo, "alt")}
-              rows={2}
-              className="h-16 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug text-sand-100/70 outline-none focus:border-ember-400"
-            />
             <div className="flex items-center gap-3">
               <button
                 type="button"

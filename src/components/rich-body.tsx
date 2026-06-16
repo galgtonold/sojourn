@@ -35,7 +35,7 @@ export function RichBody({
               <Figure
                 id={`photo-${b.photo.id}`}
                 src={b.photo.url ?? ""}
-                alt={b.photo.alt ?? undefined}
+                alt={b.photo.caption ?? undefined}
                 caption={b.photo.caption}
                 blurhash={b.photo.blurhash}
               />

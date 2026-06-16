@@ -12,8 +12,9 @@ const schema = z.object({
   onlyEmpty: z.boolean().optional().default(false),
 });
 
-// Generates concise captions + alt text for a post's photos from their cached
-// descriptions. Usable inside the draft pipeline or as a standalone action.
+// Generates a concise caption for each of a post's photos from their cached
+// descriptions. The caption doubles as the image's alt text, so there's just
+// one field. Usable inside the draft pipeline or as a standalone action.
 export const POST = adminRoute(schema, captions, { requireAi: true });
 
 async function captions({
@@ -25,12 +26,12 @@ async function captions({
 
   const { data: photos } = await supabase
     .from("photos")
-    .select("id, ai_description, place_name, caption, alt")
+    .select("id, ai_description, place_name, caption")
     .eq("post_id", postId);
 
   const targets = (photos ?? [])
     .filter((p) => p.ai_description || p.place_name)
-    .filter((p) => (onlyEmpty ? !p.caption || !p.alt : true))
+    .filter((p) => (onlyEmpty ? !p.caption : true))
     .slice(0, 40);
 
   if (targets.length === 0) return { count: 0 };
@@ -56,15 +57,15 @@ async function captions({
         role: "user",
         content:
           "Für jede Zeile (id | ort | beschreibung) erstelle eine kurze, " +
-          "stimmungsvolle Bildunterschrift (caption, max ~12 Wörter) und einen " +
-          "sachlichen Alt-Text (alt). Antworte als JSON: " +
-          '{ "items": [ { "id": string, "caption": string, "alt": string } ] }\n\n' +
+          "stimmungsvolle Bildunterschrift (caption, max ~12 Wörter), die das " +
+          "Bild auch für nicht-sehende Leser erkennbar macht. Antworte als JSON: " +
+          '{ "items": [ { "id": string, "caption": string } ] }\n\n' +
           list,
       },
     ],
   });
   const data = parseJsonLoose<{
-    items: { id: string; caption: string; alt: string }[];
+    items: { id: string; caption: string }[];
   }>(raw);
 
   const valid = new Set(targets.map((p) => p.id));
@@ -73,12 +74,9 @@ async function captions({
     if (!valid.has(item.id)) continue;
     await supabase
       .from("photos")
-      .update({
-        caption: item.caption?.trim() || null,
-        alt: item.alt?.trim() || null,
-      })
+      .update({ caption: item.caption?.trim() || null })
       .eq("id", item.id);
-    // Refresh the embedding now that caption/alt are part of the photo's text.
+    // Refresh the embedding now that the caption is part of the photo's text.
     await embedPhotoRecord(supabase, item.id, {
       operation: "photo_embed",
       postId,

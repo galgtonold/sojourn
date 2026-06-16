@@ -17,7 +17,7 @@ export function PhotoResultCard({ photo }: { photo: PhotoSearchResult }) {
         {photo.url ? (
           <RevealImage
             src={photo.url}
-            alt={photo.alt ?? label ?? photo.post_title}
+            alt={photo.caption ?? label ?? photo.post_title}
             fill
             sizes="(max-width: 768px) 50vw, 33vw"
             imgClassName="transition-transform duration-700 ease-out group-hover:scale-105"
