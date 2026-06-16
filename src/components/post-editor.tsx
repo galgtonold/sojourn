@@ -91,6 +91,11 @@ export function PostEditor({
   }
 
   async function save() {
+    // A draft saves with anything still missing; publishing needs a title + trip.
+    if (post.published && (!post.title.trim() || !post.trip_id)) {
+      setError(t("admin.editor.publishNeedsFields"));
+      return;
+    }
     setBusy(true);
     setError(null);
     const payload = {
@@ -276,22 +281,30 @@ export function PostEditor({
         </ul>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={post.published}
-          onChange={(e) => set("published", e.target.checked)}
-          className="size-4 accent-[#f56a1f]"
-        />
-        {t("admin.published")}
-      </label>
+      <div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={post.published}
+            disabled={!post.title || !post.trip_id}
+            onChange={(e) => set("published", e.target.checked)}
+            className="size-4 accent-[#f56a1f] disabled:opacity-40"
+          />
+          {t("admin.published")}
+        </label>
+        {(!post.title || !post.trip_id) && (
+          <p className="mt-1 text-xs text-sand-100/40">
+            {t("admin.editor.publishNeedsFields")}
+          </p>
+        )}
+      </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={save}
-          disabled={busy || !post.title || !post.trip_id}
+          disabled={busy}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
           <Save className="size-4" />{" "}

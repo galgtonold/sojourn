@@ -2,6 +2,7 @@
 // model can narrate from, plus a style guide distilled from past posts.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reverseGeocode } from "@/lib/ai/geocode";
 
 export type DossierPhoto = {
   id: string;
@@ -98,6 +99,20 @@ export async function buildDossier(
       }
     | undefined;
 
+  // Manually pinned geotags store only coordinates, so a hand-tagged photo has
+  // lat/lng but no place_name — to the model that reads as bare numbers and
+  // can't outweigh a (possibly stale) stored post location. Reverse-geocode
+  // those once and cache the result, so the photos' real places speak for
+  // themselves. Best effort: a geocoder hiccup just leaves the coordinates.
+  for (const p of photos) {
+    if (p.lat == null || p.lng == null || p.place_name) continue;
+    const name = await reverseGeocode(p.lat, p.lng);
+    if (name) {
+      p.place_name = name;
+      await supabase.from("photos").update({ place_name: name }).eq("id", p.id);
+    }
+  }
+
   const lines: string[] = [];
   if (trip?.title) lines.push(`Reise: ${trip.title}`);
   if (trip?.start_date)
@@ -107,7 +122,21 @@ export async function buildDossier(
   if (trip?.summary) lines.push(`Reise-Kontext: ${trip.summary}`);
   if (trip?.ai_context)
     lines.push(`Reise-Hintergrund (Autor, intern): ${trip.ai_context}`);
-  if (post?.location) lines.push(`Ort (grob): ${post.location}`);
+  // Where the photos actually were is ground truth; prefer it over the stored
+  // post location, which goes stale after a re-geotag (e.g. a post first tagged
+  // in Barcelona, then its photos re-pinned to Switzerland). Fall back to the
+  // stored field only when no photo is geotagged.
+  const geoPlaces = [
+    ...new Set(
+      photos
+        .filter((p) => p.lat != null && p.place_name)
+        .map((p) => p.place_name as string),
+    ),
+  ];
+  const locationHint = geoPlaces.length
+    ? geoPlaces.join(" · ")
+    : (post?.location ?? null);
+  if (locationHint) lines.push(`Ort (grob): ${locationHint}`);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sibs = (siblings ?? []) as any[];

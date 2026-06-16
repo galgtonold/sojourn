@@ -18,7 +18,9 @@ function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
 }
 
 const schema = z.object({
-  title: z.string().trim().min(1),
+  // Optional so a draft can be saved with the title still missing; publishing
+  // is gated separately (see the handler).
+  title: z.string().trim().optional(),
   slug: z.string().trim().optional(),
   location: z.string().optional(),
   excerpt: z.string().optional(),
@@ -57,14 +59,24 @@ export async function PUT(
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const p = parsed.data;
-  const slug = p.slug || slugify(p.title);
 
-  // Set published_at on the publish transition (only if not already set).
+  // A draft may be saved with required fields still missing; publishing needs a
+  // title and a trip.
+  if (p.published && (!p.title || !p.trip_id)) {
+    return NextResponse.json({ error: "incomplete-publish" }, { status: 400 });
+  }
+
+  // Set published_at on the publish transition (only if not already set); also
+  // reuse the post's current slug as a fallback so a titleless draft keeps a
+  // valid (placeholder) slug.
   const { data: existing } = await supabase
     .from("posts")
     .select("published, published_at, slug")
     .eq("id", id)
     .maybeSingle();
+
+  const title = p.title ?? "";
+  const slug = p.slug || slugify(title) || existing?.slug || id;
 
   // Materialise inline :::poll / :::quiz blocks the author typed by hand.
   const body = p.body
@@ -74,7 +86,7 @@ export async function PUT(
   const { error } = await supabase
     .from("posts")
     .update({
-      title: p.title,
+      title,
       slug,
       location: p.location || null,
       excerpt: p.excerpt || null,
@@ -117,7 +129,7 @@ export async function PUT(
   // Fire a viewer notification only when crossing from unpublished → published.
   if (p.published && !existing?.published) {
     notifyViewers({
-      title: `New story: ${p.title}`,
+      title: `New story: ${title}`,
       body: p.excerpt ?? undefined,
       url: `${env.siteUrl}/posts/${slug}`,
     }).catch(() => {});
