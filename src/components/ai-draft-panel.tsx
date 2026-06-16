@@ -8,6 +8,7 @@ import {
   maskProtectedTokens,
   allMasksPresent,
   restoreProtectedTokens,
+  stripWrappingCodeFence,
 } from "@/lib/ai/token-mask";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -248,7 +249,7 @@ export function AiDraftPanel({
             "/api/admin/ai/homogenize",
             { postId, lang, body: masked },
           );
-          const out = await pollJob(jobId);
+          const out = stripWrappingCodeFence(await pollJob(jobId));
           if (out && allMasksPresent(out, tokens)) {
             body = restoreProtectedTokens(out, tokens);
           }

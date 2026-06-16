@@ -3,6 +3,7 @@ import {
   maskProtectedTokens,
   allMasksPresent,
   restoreProtectedTokens,
+  stripWrappingCodeFence,
 } from "@/lib/ai/token-mask";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -75,5 +76,27 @@ describe("maskProtectedTokens", () => {
     expect(tokens).toEqual([]);
     expect(allMasksPresent(masked, tokens)).toBe(true);
     expect(restoreProtectedTokens(masked, tokens)).toBe(body);
+  });
+});
+
+describe("stripWrappingCodeFence", () => {
+  it("unwraps a fence enclosing the whole answer", () => {
+    expect(stripWrappingCodeFence("```markdown\n## Titel\n\nText\n```")).toBe(
+      "## Titel\n\nText",
+    );
+  });
+
+  it("unwraps a bare ``` fence with no language tag", () => {
+    expect(stripWrappingCodeFence("```\nHallo\n```")).toBe("Hallo");
+  });
+
+  it("leaves prose without a wrapping fence untouched", () => {
+    const body = "## Titel\n\nText, ganz ohne Fence.";
+    expect(stripWrappingCodeFence(body)).toBe(body);
+  });
+
+  it("does not strip a code block that sits inside the prose", () => {
+    const body = "## Titel\n\n```\ncode\n```\n\nmehr Text";
+    expect(stripWrappingCodeFence(body)).toBe(body);
   });
 });

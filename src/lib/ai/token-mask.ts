@@ -57,6 +57,18 @@ export function allMasksPresent(masked: string, tokens: string[]): boolean {
   return true;
 }
 
+/**
+ * Defensive cleanup for a rewrite pass: if the model wrapped its whole answer
+ * in a ```fence``` despite being told not to, unwrap it — otherwise the entire
+ * article would render as one code block. Only strips a fence that encloses the
+ * ENTIRE string, so a code sample inside the prose is left untouched.
+ */
+export function stripWrappingCodeFence(text: string): string {
+  const t = text.trim();
+  const m = t.match(/^```[^\n]*\n([\s\S]*?)\n?```$/);
+  return m ? m[1].trim() : text;
+}
+
 /** Restore the original tokens. Only meaningful when allMasksPresent is true. */
 export function restoreProtectedTokens(masked: string, tokens: string[]): string {
   let out = masked;
