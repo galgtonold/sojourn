@@ -63,6 +63,11 @@ export function PostView({
     ? "mx-auto max-w-2xl px-6 lg:max-w-6xl"
     : "mx-auto max-w-3xl px-6";
   const readingCol = useStory ? "lg:max-w-[34rem]" : "";
+  // The hero shares the body's left edge but breathes wider than the reading
+  // column — it sits over a full-bleed cover with no second column beside it,
+  // so capping the title to 34rem just made a long title wrap into a cramped
+  // single column.
+  const heroCol = useStory ? "lg:max-w-4xl" : "";
 
   return (
     <article>
@@ -109,7 +114,7 @@ export function PostView({
               // A soft text shadow keeps the hero legible over bright covers,
               // independent of the gradient (which can't cover every photo).
               "w-full [text-shadow:0_1px_14px_rgba(10,9,8,0.6)]",
-              readingCol,
+              heroCol,
             )}
           >
             {!preview && (

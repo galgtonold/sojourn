@@ -166,6 +166,7 @@ const en = {
     "Walk the route step by step — every stop and photo on an interactive map.",
   "trips.photos": "{n} located photos",
   "trips.stops": "{n} stops",
+  "trips.empty": "No entries in this trip yet — once a post is published it shows up here.",
 
   "archive.title": "All entries",
   "archive.subtitle": "{n} stories from the road.",
@@ -626,6 +627,7 @@ const de: Dict = {
     "Geh die Route Schritt für Schritt ab — jeder Halt und jedes Foto auf einer interaktiven Karte.",
   "trips.photos": "{n} verortete Fotos",
   "trips.stops": "{n} Stationen",
+  "trips.empty": "Noch keine Beiträge in dieser Reise — sobald ein Beitrag veröffentlicht ist, erscheint er hier.",
 
   "archive.title": "Alle Beiträge",
   "archive.subtitle": "{n} Geschichten von unterwegs.",

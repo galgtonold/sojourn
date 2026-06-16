@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, Camera, MapPin, Route } from "lucide-react";
+import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
 import { getReaderLocale } from "@/lib/i18n-server";
 import { localizePost, localizeTrip } from "@/lib/i18n-content";
@@ -102,11 +102,20 @@ export default async function TripPage({
         </Link>
       )}
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {tripPosts.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
+      {tripPosts.length > 0 ? (
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {tripPosts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-10 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-white/10 bg-ink-900/40 px-6 py-16 text-center">
+          <Compass className="size-8 text-sand-100/30" />
+          <p className="max-w-sm text-sand-100/60">
+            <T k="trips.empty" />
+          </p>
+        </div>
+      )}
     </div>
   );
 }
