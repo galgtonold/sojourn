@@ -146,7 +146,7 @@ export function StoryMap({
 
       boundsRef.current = bounds;
       if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 56, maxZoom: 13, duration: 0 });
+        map.fitBounds(bounds, { padding: 56, maxZoom: 16, duration: 0 });
       }
       setMapReady(true);
     });
@@ -164,9 +164,9 @@ export function StoryMap({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     if (active) {
-      map.flyTo({ center: active, zoom: 14.5, speed: 0.7, essential: true });
+      map.flyTo({ center: active, zoom: 16.5, speed: 0.7, essential: true });
     } else if (boundsRef.current && !boundsRef.current.isEmpty()) {
-      map.fitBounds(boundsRef.current, { padding: 56, maxZoom: 13, duration: 1000 });
+      map.fitBounds(boundsRef.current, { padding: 56, maxZoom: 16, duration: 1000 });
     }
   }, [active, mapReady]);
 

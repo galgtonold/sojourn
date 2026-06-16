@@ -302,7 +302,9 @@ export function TripMap({
           markers.length + photos.length <= 1 && tracks.length === 0;
         map.fitBounds(bounds, {
           padding: 64,
-          maxZoom: single ? 9 : 14,
+          // Allow a closer zoom so tightly-clustered markers (e.g. several
+          // stops within one park) aren't shown as a single dot in a wide view.
+          maxZoom: single ? 12 : 16,
           duration: 0,
         });
       }

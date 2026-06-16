@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { materializeInteractions } from "@/lib/ai/materialize";
+import {
+  materializeInteractions,
+  stripIncompleteDirectives,
+} from "@/lib/ai/materialize";
 import { makeFakeSupabase, type Row } from "../helpers/fake-supabase";
 
 // materializeInteractions takes a SupabaseClient; the in-memory fake covers the
@@ -83,5 +86,34 @@ describe("materializeInteractions", () => {
     );
     expect(created).toBe(0);
     expect(body).toBe("Just prose with an [ask:existing-id] reference.");
+  });
+});
+
+describe("stripIncompleteDirectives", () => {
+  it("drops a bare, truncated :::poll left at the end", () => {
+    expect(stripIncompleteDirectives("Schluss des Artikels.\n\n:::poll")).toBe(
+      "Schluss des Artikels.",
+    );
+  });
+
+  it("drops a partially-written block (opener + a line, no close)", () => {
+    expect(
+      stripIncompleteDirectives("Text.\n\n:::quiz Wie hoch?\n- 4158 m"),
+    ).toBe("Text.");
+  });
+
+  it("keeps a following section when the broken block is mid-body", () => {
+    const out = stripIncompleteDirectives(
+      "## Eins\n\nText.\n\n:::poll\n\n## Zwei\n\nMehr Text.",
+    );
+    expect(out).not.toContain(":::poll");
+    expect(out).toContain("## Eins");
+    expect(out).toContain("## Zwei");
+    expect(out).toContain("Mehr Text.");
+  });
+
+  it("leaves prose with no directive untouched", () => {
+    const body = "## Titel\n\nNur Prosa, kein Block.";
+    expect(stripIncompleteDirectives(body)).toBe(body);
   });
 });

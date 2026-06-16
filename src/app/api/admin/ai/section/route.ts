@@ -114,7 +114,10 @@ async function sectionRoute({
   ];
 
   const { jobId } = await enqueueLlmJob(
-    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 2200, messages },
+    // Generous headroom: the reasoner spends part of its budget on
+    // reasoning_content first, so a tight cap truncated sections — sometimes
+    // mid-poll (leaving a bare ":::poll") or to an empty output entirely.
+    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 4000, messages },
     { operation: "section", postId, userId: user.id },
   );
   return { jobId };

@@ -53,6 +53,17 @@ export async function materializeInteractions(
   return { body: out, created };
 }
 
+// After materialisation, any remaining :::poll/:::quiz fence is an *incomplete*
+// block — e.g. a section the model truncated right after the opener, leaving a
+// bare ":::poll". Strip it so it never renders as raw text. The match stops at
+// the next "## " heading (or end), so a following section is preserved.
+export function stripIncompleteDirectives(body: string): string {
+  return body
+    .replace(/(?:^|\n):::(?:poll|quiz)\b[\s\S]*?(?=\n##\s|$)/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+}
+
 const ASK_TAG_RE = /\[ask:([^\]\s]+)\]/g;
 
 // Deletes a post's interactions that the (already materialised) body no longer

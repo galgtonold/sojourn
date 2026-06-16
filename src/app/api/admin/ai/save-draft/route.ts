@@ -4,6 +4,7 @@ import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import {
   materializeInteractions,
   pruneUnreferencedInteractions,
+  stripIncompleteDirectives,
 } from "@/lib/ai/materialize";
 
 export const maxDuration = 60;
@@ -37,9 +38,11 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
   }
 
   // Materialise any inline :::poll / :::quiz blocks into real interactions,
-  // then drop interactions this body no longer references (e.g. a quiz a
-  // previous draft created that a regenerate has replaced).
-  const { body } = await materializeInteractions(supabase, p.postId, p.body);
+  // drop a half-written block the generator may have truncated (so it never
+  // shows as raw ":::poll" text), then prune interactions this body no longer
+  // references (e.g. a quiz a previous draft created that a regenerate replaced).
+  const materialized = await materializeInteractions(supabase, p.postId, p.body);
+  const body = stripIncompleteDirectives(materialized.body);
   await pruneUnreferencedInteractions(supabase, p.postId, body);
 
   const update: Record<string, unknown> = {
