@@ -37,4 +37,54 @@ describe("reverseGeocode", () => {
     }));
     expect(await reverseGeocode(0, 0)).toBeNull();
   });
+
+  it("prefers an enclosing named POI (Overpass) over the snapped object", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("overpass")) {
+          return {
+            ok: true,
+            json: async () => ({
+              elements: [
+                { tags: { name: "Theaterplatz", tourism: "artwork" } },
+                { tags: { name: "Bruno Weber Park", tourism: "museum" } },
+                { tags: { name: "Aargau", boundary: "administrative" } },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            address: { tourism: "Theaterplatz", state: "Aargau", country: "Schweiz" },
+          }),
+        };
+      }),
+    );
+    // The museum (rank 0) beats the artwork; the admin boundary is ignored.
+    expect(await reverseGeocode(47.4, 8.38)).toBe(
+      "Bruno Weber Park, Aargau, Schweiz",
+    );
+  });
+
+  it("uses the reverse-geocoded place when no enclosing POI exists", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("overpass")) {
+          return { ok: true, json: async () => ({ elements: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            address: { village: "Sjötorp", state: "Västra Götaland", country: "Schweden" },
+          }),
+        };
+      }),
+    );
+    expect(await reverseGeocode(58.8, 14)).toBe(
+      "Sjötorp, Västra Götaland, Schweden",
+    );
+  });
 });
