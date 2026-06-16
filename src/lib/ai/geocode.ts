@@ -53,66 +53,83 @@ async function nominatimReverse(lat: number, lng: number): Promise<Parts | null>
   }
 }
 
-// Overpass: the named place the point lies within. is_in returns enclosing
-// areas (parks, attractions, reserves, plus admin boundaries we ignore); we
-// keep the "visitable" named ones and pick the most landmark-like.
+// The public Overpass endpoints are frequently overloaded (504 / multi-second
+// queues) and then return an HTML error page, so we try a couple in turn.
+const OVERPASS_ENDPOINTS = [
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+];
+
+// Ask Overpass which named place the point lies *within*. is_in returns the
+// enclosing areas (parks, attractions, reserves, plus admin boundaries we
+// ignore); we keep the "visitable" named ones and pick the most landmark-like.
+// Best effort: if no endpoint answers in time, the caller falls back to
+// Nominatim's coarser result.
 async function enclosingPlace(lat: number, lng: number): Promise<string | null> {
-  try {
-    const query = `[out:json][timeout:15];is_in(${lat},${lng});out tags;`;
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "User-Agent": `Sojourn/1.0 (${env.siteUrl})`,
-      },
-      body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const d = await res.json();
-    type Tags = Record<string, string>;
-    const NOTABLE_LEISURE = ["park", "garden", "nature_reserve", "common"];
-    const NOTABLE_NATURAL = [
-      "peak",
-      "volcano",
-      "waterfall",
-      "glacier",
-      "bay",
-      "beach",
-      "cape",
-      "cliff",
-    ];
-    const candidates = ((d.elements ?? []) as { tags?: Tags }[])
-      .map((e) => e.tags ?? {})
-      .filter(
-        (t) =>
-          t.name &&
-          (t.tourism ||
-            NOTABLE_LEISURE.includes(t.leisure) ||
-            t.historic ||
-            t.boundary === "national_park" ||
-            t.boundary === "protected_area" ||
-            NOTABLE_NATURAL.includes(t.natural)),
-      );
-    if (!candidates.length) return null;
-    const rank = (t: Tags): number => {
-      if (
-        ["attraction", "museum", "theme_park", "zoo", "gallery", "aquarium"].includes(
-          t.tourism,
-        )
-      )
-        return 0;
-      if (NOTABLE_LEISURE.includes(t.leisure)) return 1;
-      if (t.boundary === "national_park" || t.boundary === "protected_area") return 2;
-      if (t.historic) return 3;
-      if (NOTABLE_NATURAL.includes(t.natural)) return 4;
-      return 5; // tourism=viewpoint/artwork/picnic_site, …
-    };
-    candidates.sort((a, b) => rank(a) - rank(b));
-    return candidates[0].name ?? null;
-  } catch {
-    return null;
+  type Tags = Record<string, string>;
+  const query = `[out:json][timeout:20];is_in(${lat},${lng});out tags;`;
+  let elements: { tags?: Tags }[] | null = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "User-Agent": `Sojourn/1.0 (${env.siteUrl})`,
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const ct = res.headers?.get?.("content-type");
+      if (ct && !ct.includes("json")) continue; // overload pages are HTML
+      elements = ((await res.json()).elements ?? []) as { tags?: Tags }[];
+      break;
+    } catch {
+      // timeout / network / parse error → try the next endpoint
+    }
   }
+  if (!elements) return null;
+
+  const NOTABLE_LEISURE = ["park", "garden", "nature_reserve", "common"];
+  const NOTABLE_NATURAL = [
+    "peak",
+    "volcano",
+    "waterfall",
+    "glacier",
+    "bay",
+    "beach",
+    "cape",
+    "cliff",
+  ];
+  const candidates = elements
+    .map((e) => e.tags ?? {})
+    .filter(
+      (t) =>
+        t.name &&
+        (t.tourism ||
+          NOTABLE_LEISURE.includes(t.leisure) ||
+          t.historic ||
+          t.boundary === "national_park" ||
+          t.boundary === "protected_area" ||
+          NOTABLE_NATURAL.includes(t.natural)),
+    );
+  if (!candidates.length) return null;
+  const rank = (t: Tags): number => {
+    if (
+      ["attraction", "museum", "theme_park", "zoo", "gallery", "aquarium"].includes(
+        t.tourism,
+      )
+    )
+      return 0;
+    if (NOTABLE_LEISURE.includes(t.leisure)) return 1;
+    if (t.boundary === "national_park" || t.boundary === "protected_area") return 2;
+    if (t.historic) return 3;
+    if (NOTABLE_NATURAL.includes(t.natural)) return 4;
+    return 5; // tourism=viewpoint/artwork/picnic_site, …
+  };
+  candidates.sort((a, b) => rank(a) - rank(b));
+  return candidates[0].name ?? null;
 }
 
 export async function reverseGeocode(
