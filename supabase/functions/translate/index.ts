@@ -142,7 +142,7 @@ type ShortPost = {
     options: string[];
     explanation: string | null;
   }[];
-  photos: { id: string; caption: string | null; alt: string | null }[];
+  photos: { id: string; caption: string | null }[];
 };
 
 async function translatePostShort(
@@ -157,7 +157,7 @@ async function translatePostShort(
         content:
           `Translate the human-readable string values in this JSON from ${LANG[source]} to ${LANG[target]}. ` +
           "Return ONLY a JSON object with the SAME shape, the same ids, and the same array lengths and order. " +
-          "Translate: title, excerpt, every interaction's question/options/explanation, every photo's caption/alt. " +
+          "Translate: title, excerpt, every interaction's question/options/explanation, every photo's caption. " +
           "Keep null values null. Keep proper nouns and place names. No commentary.",
       },
       { role: "user", content: JSON.stringify(input) },
@@ -198,7 +198,7 @@ async function translatePost(supabase: any, id: string): Promise<void> {
   const [{ data: photos }, { data: interactions }] = await Promise.all([
     supabase
       .from("photos")
-      .select("id, caption, alt")
+      .select("id, caption")
       .eq("post_id", id)
       .order("sort_order"),
     supabase
@@ -229,7 +229,6 @@ async function translatePost(supabase: any, id: string): Promise<void> {
       photos: (photos ?? []).map((p: any) => ({
         id: p.id,
         caption: p.caption ?? null,
-        alt: p.alt ?? null,
       })),
     },
     source,
@@ -248,7 +247,7 @@ async function translatePost(supabase: any, id: string): Promise<void> {
   for (const ph of short.photos ?? []) {
     await supabase
       .from("photos")
-      .update({ i18n: { [target]: { caption: ph.caption, alt: ph.alt } } })
+      .update({ i18n: { [target]: { caption: ph.caption } } })
       .eq("id", ph.id);
   }
   for (const q of short.interactions ?? []) {
