@@ -1,5 +1,11 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ListChecks, MapPin, Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
@@ -47,19 +53,21 @@ const EMPTY: EditablePost = {
   published: false,
 };
 
-export function PostEditor({
-  initial,
-  trips = [],
-  photos = [],
-  photoIds = [],
-  interactionIds = [],
-}: {
-  initial?: EditablePost;
-  trips?: { id: string; title: string }[];
-  photos?: Photo[];
-  photoIds?: string[];
-  interactionIds?: string[];
-}) {
+export type PostEditorHandle = { save: () => Promise<boolean> };
+
+export const PostEditor = forwardRef<
+  PostEditorHandle,
+  {
+    initial?: EditablePost;
+    trips?: { id: string; title: string }[];
+    photos?: Photo[];
+    photoIds?: string[];
+    interactionIds?: string[];
+  }
+>(function PostEditor(
+  { initial, trips = [], photos = [], photoIds = [], interactionIds = [] },
+  ref,
+) {
   const router = useRouter();
   const t = useT();
   const confirm = useConfirm();
@@ -90,11 +98,11 @@ export function PostEditor({
     setPost((p) => ({ ...p, [key]: value }));
   }
 
-  async function save() {
+  async function save(navigate = true): Promise<boolean> {
     // A draft saves with anything still missing; publishing needs a title + trip.
     if (post.published && (!post.title.trim() || !post.trip_id)) {
       setError(t("admin.editor.publishNeedsFields"));
-      return;
+      return false;
     }
     setBusy(true);
     setError(null);
@@ -124,10 +132,16 @@ export function PostEditor({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? t("admin.editor.saveFailed"));
       }
-      router.push("/admin/posts");
-      router.refresh();
+      // A silent save (before AI generation) stays on the page; only an explicit
+      // save returns to the Beiträge list.
+      if (navigate) {
+        router.push("/admin/posts");
+        router.refresh();
+      }
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin.editor.saveFailed"));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -140,6 +154,11 @@ export function PostEditor({
     router.push("/admin/posts");
     router.refresh();
   }
+
+  // Let the parent save the current form before AI generation, so unsaved edits
+  // (e.g. a cleared or corrected location) reach the dossier instead of the
+  // stale, last-saved DB state.
+  useImperativeHandle(ref, () => ({ save: () => save(false) }), [save]);
 
   const input =
     "w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400";
@@ -303,7 +322,7 @@ export function PostEditor({
 
       <div className="flex items-center gap-3 pt-2">
         <button
-          onClick={save}
+          onClick={() => save()}
           disabled={busy}
           className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
         >
@@ -322,4 +341,4 @@ export function PostEditor({
       </div>
     </div>
   );
-}
+});

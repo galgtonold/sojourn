@@ -100,10 +100,10 @@ export async function buildDossier(
     | undefined;
 
   // Manually pinned geotags store only coordinates, so a hand-tagged photo has
-  // lat/lng but no place_name — to the model that reads as bare numbers and
-  // can't outweigh a (possibly stale) stored post location. Reverse-geocode
-  // those once and cache the result, so the photos' real places speak for
-  // themselves. Best effort: a geocoder hiccup just leaves the coordinates.
+  // lat/lng but no place_name — to the model that reads as bare numbers.
+  // Reverse-geocode those once and cache the result, so each photo line shows a
+  // real place and the geotags can stand in as the post's location when none was
+  // typed. Best effort: a geocoder hiccup just leaves the coordinates.
   for (const p of photos) {
     if (p.lat == null || p.lng == null || p.place_name) continue;
     const name = await reverseGeocode(p.lat, p.lng);
@@ -122,10 +122,9 @@ export async function buildDossier(
   if (trip?.summary) lines.push(`Reise-Kontext: ${trip.summary}`);
   if (trip?.ai_context)
     lines.push(`Reise-Hintergrund (Autor, intern): ${trip.ai_context}`);
-  // Where the photos actually were is ground truth; prefer it over the stored
-  // post location, which goes stale after a re-geotag (e.g. a post first tagged
-  // in Barcelona, then its photos re-pinned to Switzerland). Fall back to the
-  // stored field only when no photo is geotagged.
+  // The author's location field wins — it can carry a curated name (e.g. "Bruno
+  // Weber Park") that reverse-geocoding a GPS point never yields. Fall back to
+  // where the geotagged photos actually were only when the field is empty.
   const geoPlaces = [
     ...new Set(
       photos
@@ -133,9 +132,11 @@ export async function buildDossier(
         .map((p) => p.place_name as string),
     ),
   ];
-  const locationHint = geoPlaces.length
-    ? geoPlaces.join(" · ")
-    : (post?.location ?? null);
+  const locationHint = post?.location?.trim()
+    ? post.location.trim()
+    : geoPlaces.length
+      ? geoPlaces.join(" · ")
+      : null;
   if (locationHint) lines.push(`Ort (grob): ${locationHint}`);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

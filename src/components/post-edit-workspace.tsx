@@ -1,10 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AiDraftPanel,
   type DraftSaved,
 } from "@/components/ai-draft-panel";
-import { PostEditor, type EditablePost } from "@/components/post-editor";
+import {
+  PostEditor,
+  type EditablePost,
+  type PostEditorHandle,
+} from "@/components/post-editor";
 import type { Photo } from "@/lib/types";
 
 /**
@@ -35,6 +39,7 @@ export function PostEditWorkspace({
 }) {
   const [editorInitial, setEditorInitial] = useState(initial);
   const [version, setVersion] = useState(0);
+  const editorRef = useRef<PostEditorHandle>(null);
 
   function handleDraftSaved(s: DraftSaved) {
     setEditorInitial((p) => ({
@@ -59,12 +64,19 @@ export function PostEditWorkspace({
             initialNotes={initialNotes}
             hasBody={Boolean(editorInitial.body)}
             onDraftSaved={handleDraftSaved}
+            onBeforeGenerate={async () => {
+              // Persist the editor's current fields (e.g. an edited or cleared
+              // location) so the AI generates from what the author sees now,
+              // not the last-saved draft.
+              await editorRef.current?.save();
+            }}
           />
         </div>
       )}
 
       <PostEditor
         key={version}
+        ref={editorRef}
         initial={editorInitial}
         trips={trips}
         photos={photos}

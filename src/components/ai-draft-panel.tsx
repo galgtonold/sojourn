@@ -100,11 +100,13 @@ export function AiDraftPanel({
   initialNotes,
   hasBody,
   onDraftSaved,
+  onBeforeGenerate,
 }: {
   postId: string;
   initialNotes: string;
   hasBody: boolean;
   onDraftSaved?: (saved: DraftSaved) => void;
+  onBeforeGenerate?: () => Promise<void>;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -146,6 +148,13 @@ export function AiDraftPanel({
     setPhase("running");
     setError(null);
     setWarn(null);
+    // Persist any unsaved editor changes (e.g. an edited or cleared location) so
+    // the dossier reflects the author's current intent. Best effort.
+    try {
+      await onBeforeGenerate?.();
+    } catch {
+      /* fall back to the saved draft */
+    }
     const qa = questions.map((q, i) => ({ question: q, answer: answers[i] ?? "" }));
     try {
       // 1. Enrich photos in batches until none remain (best effort — captions

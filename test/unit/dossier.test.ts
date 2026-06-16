@@ -53,9 +53,8 @@ describe("buildDossier", () => {
     const d = await buildDossier(supabase, "p1");
     expect(d.photos.map((p) => p.id)).toEqual(["ph-early", "ph-late"]); // by taken_at
     expect(d.text).toContain("Reise: Alpenreise");
-    // Geotagged photos are ground truth and win over the stored post location.
-    expect(d.text).toContain("Ort (grob): Tal · Gipfel");
-    expect(d.text).not.toContain("Berner Oberland");
+    // A typed location wins over the geotagged photos (it can hold a curated name).
+    expect(d.text).toContain("Ort (grob): Berner Oberland");
     expect(d.text).toContain("[photo:ph-early]");
     expect(d.text).toContain("Routen (GPX):");
     expect(d.text).toContain("Etappe 1");
@@ -64,17 +63,17 @@ describe("buildDossier", () => {
     expect(d.text).toContain("Es regnete viel.");
   });
 
-  it("falls back to the stored post location when no photo is geotagged", async () => {
+  it("uses the geotagged photos' place when the post has no stored location", async () => {
     const supabase = client({
-      posts: [{ id: "p1", title: "T", location: "Lissabon", ai_notes: null }],
+      posts: [{ id: "p1", title: "T", location: null, ai_notes: null }],
       photos: [
         {
           id: "ph1",
           post_id: "p1",
-          taken_at: null,
-          lat: null,
-          lng: null,
-          place_name: null,
+          taken_at: "2026-06-01T08:00:00Z",
+          lat: 47.4,
+          lng: 8.38,
+          place_name: "Dietikon, Schweiz",
           ai_description: "x",
           sort_order: 0,
         },
@@ -82,7 +81,7 @@ describe("buildDossier", () => {
       tracks: [],
     });
     const d = await buildDossier(supabase, "p1");
-    expect(d.text).toContain("Ort (grob): Lissabon");
+    expect(d.text).toContain("Ort (grob): Dietikon, Schweiz");
   });
 
   it("works with no trip, tracks or notes", async () => {
