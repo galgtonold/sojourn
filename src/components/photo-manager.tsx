@@ -216,16 +216,17 @@ export function PhotoManager({
               )}
             </div>
             <div className="relative">
-              {/* Wrapping textarea (auto-grows where supported) so long
-                  captions stay fully visible and tappable on mobile instead of
-                  scrolling horizontally. */}
+              {/* Wrapping, fixed-height textarea: it wraps (so long captions
+                  stay tappable on mobile, never cut off horizontally) and every
+                  box is the same height, so the caption/alt/action rows line up
+                  across the grid. Longer text scrolls within the box. */}
               <textarea
                 defaultValue={photo.caption ?? ""}
                 placeholder={t("admin.gallery.caption")}
                 onChange={(e) => (photo.caption = e.target.value)}
                 onBlur={() => saveField(photo, "caption")}
                 rows={2}
-                className="w-full resize-none rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug outline-none [field-sizing:content] focus:border-ember-400"
+                className="h-16 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug outline-none focus:border-ember-400"
               />
               {savedId === photo.id && (
                 <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-ink-950/85 px-1.5 py-0.5 text-[10px] font-medium text-sage-400 shadow">
@@ -239,7 +240,7 @@ export function PhotoManager({
               onChange={(e) => (photo.alt = e.target.value)}
               onBlur={() => saveField(photo, "alt")}
               rows={2}
-              className="w-full resize-none rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug text-sand-100/70 outline-none [field-sizing:content] focus:border-ember-400"
+              className="h-16 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-ink-800 px-2 py-1 text-xs leading-snug text-sand-100/70 outline-none focus:border-ember-400"
             />
             <div className="flex items-center gap-3">
               <button
