@@ -119,7 +119,7 @@ export function PostEditor({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? t("admin.editor.saveFailed"));
       }
-      router.push("/admin");
+      router.push("/admin/posts");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin.editor.saveFailed"));
@@ -132,7 +132,7 @@ export function PostEditor({
     if (!post.id || !(await confirm({ message: t("admin.editor.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     setBusy(true);
     await fetch(`/api/admin/posts/${post.id}`, { method: "DELETE" });
-    router.push("/admin");
+    router.push("/admin/posts");
     router.refresh();
   }
 

@@ -211,6 +211,7 @@ const en = {
   "admin.posts.filter.all": "All",
   "admin.posts.filter.published": "Published",
   "admin.posts.filter.draft": "Drafts",
+  "admin.posts.allTrips": "All trips",
   "admin.posts.noMatch": "No posts match.",
   "admin.posts.deleteTitle": "Delete post?",
   "admin.posts.deleteConfirm":
@@ -670,6 +671,7 @@ const de: Dict = {
   "admin.posts.filter.all": "Alle",
   "admin.posts.filter.published": "Veröffentlicht",
   "admin.posts.filter.draft": "Entwürfe",
+  "admin.posts.allTrips": "Alle Reisen",
   "admin.posts.noMatch": "Keine passenden Beiträge.",
   "admin.posts.deleteTitle": "Beitrag löschen?",
   "admin.posts.deleteConfirm":

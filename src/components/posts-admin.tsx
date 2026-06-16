@@ -39,13 +39,24 @@ export function PostsAdmin({
   const [posts, setPosts] = useState(initial);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [tripFilter, setTripFilter] = useState<string>("all");
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Only offer trips that actually have posts in this list.
+  const tripOptions = useMemo(
+    () =>
+      Object.entries(trips).filter(([id]) =>
+        posts.some((p) => p.trip_id === id),
+      ),
+    [posts, trips],
+  );
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return posts.filter((p) => {
       if (filter !== "all" && (filter === "published") !== p.published)
         return false;
+      if (tripFilter !== "all" && p.trip_id !== tripFilter) return false;
       if (!needle) return true;
       const trip = p.trip_id ? (trips[p.trip_id] ?? "") : "";
       return (
@@ -53,7 +64,7 @@ export function PostsAdmin({
         trip.toLowerCase().includes(needle)
       );
     });
-  }, [posts, q, filter, trips]);
+  }, [posts, q, filter, tripFilter, trips]);
 
   async function del(p: AdminPostRow) {
     const ok = await confirm({
@@ -86,20 +97,37 @@ export function PostsAdmin({
             className="w-full rounded-full border border-white/10 bg-ink-900 py-2 pl-9 pr-3 text-sm outline-none focus:border-ember-400"
           />
         </div>
-        <div className="flex items-center gap-0.5 rounded-full border border-white/10 p-0.5 text-xs">
-          {filters.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1.5 transition ${
-                filter === f
-                  ? "bg-white/10 text-sand-50"
-                  : "text-sand-100/50 hover:text-sand-100/80"
-              }`}
+        <div className="flex flex-wrap items-center gap-2">
+          {tripOptions.length > 0 && (
+            <select
+              value={tripFilter}
+              onChange={(e) => setTripFilter(e.target.value)}
+              aria-label={t("admin.posts.allTrips")}
+              className="rounded-full border border-white/10 bg-ink-900 px-3 py-1.5 text-xs text-sand-100/80 outline-none focus:border-ember-400"
             >
-              {t(`admin.posts.filter.${f}`)}
-            </button>
-          ))}
+              <option value="all">{t("admin.posts.allTrips")}</option>
+              {tripOptions.map(([id, title]) => (
+                <option key={id} value={id}>
+                  {title}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex items-center gap-0.5 rounded-full border border-white/10 p-0.5 text-xs">
+            {filters.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`rounded-full px-3 py-1.5 transition ${
+                  filter === f
+                    ? "bg-white/10 text-sand-50"
+                    : "text-sand-100/50 hover:text-sand-100/80"
+                }`}
+              >
+                {t(`admin.posts.filter.${f}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
