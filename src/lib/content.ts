@@ -70,7 +70,7 @@ function hydratePost(row: any): PostWithRelations {
 
 const POST_SELECT = `
   *,
-  trip:trips(id, slug, title, summary, cover_image, start_date, end_date),
+  trip:trips(id, slug, title, summary, cover_image, start_date, end_date, source_locale, i18n),
   photos(*),
   locations(*),
   tracks(*),
