@@ -1,8 +1,9 @@
+"use client";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
 import { cn, formatDate, readingTime } from "@/lib/utils";
-import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePostDeep, localizeInteraction } from "@/lib/i18n-content";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
 import { StoryMap } from "@/components/story-map";
@@ -14,13 +15,18 @@ import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 import { RevealImage } from "@/components/reveal-image";
 import { BackLink } from "@/components/back-link";
-import { T } from "@/components/i18n";
+import { T, useI18n } from "@/components/i18n";
 
-/** Full article view, shared by the public post page and the admin preview. */
-export async function PostView({
-  post,
+/**
+ * Full article view, shared by the public post page and the admin preview.
+ * Client component: it receives the RAW post (with its `i18n` overlay) and
+ * localizes to the reader's language here, so the public page can be statically
+ * cached. Both languages ride along in the payload.
+ */
+export function PostView({
+  post: rawPost,
   comments,
-  interactions = [],
+  interactions: rawInteractions = [],
   preview = false,
 }: {
   post: PostWithRelations;
@@ -28,7 +34,11 @@ export async function PostView({
   interactions?: Interaction[];
   preview?: boolean;
 }) {
-  const locale = await getReaderLocale();
+  const { locale } = useI18n();
+  const post = localizePostDeep(rawPost, locale);
+  const interactions = rawInteractions.map((it) =>
+    localizeInteraction(it, locale),
+  );
   const usedPhotoIds = referencedPhotoIds(post.body ?? "", post.photos);
   const galleryPhotos = post.photos.filter((p) => !usedPhotoIds.has(p.id));
   const markers: MapMarker[] = post.locations.map((l) => ({
