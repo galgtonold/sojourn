@@ -6,9 +6,10 @@ import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
 import { T, LocText, LocDate } from "@/components/i18n";
 
-// Static + ISR: trip + post-card text is localized on the client. Prebuilt for
-// every known trip slug; new slugs render on first hit then cache.
-export const revalidate = 3600;
+// Static, on-demand revalidation: trip + post-card text is localized on the
+// client. Prebuilt for every known trip slug; new slugs render on first hit then
+// cache. Refreshed on admin save + the translate Edge Function's callback.
+export const revalidate = false;
 
 export async function generateStaticParams() {
   const trips = await getTrips();

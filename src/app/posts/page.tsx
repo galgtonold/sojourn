@@ -5,9 +5,10 @@ import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.posts") };
-// Static + ISR: the whole (small) published set ships once; PostsArchive slices
-// it by `?page` on the client, so the route never goes dynamic on searchParams.
-export const revalidate = 3600;
+// Static, on-demand revalidation: the whole (small) published set ships once;
+// PostsArchive slices it by `?page` on the client, so the route never goes
+// dynamic on searchParams.
+export const revalidate = false;
 
 export default async function PostsPage() {
   const { posts, total } = await getPostSummaries({ limit: 1000 });

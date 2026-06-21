@@ -7,9 +7,9 @@ import {
 import { DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-// Static + ISR: stops + trip title carry both languages; JourneyExplorer
-// localizes on the client. Prebuilt per trip slug.
-export const revalidate = 3600;
+// Static, on-demand revalidation: stops + trip title carry both languages;
+// JourneyExplorer localizes on the client. Prebuilt per trip slug.
+export const revalidate = false;
 export const metadata = { title: defaultTitle("meta.journeyMap") };
 
 export async function generateStaticParams() {

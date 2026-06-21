@@ -7,8 +7,8 @@ import { T, DocumentTitle, LocText, LocDate } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.trips") };
-// Static + ISR — trip card text/dates are localized on the client.
-export const revalidate = 3600;
+// Static, on-demand revalidation — trip card text/dates are localized on the client.
+export const revalidate = false;
 
 export default async function TripsPage() {
   const trips = await getTrips();

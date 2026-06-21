@@ -1,6 +1,8 @@
-// Background content translator. Next.js fires `{ type, id }` here on publish
-// (post) or trip save; this runs the model calls off the request clock and
-// writes the per-row `i18n` columns via the service role, then returns 202.
+// Background content translator. Next.js fires `{ type, id, siteUrl }` here on
+// publish (post) or trip save; this runs the model calls off the request clock
+// and writes the per-row `i18n` columns via the service role, then returns 202.
+// When done it calls `siteUrl`/api/revalidate so the static pages rebuild with
+// the finished translation (they were built in the source language at publish).
 //
 // Strategy per post: detect the source language, translate the body as plain
 // Markdown (so [photo:]/[ask:] tokens and structure survive without JSON
@@ -190,14 +192,15 @@ async function translateTrip(
   return parseJsonLoose(out);
 }
 
+// Returns the post slug so the caller can revalidate `/posts/<slug>`.
 // deno-lint-ignore no-explicit-any
-async function translatePost(supabase: any, id: string): Promise<void> {
+async function translatePost(supabase: any, id: string): Promise<string | null> {
   const { data: post } = await supabase
     .from("posts")
-    .select("title, excerpt, body, location")
+    .select("title, excerpt, body, location, slug")
     .eq("id", id)
     .maybeSingle();
-  if (!post) return;
+  if (!post) return null;
   const [{ data: photos }, { data: interactions }] = await Promise.all([
     supabase
       .from("photos")
@@ -275,16 +278,18 @@ async function translatePost(supabase: any, id: string): Promise<void> {
       })
       .eq("id", q.id);
   }
+  return post.slug ?? null;
 }
 
+// Returns the trip slug so the caller can revalidate `/trips/<slug>`.
 // deno-lint-ignore no-explicit-any
-async function translateTripEntity(supabase: any, id: string): Promise<void> {
+async function translateTripEntity(supabase: any, id: string): Promise<string | null> {
   const { data: trip } = await supabase
     .from("trips")
-    .select("title, summary")
+    .select("title, summary, slug")
     .eq("id", id)
     .maybeSingle();
-  if (!trip) return;
+  if (!trip) return null;
   const source = detectLocale(`${trip.title} ${trip.summary ?? ""}`);
   const target: Locale = source === "de" ? "en" : "de";
   const t = await translateTrip(
@@ -300,6 +305,45 @@ async function translateTripEntity(supabase: any, id: string): Promise<void> {
       translation_status: "ready",
     })
     .eq("id", id);
+  return trip.slug ?? null;
+}
+
+// Rebuild the public static pages affected by a freshly-translated entity. The
+// Next app authenticates this with the same shared secret it sent us; best-effort
+// (a failure just means the page waits for its next on-demand revalidation).
+async function revalidate(siteUrl: string, paths: string[]): Promise<void> {
+  const secret = Deno.env.get("EDGE_SHARED_SECRET");
+  if (!siteUrl || !secret) return;
+  try {
+    await fetch(`${siteUrl}/api/revalidate`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-edge-secret": secret },
+      body: JSON.stringify({ paths }),
+    });
+  } catch (e) {
+    console.error("revalidate callback failed", String(e));
+  }
+}
+
+function pathsFor(entity: string, slug: string | null): string[] {
+  if (entity === "post") {
+    return [
+      "/",
+      "/posts",
+      "/photos",
+      "/map",
+      "/trips",
+      ...(slug ? [`/posts/${slug}`] : []),
+    ];
+  }
+  return [
+    "/",
+    "/trips",
+    "/posts",
+    "/photos",
+    "/map",
+    ...(slug ? [`/trips/${slug}`, `/trips/${slug}/map`] : []),
+  ];
 }
 
 Deno.serve(async (req: Request) => {
@@ -310,8 +354,9 @@ Deno.serve(async (req: Request) => {
 
   let type: string | undefined;
   let id: string | undefined;
+  let siteUrl: string | undefined;
   try {
-    ({ type, id } = await req.json());
+    ({ type, id, siteUrl } = await req.json());
   } catch {
     /* no body */
   }
@@ -325,11 +370,16 @@ Deno.serve(async (req: Request) => {
   );
   const entity = type;
   const entityId = id;
+  const origin = siteUrl;
 
   const work = (async () => {
     try {
-      if (entity === "post") await translatePost(supabase, entityId);
-      else await translateTripEntity(supabase, entityId);
+      const slug =
+        entity === "post"
+          ? await translatePost(supabase, entityId)
+          : await translateTripEntity(supabase, entityId);
+      // Now that the i18n columns are written, rebuild the affected pages.
+      if (origin) await revalidate(origin, pathsFor(entity, slug));
     } catch (e) {
       const table = entity === "post" ? "posts" : "trips";
       await supabase

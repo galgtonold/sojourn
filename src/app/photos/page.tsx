@@ -3,9 +3,9 @@ import { PhotoExplorer } from "@/components/photo-explorer";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "Photo map" };
-// Static + ISR: ship the raw photos (both languages) and let PhotoExplorer
-// localize caption + post title on the client.
-export const revalidate = 3600;
+// Static, on-demand revalidation: ship the raw photos (both languages) and let
+// PhotoExplorer localize caption + post title on the client.
+export const revalidate = false;
 
 export default async function PhotosPage() {
   const photos = await getGeotaggedPhotos();

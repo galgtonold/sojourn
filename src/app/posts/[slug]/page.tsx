@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import { getInteractions, getPostBySlug, getPostSummaries } from "@/lib/content";
 import { PostView } from "@/components/post-view";
 
-// Static + ISR: the body is rendered in the default locale and localized to the
-// reader's language on the client (PostView). Comments load client-side, so they
-// stay fresh; interactions are authored content baked at build/revalidate time.
-// Prebuilt for every published slug; new slugs render on first hit then cache.
-export const revalidate = 3600;
+// Static, on-demand revalidation: the body is rendered in the default locale and
+// localized to the reader's language on the client (PostView). Comments load
+// client-side, so they stay fresh; interactions are authored content baked at
+// build/revalidate time. Prebuilt for every published slug; new slugs render on
+// first hit then cache. The translate Edge Function calls /api/revalidate once a
+// post's i18n lands, so the translated version replaces the source-language build.
+export const revalidate = false;
 
 export async function generateStaticParams() {
   const { posts } = await getPostSummaries({ limit: 1000 });

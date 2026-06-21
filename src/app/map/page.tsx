@@ -4,10 +4,10 @@ import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.map") };
-// Static + ISR: markers carry both languages' titles; TripMap localizes the
-// popup label on the client. Uses the lightweight map query (pins + tracks only)
-// so the cached HTML stays small.
-export const revalidate = 3600;
+// Static, on-demand revalidation: markers carry both languages' titles; TripMap
+// localizes the popup label on the client. Uses the lightweight map query (pins +
+// tracks only) so the cached HTML stays small.
+export const revalidate = false;
 
 export default async function MapPage() {
   const posts = await getMapPosts();

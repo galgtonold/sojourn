@@ -8,10 +8,11 @@ import { Reveal } from "@/components/reveal";
 import { T, DocumentTitle, LocText } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
-// Static + ISR: the page is prerendered in the default locale and the reader's
-// language is swapped in on the client (PostCard / LocText), so it serves from
-// cache. Refreshed on publish/update (admin revalidatePath) + the safety net.
-export const revalidate = 3600;
+// Fully static: prerendered in the default locale and the reader's language is
+// swapped in on the client (PostCard / LocText), so it serves from cache. Cached
+// indefinitely and refreshed on demand only — admin save/publish (revalidatePath)
+// and the translate Edge Function's /api/revalidate callback when i18n lands.
+export const revalidate = false;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 9 });
