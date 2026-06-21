@@ -24,7 +24,7 @@ export function Figure({
         className="w-full rounded-3xl"
       />
       {caption && (
-        <figcaption className="mt-2 text-center text-sm text-sand-100/50">
+        <figcaption className="mt-2 text-center text-sm text-sand-100/60">
           {caption}
         </figcaption>
       )}

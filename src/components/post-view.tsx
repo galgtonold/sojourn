@@ -123,9 +123,10 @@ export function PostView({
         >
           <div
             className={cn(
-              // A soft text shadow keeps the hero legible over bright covers,
-              // independent of the gradient (which can't cover every photo).
-              "w-full [text-shadow:0_1px_14px_rgba(10,9,8,0.6)]",
+              // A layered text shadow keeps the hero legible over ANY cover —
+              // a tight shadow for crisp edges plus a broad halo that lifts the
+              // text off bright/busy photos, independent of the gradient.
+              "w-full [text-shadow:0_1px_3px_rgba(10,9,8,0.75),0_3px_26px_rgba(10,9,8,0.6)]",
               heroCol,
             )}
           >

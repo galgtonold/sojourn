@@ -247,7 +247,7 @@ export function StoryMap({
             return (
               <div
                 key={i}
-                className="text-lg text-sand-100/80 [&>*+*]:mt-5 [&>*+h2]:mt-10 [&>*+h3]:mt-8 [&>*+figure]:mt-8"
+                className="text-lg text-sand-100/90 [&>*+*]:mt-5 [&>*+h2]:mt-10 [&>*+h3]:mt-8 [&>*+figure]:mt-8"
               >
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                   {b.text}

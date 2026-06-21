@@ -27,7 +27,7 @@ export function RichBody({
   const blocks = parseBody(body ?? "", photos, interactions, { showIssues });
 
   return (
-    <div className="space-y-6 text-lg text-sand-100/80">
+    <div className="space-y-6 text-lg text-sand-100/90">
       {blocks.map((b, i) => {
         if (b.kind === "photo") {
           return (
