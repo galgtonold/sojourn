@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
@@ -132,6 +132,10 @@ export function TripMap({
   className?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  // Hold the map hidden until it has settled (tiles in, bounds fitted) and fade
+  // it in — otherwise the initial bounds-jump + tile streaming + marker pop read
+  // as a ~300ms flicker on first open.
+  const [ready, setReady] = useState(false);
 
   const hasContent = markers.length > 0 || tracks.length > 0 || photos.length > 0;
 
@@ -320,9 +324,15 @@ export function TripMap({
           duration: 0,
         });
       }
+      // Reveal once the first frame is fully rendered (tiles + markers settled).
+      map.once("idle", () => setReady(true));
     });
 
+    // Safety net: never leave the map hidden if `idle` is slow to fire.
+    const reveal = setTimeout(() => setReady(true), 2000);
+
     return () => {
+      clearTimeout(reveal);
       ro.disconnect();
       map.remove();
     };
@@ -334,7 +344,7 @@ export function TripMap({
   return (
     <div
       ref={container}
-      className={`w-full overflow-hidden rounded-3xl ring-1 ring-white/10 ${className}`}
+      className={`w-full overflow-hidden rounded-3xl bg-ink-900 ring-1 ring-white/10 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"} ${className}`}
     />
   );
 }

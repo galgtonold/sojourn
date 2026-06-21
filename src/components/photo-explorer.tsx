@@ -52,6 +52,9 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
   }, [photos]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Hold the map hidden until it has settled, then fade in — avoids the initial
+  // bounds-jump + tile/cluster pop flicker.
+  const [ready, setReady] = useState(false);
   // ids of photos within the current map viewport — drives the filmstrip.
   const [visibleIds, setVisibleIds] = useState<string[]>(() =>
     photos.map((p) => p.id),
@@ -244,7 +247,10 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
           duration: 0,
         });
       }
-      map.once("idle", recomputeVisible);
+      map.once("idle", () => {
+        recomputeVisible();
+        setReady(true);
+      });
       map.on("moveend", recomputeVisible);
 
       map.on("click", "photo-clusters", (e) => {
@@ -281,7 +287,11 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
       });
     });
 
+    // Safety net: never leave the map hidden if `idle` is slow to fire.
+    const reveal = setTimeout(() => setReady(true), 2000);
+
     return () => {
+      clearTimeout(reveal);
       ro.disconnect();
       popupRef.current?.remove();
       popupRef.current = null;
@@ -332,7 +342,13 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
 
   return (
     <div className="overflow-hidden rounded-3xl ring-1 ring-white/10">
-      <div ref={container} className="h-[58dvh] min-h-[400px] w-full" />
+      <div
+        ref={container}
+        className={cn(
+          "h-[58dvh] min-h-[400px] w-full bg-ink-900 transition-opacity duration-300",
+          ready ? "opacity-100" : "opacity-0",
+        )}
+      />
 
       <div className="border-t border-white/10 bg-ink-900/80">
         <p className="px-4 pt-3 text-xs uppercase tracking-[0.18em] text-sand-100/45">
