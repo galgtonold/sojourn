@@ -18,6 +18,7 @@ import {
 } from "@/components/markdown-editor";
 import { PhotoPalette } from "@/components/photo-palette";
 import { EditorPreview } from "@/components/editor-preview";
+import { Select } from "@/components/select";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
@@ -180,10 +181,11 @@ export const PostEditor = forwardRef<
       <label className="block text-sm text-sand-100/60">
         {t("admin.editor.trip")}
         {trips.length > 0 ? (
-          <select
+          <Select
             value={post.trip_id}
             onChange={(e) => set("trip_id", e.target.value)}
-            className={`${input} mt-1`}
+            className={input}
+            wrapperClassName="mt-1"
             required
           >
             <option value="" disabled>
@@ -194,7 +196,7 @@ export const PostEditor = forwardRef<
                 {tr.title}
               </option>
             ))}
-          </select>
+          </Select>
         ) : (
           <p className="mt-1 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2.5 text-sm text-ember-200">
             {t("admin.editor.tripRequiredNoTrips")}

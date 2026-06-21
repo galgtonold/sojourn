@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
+import { Select } from "@/components/select";
 import { formatDate, optimizedSrc } from "@/lib/utils";
 
 export type AdminPostRow = {
@@ -99,7 +100,7 @@ export function PostsAdmin({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {tripOptions.length > 0 && (
-            <select
+            <Select
               value={tripFilter}
               onChange={(e) => setTripFilter(e.target.value)}
               aria-label={t("admin.posts.allTrips")}
@@ -111,7 +112,7 @@ export function PostsAdmin({
                   {title}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           <div className="flex items-center gap-0.5 rounded-full border border-white/10 p-0.5 text-xs">
             {filters.map((f) => (
