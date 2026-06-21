@@ -269,6 +269,13 @@ export function TripMap({
         el.style.cssText =
           "position:absolute;width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 128, 70)})`;
+        // On the article page, clicking a photo pin scrolls to that same photo in
+        // the story (the inline figure / gallery image share this id). No-op on
+        // the global/trip maps, where no such element exists.
+        el.addEventListener("click", () => {
+          const target = document.getElementById(`photo-${p.id}`);
+          if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
         if (connectPhotos) {
           const badge = document.createElement("span");
           badge.textContent = String(i + 1);

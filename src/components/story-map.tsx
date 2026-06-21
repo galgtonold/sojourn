@@ -136,6 +136,12 @@ export function StoryMap({
         el.style.cssText =
           "position:absolute;width:34px;height:34px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
         el.style.backgroundImage = `url(${optimizedSrc(p.url, 96, 70)})`;
+        el.style.cursor = "pointer";
+        // Click a pin → scroll the narrative to that photo (same id as its figure).
+        el.addEventListener("click", () => {
+          const target = document.getElementById(`photo-${p.id}`);
+          if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
         const badge = document.createElement("span");
         badge.textContent = String(i + 1);
         badge.style.cssText =
