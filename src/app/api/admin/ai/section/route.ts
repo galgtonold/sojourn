@@ -29,6 +29,12 @@ const schema = z.object({
   total: z.number().int().min(1),
   title: z.string().optional().default(""),
   section: sectionSchema,
+  // The whole plan (every section's heading + beat) so this section knows what
+  // the others cover and never retells their material — sections are generated
+  // independently and would otherwise repeat the same moment.
+  outline: z
+    .array(z.object({ heading: z.string(), beat: z.string().default("") }))
+    .optional(),
   notes: z.string().optional(),
   answers: z
     .array(z.object({ question: z.string(), answer: z.string() }))
@@ -79,6 +85,17 @@ async function sectionRoute({
       )
     : "";
 
+  // The full plan, so this section can see every other section's scope and stay
+  // out of it (sections are written independently, blind to each other's text).
+  const planText = (input.outline ?? [])
+    .map(
+      (s, i) =>
+        `${i + 1}. ${s.heading}${s.beat ? ` — ${s.beat}` : ""}${
+          i === index ? "  ← DEIN Abschnitt" : ""
+        }`,
+    )
+    .join("\n");
+
   const system =
     "Du bist ein erfahrener Reiseblog-Autor. " +
     langInstruction(lang as Lang) +
@@ -86,6 +103,13 @@ async function sectionRoute({
     styleGuide +
     "\n\nRegeln:\n" +
     "- Erfinde keine Fakten oder Namen; stütze dich nur auf das Material.\n" +
+    "- Bei Widersprüchen haben die Angaben des Autors (Notizen, Antworten) " +
+    "VORRANG vor dem Reise-Kontext: folge dem Autor und lass widersprechenden " +
+    "Reise-Kontext (Reise-Hintergrund, Geschwister-Beiträge) weg.\n" +
+    "- Bleib strikt bei DEINEM Abschnitt. Stoff, der laut Gesamtaufbau zu einem " +
+    "anderen Abschnitt gehört, kommt hier NICHT vor — nicht vorgreifen, nicht " +
+    "nacherzählen. Jeder Vorfall und jede Begegnung wird im ganzen Artikel nur " +
+    "EINMAL erzählt, in genau dem dafür vorgesehenen Abschnitt.\n" +
     "- Locker und persönlich im Ton. Sprich die Leserinnen und Leser – wenn " +
     "überhaupt – mit „du“ an, NIEMALS mit „Sie“. Kein förmliches Behörden- oder " +
     "Amtsdeutsch (auch nicht ironisch); ein „ernster“ oder trockener Gag bleibt " +
@@ -111,7 +135,8 @@ async function sectionRoute({
 
   const userPrompt =
     `Beitragstitel: ${title}\n` +
-    `Abschnitt ${index + 1} von ${total}: ${section.heading}\n` +
+    (planText ? `\nGesamtaufbau des Artikels:\n${planText}\n` : "") +
+    `\nDein Abschnitt ${index + 1} von ${total}: ${section.heading}\n` +
     `Worum es geht: ${section.beat}\n\n` +
     `Fotos für diesen Abschnitt:\n${photoLines || "(keine)"}\n` +
     `${qaBlock(answers, lang as Lang)}` +

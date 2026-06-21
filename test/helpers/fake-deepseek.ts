@@ -72,7 +72,10 @@ export function makeFakeDeepseek(opts: { photoIds: string[] }) {
 
     if (operation === "section") {
       const allowed = (userMsgs[0] ?? "").match(/\[photo:([0-9a-f-]{36})\]/)?.[1];
-      const wantsPoll = /:::poll|:::quiz|exactly ONE|GENAU EINE/.test(sys);
+      // Only the section *asked* to add an interaction carries the distinctive
+      // "exactly ONE / GENAU EINE" request — every section now also *mentions*
+      // :::poll in the no-prose-questions rule, so we can't key on that.
+      const wantsPoll = /exactly ONE|GENAU EINE/.test(sys);
       const photoLine = allowed ? `\n[photo:${allowed}]\n` : "";
       const poll = wantsPoll
         ? "\n:::poll Welchen Pass würdest du zuerst angehen?\n- Gemmipass\n- Furkapass\n:::\n"

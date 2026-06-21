@@ -64,15 +64,24 @@ async function outline({
         role: "system",
         content:
           "Du bist Redaktionsassistent für einen Reiseblog. " +
-          langInstruction(lang as Lang),
+          langInstruction(lang as Lang) +
+          " Die Angaben des Autors (Notizen und Antworten) haben IMMER Vorrang " +
+          "vor dem Reise-Kontext: bei Widerspruch richte dich nach dem Autor und " +
+          "lass den widersprechenden Reise-Kontext weg. Sagt der Autor z. B., der " +
+          "Beitrag sei unabhängig von der Reise / handle nur von X, dann ignoriere " +
+          "Reise-Hintergrund und Geschwister-Beiträge, die nicht dazu passen.",
       },
       {
         role: "user",
         content:
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
           "Erstelle einen chronologischen Gliederungsplan. Verteile ALLE oben " +
-          "genannten Foto-IDs auf 3–6 Abschnitte (jedes Foto genau einmal, in " +
-          "zeitlicher Reihenfolge). Wenn es sich natürlich anbietet, darf GENAU " +
+          "genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto genau einmal, in " +
+          "zeitlicher Reihenfolge). Jeder Abschnitt deckt einen ANDEREN Moment " +
+          "ab — derselbe Vorfall, dieselbe Begegnung oder dasselbe Motiv darf " +
+          "NICHT in mehreren Abschnitten vorkommen. Bei dünnem Material lieber " +
+          "wenige, klar getrennte Abschnitte als viele, die sich überschneiden. " +
+          "Wenn es sich natürlich anbietet, darf GENAU " +
           "EIN Abschnitt eine kleine Leser-Interaktion bekommen: eine Umfrage " +
           '("poll", Meinungsfrage ohne richtige Antwort) ODER ein Quiz ("quiz", ' +
           "mit einer eindeutig richtigen Antwort aus dem Material). Setze dafür " +

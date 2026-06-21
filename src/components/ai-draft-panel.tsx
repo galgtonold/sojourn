@@ -201,6 +201,11 @@ export function AiDraftPanel({
             total,
             title: outline.title,
             section,
+            // The whole plan, so each section stays out of the others' material.
+            outline: outline.sections.map((s) => ({
+              heading: s.heading,
+              beat: s.beat,
+            })),
             notes,
             answers: qa,
             lang,
