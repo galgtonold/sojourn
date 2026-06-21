@@ -87,8 +87,10 @@ export async function POST(req: Request) {
     await triggerPostTranslation(data.id).catch(() => {});
   }
 
-  // Refresh the cached public pages immediately.
+  // Refresh the cached public pages immediately (all static + ISR now).
   revalidatePath("/");
+  revalidatePath("/posts");
+  revalidatePath("/photos");
   revalidatePath("/map");
   revalidatePath("/trips");
   revalidatePath(`/posts/${slug}`);

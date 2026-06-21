@@ -53,6 +53,7 @@ export async function POST(req: Request) {
   revalidatePath("/trips");
   revalidatePath("/");
   revalidatePath(`/trips/${slug}`);
+  revalidatePath(`/trips/${slug}/map`);
 
   return NextResponse.json(data, { status: 201 });
 }

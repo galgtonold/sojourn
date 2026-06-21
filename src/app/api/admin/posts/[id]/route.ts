@@ -11,6 +11,8 @@ import { triggerPostTranslation } from "@/lib/ai/translate";
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/");
+  revalidatePath("/posts");
+  revalidatePath("/photos");
   revalidatePath("/map");
   revalidatePath("/trips");
   if (slug) revalidatePath(`/posts/${slug}`);

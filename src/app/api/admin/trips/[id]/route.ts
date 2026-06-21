@@ -8,8 +8,14 @@ import { triggerTripTranslation } from "@/lib/ai/translate";
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/trips");
   revalidatePath("/");
-  if (slug) revalidatePath(`/trips/${slug}`);
-  if (alsoSlug && alsoSlug !== slug) revalidatePath(`/trips/${alsoSlug}`);
+  if (slug) {
+    revalidatePath(`/trips/${slug}`);
+    revalidatePath(`/trips/${slug}/map`);
+  }
+  if (alsoSlug && alsoSlug !== slug) {
+    revalidatePath(`/trips/${alsoSlug}`);
+    revalidatePath(`/trips/${alsoSlug}/map`);
+  }
 }
 
 const schema = z.object({
