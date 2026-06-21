@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/auth";
 import { notifyViewers } from "@/lib/notify";
 import { env } from "@/lib/env";
 import { randomUUID } from "node:crypto";
@@ -39,6 +40,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const p = parsed.data;
+
+  // Posts are trip-scoped by RLS: an insert needs is_owner() OR
+  // can_edit_trip(trip_id). The instant-draft create sends no trip, so a
+  // collaborator (member) would hit a NULL trip_id and be rejected. Resolve a
+  // trip they're actually granted — default to their first editable one
+  // (changeable in the editor). A member with no granted trip can't create yet.
+  const viewer = await getViewer();
+  let tripId = p.trip_id ?? null;
+  if (!viewer.isOwner) {
+    if (tripId && !viewer.tripIds.includes(tripId)) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    tripId = tripId ?? viewer.tripIds[0] ?? null;
+    if (!tripId) {
+      return NextResponse.json({ error: "no-editable-trip" }, { status: 403 });
+    }
+  }
+
   // Allow a titleless draft (the "instant draft" create flow): fall back to a
   // unique placeholder slug so the not-null/unique constraint holds. The editor
   // re-derives the slug from the real title on first save (see post-editor).
@@ -56,7 +75,7 @@ export async function POST(req: Request) {
       body: p.body || null,
       cover_image: p.cover_image || null,
       cover_alt: p.cover_alt || null,
-      trip_id: p.trip_id || null,
+      trip_id: tripId,
       lat: p.lat ?? null,
       lng: p.lng ?? null,
       published: p.published ?? false,

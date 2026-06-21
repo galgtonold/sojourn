@@ -272,6 +272,10 @@ const en = {
 
   "admin.editor.newPost": "New post",
   "admin.editor.editPost": "Edit post",
+  "admin.newPost.noTrip":
+    "You're not part of a trip yet, so there's nowhere to file a post. Ask the owner to add you to a trip first.",
+  "admin.newPost.failed":
+    "Couldn't start a new draft. Please try again in a moment.",
   "admin.editor.title": "Title",
   "admin.editor.location": "Location (e.g. Kyoto, Japan)",
   "admin.editor.date": "Date of this entry",
@@ -746,6 +750,10 @@ const de: Dict = {
 
   "admin.editor.newPost": "Neuer Beitrag",
   "admin.editor.editPost": "Beitrag bearbeiten",
+  "admin.newPost.noTrip":
+    "Du gehörst noch zu keiner Reise, also gibt es keinen Ort für den Beitrag. Bitte den Owner, dich zuerst einer Reise hinzuzufügen.",
+  "admin.newPost.failed":
+    "Der Entwurf konnte nicht angelegt werden. Bitte versuch es gleich noch einmal.",
   "admin.editor.title": "Titel",
   "admin.editor.location": "Ort (z. B. Kyoto, Japan)",
   "admin.editor.date": "Datum dieses Eintrags",
