@@ -21,9 +21,9 @@ const en = {
 
   "footer.tagline": "A travel journal. Built to wander, made to last.",
 
-  "home.kicker": "field notes from the road",
-  "home.heroLeadA": "Stories, maps & light from",
-  "home.heroLeadB": "everywhere we wander",
+  "home.kicker": "field notes, lightly exaggerated",
+  "home.heroLeadA": "Photos, maps & dubious decisions from",
+  "home.heroLeadB": "places no guidebook recommends",
   "home.readCta": "Read",
   "home.latest": "Latest entries",
   "home.latestSub": "The most recent dispatches from the trail.",
@@ -489,9 +489,9 @@ const de: Dict = {
   "footer.tagline":
     "Ein Reisetagebuch. Zum Umherziehen gebaut, zum Bleiben gemacht.",
 
-  "home.kicker": "Notizen von unterwegs",
-  "home.heroLeadA": "Geschichten, Karten & Licht von",
-  "home.heroLeadB": "überall, wohin wir ziehen",
+  "home.kicker": "Notizen von unterwegs, leicht übertrieben",
+  "home.heroLeadA": "Fotos, Karten & dubiose Entscheidungen von",
+  "home.heroLeadB": "Orten, die kein Reiseführer empfiehlt",
   "home.readCta": "Zum Beitrag",
   "home.latest": "Neueste Beiträge",
   "home.latestSub": "Die jüngsten Eindrücke von unterwegs.",
