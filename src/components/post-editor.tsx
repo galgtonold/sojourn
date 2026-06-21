@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ListChecks, MapPin, Save, Trash2 } from "lucide-react";
-import { slugify } from "@/lib/utils";
+import { cn, slugify } from "@/lib/utils";
 import type { Photo } from "@/lib/types";
 import { ImageUploader } from "@/components/image-uploader";
 import { LocationDialog } from "@/components/location-dialog";
@@ -93,6 +93,9 @@ export const PostEditor = forwardRef<
   const [locOpen, setLocOpen] = useState(false);
   const isEdit = Boolean(post.id);
   const editorRef = useRef<MarkdownEditorHandle>(null);
+  // On a phone the input + preview stacked means scrolling back and forth; show
+  // one at a time behind tabs (desktop keeps them stacked, tabs hidden).
+  const [tab, setTab] = useState<"write" | "preview">("write");
 
   // Trip may be lifted to the workspace (controlled) so it sits above the AI
   // panel; otherwise it lives in local post state.
@@ -285,18 +288,49 @@ export const PostEditor = forwardRef<
       <PhotoPalette
         photos={photos}
         body={post.body}
-        onInsert={(tag) =>
-          editorRef.current?.insertAtCursor(tag, { block: true })
-        }
+        onInsert={(tag) => {
+          setTab("write"); // surface the textarea so the insert is visible on mobile
+          editorRef.current?.insertAtCursor(tag, { block: true });
+        }}
       />
-      <MarkdownEditor
-        ref={editorRef}
-        value={post.body}
-        onChange={(v) => set("body", v)}
-        placeholder={t("admin.editor.body")}
-        rows={14}
-      />
-      <EditorPreview body={post.body} photos={photos} />
+      <div>
+        {/* Mobile-only Write/Preview switch; desktop shows both stacked. */}
+        <div className="mb-2 flex gap-1 sm:hidden">
+          {(["write", "preview"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              className={cn(
+                "flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                tab === k
+                  ? "bg-ember-500/15 text-ember-300 ring-1 ring-ember-400/40"
+                  : "text-sand-100/60 hover:text-sand-100",
+              )}
+            >
+              {k === "write"
+                ? t("admin.editor.write")
+                : t("admin.editor.previewTab")}
+            </button>
+          ))}
+        </div>
+        <div className={cn(tab === "preview" && "hidden", "sm:block")}>
+          <MarkdownEditor
+            ref={editorRef}
+            value={post.body}
+            onChange={(v) => set("body", v)}
+            placeholder={t("admin.editor.body")}
+            rows={14}
+          />
+        </div>
+        <div className={cn("mt-4", tab === "write" && "hidden", "sm:block")}>
+          <EditorPreview
+            body={post.body}
+            photos={photos}
+            onBodyChange={(v) => set("body", v)}
+          />
+        </div>
+      </div>
       <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
       <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
 
