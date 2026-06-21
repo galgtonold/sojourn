@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { cn, optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
-import { useT } from "@/components/i18n";
+import { useI18n } from "@/components/i18n";
 import type { GeoPhoto } from "@/lib/content";
 
 function esc(s: string): string {
@@ -22,8 +22,8 @@ function esc(s: string): string {
  *   • Click a thumbnail (or a pin) → the map flies to it and opens the photo;
  *     the filmstrip scrolls that thumbnail into view.
  */
-export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
-  const t = useT();
+export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
+  const { t, locale } = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -31,6 +31,19 @@ export function PhotoExplorer({ photos }: { photos: GeoPhoto[] }) {
   // True only while a *map-originated* selection is pending, so the filmstrip
   // reveals that thumbnail. Hovering thumbnails must NOT scroll the strip.
   const fromMapRef = useRef(false);
+
+  // Localize caption + parent-post title to the reader's language on the client
+  // (both languages ship raw in the static payload), then everything downstream
+  // — popups, filmstrip, aria-labels — reads the localized copy.
+  const photos = useMemo(
+    () =>
+      rawPhotos.map((p) => ({
+        ...p,
+        caption: p.i18n?.[locale]?.caption ?? p.caption,
+        postTitle: p.postI18n?.[locale]?.title ?? p.postTitle,
+      })),
+    [rawPhotos, locale],
+  );
 
   const photoById = useMemo(() => {
     const m = new Map<string, GeoPhoto>();

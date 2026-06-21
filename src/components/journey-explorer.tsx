@@ -10,8 +10,14 @@ import { buildConnectorSegments } from "@/lib/journey-connector";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { BlurImg } from "@/components/blur-img";
 import { ImageLightbox } from "@/components/image-lightbox";
-import { useT } from "@/components/i18n";
-import type { Track } from "@/lib/types";
+import { useI18n } from "@/components/i18n";
+import type { Locale } from "@/lib/i18n";
+import type {
+  PhotoTranslation,
+  PostTranslation,
+  Track,
+  TripTranslation,
+} from "@/lib/types";
 
 export type JourneyStop = {
   id: string;
@@ -24,6 +30,12 @@ export type JourneyStop = {
   caption?: string | null;
   takenAt?: string | null;
   href?: string;
+  // Translations carried raw so the explorer can localize on the client (the
+  // page is statically rendered in the default locale). `postTitle` is the
+  // fallback label for a photo stop with no caption.
+  captionI18n?: Partial<Record<Locale, PhotoTranslation>>;
+  postTitle?: string | null;
+  postTitleI18n?: Partial<Record<Locale, PostTranslation>>;
 };
 
 function haversine(a: number[], b: number[]): number {
@@ -38,23 +50,41 @@ function haversine(a: number[], b: number[]): number {
 }
 
 export function JourneyExplorer({
-  title,
+  title: rawTitle,
   backHref,
-  backLabel,
-  stops,
+  backLabel: rawBackLabel,
+  titleI18n,
+  stops: rawStops,
   tracks,
 }: {
   title: string;
   backHref: string;
   backLabel: string;
+  titleI18n?: Partial<Record<Locale, TripTranslation>>;
   stops: JourneyStop[];
   tracks: Track[];
 }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState<JourneyStop | null>(null);
+
+  // Localize the trip title and each stop's caption/label to the reader's
+  // language on the client; both languages ship raw in the static payload.
+  const title = titleI18n?.[locale]?.title ?? rawTitle;
+  const backLabel = titleI18n?.[locale]?.title ?? rawBackLabel;
+  const stops = useMemo(
+    () =>
+      rawStops.map((s) => {
+        if (s.type !== "photo") return s;
+        const caption = s.captionI18n?.[locale]?.caption ?? s.caption ?? null;
+        const postTitle =
+          s.postTitleI18n?.[locale]?.title ?? s.postTitle ?? null;
+        return { ...s, caption, name: caption ?? postTitle ?? s.name };
+      }),
+    [rawStops, locale],
+  );
 
   // Order the stops along the route so "next" walks the journey in sequence.
   const ordered = useMemo(() => {

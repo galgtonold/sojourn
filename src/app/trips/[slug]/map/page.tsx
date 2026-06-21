@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
-import { getReaderLocale } from "@/lib/i18n-server";
-import { localizePostDeep, localizeTrip } from "@/lib/i18n-content";
 import {
   JourneyExplorer,
   type JourneyStop,
@@ -9,8 +7,15 @@ import {
 import { DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const dynamic = "force-dynamic";
+// Static + ISR: stops + trip title carry both languages; JourneyExplorer
+// localizes on the client. Prebuilt per trip slug.
+export const revalidate = 3600;
 export const metadata = { title: defaultTitle("meta.journeyMap") };
+
+export async function generateStaticParams() {
+  const trips = await getTrips();
+  return trips.map((t) => ({ slug: t.slug }));
+}
 
 export default async function TripMapPage({
   params,
@@ -18,15 +23,11 @@ export default async function TripMapPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locale = await getReaderLocale();
   const trips = await getTrips();
-  const found = trips.find((t) => t.slug === slug);
-  if (!found) notFound();
-  const trip = localizeTrip(found, locale);
+  const trip = trips.find((t) => t.slug === slug);
+  if (!trip) notFound();
 
-  const tripPosts = (await getPublishedPostsByTrip(trip.id)).map((p) =>
-    localizePostDeep(p, locale),
-  );
+  const tripPosts = await getPublishedPostsByTrip(trip.id);
   const tracks = tripPosts.flatMap((p) => p.tracks);
 
   const waypointStops: JourneyStop[] = tripPosts.flatMap((p) =>
@@ -53,6 +54,10 @@ export default async function TripMapPage({
         caption: ph.caption,
         takenAt: ph.taken_at,
         href: `/posts/${p.slug}`,
+        // Raw overlays so the explorer can localize on the client.
+        captionI18n: ph.i18n,
+        postTitle: p.title,
+        postTitleI18n: p.i18n,
       })),
   );
   const stops = [...waypointStops, ...photoStops];
@@ -66,6 +71,7 @@ export default async function TripMapPage({
         title={trip.title}
         backHref={`/trips/${trip.slug}`}
         backLabel={trip.title}
+        titleI18n={trip.i18n}
         stops={stops}
         tracks={tracks}
       />

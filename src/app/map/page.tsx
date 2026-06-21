@@ -1,16 +1,15 @@
 import { getPublishedPosts } from "@/lib/content";
-import { getReaderLocale } from "@/lib/i18n-server";
-import { localizePost } from "@/lib/i18n-content";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.map") };
-export const dynamic = "force-dynamic";
+// Static + ISR: markers carry both languages' titles; TripMap localizes the
+// popup label on the client.
+export const revalidate = 3600;
 
 export default async function MapPage() {
-  const locale = await getReaderLocale();
-  const posts = (await getPublishedPosts()).map((p) => localizePost(p, locale));
+  const posts = await getPublishedPosts();
 
   // One marker per post (its primary location), linking back to the entry.
   const markers: MapMarker[] = posts.flatMap((p) => {
@@ -18,7 +17,7 @@ export default async function MapPage() {
       ? { id: p.id, name: p.location ?? p.title, lat: p.lat, lng: p.lng }
       : null);
     return point
-      ? [{ id: p.id, name: p.title, lat: point.lat, lng: point.lng, href: `/posts/${p.slug}` }]
+      ? [{ id: p.id, name: p.title, i18n: p.i18n, lat: point.lat, lng: point.lng, href: `/posts/${p.slug}` }]
       : [];
   });
 

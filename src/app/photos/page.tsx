@@ -1,20 +1,14 @@
 import { getGeotaggedPhotos } from "@/lib/content";
-import { getReaderLocale } from "@/lib/i18n-server";
 import { PhotoExplorer } from "@/components/photo-explorer";
 import { T } from "@/components/i18n";
 
 export const metadata = { title: "Photo map" };
-export const dynamic = "force-dynamic";
+// Static + ISR: ship the raw photos (both languages) and let PhotoExplorer
+// localize caption + post title on the client.
+export const revalidate = 3600;
 
 export default async function PhotosPage() {
-  const locale = await getReaderLocale();
-  // Overlay the active locale and drop the raw i18n payloads so only the chosen
-  // language ships to the client map (no other-language text in the bundle).
-  const photos = (await getGeotaggedPhotos()).map(({ i18n, postI18n, ...g }) => ({
-    ...g,
-    caption: i18n?.[locale]?.caption ?? g.caption,
-    postTitle: postI18n?.[locale]?.title ?? g.postTitle,
-  }));
+  const photos = await getGeotaggedPhotos();
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">
