@@ -64,9 +64,22 @@ export const PostEditor = forwardRef<
     photos?: Photo[];
     photoIds?: string[];
     interactionIds?: string[];
+    // When the workspace lifts the trip picker above the AI panel (so its
+    // context is chosen before generation), it drives the trip from here and the
+    // editor hides its own picker.
+    tripId?: string;
+    onTripChange?: (value: string) => void;
   }
 >(function PostEditor(
-  { initial, trips = [], photos = [], photoIds = [], interactionIds = [] },
+  {
+    initial,
+    trips = [],
+    photos = [],
+    photoIds = [],
+    interactionIds = [],
+    tripId: controlledTripId,
+    onTripChange,
+  },
   ref,
 ) {
   const router = useRouter();
@@ -80,6 +93,11 @@ export const PostEditor = forwardRef<
   const [locOpen, setLocOpen] = useState(false);
   const isEdit = Boolean(post.id);
   const editorRef = useRef<MarkdownEditorHandle>(null);
+
+  // Trip may be lifted to the workspace (controlled) so it sits above the AI
+  // panel; otherwise it lives in local post state.
+  const tripControlled = onTripChange !== undefined;
+  const tripId = tripControlled ? controlledTripId ?? "" : post.trip_id;
 
   // Live check of the body's references and inline poll/quiz blocks.
   const { issues, pendingCount } = useMemo(() => {
@@ -101,7 +119,7 @@ export const PostEditor = forwardRef<
 
   async function save(navigate = true): Promise<boolean> {
     // A draft saves with anything still missing; publishing needs a title + trip.
-    if (post.published && (!post.title.trim() || !post.trip_id)) {
+    if (post.published && (!post.title.trim() || !tripId)) {
       setError(t("admin.editor.publishNeedsFields"));
       return false;
     }
@@ -116,7 +134,7 @@ export const PostEditor = forwardRef<
         post.slug && !post.slug.startsWith("entwurf-")
           ? post.slug
           : slugify(post.title),
-      trip_id: post.trip_id || null,
+      trip_id: tripId || null,
       lat: post.lat ? Number(post.lat) : null,
       lng: post.lng ? Number(post.lng) : null,
     };
@@ -178,31 +196,35 @@ export const PostEditor = forwardRef<
         value={post.location}
         onChange={(e) => set("location", e.target.value)}
       />
-      <label className="block text-sm text-sand-100/60">
-        {t("admin.editor.trip")}
-        {trips.length > 0 ? (
-          <Select
-            value={post.trip_id}
-            onChange={(e) => set("trip_id", e.target.value)}
-            className={input}
-            wrapperClassName="mt-1"
-            required
-          >
-            <option value="" disabled>
-              {t("admin.editor.selectTrip")}
-            </option>
-            {trips.map((tr) => (
-              <option key={tr.id} value={tr.id}>
-                {tr.title}
+      {/* Trip lives here only when uncontrolled; the workspace renders it above
+          the AI panel when controlled (so its context is set before generating). */}
+      {!tripControlled && (
+        <label className="block text-sm text-sand-100/60">
+          {t("admin.editor.trip")}
+          {trips.length > 0 ? (
+            <Select
+              value={post.trip_id}
+              onChange={(e) => set("trip_id", e.target.value)}
+              className={input}
+              wrapperClassName="mt-1"
+              required
+            >
+              <option value="" disabled>
+                {t("admin.editor.selectTrip")}
               </option>
-            ))}
-          </Select>
-        ) : (
-          <p className="mt-1 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2.5 text-sm text-ember-200">
-            {t("admin.editor.tripRequiredNoTrips")}
-          </p>
-        )}
-      </label>
+              {trips.map((tr) => (
+                <option key={tr.id} value={tr.id}>
+                  {tr.title}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <p className="mt-1 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2.5 text-sm text-ember-200">
+              {t("admin.editor.tripRequiredNoTrips")}
+            </p>
+          )}
+        </label>
+      )}
       <label className="block text-sm text-sand-100/60">
         {t("admin.editor.date")}
         <input
@@ -307,13 +329,13 @@ export const PostEditor = forwardRef<
           <input
             type="checkbox"
             checked={post.published}
-            disabled={!post.title || !post.trip_id}
+            disabled={!post.title || !tripId}
             onChange={(e) => set("published", e.target.checked)}
             className="size-4 accent-[#f56a1f] disabled:opacity-40"
           />
           {t("admin.published")}
         </label>
-        {(!post.title || !post.trip_id) && (
+        {(!post.title || !tripId) && (
           <p className="mt-1 text-xs text-sand-100/40">
             {t("admin.editor.publishNeedsFields")}
           </p>

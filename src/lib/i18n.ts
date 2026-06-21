@@ -300,6 +300,8 @@ const en = {
   "admin.editor.trip": "Trip",
   "admin.editor.tripNone": "— No trip —",
   "admin.editor.selectTrip": "Select a trip…",
+  "admin.editor.tripContextHint":
+    "Pick the trip first — its context feeds the AI generation below.",
   "admin.editor.tripRequiredNoTrips":
     "Every article needs a trip so it stays discoverable — create one first.",
 
@@ -768,6 +770,8 @@ const de: Dict = {
   "admin.editor.trip": "Reise",
   "admin.editor.tripNone": "— Keine Reise —",
   "admin.editor.selectTrip": "Reise wählen…",
+  "admin.editor.tripContextHint":
+    "Wähle zuerst die Reise — ihr Kontext fließt in die KI-Generierung unten ein.",
   "admin.editor.tripRequiredNoTrips":
     "Jeder Beitrag braucht eine Reise, damit er auffindbar bleibt — leg zuerst eine an.",
 

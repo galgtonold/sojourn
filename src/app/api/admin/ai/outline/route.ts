@@ -82,6 +82,10 @@ async function outline({
           '"lat": number|null, "lng": number|null, "cover_photo_id": string, ' +
           '"sections": [ { "heading": string, "beat": string (1 Satz, worum es geht), ' +
           '"photo_ids": string[], "interaction"?: { "kind": "poll"|"quiz", "idea": string } } ] }' +
+          // The title sprawls without a hard limit — keep it short and punchy.
+          "\n\nDer Titel ist kurz und prägnant: höchstens 4–6 Wörter, KEIN " +
+          "Doppelpunkt-Untertitel und keine erklärenden Zusätze. Lieber ein " +
+          "treffendes Bild als eine vollständige Inhaltsangabe." +
           // Re-state the language rule right before generation: title, excerpt
           // and every heading must be in the target language, not the English
           // of the photo descriptions.
