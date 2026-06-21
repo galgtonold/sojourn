@@ -382,6 +382,13 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
 const POST_MAX_DISTANCE = 0.79;
 const PHOTO_MAX_DISTANCE = 0.8;
 
+// Result caps. This content is thematically uniform (travel/nature), so a broad
+// query ("Berge", "Gletscher") is semantically near most of it — distance can't
+// separate "specific" from "matches-everything". Cap to the top-N best-ranked so
+// broad queries show their most-relevant matches, not the whole library.
+const POST_MATCH_COUNT = 12;
+const PHOTO_MATCH_COUNT = 12;
+
 export async function searchPosts(
   query: string,
   embedding?: number[] | null,
@@ -408,7 +415,7 @@ export async function searchPosts(
     const { data: ranked, error } = await supabase.rpc("search_posts_hybrid", {
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
-      match_count: 50,
+      match_count: POST_MATCH_COUNT,
       max_distance: POST_MAX_DISTANCE,
     });
     if (error) throw error;
@@ -510,7 +517,7 @@ export async function searchPhotos(
     const { data: ranked, error } = await supabase.rpc("search_photos_hybrid", {
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
-      match_count: 36,
+      match_count: PHOTO_MATCH_COUNT,
       max_distance: PHOTO_MAX_DISTANCE,
     });
     if (error) throw error;
