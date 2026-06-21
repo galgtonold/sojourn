@@ -112,8 +112,9 @@ export function PostView({
         {/* Top wash keeps the back-link and location chip legible. */}
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink-950/55 to-transparent" />
         {/* Long, smooth dissolve so the cover melts into the page background —
-            and, crucially, keeps the title readable over bright covers. */}
-        <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent" />
+            and, crucially, keeps the title + location accent readable over bright
+            covers (the orange eyebrow sits in the mid zone, so it carries weight). */}
+        <div className="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-ink-950 via-ink-950/60 to-transparent" />
 
         <div
           className={cn(
