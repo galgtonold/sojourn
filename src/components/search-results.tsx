@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { PhotoSearchResult, PostSummary } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { PostCard } from "@/components/post-card";
 import { PhotoResultCard } from "@/components/photo-result-card";
 import { T, useI18n } from "@/components/i18n";
@@ -46,10 +47,12 @@ export function SearchResults() {
 
   if (!q) return null;
 
+  // First search (nothing on screen yet): a centered "Searching…" indicator.
   if (loading && !data) {
     return (
-      <div className="mt-12 flex justify-center">
-        <Loader2 className="size-6 animate-spin text-ember-400" />
+      <div className="mt-12 flex items-center justify-center gap-2 text-sand-100/70">
+        <Loader2 className="size-5 animate-spin text-ember-400" />
+        <T k="search.searching" />
       </div>
     );
   }
@@ -65,37 +68,56 @@ export function SearchResults() {
 
   return (
     <>
-      {empty && (
-        <p className="mt-10 text-sm text-sand-100/50">
-          <T k="search.noResults" vars={{ q }} />
-        </p>
+      {/* Re-search while previous results are still shown: a clear in-progress
+          badge, with the stale results dimmed so it's obvious they're updating. */}
+      {loading && (
+        <div className="mt-8 flex justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-ink-800 px-4 py-2 text-sm text-sand-100/80">
+            <Loader2 className="size-4 animate-spin text-ember-400" />
+            <T k="search.searching" />
+          </span>
+        </div>
       )}
 
-      {posts.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
-            <T k="search.stories" /> · {posts.length}
-          </h2>
-          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        </section>
-      )}
+      <div
+        aria-busy={loading}
+        className={cn(
+          "transition-opacity duration-200",
+          loading && "pointer-events-none opacity-40",
+        )}
+      >
+        {empty && (
+          <p className="mt-10 text-sm text-sand-100/50">
+            <T k="search.noResults" vars={{ q }} />
+          </p>
+        )}
 
-      {photos.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
-            <T k="search.photos" /> · {photos.length}
-          </h2>
-          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {photos.map((photo) => (
-              <PhotoResultCard key={photo.id} photo={photo} />
-            ))}
-          </div>
-        </section>
-      )}
+        {posts.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+              <T k="search.stories" /> · {posts.length}
+            </h2>
+            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {photos.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+              <T k="search.photos" /> · {photos.length}
+            </h2>
+            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {photos.map((photo) => (
+                <PhotoResultCard key={photo.id} photo={photo} />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </>
   );
 }

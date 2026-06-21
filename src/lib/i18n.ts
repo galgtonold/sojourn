@@ -154,6 +154,7 @@ const en = {
   "search.result": "{n} result for “{q}”",
   "search.stories": "Stories",
   "search.photos": "Photos",
+  "search.searching": "Searching…",
   "search.noResults": "Nothing found for “{q}”.",
 
   "trips.title": "Trips",
@@ -615,6 +616,7 @@ const de: Dict = {
   "search.result": "{n} Treffer für „{q}“",
   "search.stories": "Geschichten",
   "search.photos": "Fotos",
+  "search.searching": "Suche läuft…",
   "search.noResults": "Nichts gefunden für „{q}“.",
 
   "trips.title": "Reisen",
