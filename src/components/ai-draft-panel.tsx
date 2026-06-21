@@ -267,9 +267,12 @@ export function AiDraftPanel({
         }
       }
 
-      // 5. Captions (best effort).
+      // 5. Captions (best effort). Pass the assembled body so captions are
+      //    anchored in the article's voice, not standalone image descriptions.
       setStep(t("admin.ai.step.captions"));
-      await postJson("/api/admin/ai/captions", { postId, lang }).catch(() => {});
+      await postJson("/api/admin/ai/captions", { postId, lang, body }).catch(
+        () => {},
+      );
 
       // 6. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));

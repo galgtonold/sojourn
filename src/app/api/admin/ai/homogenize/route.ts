@@ -44,6 +44,9 @@ async function homogenize({
     "- Sorge für flüssige Übergänge zwischen den Abschnitten und entferne " +
     "Wiederholungen (mehrfach erklärte Hintergründe, doppelte Einleitungen oder " +
     "Abschlüsse).\n" +
+    "- Halte den Ton locker und persönlich. Sprich die Leser – wenn überhaupt – " +
+    "mit „du“ an, niemals mit „Sie“; kein förmliches Amtsdeutsch. Wandle " +
+    "vorhandenes Siezen in Duzen um.\n" +
     "- Entferne alle Brief-Elemente: Anreden, Grußformeln und Unterschriften " +
     "(z. B. „Herzlich, …“, „Liebe Grüße“, eine Namenszeile). Der Artikel ist " +
     "kein Brief und endet ohne Verabschiedung.\n" +
@@ -61,7 +64,7 @@ async function homogenize({
   ];
 
   const { jobId } = await enqueueLlmJob(
-    { model: aiModels.fast, temperature: 0.4, maxTokens: 8000, messages },
+    { model: aiModels.fast, temperature: 0.4, maxTokens: 32000, messages },
     { operation: "homogenize", postId, userId: user.id },
   );
   return { jobId };

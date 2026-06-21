@@ -86,6 +86,10 @@ async function sectionRoute({
     styleGuide +
     "\n\nRegeln:\n" +
     "- Erfinde keine Fakten oder Namen; stütze dich nur auf das Material.\n" +
+    "- Locker und persönlich im Ton. Sprich die Leserinnen und Leser – wenn " +
+    "überhaupt – mit „du“ an, NIEMALS mit „Sie“. Kein förmliches Behörden- oder " +
+    "Amtsdeutsch (auch nicht ironisch); ein „ernster“ oder trockener Gag bleibt " +
+    "trotzdem in dieser lockeren Du-Stimme.\n" +
     "- Beginne mit einer Markdown-Zwischenüberschrift (## …). Kein H1, kein Titel.\n" +
     "- Setze die angegebenen [photo:ID]-Tags jeweils in eine eigene Zeile, dort wo sie passen.\n" +
     "- Verwende nur die unten angegebenen Foto-IDs, erfinde keine.\n" +
@@ -114,10 +118,11 @@ async function sectionRoute({
   ];
 
   const { jobId } = await enqueueLlmJob(
-    // Generous headroom: the reasoner spends part of its budget on
-    // reasoning_content first, so a tight cap truncated sections — sometimes
-    // mid-poll (leaving a bare ":::poll") or to an empty output entirely.
-    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 4000, messages },
+    // The reasoner spends part of its budget on reasoning_content *before* the
+    // answer, so any tight cap risks truncating the prose — mid-sentence, or
+    // mid-poll (leaving a bare ":::poll"). A section's actual prose is short, so
+    // set the cap absurdly high: it only ever acts as a stop, never a squeeze.
+    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 32000, messages },
     { operation: "section", postId, userId: user.id },
   );
   return { jobId };

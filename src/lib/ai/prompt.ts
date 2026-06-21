@@ -29,6 +29,9 @@ export function interactionInstruction(
     return (
       `\n- Add exactly ONE ${kind} at a natural point in this section, on its own ` +
       `lines, using this syntax (blank line before and after):\n${ex}\n` +
+      `- Output it ONLY as this fenced ::: block — NEVER as a prose paragraph, a ` +
+      `rhetorical question in the text, or a bullet list. The block must be ` +
+      `complete: the «:::${kind}» opener, the options, and the closing «:::».\n` +
       (kind === "quiz"
         ? "- The «=» marks the single correct option; it must be supported by the material. Add 2–4 options total.\n"
         : "- A poll has no correct answer. Add 2–4 opinion options.\n") +
@@ -43,6 +46,10 @@ export function interactionInstruction(
     `\n- Füge GENAU EINE ${kind === "quiz" ? "Quizfrage" : "Umfrage"} an einer ` +
     `passenden Stelle dieses Abschnitts ein, in eigenen Zeilen, mit dieser ` +
     `Syntax (Leerzeile davor und danach):\n${ex}\n` +
+    `- Gib sie AUSSCHLIESSLICH als diesen :::-Block aus – NIEMALS als Fließtext, ` +
+    `als rhetorische Frage im Text oder als Aufzählung. Der Block muss vollständig ` +
+    `sein: Eröffnung «:::${kind === "quiz" ? "quiz" : "poll"}», die Optionen und der ` +
+    `abschließende «:::».\n` +
     (kind === "quiz"
       ? "- Das «=» markiert die einzige richtige Option; sie muss durch das Material gedeckt sein. Insgesamt 2–4 Optionen.\n"
       : "- Eine Umfrage hat keine richtige Antwort. 2–4 Meinungs-Optionen.\n") +
