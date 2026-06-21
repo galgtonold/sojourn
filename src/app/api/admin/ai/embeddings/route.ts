@@ -8,6 +8,7 @@ import {
   photoEmbeddingInput,
   toVectorLiteral,
 } from "@/lib/ai/embeddings";
+import { reindexPostChunks } from "@/lib/ai/chunk-index";
 
 export const maxDuration = 60;
 
@@ -92,5 +93,35 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ posts: postCount, photos: photoCount });
+  // ── post chunks (passage embeddings) ───────────────────────────────────────
+  // Same freshness model as the whole-post embeddings above: refreshed here.
+  // `onlyEmpty` skips posts that already have chunks; a full refresh rebuilds.
+  let chunkQ = supabase
+    .from("posts")
+    .select("id, title, excerpt, body, location, source_locale, i18n")
+    .eq("published", true);
+  if (postId) chunkQ = chunkQ.eq("id", postId);
+  const { data: chunkPosts } = await chunkQ.limit(limit);
+
+  let chunkCount = 0;
+  for (const p of chunkPosts ?? []) {
+    if (onlyEmpty) {
+      const { count } = await supabase
+        .from("post_chunks")
+        .select("id", { count: "exact", head: true })
+        .eq("post_id", p.id);
+      if (count && count > 0) continue;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chunkCount += await reindexPostChunks(supabase, p as any, {
+      operation: "chunk_embed",
+      userId: user.id,
+    });
+  }
+
+  return NextResponse.json({
+    posts: postCount,
+    photos: photoCount,
+    chunks: chunkCount,
+  });
 }
