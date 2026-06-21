@@ -83,6 +83,32 @@ export function formatDistance(m: number | null | undefined): string {
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 }
 
+// Decimate each LineString to at most `maxPoints` positions (uniform sampling,
+// endpoints preserved) and drop elevation — full GPX resolution is invisible at
+// the world-overview zoom of the global /map, so this shrinks that page's
+// payload dramatically while the drawn line looks identical. Detail pages keep
+// the full-resolution track.
+export function simplifyLineStrings(
+  fc: GeoJSON.FeatureCollection<GeoJSON.LineString>,
+  maxPoints = 120,
+): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  return {
+    ...fc,
+    features: (fc.features ?? []).map((f) => {
+      const coords = f.geometry?.coordinates ?? [];
+      const flat = ([lng, lat]: GeoJSON.Position): GeoJSON.Position => [lng, lat];
+      if (coords.length <= maxPoints) {
+        return { ...f, geometry: { ...f.geometry, coordinates: coords.map(flat) } };
+      }
+      const step = (coords.length - 1) / (maxPoints - 1);
+      const out: GeoJSON.Position[] = [];
+      for (let i = 0; i < maxPoints; i++) out.push(flat(coords[Math.round(i * step)]));
+      out[out.length - 1] = flat(coords[coords.length - 1]);
+      return { ...f, geometry: { ...f.geometry, coordinates: out } };
+    }),
+  };
+}
+
 export type ElevationSeries = {
   points: { d: number; e: number }[]; // cumulative distance (m), elevation (m)
   distanceM: number;

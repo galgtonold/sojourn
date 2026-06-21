@@ -1,15 +1,17 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { useT } from "@/components/i18n";
 
-export function SearchBox({ initial = "" }: { initial?: string }) {
+export function SearchBox() {
   const router = useRouter();
+  // The page is statically rendered, so the current query comes from the URL on
+  // the client (not a server prop).
+  const initial = useSearchParams().get("q") ?? "";
   const [value, setValue] = useState(initial);
-  // Searching runs on the server (slow, semantic), so surface a spinner while
-  // the results navigation is in flight — submitting felt unresponsive without
-  // it, especially when only the query changes on an already-open /search page.
+  // Surface a spinner while the results navigation is in flight — submitting felt
+  // unresponsive without it, especially when only the query changes.
   const [pending, startTransition] = useTransition();
   const t = useT();
 

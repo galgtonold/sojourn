@@ -11,6 +11,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { isSupabaseConfigured, isEmbeddingsConfigured } from "@/lib/env";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
+import { simplifyLineStrings } from "@/lib/gpx";
 import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
   emptyReactions,
@@ -24,6 +25,7 @@ import {
   type PostWithRelations,
   type ReactionKind,
   type ReactionSummary,
+  type Track,
   type Trip,
 } from "@/lib/types";
 import type { Locale } from "@/lib/i18n";
@@ -93,6 +95,72 @@ export async function getPublishedPosts(): Promise<PostWithRelations[]> {
 
 const SUMMARY_SELECT =
   "id, slug, title, excerpt, location, cover_image, cover_alt, trip_id, published_at, source_locale, i18n";
+
+// Just what the global /map needs: one pin per post + its GPX tracks. Far lighter
+// than getPublishedPosts (no photos/body/reactions/comments), so the statically
+// rendered /map ships a small payload.
+export type MapPost = {
+  id: string;
+  slug: string;
+  title: string;
+  location: string | null;
+  lat: number | null;
+  lng: number | null;
+  source_locale?: Locale | null;
+  i18n?: Partial<Record<Locale, PostTranslation>>;
+  locations: GeoPoint[];
+  tracks: Track[];
+};
+
+const MAP_SELECT =
+  "id, slug, title, location, lat, lng, source_locale, i18n, locations(*), tracks(*)";
+
+export async function getMapPosts(): Promise<MapPost[]> {
+  const supabase = getPublicSupabase();
+  if (!supabase) {
+    return demoPosts
+      .filter((p) => p.published)
+      .map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        location: p.location,
+        lat: p.lat,
+        lng: p.lng,
+        source_locale: p.source_locale,
+        i18n: p.i18n,
+        locations: p.locations,
+        tracks: p.tracks,
+      }));
+  }
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(MAP_SELECT)
+      .eq("published", true)
+      .order("published_at", { ascending: false });
+    if (error || !data) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((row) => ({
+      ...row,
+      locations: (row.locations ?? []).sort(
+        (a: GeoPoint, b: GeoPoint) => a.sort_order - b.sort_order,
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tracks: (row.tracks ?? []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        distance_m: t.distance_m,
+        started_at: t.started_at ?? null,
+        ended_at: t.ended_at ?? null,
+        // Overview map: decimated geometry only (full GPX is invisible at this zoom).
+        geojson: t.geojson ? simplifyLineStrings(t.geojson) : t.geojson,
+      })),
+    })) as MapPost[];
+  } catch {
+    return [];
+  }
+}
 
 // Lightweight, paginated listing query — only the columns a card needs.
 export async function getPostSummaries({
@@ -204,6 +272,24 @@ function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
   );
 }
 
+// Project a full post down to the card columns a summary needs (for the demo
+// search path, where the source rows are full posts).
+function toSummary(p: PostWithRelations): PostSummary {
+  return {
+    id: p.id,
+    slug: p.slug,
+    title: p.title,
+    excerpt: p.excerpt,
+    location: p.location,
+    cover_image: p.cover_image,
+    cover_alt: p.cover_alt ?? null,
+    trip_id: p.trip_id,
+    published_at: p.published_at,
+    source_locale: p.source_locale,
+    i18n: p.i18n,
+  };
+}
+
 // A single geotagged photo with just enough of its parent post to link back —
 // deliberately light (no full post hydration) so the global photo map scales.
 export type GeoPhoto = {
@@ -277,27 +363,36 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
   }
 }
 
-export async function searchPosts(query: string): Promise<PostWithRelations[]> {
+// Search returns lightweight summaries (card columns only) — not full posts with
+// photos/body — so the result payload stays small. `embedding` may be passed
+// precomputed so a combined search embeds the query once (see `searchAll`);
+// omit it and the query is embedded here.
+export async function searchPosts(
+  query: string,
+  embedding?: number[] | null,
+): Promise<PostSummary[]> {
   const q = query.trim();
   if (!q) return [];
 
   const supabase = getPublicSupabase();
   if (!supabase) {
     const needle = q.toLowerCase();
-    return demoPosts.filter(
-      (p) =>
-        p.title.toLowerCase().includes(needle) ||
-        (p.excerpt ?? "").toLowerCase().includes(needle) ||
-        (p.location ?? "").toLowerCase().includes(needle) ||
-        (p.body ?? "").toLowerCase().includes(needle),
-    );
+    return demoPosts
+      .filter(
+        (p) =>
+          p.title.toLowerCase().includes(needle) ||
+          (p.excerpt ?? "").toLowerCase().includes(needle) ||
+          (p.location ?? "").toLowerCase().includes(needle) ||
+          (p.body ?? "").toLowerCase().includes(needle),
+      )
+      .map(toSummary);
   }
 
   try {
-    const embedding = await embedQuery(q);
+    const emb = embedding !== undefined ? embedding : await embedQuery(q);
     const { data: ranked, error } = await supabase.rpc("search_posts_hybrid", {
       query_text: q,
-      query_embedding: embedding ? toVectorLiteral(embedding) : null,
+      query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 50,
     });
     if (error) throw error;
@@ -306,22 +401,22 @@ export async function searchPosts(query: string): Promise<PostWithRelations[]> {
 
     const { data, error: fetchErr } = await supabase
       .from("posts")
-      .select(POST_SELECT)
+      .select(SUMMARY_SELECT)
       .eq("published", true)
       .in("id", ids);
     if (fetchErr || !data) return [];
-    return orderByIds(data.map(hydratePost), ids);
+    return orderByIds(data as PostSummary[], ids);
   } catch {
     // RPC/migration not present (older deployments): plain full-text search.
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select(POST_SELECT)
+        .select(SUMMARY_SELECT)
         .eq("published", true)
         .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
         .limit(50);
       if (error || !data) return [];
-      return data.map(hydratePost);
+      return data as PostSummary[];
     } catch {
       return [];
     }
@@ -358,6 +453,7 @@ function hydratePhotoResult(row: any): PhotoSearchResult {
 
 export async function searchPhotos(
   query: string,
+  embedding?: number[] | null,
 ): Promise<PhotoSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
@@ -394,10 +490,10 @@ export async function searchPhotos(
   }
 
   try {
-    const embedding = await embedQuery(q);
+    const emb = embedding !== undefined ? embedding : await embedQuery(q);
     const { data: ranked, error } = await supabase.rpc("search_photos_hybrid", {
       query_text: q,
-      query_embedding: embedding ? toVectorLiteral(embedding) : null,
+      query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 36,
     });
     if (error) throw error;
@@ -413,6 +509,24 @@ export async function searchPhotos(
   } catch {
     return [];
   }
+}
+
+// Combined hybrid search over stories AND photos. Embeds the query ONCE and
+// shares the vector with both RPCs (previously each path embedded separately),
+// then runs them in parallel. Returns light summaries for a small payload.
+export async function searchAll(
+  query: string,
+): Promise<{ posts: PostSummary[]; photos: PhotoSearchResult[] }> {
+  const q = query.trim();
+  if (!q) return { posts: [], photos: [] };
+  // Embed once (null in demo mode / when no provider — the searches fall back to
+  // full-text, and their demo branches ignore the embedding entirely).
+  const embedding = getPublicSupabase() ? await embedQuery(q) : null;
+  const [posts, photos] = await Promise.all([
+    searchPosts(q, embedding),
+    searchPhotos(q, embedding),
+  ]);
+  return { posts, photos };
 }
 
 export const COMMENT_SELECT =

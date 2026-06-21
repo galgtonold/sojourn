@@ -1,15 +1,16 @@
-import { getPublishedPosts } from "@/lib/content";
+import { getMapPosts } from "@/lib/content";
 import { TripMap, type MapMarker } from "@/components/trip-map";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("meta.map") };
 // Static + ISR: markers carry both languages' titles; TripMap localizes the
-// popup label on the client.
+// popup label on the client. Uses the lightweight map query (pins + tracks only)
+// so the cached HTML stays small.
 export const revalidate = 3600;
 
 export default async function MapPage() {
-  const posts = await getPublishedPosts();
+  const posts = await getMapPosts();
 
   // One marker per post (its primary location), linking back to the entry.
   const markers: MapMarker[] = posts.flatMap((p) => {
