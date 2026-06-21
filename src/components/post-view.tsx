@@ -133,13 +133,13 @@ export function PostView({
             {!preview && (
               <BackLink
                 fallback="/"
-                className="mb-6 inline-flex w-fit items-center gap-1.5 text-sm text-sand-100/80 transition hover:text-ember-400"
+                className="mb-6 inline-flex w-fit items-center gap-1.5 rounded-full bg-ink-950/45 px-3.5 py-1.5 text-sm font-medium text-sand-50 ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-ink-950/65 hover:text-ember-300"
               >
                 <ArrowLeft className="size-4" /> <T k="common.back" />
               </BackLink>
             )}
             {post.location && (
-              <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-ember-300">
+              <p className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider text-ember-400">
                 <MapPin className="size-4" />
                 {post.location}
               </p>
