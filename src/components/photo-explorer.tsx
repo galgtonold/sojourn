@@ -342,13 +342,18 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
 
   return (
     <div className="overflow-hidden rounded-3xl ring-1 ring-white/10">
-      <div
-        ref={container}
-        className={cn(
-          "h-[58dvh] min-h-[400px] w-full bg-ink-900 transition-opacity duration-300",
-          ready ? "opacity-100" : "opacity-0",
-        )}
-      />
+      {/* The map element is left untouched; a sibling overlay fades out once the
+          map has settled, hiding the load flicker without moving the canvas. */}
+      <div className="relative">
+        <div ref={container} className="h-[58dvh] min-h-[400px] w-full" />
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-ink-900 transition-opacity duration-300",
+            ready ? "opacity-0" : "opacity-100",
+          )}
+        />
+      </div>
 
       <div className="border-t border-white/10 bg-ink-900/80">
         <p className="px-4 pt-3 text-xs uppercase tracking-[0.18em] text-sand-100/45">

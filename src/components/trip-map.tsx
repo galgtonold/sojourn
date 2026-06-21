@@ -341,11 +341,20 @@ export function TripMap({
 
   if (!hasContent) return null;
 
+  // The map element itself is left untouched (opacity/transform on it breaks
+  // MapLibre's canvas positioning). Instead a sibling overlay covers it during
+  // load and fades out — hiding the bounds-jump / tile-pop flicker.
   return (
-    <div
-      ref={container}
-      className={`w-full overflow-hidden rounded-3xl bg-ink-900 ring-1 ring-white/10 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"} ${className}`}
-    />
+    <div className={`relative w-full ${className}`}>
+      <div
+        ref={container}
+        className="h-full w-full overflow-hidden rounded-3xl ring-1 ring-white/10"
+      />
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 rounded-3xl bg-ink-900 transition-opacity duration-300 ${ready ? "opacity-0" : "opacity-100"}`}
+      />
+    </div>
   );
 }
 
