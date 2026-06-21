@@ -40,10 +40,15 @@ async function homogenize({
     "liest sich noch wie lose Einzelstücke. Überarbeite ihn zu EINEM " +
     "zusammenhängenden, durchgehend lesbaren Artikel.\n\nRegeln:\n" +
     "- Behalte Inhalt, Fakten, Aussagen und die Reihenfolge bei; erfinde nichts " +
-    "dazu und lösche keine Inhalte.\n" +
+    "dazu und lösche keine Inhalte (Ausnahmen: Wiederholungen und Text-Umfragen, " +
+    "siehe unten).\n" +
     "- Sorge für flüssige Übergänge zwischen den Abschnitten und entferne " +
     "Wiederholungen (mehrfach erklärte Hintergründe, doppelte Einleitungen oder " +
-    "Abschlüsse).\n" +
+    "Abschlüsse, derselbe Vorfall mehrfach erzählt).\n" +
+    "- Lösche ersatzlos jede an die Leser gerichtete Umfrage/Quiz-/Ratefrage, die " +
+    "als Fließtext oder Aufzählung (a)/b)/c) bzw. A)/B)/C)) im Text steht. Die " +
+    "EINZIGEN interaktiven Elemente sind die [[KEEP-n]]-Platzhalter; schreibe " +
+    "keine neue Frage und keine Antwortoptionen dazu.\n" +
     "- Halte den Ton locker und persönlich. Sprich die Leser – wenn überhaupt – " +
     "mit „du“ an, niemals mit „Sie“; kein förmliches Amtsdeutsch. Wandle " +
     "vorhandenes Siezen in Duzen um.\n" +
