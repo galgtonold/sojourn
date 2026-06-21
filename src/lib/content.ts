@@ -367,6 +367,14 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
 // photos/body — so the result payload stays small. `embedding` may be passed
 // precomputed so a combined search embeds the query once (see `searchAll`);
 // omit it and the query is embedded here.
+// Cosine-distance ceiling for the vector half of hybrid search: drop results
+// that aren't semantically near the query. Without it the vector side returned
+// every embedded row (so any query — even nonsense — matched everything).
+// Calibrated against a relevant/plausible/nonsense term set: nonsense distances
+// sit at ~0.83+, strong matches at ~0.5–0.7. Full-text still catches exact
+// keyword hits above this ceiling.
+const SEARCH_MAX_DISTANCE = 0.73;
+
 export async function searchPosts(
   query: string,
   embedding?: number[] | null,
@@ -394,6 +402,7 @@ export async function searchPosts(
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 50,
+      max_distance: SEARCH_MAX_DISTANCE,
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
@@ -495,6 +504,7 @@ export async function searchPhotos(
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 36,
+      max_distance: SEARCH_MAX_DISTANCE,
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
