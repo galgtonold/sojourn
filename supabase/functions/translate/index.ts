@@ -136,6 +136,7 @@ async function translateBody(
 type ShortPost = {
   title: string;
   excerpt: string | null;
+  location: string | null;
   interactions: {
     id: string;
     question: string;
@@ -157,8 +158,10 @@ async function translatePostShort(
         content:
           `Translate the human-readable string values in this JSON from ${LANG[source]} to ${LANG[target]}. ` +
           "Return ONLY a JSON object with the SAME shape, the same ids, and the same array lengths and order. " +
-          "Translate: title, excerpt, every interaction's question/options/explanation, every photo's caption. " +
-          "Keep null values null. Keep proper nouns and place names. No commentary.",
+          "Translate: title, excerpt, location, every interaction's question/options/explanation, every photo's caption. " +
+          "Keep null values null. Keep proper nouns. For 'location', keep specific town / island / landmark names as-is, " +
+          "but render country and region names in the target language (e.g. Norway→Norwegen, Sweden→Schweden, Italy→Italien). " +
+          "No commentary.",
       },
       { role: "user", content: JSON.stringify(input) },
     ],
@@ -191,7 +194,7 @@ async function translateTrip(
 async function translatePost(supabase: any, id: string): Promise<void> {
   const { data: post } = await supabase
     .from("posts")
-    .select("title, excerpt, body")
+    .select("title, excerpt, body, location")
     .eq("id", id)
     .maybeSingle();
   if (!post) return;
@@ -218,6 +221,7 @@ async function translatePost(supabase: any, id: string): Promise<void> {
     {
       title: post.title,
       excerpt: post.excerpt ?? null,
+      location: post.location ?? null,
       // deno-lint-ignore no-explicit-any
       interactions: (interactions ?? []).map((q: any) => ({
         id: q.id,
@@ -239,7 +243,14 @@ async function translatePost(supabase: any, id: string): Promise<void> {
     .from("posts")
     .update({
       source_locale: source,
-      i18n: { [target]: { title: short.title, excerpt: short.excerpt, body } },
+      i18n: {
+        [target]: {
+          title: short.title,
+          excerpt: short.excerpt,
+          location: short.location,
+          body,
+        },
+      },
       translation_status: "ready",
     })
     .eq("id", id);

@@ -8,6 +8,7 @@ export type TranslationStatus = "none" | "pending" | "ready" | "error";
 export type PostTranslation = {
   title?: string;
   excerpt?: string | null;
+  location?: string | null;
   body?: string | null;
 };
 export type TripTranslation = { title?: string; summary?: string | null };

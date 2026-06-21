@@ -46,6 +46,7 @@ export function localizePostSummary(s: PostSummary, locale: Locale): PostSummary
     ...s,
     title: tr?.title ?? s.title,
     excerpt: tr?.excerpt ?? s.excerpt,
+    location: tr?.location ?? s.location,
   };
   delete out.i18n;
   delete out.source_locale;
