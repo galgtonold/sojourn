@@ -2,15 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
-import { getReaderLocale } from "@/lib/i18n-server";
-import { localizePost, localizeTrip } from "@/lib/i18n-content";
-import { formatDate } from "@/lib/utils";
 import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
-import { T } from "@/components/i18n";
+import { T, LocText, LocDate } from "@/components/i18n";
 
-// Dynamic: trip + post-card text is localized to the reader's language.
-export const dynamic = "force-dynamic";
+// Static + ISR: trip + post-card text is localized on the client. Prebuilt for
+// every known trip slug; new slugs render on first hit then cache.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const trips = await getTrips();
+  return trips.map((t) => ({ slug: t.slug }));
+}
 
 export async function generateMetadata({
   params,
@@ -30,15 +33,11 @@ export default async function TripPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locale = await getReaderLocale();
   const trips = await getTrips();
-  const found = trips.find((t) => t.slug === slug);
-  if (!found) notFound();
-  const trip = localizeTrip(found, locale);
+  const trip = trips.find((t) => t.slug === slug);
+  if (!trip) notFound();
 
-  const tripPosts = (await getPublishedPostsByTrip(trip.id)).map((p) =>
-    localizePost(p, locale),
-  );
+  const tripPosts = await getPublishedPostsByTrip(trip.id);
   const tracks = tripPosts.flatMap((p) => p.tracks);
   const waypointCount = tripPosts.reduce((s, p) => s + p.locations.length, 0);
   const photoCount = tripPosts.reduce(
@@ -54,16 +53,22 @@ export default async function TripPage({
         <T k="trips.trip" />
       </p>
       <h1 className="mt-2 font-display text-4xl font-semibold sm:text-6xl">
-        {trip.title}
+        <LocText source={trip.title} i18n={trip.i18n} field="title" />
       </h1>
       {trip.summary && (
-        <p className="mt-3 max-w-2xl text-lg text-sand-100/70">{trip.summary}</p>
+        <p className="mt-3 max-w-2xl text-lg text-sand-100/70">
+          <LocText source={trip.summary} i18n={trip.i18n} field="summary" />
+        </p>
       )}
       <p className="mt-2 text-sm text-sand-100/50">
-        {trip.start_date && formatDate(trip.start_date, locale)}
-        {trip.end_date && ` – ${formatDate(trip.end_date, locale)}`} ·{" "}
-        {tripPosts.length}{" "}
-        <T k="trips.entries" />
+        {trip.start_date && <LocDate value={trip.start_date} />}
+        {trip.end_date && (
+          <>
+            {" – "}
+            <LocDate value={trip.end_date} />
+          </>
+        )}{" "}
+        · {tripPosts.length} <T k="trips.entries" />
       </p>
 
       {hasMap && (

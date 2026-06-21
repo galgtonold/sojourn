@@ -2,21 +2,19 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
 import { env } from "@/lib/env";
-import { getReaderLocale } from "@/lib/i18n-server";
-import { localizePostSummary } from "@/lib/i18n-content";
 import { PostCard } from "@/components/post-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
-import { T, DocumentTitle } from "@/components/i18n";
+import { T, DocumentTitle, LocText } from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
-// Dynamic: card text (title, excerpt) is localized to the reader's language.
-export const dynamic = "force-dynamic";
+// Static + ISR: the page is prerendered in the default locale and the reader's
+// language is swapped in on the client (PostCard / LocText), so it serves from
+// cache. Refreshed on publish/update (admin revalidatePath) + the safety net.
+export const revalidate = 3600;
 
 export default async function HomePage() {
-  const locale = await getReaderLocale();
-  const { posts: rawPosts, total } = await getPostSummaries({ limit: 9 });
-  const posts = rawPosts.map((p) => localizePostSummary(p, locale));
+  const { posts, total } = await getPostSummaries({ limit: 9 });
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
@@ -61,7 +59,8 @@ export default async function HomePage() {
                   {hero.location}
                 </span>
               )}
-              <T k="home.readCta" /> “{hero.title}”
+              <T k="home.readCta" /> “
+              <LocText source={hero.title} i18n={hero.i18n} field="title" />”
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
           )}

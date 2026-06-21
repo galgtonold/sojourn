@@ -1,18 +1,24 @@
+"use client";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import type { PostSummary } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { getReaderLocale } from "@/lib/i18n-server";
+import { localizePostSummary } from "@/lib/i18n-content";
+import { useI18n } from "@/components/i18n";
 import { RevealImage } from "@/components/reveal-image";
 
-export async function PostCard({
-  post,
+// Client component: receives the RAW summary (with its `i18n` overlay) and
+// localizes to the reader's language on the client, so the page that renders it
+// can be statically cached (no per-request cookie read).
+export function PostCard({
+  post: raw,
   priority = false,
 }: {
   post: PostSummary;
   priority?: boolean;
 }) {
-  const locale = await getReaderLocale();
+  const { locale } = useI18n();
+  const post = localizePostSummary(raw, locale);
   return (
     <Link
       href={`/posts/${post.slug}`}

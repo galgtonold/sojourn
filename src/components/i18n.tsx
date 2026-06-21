@@ -15,7 +15,7 @@ import {
   type DictKey,
   type Locale,
 } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { env } from "@/lib/env";
 
 type Vars = Record<string, string | number>;
@@ -70,6 +70,44 @@ export function useT() {
 /** Inline translated string — usable inside server components. */
 export function T({ k, vars }: { k: DictKey; vars?: Vars }) {
   return <>{useI18n().t(k, vars)}</>;
+}
+
+/** The reader's chosen content locale, from context. */
+export function useLocale(): Locale {
+  return useI18n().locale;
+}
+
+/**
+ * Client-localized DB content text. Static pages render in the default locale on
+ * the server; this swaps to the reader's language on hydration (like `T` does
+ * for chrome), reading the per-row `i18n` overlay. Both languages ship in the
+ * payload — that's the deliberate cost of serving the page from cache.
+ */
+export function LocText({
+  source,
+  i18n,
+  field,
+}: {
+  source: string | null | undefined;
+  i18n?: Partial<Record<Locale, Record<string, unknown>>> | null;
+  field: string;
+}) {
+  const { locale } = useI18n();
+  const tr = i18n?.[locale]?.[field];
+  return <>{(typeof tr === "string" && tr) || source || ""}</>;
+}
+
+/** A date formatted in the reader's locale on the client. */
+export function LocDate({
+  value,
+  fallback,
+}: {
+  value: string | null | undefined;
+  fallback?: ReactNode;
+}) {
+  const { locale } = useI18n();
+  const s = formatDate(value ?? null, locale);
+  return <>{s || fallback || ""}</>;
 }
 
 /**
