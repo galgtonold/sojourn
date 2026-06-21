@@ -12,6 +12,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { isSupabaseConfigured, isEmbeddingsConfigured } from "@/lib/env";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyLineStrings } from "@/lib/gpx";
+import { buildExpandedTsQuery } from "@/lib/search-expand";
 import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
   emptyReactions,
@@ -417,6 +418,7 @@ export async function searchPosts(
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: POST_MATCH_COUNT,
       max_distance: POST_MAX_DISTANCE,
+      ts_query: buildExpandedTsQuery(q),
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
@@ -519,6 +521,7 @@ export async function searchPhotos(
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: PHOTO_MATCH_COUNT,
       max_distance: PHOTO_MAX_DISTANCE,
+      ts_query: buildExpandedTsQuery(q),
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);

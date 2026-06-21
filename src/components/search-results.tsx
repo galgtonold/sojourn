@@ -1,44 +1,56 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { PhotoSearchResult, PostSummary } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { PostCard } from "@/components/post-card";
 import { PhotoResultCard } from "@/components/photo-result-card";
 import { T, useI18n } from "@/components/i18n";
 
 type Results = { posts: PostSummary[]; photos: PhotoSearchResult[] };
 
+// Module-level cache: survives client-side back/forward navigation, so returning
+// to a search renders the SAME results instantly from memory — no re-fetch, no
+// flash, and the browser can restore the scroll position. Keyed by query, so the
+// rendered results always match the URL's `?q` (never a stale/unrelated set).
+const cache = new Map<string, Results>();
+const CACHE_LIMIT = 30;
+
+function remember(q: string, r: Results) {
+  cache.set(q, r);
+  if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
+}
+
 /**
  * Client-driven search results. The /search page is statically cached; this
- * reads the `?q` query, fetches `/api/search` (which embeds the query once and
- * runs both hybrid searches in parallel), and renders results — so loading the
- * page is instant and searching shows a spinner instead of a full SSR nav.
+ * reads `?q`, fetches `/api/search`, and renders results — and caches them per
+ * query so navigating away and back is instant (with scroll restored).
  */
 export function SearchResults() {
   const q = (useSearchParams().get("q") ?? "").trim();
   const { locale } = useI18n();
-  const [data, setData] = useState<Results | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, rerender] = useReducer((n) => n + 1, 0);
+  // The query currently being fetched (so the "Searching…" state is tied to the
+  // live query, never a stale one).
+  const [loadingQ, setLoadingQ] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!q) {
-      setData(null);
+    // Nothing to do when blank or already cached (the back-button case).
+    if (!q || cache.has(q)) {
+      setLoadingQ(null);
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    setLoadingQ(q);
     fetch(`/api/search?q=${encodeURIComponent(q)}`)
       .then((r) => (r.ok ? r.json() : { posts: [], photos: [] }))
-      .then((d: Results) => {
-        if (!cancelled) setData(d);
-      })
-      .catch(() => {
-        if (!cancelled) setData({ posts: [], photos: [] });
-      })
+      .then((d: Results) => remember(q, d))
+      .catch(() => remember(q, { posts: [], photos: [] }))
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoadingQ(null);
+          rerender();
+        }
       });
     return () => {
       cancelled = true;
@@ -47,8 +59,11 @@ export function SearchResults() {
 
   if (!q) return null;
 
-  // First search (nothing on screen yet): a centered "Searching…" indicator.
-  if (loading && !data) {
+  const data = cache.get(q) ?? null;
+
+  // No results for this query yet → a centered "Searching…" indicator. (Cached
+  // queries skip this entirely and render below instantly.)
+  if (!data) {
     return (
       <div className="mt-12 flex items-center justify-center gap-2 text-sand-100/70">
         <Loader2 className="size-5 animate-spin text-ember-400" />
@@ -57,67 +72,48 @@ export function SearchResults() {
     );
   }
 
-  const posts = data?.posts ?? [];
+  const posts = data.posts;
   // PhotoResultCard takes pre-localized text; overlay the reader's language here.
-  const photos = (data?.photos ?? []).map((ph) => ({
+  const photos = data.photos.map((ph) => ({
     ...ph,
     caption: ph.i18n?.[locale]?.caption ?? ph.caption,
     post_title: ph.post_i18n?.[locale]?.title ?? ph.post_title,
   }));
-  const empty = !loading && posts.length === 0 && photos.length === 0;
+  const empty = posts.length === 0 && photos.length === 0;
 
   return (
     <>
-      {/* Re-search while previous results are still shown: a clear in-progress
-          badge, with the stale results dimmed so it's obvious they're updating. */}
-      {loading && (
-        <div className="mt-8 flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-ink-800 px-4 py-2 text-sm text-sand-100/80">
-            <Loader2 className="size-4 animate-spin text-ember-400" />
-            <T k="search.searching" />
-          </span>
-        </div>
+      {empty && (
+        <p className="mt-10 text-sm text-sand-100/50">
+          <T k="search.noResults" vars={{ q }} />
+        </p>
       )}
 
-      <div
-        aria-busy={loading}
-        className={cn(
-          "transition-opacity duration-200",
-          loading && "pointer-events-none opacity-40",
-        )}
-      >
-        {empty && (
-          <p className="mt-10 text-sm text-sand-100/50">
-            <T k="search.noResults" vars={{ q }} />
-          </p>
-        )}
+      {posts.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+            <T k="search.stories" /> · {posts.length}
+          </h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
 
-        {posts.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
-              <T k="search.stories" /> · {posts.length}
-            </h2>
-            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {photos.length > 0 && (
-          <section className="mt-12">
-            <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
-              <T k="search.photos" /> · {photos.length}
-            </h2>
-            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {photos.map((photo) => (
-                <PhotoResultCard key={photo.id} photo={photo} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+      {photos.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-sand-100/50">
+            <T k="search.photos" /> · {photos.length}
+          </h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {photos.map((photo) => (
+              <PhotoResultCard key={photo.id} photo={photo} />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }
