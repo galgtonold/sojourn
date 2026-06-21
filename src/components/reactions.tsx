@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   REACTION_EMOJI,
@@ -30,6 +30,9 @@ export function Reactions({
   const [counts, setCounts] = useState<ReactionSummary>(initial);
   const [mine, setMine] = useState<Set<ReactionKind>>(new Set());
   const [busy, setBusy] = useState(false);
+  // Set once the visitor toggles, so the mount refetch can't clobber their
+  // optimistic update if it lands first.
+  const touched = useRef(false);
 
   // Restore which reactions this visitor already gave.
   useEffect(() => {
@@ -37,9 +40,27 @@ export function Reactions({
     if (stored) setMine(new Set(JSON.parse(stored) as ReactionKind[]));
   }, [postId]);
 
+  // The page bakes counts at build time, so they drift between saves. Refetch the
+  // live totals on mount (this block sits at the foot of the article, so it never
+  // gates render). Ignore failures/demo mode — the baked `initial` stays put.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/reactions?postId=${encodeURIComponent(postId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && !touched.current && data?.counts)
+          setCounts(data.counts as ReactionSummary);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [postId]);
+
   async function toggle(kind: ReactionKind) {
     if (busy) return;
     setBusy(true);
+    touched.current = true;
     const active = mine.has(kind);
 
     // Optimistic update.
