@@ -9,25 +9,22 @@ const SYNONYM_GROUPS: string[][] = [
   // cycling
   ["fahrrad", "fahrräder", "rad", "räder", "radeln", "radtour", "radweg",
    "bike", "bikes", "biking", "bicycle", "cycling", "cyclist", "velo"],
-  // glacier / ice
-  ["gletscher", "glacier", "glaciers", "eis", "ice"],
+  // glacier (NOT generic "ice/eis" — too common, over-matches)
+  ["gletscher", "glacier", "glaciers"],
   // mountains
-  ["berg", "berge", "gebirge", "mountain", "mountains", "gipfel", "summit",
-   "peak", "peaks"],
-  // hiking
-  ["wandern", "wanderung", "wanderweg", "hike", "hiking", "trek", "trekking",
-   "trail", "trails"],
+  ["berg", "berge", "gebirge", "mountain", "mountains", "gipfel", "summit"],
+  // hiking (NOT generic "trail" — over-matches)
+  ["wandern", "wanderung", "wanderweg", "hike", "hiking", "trek", "trekking"],
   // canal / locks
   ["schleuse", "schleusen", "lock", "locks", "kanal", "canal"],
   // snow
   ["schnee", "snow", "snowy", "schneebedeckt"],
   // sea / coast
-  ["meer", "ozean", "küste", "sea", "ocean", "coast", "coastal", "beach",
-   "strand"],
+  ["meer", "ozean", "küste", "sea", "ocean", "coast", "coastal"],
   // sunrise / sunset
-  ["sonnenaufgang", "sunrise", "dawn", "sonnenuntergang", "sunset", "dusk"],
-  // autumn / maple
-  ["herbst", "autumn", "fall", "ahorn", "maple"],
+  ["sonnenaufgang", "sunrise", "sonnenuntergang", "sunset"],
+  // autumn / maple (NOT English "fall" — ambiguous with falling)
+  ["herbst", "autumn", "ahorn", "maple"],
 ];
 
 const LOOKUP = new Map<string, string[]>();
