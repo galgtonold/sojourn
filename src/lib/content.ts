@@ -367,13 +367,20 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
 // photos/body — so the result payload stays small. `embedding` may be passed
 // precomputed so a combined search embeds the query once (see `searchAll`);
 // omit it and the query is embedded here.
-// Cosine-distance ceiling for the vector half of hybrid search: drop results
-// that aren't semantically near the query. Without it the vector side returned
-// every embedded row (so any query — even nonsense — matched everything).
-// Calibrated against a relevant/plausible/nonsense term set: nonsense distances
-// sit at ~0.83+, strong matches at ~0.5–0.7. Full-text still catches exact
-// keyword hits above this ceiling.
-const SEARCH_MAX_DISTANCE = 0.73;
+// Cosine-distance ceilings for the vector half of hybrid search: drop results
+// that aren't semantically near the query (otherwise the vector side returned
+// every embedded row, so any query — even nonsense — matched everything).
+//
+// Posts and photos need DIFFERENT ceilings. Long post bodies embed into a narrow
+// 0.7–0.9 band, so a single word ("cycling" 0.83, "Fahrrad" 0.84) sits right next
+// to nonsense (0.86+) — posts can't be separated much past full-text, so keep the
+// post ceiling tight and let full-text carry keyword post hits. Short photo
+// captions embed close to the query, so photos DO separate cleanly (relevant
+// 0.55–0.80, nonsense 0.85+) — a looser photo ceiling surfaces relevant images
+// (which link back to their post) without letting nonsense through.
+// Calibrated against a relevant/synonym/cross-language/nonsense term set.
+const POST_MAX_DISTANCE = 0.79;
+const PHOTO_MAX_DISTANCE = 0.8;
 
 export async function searchPosts(
   query: string,
@@ -402,7 +409,7 @@ export async function searchPosts(
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 50,
-      max_distance: SEARCH_MAX_DISTANCE,
+      max_distance: POST_MAX_DISTANCE,
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
@@ -504,7 +511,7 @@ export async function searchPhotos(
       query_text: q,
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: 36,
-      max_distance: SEARCH_MAX_DISTANCE,
+      max_distance: PHOTO_MAX_DISTANCE,
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
