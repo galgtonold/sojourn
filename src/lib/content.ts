@@ -373,14 +373,16 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
 // every embedded row, so any query — even nonsense — matched everything).
 //
 // Posts are matched at the CHUNK level (search_posts_hybrid scores a post by its
-// nearest chunk), which separates cleanly: specific queries land at 0.4–0.6,
-// synonym/cross-vocab queries ("Fahrrad" 0.67, "cycling" 0.70) at ~0.67–0.70,
-// and nonsense floors at ~0.76 — so 0.72 catches the relevant ones (incl. the
-// synonyms full-text misses) and excludes nonsense. Photos aren't chunked (short
-// captions already embed close), separating at relevant 0.55–0.80 / nonsense
-// 0.85+, so they take a looser ceiling. Calibrated against a
-// relevant/synonym/cross-language/nonsense term set; see scripts/dist-check.sh.
-const POST_MAX_DISTANCE = 0.72;
+// nearest chunk). Specific queries land at 0.4–0.6, conceptual ones at ~0.55–0.62,
+// and nonsense floors at ~0.76. We keep this ceiling fairly TIGHT (0.65) so a
+// broad conceptual query doesn't pull in every post via mid-distance chunks —
+// vocabulary recall (e.g. "Fahrrad" → posts that say "Rad"/"bike") is handled by
+// synonym-expanded full-text instead (see search-expand.ts), not by loosening
+// the semantic ceiling. Photos aren't chunked (short captions already embed
+// close), separating at relevant 0.55–0.80 / nonsense 0.85+, so they take a
+// looser ceiling. Calibrated against a relevant/synonym/cross-language/nonsense
+// term set.
+const POST_MAX_DISTANCE = 0.65;
 const PHOTO_MAX_DISTANCE = 0.8;
 
 // Result caps. This content is thematically uniform (travel/nature), so a broad
