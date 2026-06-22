@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 
 type AdminSupabase = NonNullable<ReturnType<typeof getAdminSupabase>>;
 
-// Builds the reader-facing state for one interaction. Counts/answers are only
-// revealed once the visitor has responded.
+// Builds the reader-facing state for one interaction. The tally rides along even
+// before voting — so the client can show an accurate result the instant you vote
+// (no "you're the only one" flash) — but the UI keeps it hidden until you do. The
+// quiz's correct answer and explanation stay server-side until you've answered.
 async function buildState(
   supabase: AdminSupabase,
   id: string,
@@ -30,8 +32,6 @@ async function buildState(
     .eq("visitor_token", token)
     .maybeSingle();
 
-  if (mine == null) return { voted: false as const };
-
   const options: string[] = it.options ?? [];
   const counts = await Promise.all(
     options.map((_, i) =>
@@ -43,11 +43,14 @@ async function buildState(
         .then((r: { count: number | null }) => r.count ?? 0),
     ),
   );
+  const total = counts.reduce((a, b) => a + b, 0);
+
+  if (mine == null) return { voted: false as const, counts, total };
 
   return {
     voted: true as const,
     counts,
-    total: counts.reduce((a, b) => a + b, 0),
+    total,
     yourChoice: mine.choice_index as number,
     correctIndex: it.kind === "quiz" ? (it.correct_index ?? null) : null,
     explanation:

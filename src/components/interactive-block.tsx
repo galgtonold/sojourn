@@ -32,27 +32,40 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
   const [busy, setBusy] = useState(false);
   const t = useT();
 
+  // Pre-fetch the current tally on load (the API sends it even before voting, and
+  // we keep it hidden until they vote) so the optimistic result is accurate. Don't
+  // overwrite a vote if this resolves after a quick tap.
   useEffect(() => {
+    let active = true;
     fetch(`/api/interactions?id=${id}&token=${encodeURIComponent(visitorToken())}`)
       .then((r) => r.json())
-      .then((s) => setState(s))
+      .then((s) => {
+        if (active) setState((prev) => (prev.voted ? prev : s));
+      })
       .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   async function vote(choice: number) {
     if (state.voted || busy) return;
     setBusy(true);
-    // Show the result instantly so the tap feels immediate. The API hides the
-    // tally until you've voted, so seed it with just this vote; the server's
-    // authoritative counts (and, for a quiz, the correct answer) reconcile in a
-    // moment. The bar width animates, so the jump to real numbers reads smoothly.
-    setState((s) => ({
-      ...s,
-      voted: true,
-      yourChoice: choice,
-      counts: options.map((_, i) => (i === choice ? 1 : 0)),
-      total: 1,
-    }));
+    // Show the result instantly so the tap feels immediate. Add this vote to the
+    // tally we pre-fetched on load, so the bars are already accurate — no "you're
+    // the only one" flash. The server response then reconciles any votes that
+    // landed since load (a small, smoothly-animated adjustment, if any). For a
+    // quiz the correct answer still arrives with that response.
+    setState((s) => {
+      const base = s.counts ?? options.map(() => 0);
+      return {
+        ...s,
+        voted: true,
+        yourChoice: choice,
+        counts: base.map((c, i) => (i === choice ? c + 1 : c)),
+        total: (s.total ?? 0) + 1,
+      };
+    });
     try {
       const res = await fetch("/api/interactions", {
         method: "POST",
