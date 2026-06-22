@@ -33,7 +33,7 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   chip.dataset.token = seg.token;
   const broken = seg.chipKind === "broken";
   chip.className = [
-    "mx-0.5 inline-flex max-w-[14rem] select-none items-center gap-1 rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
+    "mx-0.5 inline-flex max-w-[min(22rem,75vw)] select-none items-center gap-1 rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
     broken
       ? "bg-red-500/10 text-red-300 ring-red-500/40"
       : "bg-ember-500/15 text-sand-50 ring-ember-400/30",
@@ -119,8 +119,12 @@ export const InlineEditor = forwardRef<
   const removeLabel = t("admin.editor.removeObject");
   // Our manual DOM edits bypass the browser's native undo stack, so we keep our
   // own history of body snapshots and intercept Ctrl/Cmd+Z (see onKeyDown).
-  const history = useRef<{ stack: string[]; index: number; t: number }>({
-    stack: [body],
+  const history = useRef<{
+    stack: { body: string; caret: number }[];
+    index: number;
+    t: number;
+  }>({
+    stack: [{ body, caret: 0 }],
     index: 0,
     t: 0,
   });
@@ -133,7 +137,76 @@ export const InlineEditor = forwardRef<
       if (s.kind === "text") el.appendChild(document.createTextNode(s.text));
       else el.appendChild(makeChip(s, removeLabel));
     }
+    // Guarantee a caret home after a trailing chip (an empty text node
+    // serializes to nothing, so the body is unchanged).
+    if (el.lastChild && el.lastChild.nodeType !== Node.TEXT_NODE) {
+      el.appendChild(document.createTextNode(""));
+    }
     lastSerialized.current = value;
+  };
+
+  // The selection end as an offset into the serialized body (so we can restore
+  // the caret across a DOM rebuild, e.g. after undo). Reuses serialize on the
+  // range from the start of the editor up to the caret.
+  const caretOffset = (): number | null => {
+    const el = elRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || !sel.rangeCount) return null;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.endContainer)) return null;
+    const pre = document.createRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(range.endContainer, range.endOffset);
+    return serialize(pre.cloneContents()).length;
+  };
+
+  // Inverse of caretOffset: place the caret at a body offset in the freshly-built
+  // DOM. Text nodes count their length, chips their token length, <br> one (\n).
+  const placeCaret = (offset: number) => {
+    const el = elRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel) return;
+    let remaining = offset;
+    const range = document.createRange();
+    const walk = (node: Node): boolean => {
+      for (const child of Array.from(node.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const len = (child.textContent ?? "").length;
+          if (remaining <= len) {
+            range.setStart(child, remaining);
+            return true;
+          }
+          remaining -= len;
+        } else if (child instanceof HTMLElement) {
+          if (child.dataset.token != null) {
+            const len = child.dataset.token.length;
+            if (remaining <= 0) {
+              range.setStartBefore(child);
+              return true;
+            }
+            if (remaining <= len) {
+              range.setStartAfter(child);
+              return true;
+            }
+            remaining -= len;
+          } else if (child.tagName === "BR") {
+            if (remaining <= 0) {
+              range.setStartBefore(child);
+              return true;
+            }
+            remaining -= 1;
+          } else if (walk(child)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    if (!walk(el)) range.selectNodeContents(el);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedRange.current = range.cloneRange();
   };
 
   // Rebuild the DOM on an external body change (mount, AI reseed) — our own edits
@@ -157,9 +230,18 @@ export const InlineEditor = forwardRef<
     const onSel = () => {
       const el = elRef.current;
       const sel = window.getSelection();
-      if (el && sel && sel.rangeCount && el.contains(sel.anchorNode)) {
-        savedRange.current = sel.getRangeAt(0).cloneRange();
-      }
+      if (!el) return;
+      const inEditor =
+        !!sel && sel.rangeCount > 0 && el.contains(sel.anchorNode);
+      if (inEditor && sel) savedRange.current = sel.getRangeAt(0).cloneRange();
+      // The browser doesn't tint our contenteditable=false chips when they fall
+      // inside a selection, so do it ourselves (inline bg overrides the class).
+      const range =
+        inEditor && sel && !sel.isCollapsed ? sel.getRangeAt(0) : null;
+      el.querySelectorAll<HTMLElement>("[data-token]").forEach((chip) => {
+        chip.style.backgroundColor =
+          range && range.intersectsNode(chip) ? "rgba(245,106,31,0.5)" : "";
+      });
     };
     document.addEventListener("selectionchange", onSel);
     return () => document.removeEventListener("selectionchange", onSel);
@@ -169,13 +251,14 @@ export const InlineEditor = forwardRef<
   // structural edits (insert/delete/paste) pass coalesce=false for a discrete one.
   const record = (next: string, coalesce: boolean) => {
     const h = history.current;
-    if (h.stack[h.index] === next) return;
+    if (h.stack[h.index].body === next) return;
     if (h.index < h.stack.length - 1) h.stack = h.stack.slice(0, h.index + 1);
+    const entry = { body: next, caret: caretOffset() ?? next.length };
     const now = Date.now();
     if (coalesce && now - h.t < 600 && h.stack.length > 1) {
-      h.stack[h.stack.length - 1] = next;
+      h.stack[h.stack.length - 1] = entry;
     } else {
-      h.stack.push(next);
+      h.stack.push(entry);
       if (h.stack.length > 300) h.stack.shift();
     }
     h.index = h.stack.length - 1;
@@ -191,20 +274,11 @@ export const InlineEditor = forwardRef<
     onChange(md);
   };
 
-  // Restore a snapshot: rebuild the DOM, sync the parent, caret to the end.
-  const applyHistory = (value: string) => {
-    build(value);
-    onChange(value);
-    const el = elRef.current;
-    const sel = window.getSelection();
-    if (el && sel) {
-      const r = document.createRange();
-      r.selectNodeContents(el);
-      r.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(r);
-      savedRange.current = r.cloneRange();
-    }
+  // Restore a snapshot: rebuild the DOM, sync the parent, caret back where it was.
+  const applyHistory = (entry: { body: string; caret: number }) => {
+    build(entry.body);
+    onChange(entry.body);
+    placeCaret(entry.caret);
   };
   const undo = () => {
     const h = history.current;
