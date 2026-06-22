@@ -9,6 +9,10 @@ import {
   type EditablePost,
   type PostEditorHandle,
 } from "@/components/post-editor";
+import {
+  InteractionManager,
+  type ManagedInteraction,
+} from "@/components/interaction-manager";
 import { Select } from "@/components/select";
 import { useT } from "@/components/i18n";
 import type { Photo } from "@/lib/types";
@@ -22,28 +26,32 @@ import type { Photo } from "@/lib/types";
  */
 export function PostEditWorkspace({
   postId,
+  slug,
   initial,
   initialNotes,
   aiConfigured,
   trips,
   photos,
   photoIds,
-  interactionIds,
-  interactions,
+  initialInteractions,
 }: {
   postId: string;
+  slug: string;
   initial: EditablePost;
   initialNotes: string;
   aiConfigured: boolean;
   trips: { id: string; title: string }[];
   photos: Photo[];
   photoIds: string[];
-  interactionIds: string[];
-  interactions: import("@/lib/story-editor").EditorInteraction[];
+  initialInteractions: ManagedInteraction[];
 }) {
   const t = useT();
   const [editorInitial, setEditorInitial] = useState(initial);
   const [version, setVersion] = useState(0);
+  // Own the interactions list so the builder (above) and the article's insert
+  // bar (below) share it live — define a poll, insert it without a reload.
+  const [interactions, setInteractions] =
+    useState<ManagedInteraction[]>(initialInteractions);
   // Trip is lifted here (above the AI panel) when AI is on, so its context is
   // chosen before generation; the editor then renders it controlled.
   const [tripId, setTripId] = useState(initial.trip_id);
@@ -115,6 +123,16 @@ export function PostEditWorkspace({
         </div>
       )}
 
+      {/* Define polls/quizzes before writing; the article's insert bar lists them. */}
+      <div className="mb-8">
+        <InteractionManager
+          postId={postId}
+          slug={slug}
+          list={interactions}
+          onListChange={setInteractions}
+        />
+      </div>
+
       <PostEditor
         key={version}
         ref={editorRef}
@@ -122,7 +140,7 @@ export function PostEditWorkspace({
         trips={trips}
         photos={photos}
         photoIds={photoIds}
-        interactionIds={interactionIds}
+        interactionIds={interactions.map((it) => it.id)}
         interactions={interactions}
         {...(aiConfigured ? { tripId, onTripChange: setTripId } : {})}
       />

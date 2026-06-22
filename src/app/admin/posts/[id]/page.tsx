@@ -8,7 +8,7 @@ import { type EditablePost } from "@/components/post-editor";
 import { PostEditWorkspace } from "@/components/post-edit-workspace";
 import { PhotoManager } from "@/components/photo-manager";
 import { TrackManager } from "@/components/track-manager";
-import { InteractionManager } from "@/components/interaction-manager";
+import type { ManagedInteraction } from "@/components/interaction-manager";
 import { TranslationBadge } from "@/components/translation-badge";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
@@ -163,22 +163,14 @@ export default async function EditPostPage({
       <div className="mt-12 border-t border-white/10 pt-10">
         <PostEditWorkspace
           postId={data.id}
+          slug={data.slug ?? ""}
           initial={initial}
           initialNotes={data.ai_notes ?? ""}
           aiConfigured={isAiConfigured}
           trips={trips}
           photos={photos ?? []}
           photoIds={(photos ?? []).map((p) => p.id)}
-          interactionIds={(interactions ?? []).map((it) => it.id)}
-          interactions={(interactions ?? []) as import("@/lib/story-editor").EditorInteraction[]}
-        />
-      </div>
-
-      <div className="mt-12 border-t border-white/10 pt-10">
-        <InteractionManager
-          postId={data.id}
-          slug={data.slug ?? ""}
-          initial={interactions ?? []}
+          initialInteractions={(interactions ?? []) as ManagedInteraction[]}
         />
       </div>
     </div>

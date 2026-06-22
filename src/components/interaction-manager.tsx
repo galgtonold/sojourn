@@ -17,13 +17,16 @@ export type ManagedInteraction = {
 export function InteractionManager({
   postId,
   slug,
-  initial,
+  list,
+  onListChange,
 }: {
   postId: string;
   slug: string;
-  initial: ManagedInteraction[];
+  // Controlled by the workspace so a freshly-defined poll is immediately
+  // insertable in the article's insert bar (no save/reload).
+  list: ManagedInteraction[];
+  onListChange: (next: ManagedInteraction[]) => void;
 }) {
-  const [list, setList] = useState<ManagedInteraction[]>(initial);
   const [kind, setKind] = useState<"poll" | "quiz">("poll");
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -96,8 +99,8 @@ export function InteractionManager({
         .single();
       setBusy(false);
       if (error) return setError(error.message);
-      setList((l) =>
-        l.map((x) => (x.id === editingId ? (data as ManagedInteraction) : x)),
+      onListChange(
+        list.map((x) => (x.id === editingId ? (data as ManagedInteraction) : x)),
       );
       reset();
       revalidate();
@@ -111,7 +114,7 @@ export function InteractionManager({
       .single();
     setBusy(false);
     if (error) return setError(error.message);
-    setList((l) => [...l, data as ManagedInteraction]);
+    onListChange([...list, data as ManagedInteraction]);
     reset();
     revalidate();
   }
@@ -120,7 +123,7 @@ export function InteractionManager({
     const supabase = getBrowserSupabase();
     if (!supabase) return;
     if (editingId === it.id) reset();
-    setList((l) => l.filter((x) => x.id !== it.id));
+    onListChange(list.filter((x) => x.id !== it.id));
     await supabase.from("interactions").delete().eq("id", it.id);
     revalidate();
   }
