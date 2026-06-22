@@ -6,6 +6,7 @@ import { Compass, Menu, Search, X } from "lucide-react";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 import { T, LanguageSwitcher, useT } from "@/components/i18n";
+import { NotificationBell } from "@/components/notification-bell";
 
 const LINKS = [
   { href: "/posts", label: "nav.stories" as const },
@@ -66,6 +67,7 @@ export function SiteHeader() {
                 <T k="search.title" />
               </span>
             </Link>
+            <NotificationBell />
             <span className="ml-1 border-l border-white/10 pl-1">
               <LanguageSwitcher />
             </span>
@@ -82,6 +84,7 @@ export function SiteHeader() {
                 <T k="search.title" />
               </span>
             </Link>
+            <NotificationBell className="size-10" iconClassName="size-5" />
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}

@@ -471,6 +471,7 @@ const en = {
 
   "push.enable": "Enable notifications",
   "push.enabling": "Enabling…",
+  "push.viewer": "Notifications",
   "push.on": "Notifications on",
   "push.blocked": "Blocked in browser",
   "push.blockedHelp":
@@ -960,6 +961,7 @@ const de: Dict = {
 
   "push.enable": "Benachrichtigungen aktivieren",
   "push.enabling": "Aktivieren…",
+  "push.viewer": "Benachrichtigungen",
   "push.on": "Benachrichtigungen an",
   "push.blocked": "Im Browser blockiert",
   "push.blockedHelp":
