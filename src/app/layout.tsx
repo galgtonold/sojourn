@@ -10,6 +10,7 @@ import { RouteProgress } from "@/components/route-progress";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { I18nProvider } from "@/components/i18n";
 import { ConfirmProvider } from "@/components/confirm-dialog";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -63,6 +64,7 @@ export default function RootLayout({
             </SiteChrome>
           </ConfirmProvider>
         </I18nProvider>
+        <Analytics />
       </body>
     </html>
   );
