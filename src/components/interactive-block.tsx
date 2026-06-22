@@ -42,6 +42,17 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
   async function vote(choice: number) {
     if (state.voted || busy) return;
     setBusy(true);
+    // Show the result instantly so the tap feels immediate. The API hides the
+    // tally until you've voted, so seed it with just this vote; the server's
+    // authoritative counts (and, for a quiz, the correct answer) reconcile in a
+    // moment. The bar width animates, so the jump to real numbers reads smoothly.
+    setState((s) => ({
+      ...s,
+      voted: true,
+      yourChoice: choice,
+      counts: options.map((_, i) => (i === choice ? 1 : 0)),
+      total: 1,
+    }));
     try {
       const res = await fetch("/api/interactions", {
         method: "POST",
@@ -49,8 +60,10 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
         body: JSON.stringify({ id, token: visitorToken(), choice }),
       });
       if (res.ok) setState(await res.json());
+      // On a non-OK response keep the optimistic state — a casual poll vote that
+      // didn't persist isn't worth yanking the result back out from under them.
     } catch {
-      // leave unvoted
+      // Offline / network blip: keep the optimistic result rather than revert.
     } finally {
       setBusy(false);
     }
@@ -100,7 +113,7 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
               {voted && (
                 <span
                   className={cn(
-                    "absolute inset-y-0 left-0",
+                    "absolute inset-y-0 left-0 transition-[width] duration-300 ease-out",
                     isCorrect ? "bg-sage-500/15" : "bg-ember-500/12",
                   )}
                   style={{ width: `${pct}%` }}
