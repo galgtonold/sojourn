@@ -115,11 +115,18 @@ describe("blockKey", () => {
     const proseAfter = blocks.findIndex(
       (b, i) => b.kind === "prose" && i > 0,
     );
-    expect(blockKey(blocks, proseAfter)).toBe("prose-after:photo:p1");
+    expect(blockKey(blocks, proseAfter)).toBe("prose-after:photo:p1#0");
   });
 
   it("keys the head prose block stably", () => {
     const blocks = editorBlocks("hello", photos, []);
     expect(blockKey(blocks, 0)).toBe("prose-head");
+  });
+
+  it("disambiguates duplicate object ids so all keys stay unique", () => {
+    const body = "[photo:p1]\nmid\n[photo:p1]\nend";
+    const blocks = editorBlocks(body, photos, []);
+    const keys = blocks.map((_, i) => blockKey(blocks, i));
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

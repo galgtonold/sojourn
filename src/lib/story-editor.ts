@@ -180,20 +180,27 @@ export function swapObjects(
   return out;
 }
 
-/**
- * Stable React key for a block, so untouched blocks don't remount on re-parse
- * (which would lose caret/scroll). Object blocks key by their stable token id;
- * a prose block keys by the id of the object immediately before it (or "head"),
- * with an index fallback for transient cases (pending/broken, consecutive prose).
- */
 export function blockKey(blocks: EditorBlock[], index: number): string {
+  // A stable, collision-free id for an object block: its base identity plus how
+  // many prior object blocks share that base, so two [photo:p1] tags get
+  // distinct keys. Occurrence ordinals don't shift while typing (no structural
+  // change), preserving the no-remount-on-keystroke property.
+  const base = (b: EditorBlock): string | null => {
+    if (b.kind === "photo") return `photo:${b.photo.id}`;
+    if (b.kind === "interaction") return `ask:${b.interaction.id}`;
+    if (b.kind === "pending") return "pending";
+    if (b.kind === "broken") return `broken:${b.refType}:${b.ref}`;
+    return null; // prose
+  };
+  const objUid = (j: number): string => {
+    const target = base(blocks[j]);
+    let occ = 0;
+    for (let k = 0; k < j; k++) if (base(blocks[k]) === target) occ++;
+    return `${target}#${occ}`;
+  };
+
   const b = blocks[index];
-  if (b.kind === "photo") return `photo:${b.photo.id}`;
-  if (b.kind === "interaction") return `ask:${b.interaction.id}`;
-  if (b.kind === "pending") return `pending:${index}`;
-  if (b.kind === "broken") return `broken:${b.refType}:${b.ref}:${index}`;
-  const prev = blocks[index - 1];
-  if (prev?.kind === "photo") return `prose-after:photo:${prev.photo.id}`;
-  if (prev?.kind === "interaction") return `prose-after:ask:${prev.interaction.id}`;
-  return index === 0 ? "prose-head" : `prose:${index}`;
+  if (b.kind !== "prose") return objUid(index);
+  if (index === 0) return "prose-head";
+  return `prose-after:${objUid(index - 1)}`;
 }
