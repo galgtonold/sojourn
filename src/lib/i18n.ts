@@ -292,8 +292,14 @@ const en = {
   "admin.editor.excerpt": "Excerpt",
   "admin.editor.body": "Write your story…",
   "admin.editor.helpLabel": "Formatting",
-  "admin.editor.help":
-    "Markdown: ## heading, **bold**, > quote, - list, [text](url). Add photos and polls with the insert bar above — no need to type anything.",
+  "admin.editor.help.intro":
+    "Prose is plain Markdown. Photos and polls go in via the insert bar above — no need to type anything.",
+  "admin.editor.help.heading": "Heading",
+  "admin.editor.help.bold": "Bold",
+  "admin.editor.help.italic": "Italic",
+  "admin.editor.help.quote": "Quote",
+  "admin.editor.help.list": "List item",
+  "admin.editor.help.link": "Link",
   "admin.editor.insertBar": "Insert — drop a photo, poll or quiz at the cursor.",
   "admin.editor.insertPhoto": "Insert this photo at the cursor",
   "admin.editor.insertInteraction": "Insert this poll or quiz at the cursor",
@@ -473,7 +479,7 @@ const en = {
 
   "admin.ask.title": "Polls & quizzes",
   "admin.ask.subtitle":
-    "Create a block, then drop its [ask:ID] tag into the body. Saved automatically.",
+    "Define a poll or quiz here, then insert it from the bar above the article. Saved automatically.",
   "admin.ask.copyTag": "Copy tag",
   "admin.ask.copied": "Copied!",
   "admin.ask.edit": "Edit",
@@ -797,8 +803,14 @@ const de: Dict = {
   "admin.editor.excerpt": "Kurzbeschreibung",
   "admin.editor.body": "Schreib deine Geschichte…",
   "admin.editor.helpLabel": "Formatierung",
-  "admin.editor.help":
-    "Markdown: ## Überschrift, **fett**, > Zitat, - Liste, [Text](url). Fotos und Umfragen fügst du über die Leiste oben ein — du musst nichts tippen.",
+  "admin.editor.help.intro":
+    "Fließtext ist einfaches Markdown. Fotos und Umfragen fügst du über die Leiste oben ein — du musst nichts tippen.",
+  "admin.editor.help.heading": "Überschrift",
+  "admin.editor.help.bold": "Fett",
+  "admin.editor.help.italic": "Kursiv",
+  "admin.editor.help.quote": "Zitat",
+  "admin.editor.help.list": "Listenpunkt",
+  "admin.editor.help.link": "Link",
   "admin.editor.insertBar": "Einfügen — Foto, Umfrage oder Quiz an der Cursorposition.",
   "admin.editor.insertPhoto": "Dieses Foto an der Cursorposition einfügen",
   "admin.editor.insertInteraction": "Diese Umfrage oder dieses Quiz an der Cursorposition einfügen",
@@ -985,7 +997,7 @@ const de: Dict = {
 
   "admin.ask.title": "Umfragen & Quizze",
   "admin.ask.subtitle":
-    "Erstelle einen Block und setze dann sein [ask:ID]-Tag in den Text. Automatisch gespeichert.",
+    "Lege hier eine Umfrage oder ein Quiz an und füge sie über die Leiste über dem Artikel ein. Automatisch gespeichert.",
   "admin.ask.copyTag": "Tag kopieren",
   "admin.ask.copied": "Kopiert!",
   "admin.ask.edit": "Bearbeiten",

@@ -9,6 +9,7 @@ import {
   type InlineEditorHandle,
 } from "@/components/inline-editor";
 import { InsertPalette } from "@/components/insert-palette";
+import { FormattingHelp } from "@/components/formatting-help";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -60,7 +61,13 @@ export function ArticleStage({
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => confirm({ message: t("admin.editor.help"), notice: true })}
+            onClick={() =>
+              confirm({
+                title: t("admin.editor.helpLabel"),
+                message: <FormattingHelp />,
+                notice: true,
+              })
+            }
             className="inline-flex items-center gap-1 text-xs text-sand-100/50 transition hover:text-sand-100"
           >
             <HelpCircle className="size-3.5" /> {t("admin.editor.helpLabel")}

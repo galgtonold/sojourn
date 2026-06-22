@@ -27,10 +27,15 @@ export function formatDate(
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
+  // Format in UTC, not the reader's timezone: a published date is a calendar day
+  // (stored at noon UTC), so a reader in any timezone — and the SSR pass vs the
+  // client hydration — must show the same day instead of flipping across the
+  // local midnight boundary.
   return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

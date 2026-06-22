@@ -12,7 +12,7 @@ import { useT } from "@/components/i18n";
 import { cn } from "@/lib/utils";
 
 export type ConfirmOptions = {
-  message: string;
+  message: ReactNode;
   title?: string;
   confirmLabel?: string;
   cancelLabel?: string;
@@ -90,14 +90,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 {opts.title}
               </h2>
             )}
-            <p
+            <div
               className={cn(
                 "text-sm leading-relaxed text-sand-100/80",
                 opts.title && "mt-1.5",
               )}
             >
               {opts.message}
-            </p>
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               {!opts.notice && (
                 <button
