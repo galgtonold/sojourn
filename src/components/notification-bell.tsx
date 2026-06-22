@@ -10,6 +10,7 @@ import {
 } from "@/lib/push-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 // Push availability depends only on the public VAPID key in the browser.
 const pushAvailable = Boolean(env.vapidPublicKey);
@@ -29,14 +30,23 @@ export function NotificationBell({
   iconClassName?: string;
 }) {
   const t = useT();
-  const [state, setState] = useState<PushState | null>(null);
+  const confirm = useConfirm();
+  // Start in the neutral "off" state and render immediately (no pop-in on load,
+  // unlike waiting for the async getPushState). Refine once we know the real
+  // state; only then can we discover an unsupported browser and hide.
+  const [state, setState] = useState<PushState>("default");
+  const [resolved, setResolved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (pushAvailable) getPushState().then(setState);
+    if (!pushAvailable) return;
+    getPushState().then((s) => {
+      setState(s);
+      setResolved(true);
+    });
   }, []);
 
-  if (!pushAvailable || state === null || state === "unsupported") return null;
+  if (!pushAvailable || (resolved && state === "unsupported")) return null;
 
   const subscribed = state === "subscribed";
   const denied = state === "denied";
@@ -48,8 +58,15 @@ export function NotificationBell({
       : t("push.enable");
   const hint = denied ? t("push.blockedHelp") : `${t("push.viewer")} — ${status}`;
 
-  async function toggle() {
-    if (busy || denied) return;
+  async function handleClick() {
+    if (busy) return;
+    // The browser has blocked notifications at the site level — we can't reprompt
+    // (that's the whole point of a block), so explain how to undo it instead of
+    // silently doing nothing. The subscribe prompt itself never appears here.
+    if (denied) {
+      await confirm({ message: t("push.blockedHelp"), notice: true });
+      return;
+    }
     setBusy(true);
     try {
       if (subscribed) {
@@ -69,13 +86,17 @@ export function NotificationBell({
   return (
     <button
       type="button"
-      onClick={toggle}
-      disabled={busy || denied}
+      onClick={handleClick}
+      disabled={busy}
       aria-label={hint}
       title={hint}
       className={cn(
         "flex items-center justify-center rounded-full transition hover:bg-white/5 hover:text-sand-50 disabled:cursor-default disabled:opacity-60",
-        subscribed ? "text-ember-300" : "text-sand-100/80",
+        subscribed
+          ? "text-ember-300"
+          : denied
+            ? "text-sand-100/40"
+            : "text-sand-100/80",
         className,
       )}
     >

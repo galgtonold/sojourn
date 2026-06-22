@@ -58,7 +58,11 @@ export async function subscribeToPush(
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return { ok: false, reason: permission };
 
-  const reg = await navigator.serviceWorker.register("/sw.js");
+  // Reuse the worker the page already registered (it carries a per-build query),
+  // so we don't register a second, unversioned /sw.js alongside it.
+  const reg =
+    (await navigator.serviceWorker.getRegistration()) ??
+    (await navigator.serviceWorker.register("/sw.js"));
   await navigator.serviceWorker.ready;
 
   let sub = await reg.pushManager.getSubscription();

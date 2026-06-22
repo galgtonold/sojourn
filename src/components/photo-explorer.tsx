@@ -115,6 +115,7 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
       photoBounds.isEmpty() ? null : photoBounds,
       photos.length <= 1 ? 9 : 14,
     );
+    const fitOpts = { padding: 64, maxZoom: photos.length <= 1 ? 9 : 14 };
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
@@ -122,6 +123,14 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
       zoom: view ? view.zoom : 4,
       attributionControl: { compact: true },
     });
+    // Snap to the EXACT fit immediately — cameraForBounds uses the container's
+    // real pixel size + aspect, so unlike the span-based estimate it lands on the
+    // final camera before any tiles load. So the first (and only) tiles fetched
+    // are the ones we keep: no wide pre-load, no on-load zoom jump.
+    if (!photoBounds.isEmpty()) {
+      const cam = map.cameraForBounds(photoBounds, fitOpts);
+      if (cam) map.jumpTo(cam);
+    }
     mapRef.current = map;
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
