@@ -73,7 +73,7 @@ insert into public.posts (id, slug, title, excerpt, body, cover_image, cover_alt
    'Temples in Schnee, der Geruch von gerösteten Kastanien.',
    E'In Biei ist die Welt weiß auf weiß. Die Bäume stehen wie Tinte auf Papier.',
    'https://images.unsplash.com/photo-1493246507139-91e8fad9978e','Verschneite Bäume',
-   '11111111-0000-0000-0000-000000000002','Biei, Hokkaido',43.59,142.46, true, now() - interval '120 days','de','{}','ready'),
+   '11111111-0000-0000-0000-000000000002','Biei, Hokkaido',43.59,142.46, true, now() - interval '120 days','de','{}','none'),
   ('22222222-0000-0000-0000-000000000004','a-note-without-a-trip','Eine Notiz ohne Reise',
    'Manche Einträge gehören zu keiner Reise.',
    E'Dieser Eintrag hat absichtlich keine Reise — ein Test für lose Beiträge.',

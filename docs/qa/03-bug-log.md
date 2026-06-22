@@ -166,3 +166,22 @@ Environment: local `supabase start` stack + `supabase/seed.sql` (50 posts / 43 p
 - **Members invite → /admin/welcome → set-password** end-to-end (RLS for trip_members verified; the invite token round-trip not yet driven).
 - **Admin CRUD through the UI** (create/edit/delete post & trip, publish toggle, photo/interaction managers): RLS + API contracts verified; the editor UI flows not yet exhaustively clicked.
 - Exhaustive responsive/a11y audit.
+
+---
+
+## AI pipeline verified (live, with real DeepSeek + OpenAI keys, local stack)
+
+Keys in `.env.local` (gitignored). Total spend for the whole AI pass: **$0.0121** (53 calls).
+
+- **Embeddings backfill** (`/api/admin/ai/embeddings`, OpenAI `text-embedding-3-small`): embedded 50 posts, 48 photos, 166 chunks. Metered.
+- **Semantic / hybrid search:** works **cross-lingually** — English query "frozen glacier landscape" surfaces German posts about ice/glaciers ("Blaues Eis", "Gletscher", "Cerro Torre"); "autumn temple foliage" → the Japan post. Embeddings bridge language + vocabulary that full-text alone can't.
+- **DeepSeek drafting connectivity** (`/api/admin/ai/questions`): generated 6 context-aware German interview questions that referenced real post data (the GPX track name, the photo count) — confirms the dossier/style-guide assembly. Note: the default model id `deepseek-v4-flash` resolved fine (the earlier concern was unfounded).
+- **Captions** (`/api/admin/ai/captions`, DeepSeek text): runs + meters; `onlyEmpty` correctly skips already-captioned photos.
+- **Vision / photo enrichment** (`/api/admin/ai/enrich-photo`, OpenAI `gpt-4o-mini`): produced an accurate German description of the actual image (snowy peak, jagged ridges, rocky foreground) and wrote `ai_description`.
+- **AI usage metering + dashboard** (`/admin/ai-usage`, `ai_usage_summary` RPC): renders this-month/all-time spend, call count, cache-hit rate, and a per-operation cost breakdown. Token counts exact; cost via configured rates.
+
+**Translation deferred (by design, not a bug):** `triggerPostTranslation` no-ops unless the `translate` Edge Function is configured (`isEdgeTranslateConfigured`) — there is no synchronous fallback (content renders in source language). Testing it requires deploying the local Supabase edge function + `EDGE_SHARED_SECRET`. The async LLM job runner (`isEdgeJobConfigured`) is likewise an optional offload; the draft endpoints fall back to synchronous in-route calls (verified via `questions`).
+
+**Seed nit fixed:** the Biei post was seeded `translation_status='ready'` with empty `i18n` (inconsistent); changed to `'none'`. Not an app bug — surfaced while testing translation.
+
+**Full draft UI orchestration** (questions→enrich→outline→section→homogenize→captions→save) not driven end-to-end through the editor panel, but every underlying step/provider is verified working; the orchestration is the same synchronous DeepSeek/vision call pattern.
