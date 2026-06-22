@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import type { MarkdownEditorHandle } from "@/components/markdown-editor";
 import { ProseBlock } from "@/components/prose-block";
 import { ObjectCard } from "@/components/object-card";
@@ -45,9 +45,10 @@ export function StoryEditor({
     start: body.length,
     caret: 0,
   });
-  // One-shot focus request after a structural edit: key of the block to focus
-  // and the caret offset within its slice.
-  const [focusReq, setFocusReq] = useState<{ key: string; offset: number } | null>(null);
+  // A one-shot focus request after a structural edit, kept in a ref so applying
+  // it from a ProseBlock ref callback neither needs a re-render nor mutates
+  // state during commit.
+  const focusReq = useRef<{ key: string; offset: number } | null>(null);
   const proseRefs = useRef<Map<string, MarkdownEditorHandle | null>>(new Map());
 
   const insertToken = useCallback(
@@ -66,10 +67,10 @@ export function StoryEditor({
         (b) => b.kind === "prose" && nextCaret >= b.start && nextCaret <= b.end,
       );
       if (idx !== -1)
-        setFocusReq({
+        focusReq.current = {
           key: blockKey(nextBlocks, idx),
           offset: nextCaret - nextBlocks[idx].start,
-        });
+        };
       onChange(next);
     },
     [body, onChange, photos, interactions],
@@ -85,9 +86,10 @@ export function StoryEditor({
   };
 
   const applyFocus = (key: string) => {
-    if (!focusReq || focusReq.key !== key) return;
-    proseRefs.current.get(key)?.focusAt(focusReq.offset);
-    setFocusReq(null);
+    const req = focusReq.current;
+    if (!req || req.key !== key) return;
+    proseRefs.current.get(key)?.focusAt(req.offset);
+    focusReq.current = null;
   };
 
   return (
@@ -108,8 +110,12 @@ export function StoryEditor({
               <ProseBlock
                 key={key}
                 ref={(h) => {
-                  proseRefs.current.set(key, h);
-                  if (h) applyFocus(key);
+                  if (h) {
+                    proseRefs.current.set(key, h);
+                    applyFocus(key);
+                  } else {
+                    proseRefs.current.delete(key);
+                  }
                 }}
                 value={b.text}
                 placeholder={i === 0 ? placeholder : t("admin.editor.emptyProse")}
