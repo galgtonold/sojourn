@@ -117,6 +117,13 @@ export const InlineEditor = forwardRef<
   const lastSerialized = useRef<string>(" __unbuilt__");
   const savedRange = useRef<Range | null>(null);
   const removeLabel = t("admin.editor.removeObject");
+  // Our manual DOM edits bypass the browser's native undo stack, so we keep our
+  // own history of body snapshots and intercept Ctrl/Cmd+Z (see onKeyDown).
+  const history = useRef<{ stack: string[]; index: number; t: number }>({
+    stack: [body],
+    index: 0,
+    t: 0,
+  });
 
   const build = (value: string) => {
     const el = elRef.current;
@@ -158,12 +165,58 @@ export const InlineEditor = forwardRef<
     return () => document.removeEventListener("selectionchange", onSel);
   }, []);
 
-  const emit = () => {
+  // Record a new body snapshot. Rapid typing coalesces into one undo step;
+  // structural edits (insert/delete/paste) pass coalesce=false for a discrete one.
+  const record = (next: string, coalesce: boolean) => {
+    const h = history.current;
+    if (h.stack[h.index] === next) return;
+    if (h.index < h.stack.length - 1) h.stack = h.stack.slice(0, h.index + 1);
+    const now = Date.now();
+    if (coalesce && now - h.t < 600 && h.stack.length > 1) {
+      h.stack[h.stack.length - 1] = next;
+    } else {
+      h.stack.push(next);
+      if (h.stack.length > 300) h.stack.shift();
+    }
+    h.index = h.stack.length - 1;
+    h.t = now;
+  };
+
+  const emit = (coalesce = true) => {
     const el = elRef.current;
     if (!el) return;
     const md = serialize(el);
     lastSerialized.current = md;
+    record(md, coalesce);
     onChange(md);
+  };
+
+  // Restore a snapshot: rebuild the DOM, sync the parent, caret to the end.
+  const applyHistory = (value: string) => {
+    build(value);
+    onChange(value);
+    const el = elRef.current;
+    const sel = window.getSelection();
+    if (el && sel) {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      savedRange.current = r.cloneRange();
+    }
+  };
+  const undo = () => {
+    const h = history.current;
+    if (h.index <= 0) return;
+    h.index -= 1;
+    applyHistory(h.stack[h.index]);
+  };
+  const redo = () => {
+    const h = history.current;
+    if (h.index >= h.stack.length - 1) return;
+    h.index += 1;
+    applyHistory(h.stack[h.index]);
   };
 
   // Place the caret in a collapsed range just after `node`.
@@ -199,11 +252,23 @@ export const InlineEditor = forwardRef<
         : document.createTextNode(token);
       range.insertNode(node);
       caretAfter(node);
-      emit();
+      emit(false);
     },
   }));
 
   const onKeyDown = (e: KeyboardEvent) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && (e.key === "z" || e.key === "Z")) {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+      return;
+    }
+    if (mod && (e.key === "y" || e.key === "Y")) {
+      e.preventDefault();
+      redo();
+      return;
+    }
     if (e.key === "Enter") {
       // Insert a <br> ourselves so the browser never wraps lines in <div>/<p>
       // (which would break the flat text-node + chip serialization).
@@ -215,7 +280,7 @@ export const InlineEditor = forwardRef<
       const br = document.createElement("br");
       range.insertNode(br);
       caretAfter(br);
-      emit();
+      emit(false);
     }
   };
 
@@ -224,7 +289,7 @@ export const InlineEditor = forwardRef<
     if (rm) {
       e.preventDefault();
       rm.closest("[data-token]")?.remove();
-      emit();
+      emit(false);
     }
   };
 
@@ -238,7 +303,7 @@ export const InlineEditor = forwardRef<
     e.clipboardData.setData("text/plain", serialize(range.cloneContents()));
     if (cut) {
       range.deleteContents();
-      emit();
+      emit(false);
     }
   };
 
@@ -255,6 +320,7 @@ export const InlineEditor = forwardRef<
     // [ask:] tokens render as chips. The caret lands at the document end.
     const md = serialize(el);
     build(md);
+    record(md, false);
     onChange(md);
     const end = document.createRange();
     end.selectNodeContents(el);
@@ -273,7 +339,7 @@ export const InlineEditor = forwardRef<
         role="textbox"
         aria-multiline="true"
         spellCheck={false}
-        onInput={emit}
+        onInput={() => emit(true)}
         onKeyDown={onKeyDown}
         onClick={onClickEditor}
         onCopy={(e) => onCopyCut(e, false)}
