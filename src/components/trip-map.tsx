@@ -142,16 +142,21 @@ export function TripMap({
   useEffect(() => {
     if (!container.current || !hasContent) return;
 
-    const first =
-      markers[0] ??
-      (photos[0] ? { lng: photos[0].lng, lat: photos[0].lat } : null) ??
-      firstTrackPoint(tracks);
+    // Initialise the camera at the content's bounds from the very first frame, so
+    // on a slow connection we only fetch tiles for the area we actually show —
+    // instead of loading a wide zoom-5 view and then fitting (downloading twice).
+    const bounds = computeBounds(markers, photos, tracks);
+    const single = markers.length + photos.length <= 1 && tracks.length === 0;
 
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
-      center: first ? [first.lng, first.lat] : [0, 20],
-      zoom: 5,
+      ...(bounds
+        ? {
+            bounds,
+            fitBoundsOptions: { padding: 64, maxZoom: single ? 12 : 16 },
+          }
+        : { center: [0, 20] as [number, number], zoom: 1 }),
       attributionControl: { compact: true },
     });
     map.addControl(
@@ -164,8 +169,6 @@ export function TripMap({
 
     map.on("load", () => {
       map.resize();
-      const bounds = new maplibregl.LngLatBounds();
-      const extend = (lng: number, lat: number) => bounds.extend([lng, lat]);
 
       // GPX tracks
       tracks.forEach((t, i) => {
@@ -178,9 +181,6 @@ export function TripMap({
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
         });
-        for (const f of t.geojson?.features ?? []) {
-          for (const c of f.geometry?.coordinates ?? []) extend(c[0], c[1]);
-        }
       });
 
       // Waypoint connector (only when we have no GPX and route is requested)
@@ -215,7 +215,6 @@ export function TripMap({
       // navigated on click, so the popup never had a chance to show.
       const loc = readCookieLocale();
       markers.forEach((m, i) => {
-        extend(m.lng, m.lat);
         const name = m.i18n?.[loc]?.title ?? m.name;
         const el = document.createElement("button");
         el.className =
@@ -268,7 +267,6 @@ export function TripMap({
         });
       }
       orderedPhotos.forEach((p, i) => {
-        extend(p.lng, p.lat);
         const el = document.createElement("button");
         el.style.cssText =
           "position:absolute;width:38px;height:38px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer";
@@ -313,13 +311,12 @@ export function TripMap({
           .addTo(map);
       });
 
-      if (!bounds.isEmpty()) {
-        const single =
-          markers.length + photos.length <= 1 && tracks.length === 0;
+      // Re-fit once the container has its final size — the constructor already
+      // framed it to these same bounds, so this is a no-op (no extra tiles)
+      // unless the box sized late, in which case it corrects the framing.
+      if (bounds) {
         map.fitBounds(bounds, {
           padding: 64,
-          // Allow a closer zoom so tightly-clustered markers (e.g. several
-          // stops within one park) aren't shown as a single dot in a wide view.
           maxZoom: single ? 12 : 16,
           duration: 0,
         });
@@ -358,10 +355,27 @@ export function TripMap({
   );
 }
 
-function firstTrackPoint(tracks: Track[]): { lng: number; lat: number } | null {
+// The bounding box of everything we'll draw (markers, photo pins, GPX), so the
+// map can open already framed on it — no wide initial view, no second fetch.
+export function computeBounds(
+  markers: MapMarker[],
+  photos: PhotoPin[],
+  tracks: Track[],
+): maplibregl.LngLatBounds | null {
+  const b = new maplibregl.LngLatBounds();
+  let any = false;
+  const add = (lng: number, lat: number) => {
+    if (Number.isFinite(lng) && Number.isFinite(lat)) {
+      b.extend([lng, lat]);
+      any = true;
+    }
+  };
+  markers.forEach((m) => add(m.lng, m.lat));
+  photos.forEach((p) => add(p.lng, p.lat));
   for (const t of tracks) {
-    const c = t.geojson?.features?.[0]?.geometry?.coordinates?.[0];
-    if (c) return { lng: c[0], lat: c[1] };
+    for (const f of t.geojson?.features ?? []) {
+      for (const c of f.geometry?.coordinates ?? []) add(c[0], c[1]);
+    }
   }
-  return null;
+  return any ? b : null;
 }

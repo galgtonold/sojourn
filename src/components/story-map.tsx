@@ -11,6 +11,7 @@ import type { Track } from "@/lib/types";
 import {
   type MapMarker,
   type PhotoPin,
+  computeBounds,
   orderPhotosByTime,
   photoConnectors,
 } from "@/components/trip-map";
@@ -62,12 +63,16 @@ export function StoryMap({
     setMapReady(false);
 
     const ordered = orderPhotosByTime(photoPins);
-    const start = ordered[0] ?? markers[0] ?? { lng: 0, lat: 20 };
+    // Frame the camera on the content from the first frame (saves a wide initial
+    // tile fetch on slow connections). boundsRef also drives the reset view.
+    const bounds = computeBounds(markers, photoPins, tracks);
+    boundsRef.current = bounds;
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: env.mapStyleUrl,
-      center: [start.lng, start.lat],
-      zoom: 6,
+      ...(bounds
+        ? { bounds, fitBoundsOptions: { padding: 56, maxZoom: 16 } }
+        : { center: [0, 20] as [number, number], zoom: 1 }),
       attributionControl: { compact: true },
     });
     mapRef.current = map;
@@ -80,7 +85,6 @@ export function StoryMap({
 
     map.on("load", () => {
       map.resize();
-      const bounds = new maplibregl.LngLatBounds();
 
       tracks.forEach((t, i) => {
         const id = `track-${t.id ?? i}`;
@@ -92,12 +96,9 @@ export function StoryMap({
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
         });
-        for (const f of t.geojson?.features ?? [])
-          for (const c of f.geometry?.coordinates ?? []) bounds.extend([c[0], c[1]]);
       });
 
       markers.forEach((m, i) => {
-        bounds.extend([m.lng, m.lat]);
         const el = document.createElement("div");
         el.className =
           "grid place-items-center size-6 rounded-full bg-[#f56a1f] text-[#0a0908] text-[11px] font-bold ring-2 ring-white/80 shadow";
@@ -131,7 +132,6 @@ export function StoryMap({
         });
       }
       ordered.forEach((p, i) => {
-        bounds.extend([p.lng, p.lat]);
         const el = document.createElement("div");
         el.style.cssText =
           "position:absolute;width:34px;height:34px;border-radius:9999px;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)";
@@ -150,8 +150,9 @@ export function StoryMap({
         new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
       });
 
-      boundsRef.current = bounds;
-      if (!bounds.isEmpty()) {
+      // Re-fit after final sizing (no-op unless the sticky column sized late);
+      // the constructor already framed it to the same bounds.
+      if (bounds) {
         map.fitBounds(bounds, { padding: 56, maxZoom: 16, duration: 0 });
       }
       setMapReady(true);

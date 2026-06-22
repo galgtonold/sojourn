@@ -142,11 +142,40 @@ export function JourneyExplorer({
   // Build the map once.
   useEffect(() => {
     if (!container.current || ordered.length === 0) return;
+
+    // Frame the camera on the whole journey from the first frame, so a slow
+    // connection only fetches the tiles we end up showing — not a wide zoom-12
+    // view first and then a fit.
+    const initialBounds = (() => {
+      const b = new maplibregl.LngLatBounds();
+      let any = false;
+      const add = (lng: number, lat: number) => {
+        if (Number.isFinite(lng) && Number.isFinite(lat)) {
+          b.extend([lng, lat]);
+          any = true;
+        }
+      };
+      ordered.forEach((s) => add(s.lng, s.lat));
+      for (const t of tracks)
+        for (const f of t.geojson?.features ?? [])
+          for (const c of f.geometry?.coordinates ?? []) add(c[0], c[1]);
+      return any ? b : null;
+    })();
+    // Snug fit clearing the back button (top) and the stepper card (bottom).
+    const fitOpts = {
+      padding: { top: 64, bottom: 196, left: 32, right: 32 },
+      maxZoom: 15,
+    };
+
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
-      center: [ordered[0].lng, ordered[0].lat],
-      zoom: 12,
+      ...(initialBounds
+        ? { bounds: initialBounds, fitBoundsOptions: fitOpts }
+        : {
+            center: [ordered[0].lng, ordered[0].lat] as [number, number],
+            zoom: 12,
+          }),
       attributionControl: { compact: true },
     });
     mapRef.current = map;
@@ -159,7 +188,6 @@ export function JourneyExplorer({
 
     map.on("load", () => {
       map.resize();
-      const bounds = new maplibregl.LngLatBounds();
 
       tracks.forEach((t, i) => {
         const id = `track-${t.id ?? i}`;
@@ -171,8 +199,6 @@ export function JourneyExplorer({
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
         });
-        for (const f of t.geojson?.features ?? [])
-          for (const c of f.geometry?.coordinates ?? []) bounds.extend([c[0], c[1]]);
       });
 
       // Dashed orange line bridging only the gaps the solid tracks leave
@@ -207,7 +233,6 @@ export function JourneyExplorer({
       // Smaller markers keep dense stretches (many photos close together) from
       // overlapping and spilling past the map edges.
       ordered.forEach((s, i) => {
-        bounds.extend([s.lng, s.lat]);
         const el = document.createElement("button");
         el.setAttribute("aria-label", s.name);
         if (s.type === "photo" && s.photoUrl) {
@@ -234,16 +259,10 @@ export function JourneyExplorer({
         new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
       });
 
-      // Generous padding (especially a tall bottom gutter for the stepper card)
-      // keeps edge markers fully on-screen instead of clipped.
-      if (!bounds.isEmpty())
-        map.fitBounds(bounds, {
-          // Snug fit — just clearing the back button (top) and the stepper card
-          // (bottom) so the route nearly fills the screen.
-          padding: { top: 64, bottom: 196, left: 32, right: 32 },
-          maxZoom: 15,
-          duration: 0,
-        });
+      // Re-fit after the full-screen container settles its size (it can size
+      // after mount). Same bounds as the constructor, so it's a no-op unless the
+      // box sized late — then it corrects the framing.
+      if (initialBounds) map.fitBounds(initialBounds, { ...fitOpts, duration: 0 });
     });
 
     return () => {
