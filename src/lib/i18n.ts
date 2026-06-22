@@ -292,8 +292,6 @@ const en = {
   "admin.editor.excerpt": "Excerpt",
   "admin.editor.body":
     "Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)). Place a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line.",
-  "admin.editor.hint":
-    "Markdown supported. Weave in a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line — grab tags with “Copy …” in the sections below.",
   "admin.editor.insertBar": "Insert — drop a photo, poll or quiz at the cursor.",
   "admin.editor.insertPhoto": "Insert this photo at the cursor",
   "admin.editor.insertInteraction": "Insert this poll or quiz at the cursor",
@@ -797,8 +795,6 @@ const de: Dict = {
   "admin.editor.excerpt": "Kurzbeschreibung",
   "admin.editor.body":
     "Text — Markdown möglich (## Überschriften, **fett**, > Zitate, - Listen, [Links](url)). Setze ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile.",
-  "admin.editor.hint":
-    "Markdown möglich. Binde ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile ein — Tags holst du dir über „Kopieren …“ in den Abschnitten unten.",
   "admin.editor.insertBar": "Einfügen — Foto, Umfrage oder Quiz an der Cursorposition.",
   "admin.editor.insertPhoto": "Dieses Foto an der Cursorposition einfügen",
   "admin.editor.insertInteraction": "Diese Umfrage oder dieses Quiz an der Cursorposition einfügen",
