@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
@@ -27,14 +27,19 @@ export function PhotoManager({
   postId,
   slug,
   initial,
+  onCountChange,
 }: {
   postId: string;
   slug: string;
   initial: ManagedPhoto[];
+  onCountChange?: (n: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initial);
+  useEffect(() => {
+    onCountChange?.(photos.length);
+  }, [photos.length, onCountChange]);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);

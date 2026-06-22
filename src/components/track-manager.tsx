@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
 import { parseGpx, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -16,14 +16,19 @@ export function TrackManager({
   tripId,
   slug,
   initial,
+  onCountChange,
 }: {
   postId: string;
   tripId: string | null;
   slug: string;
   initial: ManagedTrack[];
+  onCountChange?: (n: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tracks, setTracks] = useState<ManagedTrack[]>(initial);
+  useEffect(() => {
+    onCountChange?.(tracks.length);
+  }, [tracks.length, onCountChange]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
