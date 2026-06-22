@@ -412,3 +412,12 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# These functions authenticate with their own shared secret (x-edge-secret), not
+# a Supabase JWT — they're invoked server-to-server by the app / each other. They
+# are deployed to production with verify_jwt = false; mirror that locally.
+[functions.translate]
+verify_jwt = false
+
+[functions.llm-call]
+verify_jwt = false

@@ -185,3 +185,14 @@ Keys in `.env.local` (gitignored). Total spend for the whole AI pass: **$0.0121*
 **Seed nit fixed:** the Biei post was seeded `translation_status='ready'` with empty `i18n` (inconsistent); changed to `'none'`. Not an app bug — surfaced while testing translation.
 
 **Full draft UI orchestration** (questions→enrich→outline→section→homogenize→captions→save) not driven end-to-end through the editor panel, but every underlying step/provider is verified working; the orchestration is the same synchronous DeepSeek/vision call pattern.
+
+---
+
+## Final flows verified (round 2)
+
+- **Members / invites (full round-trip):** owner `POST /api/admin/members` creates a confirmed user + 7-day hashed token + trip grant, returns a `/admin/welcome?invite=<raw>` link; the welcome page exchanges the token for a fresh recovery session, the invitee sets a password and lands on `/admin` signed in. The new collaborator sees **only the granted trip** and **no owner-only nav** (members/settings/ai-usage/new-trip all hidden) — scoping correct, no escalation.
+- **Photo upload backend (Storage):** authenticated upload to the `photos` bucket → 200; anonymous public read → 200; **anonymous upload → denied (400)**. BUG-002 didn't affect storage (separate `storage` schema). Client-side EXIF (exifr) + blurhash encode + WebP downscale are thin wrappers over mature libs; GPX parsing is unit-tested (`gpx.test.ts`); tracks/photos table render verified via seed.
+- **Translation edge function (end-to-end):** deployed the local `translate` function (config `verify_jwt=false` to match prod; secrets in gitignored `supabase/functions/.env`). Triggering it translated the German "Schneelicht in Biei" post → `i18n.en = { title: "Snowlight in Biei", body: "In Biei, the world is white on white. The trees stand like ink on paper." }`, status → `ready`. (The function's `revalidate` callback to `localhost:3000` can't reach the host from inside the container — harmless/best-effort; the i18n write via service role is what matters.) The earlier transient "error" was a corrupted key in my hand-written `functions/.env` (an inline comment got appended), not an app bug.
+- **a11y (search + map):** both clean — single h1, no heading jumps, 0 images without alt, 0 nameless buttons, 0 unlabeled inputs. Combined with home + post, the public surfaces pass the audited checks.
+
+**Local config added (committed):** `supabase/config.toml` now sets `verify_jwt = false` for `[functions.translate]` and `[functions.llm-call]`, mirroring their production deploy (they authenticate with `x-edge-secret`, not a Supabase JWT). `supabase/functions/.env` (secrets) is gitignored.
