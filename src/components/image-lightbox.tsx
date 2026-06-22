@@ -75,10 +75,16 @@ export function ImageLightbox({
 
   if (!mounted) return null;
 
+  // Fill the available viewport, scaling a sub-screen photo UP (interpolated)
+  // rather than capping at its native size — otherwise a small image opens tiny
+  // and the viewer is pointless. object-contain preserves the aspect ratio; the
+  // box is the viewport (axes swapped when the photo is rotated to fill a
+  // portrait screen). The drop-shadow lives on the wrapper so it still hugs the
+  // photo, not this now-viewport-sized element.
   const sizeCls = rotated
-    ? "max-h-[95vw] max-w-[92dvh]"
-    : "max-h-[96dvh] max-w-[96vw]";
-  const imgCls = `rounded-lg object-contain shadow-2xl ${rotated ? "rotate-90" : ""} ${sizeCls}`;
+    ? "h-[95vw] w-[92dvh]"
+    : "h-[96dvh] w-[96vw]";
+  const imgCls = `object-contain ${rotated ? "rotate-90" : ""} ${sizeCls}`;
   // Instant placeholder. With a stored blurhash, a decoded data URL — no network
   // at all. Otherwise reuse the EXACT size the page already displayed
   // (optimizedSrc(src,1600,80)), so the backdrop is a cache hit and paints
@@ -130,8 +136,11 @@ export function ImageLightbox({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.94 }}
             transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}
-            className="relative cursor-zoom-out"
-            onClick={(e) => e.stopPropagation()}
+            // The image box now fills the screen, leaving almost no backdrop to
+            // click — so let a click on the photo itself close it (cursor-zoom-out
+            // already signals that). drop-shadow hugs the photo's real edges even
+            // though the element is letterboxed to the viewport.
+            className="relative cursor-zoom-out [filter:drop-shadow(0_24px_45px_rgba(10,9,8,0.55))]"
           >
             {/* Low-res (usually cached) — sizes the box and shows quickly. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
