@@ -268,10 +268,14 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
           duration: 0,
         });
       }
-      map.once("idle", () => {
-        recomputeVisible();
-        setReady(true);
-      });
+      // Reveal as soon as the framed camera + markers are up — don't wait for
+      // full `idle` (every basemap tile). The pins sit in their final positions
+      // immediately and the basemap streams in behind them, so on a slow
+      // connection the reader sees the markers from the start rather than a blank
+      // panel that then visibly settles. The camera is already at the exact fit
+      // (jumpTo above + this fitBounds), so nothing zooms after reveal.
+      recomputeVisible();
+      setReady(true);
       map.on("moveend", recomputeVisible);
 
       map.on("click", "photo-clusters", (e) => {
@@ -308,8 +312,10 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
       });
     });
 
-    // Safety net: never leave the map hidden if `idle` is slow to fire.
-    const reveal = setTimeout(() => setReady(true), 2000);
+    // Backstop only: we now reveal inside the `load` handler, so this just
+    // covers the rare case where `load` never fires (a broken style fetch).
+    // Long enough not to pre-empt a slow `load` with a blank panel.
+    const reveal = setTimeout(() => setReady(true), 8000);
 
     return () => {
       clearTimeout(reveal);

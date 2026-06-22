@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, BellRing } from "lucide-react";
+import { Bell, BellOff, BellRing, Loader2 } from "lucide-react";
 import { env } from "@/lib/env";
 import {
   getPushState,
@@ -50,7 +50,10 @@ export function NotificationBell({
 
   const subscribed = state === "subscribed";
   const denied = state === "denied";
-  const Icon = subscribed ? BellRing : denied ? BellOff : Bell;
+  // While a click is in flight, swap in a spinner so the press reads as
+  // acknowledged instantly — the subscribe/unsubscribe round-trip takes a beat
+  // and an unchanging bell left the reader unsure the tap registered.
+  const Icon = busy ? Loader2 : subscribed ? BellRing : denied ? BellOff : Bell;
   const status = denied
     ? t("push.blocked")
     : subscribed
@@ -100,7 +103,7 @@ export function NotificationBell({
         className,
       )}
     >
-      <Icon className={iconClassName} />
+      <Icon className={cn(iconClassName, busy && "animate-spin")} />
       <span className="sr-only">{t("push.viewer")}</span>
     </button>
   );
