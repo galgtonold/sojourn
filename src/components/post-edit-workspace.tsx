@@ -29,6 +29,7 @@ export function PostEditWorkspace({
   photos,
   photoIds,
   interactionIds,
+  interactions,
 }: {
   postId: string;
   initial: EditablePost;
@@ -38,6 +39,7 @@ export function PostEditWorkspace({
   photos: Photo[];
   photoIds: string[];
   interactionIds: string[];
+  interactions: import("@/lib/story-editor").EditorInteraction[];
 }) {
   const t = useT();
   const [editorInitial, setEditorInitial] = useState(initial);
@@ -121,6 +123,7 @@ export function PostEditWorkspace({
         photos={photos}
         photoIds={photoIds}
         interactionIds={interactionIds}
+        interactions={interactions}
         {...(aiConfigured ? { tripId, onTripChange: setTripId } : {})}
       />
     </>

@@ -170,6 +170,7 @@ export default async function EditPostPage({
           photos={photos ?? []}
           photoIds={(photos ?? []).map((p) => p.id)}
           interactionIds={(interactions ?? []).map((it) => it.id)}
+          interactions={(interactions ?? []) as import("@/lib/story-editor").EditorInteraction[]}
         />
       </div>
 
