@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { cn, optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
+import { initialView } from "@/components/trip-map";
 import { useI18n } from "@/components/i18n";
 import type { GeoPhoto } from "@/lib/content";
 
@@ -103,11 +104,22 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
   // Build the map once.
   useEffect(() => {
     if (!container.current || photos.length === 0) return;
+    // Open already framed on all the photos (computed center + zoom) so we don't
+    // load a wide Scandinavia view first and then fit out to all of Europe.
+    const photoBounds = new maplibregl.LngLatBounds();
+    for (const p of photos) {
+      if (Number.isFinite(p.lng) && Number.isFinite(p.lat))
+        photoBounds.extend([p.lng, p.lat]);
+    }
+    const view = initialView(
+      photoBounds.isEmpty() ? null : photoBounds,
+      photos.length <= 1 ? 9 : 14,
+    );
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
-      center: [photos[0].lng, photos[0].lat],
-      zoom: 4,
+      center: view ? view.center : [photos[0].lng, photos[0].lat],
+      zoom: view ? view.zoom : 4,
       attributionControl: { compact: true },
     });
     mapRef.current = map;

@@ -29,7 +29,7 @@ import {
   type Track,
   type Trip,
 } from "@/lib/types";
-import type { Locale } from "@/lib/i18n";
+import { LOCALES, type Locale } from "@/lib/i18n";
 
 export const DEMO_MODE = !isSupabaseConfigured;
 
@@ -384,6 +384,34 @@ function demoGeoPhotos(): GeoPhoto[] {
   );
 }
 
+// Keep only the i18n fields the photo map actually renders — the photo CAPTION
+// and the post TITLE. The raw `i18n`/post `i18n` also carry the translated
+// excerpt/location and the entire translated BODY, which would otherwise ship
+// (per photo, duplicated across each post's photos) and bloat the static map
+// payload to several MB.
+function trimCaptionI18n(
+  i18n: unknown,
+): Partial<Record<Locale, PhotoTranslation>> | undefined {
+  const src = (i18n ?? {}) as Partial<Record<Locale, PhotoTranslation>>;
+  const out: Partial<Record<Locale, PhotoTranslation>> = {};
+  for (const loc of LOCALES) {
+    const c = src[loc]?.caption;
+    if (c) out[loc] = { caption: c };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+function trimTitleI18n(
+  i18n: unknown,
+): Partial<Record<Locale, PostTranslation>> | undefined {
+  const src = (i18n ?? {}) as Partial<Record<Locale, PostTranslation>>;
+  const out: Partial<Record<Locale, PostTranslation>> = {};
+  for (const loc of LOCALES) {
+    const title = src[loc]?.title;
+    if (title) out[loc] = { title };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 // Every geotagged photo across published posts, for the global photo map.
 export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
   const supabase = getPublicSupabase();
@@ -413,8 +441,8 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
           blurhash: r.blurhash,
           postSlug: post.slug,
           postTitle: post.title,
-          i18n: r.i18n ?? undefined,
-          postI18n: post.i18n ?? undefined,
+          i18n: trimCaptionI18n(r.i18n),
+          postI18n: trimTitleI18n(post.i18n),
         },
       ];
     });
