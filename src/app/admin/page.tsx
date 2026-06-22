@@ -132,7 +132,7 @@ export default async function AdminDashboard() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {viewer.isOwner && <PushToggle />}
+          <PushToggle />
           {isSupabaseConfigured && (
             <Link
               href="/admin/account"

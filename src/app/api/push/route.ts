@@ -28,9 +28,10 @@ export async function POST(req: Request) {
   }
   const { endpoint, keys, audience, userAgent } = parsed.data;
 
-  // Admin subscriptions require the authenticated owner; viewer subscriptions
-  // are open to anyone (it's their own browser opting in).
-  if (audience === "admin" && !(await getUser())) {
+  // Admin subscriptions require an authenticated user (owner OR collaborator);
+  // viewer subscriptions are open to anyone (it's their own browser opting in).
+  const user = await getUser();
+  if (audience === "admin" && !user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -46,6 +47,9 @@ export async function POST(req: Request) {
       auth: keys.auth,
       audience,
       user_agent: userAgent ?? null,
+      // Tag admin subscriptions with the subscriber so comment alerts can be
+      // scoped to a collaborator's accessible posts. Viewers stay anonymous.
+      user_id: audience === "admin" ? user?.id ?? null : null,
     },
     { onConflict: "endpoint" },
   );

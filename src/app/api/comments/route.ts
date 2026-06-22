@@ -4,7 +4,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
-import { notifyAdmin } from "@/lib/notify";
+import { notifyComment } from "@/lib/notify";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  notifyAdmin({
+  notifyComment(postId, {
     type: "comment",
     title: `New ${parentId ? "reply" : "comment"} from ${data.author_name}`,
     body: body.slice(0, 120),
