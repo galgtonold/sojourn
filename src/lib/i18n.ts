@@ -19,7 +19,8 @@ const en = {
   "nav.admin": "Admin",
   "nav.menu": "Menu",
 
-  "footer.tagline": "A travel journal. Built to wander, made to last.",
+  "footer.tagline":
+    "A travel journal. Built to wander, hopeless at staying put.",
 
   "home.kicker": "field notes, lightly exaggerated",
   "home.heroLeadA": "Photos, maps & dubious decisions from",
@@ -487,7 +488,7 @@ const de: Dict = {
   "nav.menu": "Menü",
 
   "footer.tagline":
-    "Ein Reisetagebuch. Zum Umherziehen gebaut, zum Bleiben gemacht.",
+    "Ein Reisetagebuch. Fürs Umherziehen gemacht, beim Stillsitzen chancenlos.",
 
   "home.kicker": "Notizen von unterwegs, leicht übertrieben",
   "home.heroLeadA": "Fotos, Karten & dubiose Entscheidungen von",
