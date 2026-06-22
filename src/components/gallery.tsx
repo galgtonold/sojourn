@@ -11,6 +11,14 @@ import { useT } from "@/components/i18n";
 export function Gallery({ photos }: { photos: Photo[] }) {
   const t = useT();
   const [open, setOpen] = useState<number | null>(null);
+  // blurhashToDataURL needs a <canvas>, so it returns null on the server but a
+  // data URL on the client — using it during render makes next/image's
+  // placeholder differ between SSR and hydration (a hydration mismatch on every
+  // photo that has a blurhash). Gate it behind mount so the first client render
+  // matches the server (no blur), then upgrade to the blur placeholder. See
+  // docs/qa/03-bug-log.md (BUG-003).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const close = useCallback(() => setOpen(null), []);
   const next = useCallback(
@@ -46,7 +54,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
     <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {photos.map((photo, i) => {
-          const blur = blurhashToDataURL(photo.blurhash);
+          const blur = mounted ? blurhashToDataURL(photo.blurhash) : null;
           return (
             <button
               key={photo.id}

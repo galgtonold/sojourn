@@ -42,6 +42,48 @@ So `dynamicParams = false` is the only config that yields a true 404 — **but i
 
 ---
 
+## BUG-002 — Migrations never GRANT table privileges → fresh/self-hosted Supabase returns "permission denied" for the entire public API — S1
+
+**Surface:** every public read/write (home, posts, trips, search, comments, reactions, admin) on any Supabase instance set up by applying the migrations (the README's self-host path) rather than via the hosted dashboard.
+**Files:** `supabase/migrations/0001_init.sql` (+ 0003/0005/0006 …) — RLS policies present, GRANTs absent.
+
+**Expected:** Applying the migrations to a clean Supabase yields a working site.
+
+**Actual:** The public API fails with `permission denied for table posts` / `comments` / … and the site is completely empty (home, `/posts`, `/search` return nothing; `/api/comments` → `{"error":"permission denied for table comments"}`).
+
+**Root cause:** In Postgres an RLS policy only chooses *which rows* a role may touch — the role still needs the table-level `GRANT` (SELECT/INSERT/UPDATE/DELETE) as a prerequisite. The migrations create RLS *policies* referencing `anon`/`authenticated` but never `GRANT` those privileges. Verified in the DB: `anon`, `authenticated`, **and `service_role`** had only `TRUNCATE, REFERENCES, TRIGGER` — no DML — and `set role anon; select … from posts` raised `permission denied for table posts` with Postgres's hint `GRANT SELECT ON public.posts TO anon;`. Hosted Supabase happens to apply these via dashboard-configured default privileges, so production works; a migration-only / self-hosted deployment gets none. This contradicts the project's headline portability claim.
+
+**Repro (fresh local stack):**
+```
+supabase start && supabase db reset      # migrations only
+curl 'http://localhost:3000/api/comments?postId=<id>'   # {"error":"permission denied for table comments"}
+```
+
+**Fix shipped:** `supabase/migrations/0020_api_role_grants.sql` — grants USAGE on schema `public` and `SELECT/INSERT/UPDATE/DELETE` on all tables + `USAGE,SELECT` on sequences to `anon`, `authenticated`, `service_role`, plus matching default privileges for future objects. RLS (enabled on every table) stays the row-level gate; function grants are left untouched (already per-function, hardened in 0007). After the fix, anon reads 43 published posts / 439 visible comments and the whole site renders. Idempotent and a no-op on already-granted (production) databases.
+
+**Status:** FIXED — migration added; full public + admin path verified end-to-end on the local stack.
+
+---
+
+## BUG-003 — `Gallery` blur placeholder causes a React hydration mismatch on every photo with a blurhash — S2
+
+**Surface:** any post-page photo gallery where photos have a `blurhash`.
+**File:** `src/components/gallery.tsx:49`; root cause `src/lib/blurhash.ts:18`.
+
+**Expected:** Server and client render identical markup; no hydration warnings; the blur placeholder paints during SSR.
+
+**Actual:** React logs `A tree hydrated but some attributes of the server rendered HTML didn't match… This won't be patched up` for every gallery `<img>`. The server omits the blur `backgroundImage` (placeholder `empty`); the client adds it (placeholder `blur`).
+
+**Root cause:** `blurhashToDataURL` decodes via a `<canvas>` and returns `null` when `typeof document === "undefined"` (server). `Gallery` calls it **during render**, so SSR gets `placeholder="empty"` but the first client render gets `placeholder="blur"` → mismatch. Latent in production today only because `photos.blurhash` is never populated (README roadmap: "nothing populates it yet") — realistic seeded data exposed it, and it would ship the moment blurhash generation lands. (`image-lightbox.tsx` is unaffected: it already gates on a `mounted` state.)
+
+**Fix shipped:** gate the blur behind a `mounted` flag (`useState(false)` + `useEffect`), so the first client render matches the server (no blur) and the blur is applied on the next render — the same SSR-safe pattern the lightbox uses. Verified: after the fix a fresh post-page load logs **zero** console errors (was: one mismatch per blurhash photo).
+
+**Regression test:** covered by the SSR-safety contract of `blurhash.ts` (returns null without `document`); UI behaviour verified live (no hydration error on reload). A deeper render test is impractical under jsdom (which always defines `document`).
+
+**Status:** FIXED — verified in the browser; typecheck + 135 tests green.
+
+---
+
 ## Verified working (demo-mode, real-user testing)
 
 - **Baseline:** `npm run typecheck` clean; `npm test` 135 passed / 1 skipped; `npm run build` succeeds zero-config.
@@ -73,3 +115,28 @@ Cannot be tested in demo mode; require a real backend:
 - AI pipeline (questions→enrich→outline→sections→homogenize→captions→save), translation, AI-usage metering.
 - Web push (VAPID), embeddings/semantic search, on-demand revalidation callbacks.
 - Account password change.
+
+---
+
+## Live-mode verified working (local Supabase stack, production-scale seed)
+
+Environment: local `supabase start` stack + `supabase/seed.sql` (50 posts / 43 published, 8 trips, 48 photos, 440 comments, 1720 reactions, 3 interactions, 2 GPX tracks, owner + collaborator users). `.env.local` → local stack only (VAPID generated locally). After BUG-002 fix:
+
+- **Auth:** owner + collaborator log in (GoTrue password grant); wrong password rejected (400). Owner dashboard renders (50 posts / 441 comments, all 8 trips, owner-only nav: members/settings/new-trip; AI-usage correctly hidden — no AI key).
+- **Gating:** `/admin` → 307 redirect to login when unauthenticated (middleware live).
+- **Drafts:** unpublished post is NOT served publicly (not-found + noindex, no title/body leak); excluded from search.
+- **Persistence (anon):** reaction add → `{ok:true}` (writes); comment POST → persisted row; poll vote → tally; **quiz correct answer + explanation hidden pre-vote, revealed only post-vote** (security property holds).
+- **Comment pagination:** 225-comment post returns 200 then all 225 on "load earlier" (past the 200 window).
+- **Moderation:** owner hides a comment (204) → anon no longer sees it, owner still does (soft-hide, restorable).
+- **Collaborator RLS scoping:** can edit a post in a *granted* trip; **denied** (0 rows, no change) on a *non-granted* trip; `trip_members` read scoped to own grants only — no privilege escalation.
+- **i18n + interactions:** poll/quiz options localize (DE source, EN overlay); emoji + HTML in a title stored intact (rendered escaped by React).
+- **Rich rendering:** gallery (next/image), live MapLibre map, quiz block, comments all render; console clean after BUG-003 fix.
+
+## Still deferred (out of scope this pass — external deps / not yet exercised)
+
+- **AI pipeline + translation + AI-usage metering:** need paid DeepSeek/OpenAI keys (not added — cost/secret). Panels render; generation calls untested.
+- **Web push *delivery*:** subscribe flow + VAPID configured; the headless browser blocks notifications (denied-state renders correctly). Actual push send/receive untested.
+- **Photo upload to Storage + EXIF extraction; GPX upload parsing** through the admin UI (DB-level photos/tracks verified via seed; the upload *path* not yet driven).
+- **Members invite → /admin/welcome → set-password** end-to-end (RLS for trip_members verified; the invite token round-trip not yet driven).
+- **Admin CRUD through the UI** (create/edit/delete post & trip, publish toggle, photo/interaction managers): RLS + API contracts verified; the editor UI flows not yet exhaustively clicked.
+- Exhaustive responsive/a11y audit.
