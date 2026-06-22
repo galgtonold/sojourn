@@ -52,6 +52,8 @@ export type MarkdownEditorHandle = {
   /** Insert text at the caret (replacing any selection). `block: true` puts it
    *  on its own line — used for [photo:…] / [ask:…] tags. */
   insertAtCursor: (text: string, opts?: { block?: boolean }) => void;
+  /** Focus the textarea and place the caret at `offset` (clamped). */
+  focusAt: (offset: number) => void;
 };
 
 export const MarkdownEditor = forwardRef<
@@ -59,10 +61,14 @@ export const MarkdownEditor = forwardRef<
   {
     value: string;
     onChange: (value: string) => void;
+    onCaretChange?: (offset: number) => void;
     placeholder?: string;
     rows?: number;
   }
->(function MarkdownEditor({ value, onChange, placeholder, rows = 14 }, ref) {
+>(function MarkdownEditor(
+  { value, onChange, onCaretChange, placeholder, rows = 14 },
+  ref,
+) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
 
@@ -90,6 +96,15 @@ export const MarkdownEditor = forwardRef<
             el.focus();
             el.setSelectionRange(caret, caret);
           }
+        });
+      },
+      focusAt(offset) {
+        requestAnimationFrame(() => {
+          const el = taRef.current;
+          if (!el) return;
+          const pos = Math.max(0, Math.min(value.length, offset));
+          el.focus();
+          el.setSelectionRange(pos, pos);
         });
       },
     }),
@@ -125,7 +140,13 @@ export const MarkdownEditor = forwardRef<
       <textarea
         ref={taRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          onCaretChange?.(e.target.selectionStart ?? e.target.value.length);
+        }}
+        onSelect={(e) =>
+          onCaretChange?.((e.target as HTMLTextAreaElement).selectionStart ?? 0)
+        }
         onScroll={syncScroll}
         placeholder={placeholder}
         rows={rows}
