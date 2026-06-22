@@ -7,7 +7,12 @@
  *  2) Receive Web Push notifications for the admin / subscribers.
  */
 
-const VERSION = "v1";
+// The build stamps the version via the registration URL (/sw.js?v=<build>), so
+// each deploy gets its own cache and `activate` deletes the previous build's —
+// otherwise a fixed name accumulates stale assets forever and serves them on
+// cached loads (the bug that broke /admin until a hard reload).
+const VERSION =
+  new URLSearchParams(self.location.search).get("v") || "v1";
 const CACHE = `sojourn-${VERSION}`;
 // Bare minimum shell so the app boots offline and can show a fallback.
 const PRECACHE = ["/", "/offline.html", "/manifest.webmanifest", "/icon.svg"];

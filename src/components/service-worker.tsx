@@ -13,9 +13,12 @@ export function ServiceWorkerRegistrar() {
       return;
     }
     // Defer until the page is idle so registration never competes with the
-    // initial render / hydration.
+    // initial render / hydration. The ?v=<build> makes the script URL change
+    // each deploy, so the browser installs the new worker — which names its
+    // cache per-build and purges the previous one (no stale-asset accumulation).
+    const version = process.env.NEXT_PUBLIC_SW_VERSION || "dev";
     const register = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      navigator.serviceWorker.register(`/sw.js?v=${version}`).catch(() => {
         // best effort — offline support is a progressive enhancement
       });
     };
