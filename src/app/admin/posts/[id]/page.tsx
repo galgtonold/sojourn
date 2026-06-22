@@ -4,12 +4,8 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
-import { type EditablePost } from "@/components/post-editor";
-import { PostEditWorkspace } from "@/components/post-edit-workspace";
-import { PhotoManager } from "@/components/photo-manager";
-import { TrackManager } from "@/components/track-manager";
+import { PostWorkspace, type EditablePost } from "@/components/post-workspace";
 import type { ManagedInteraction } from "@/components/interaction-manager";
-import { TranslationBadge } from "@/components/translation-badge";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -128,51 +124,18 @@ export default async function EditPostPage({
           <Eye className="size-4" /> <T k="admin.preview" />
         </a>
       </div>
-      <div className="mb-8">
-        <TranslationBadge
-          postId={data.id}
-          initialStatus={
-            (data.translation_status as
-              | "none"
-              | "pending"
-              | "ready"
-              | "error") ?? "none"
-          }
-          published={Boolean(data.published)}
-        />
-      </div>
-      {/* AI-first order: the inputs you always provide (photos, then tracks)
-          come first, then the AI draft panel + editor that build on them, then
-          the inline polls/quizzes. */}
-      <PhotoManager
-        key={data.updated_at}
+      <PostWorkspace
         postId={data.id}
         slug={data.slug ?? ""}
-        initial={photos ?? []}
+        initial={initial}
+        initialNotes={data.ai_notes ?? ""}
+        aiConfigured={isAiConfigured}
+        trips={trips}
+        photos={photos ?? []}
+        tracks={tracks ?? []}
+        initialInteractions={(interactions ?? []) as ManagedInteraction[]}
+        translationStatus={(data.translation_status as "none" | "pending" | "ready" | "error") ?? "none"}
       />
-
-      <div className="mt-12 border-t border-white/10 pt-10">
-        <TrackManager
-          postId={data.id}
-          tripId={data.trip_id ?? null}
-          slug={data.slug ?? ""}
-          initial={tracks ?? []}
-        />
-      </div>
-
-      <div className="mt-12 border-t border-white/10 pt-10">
-        <PostEditWorkspace
-          postId={data.id}
-          slug={data.slug ?? ""}
-          initial={initial}
-          initialNotes={data.ai_notes ?? ""}
-          aiConfigured={isAiConfigured}
-          trips={trips}
-          photos={photos ?? []}
-          photoIds={(photos ?? []).map((p) => p.id)}
-          initialInteractions={(interactions ?? []) as ManagedInteraction[]}
-        />
-      </div>
     </div>
   );
 }
