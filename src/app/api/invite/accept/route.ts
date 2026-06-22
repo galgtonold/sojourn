@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { createHash } from "node:crypto";
+import { getAdminSupabase } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
+
+// Public on purpose: the invitee isn't signed in yet, so this is gated entirely
+// by the secret invite token (256 bits of entropy). It validates our own 7-day
+// token, then mints a *fresh* short-lived Supabase recovery token to hand back —
+// the welcome page verifies that into a session. So the week-long validity lives
+// in our token, while Supabase's token is only ever seconds old when used.
+const schema = z.object({ token: z.string().min(20) });
+
+export async function POST(req: Request) {
+  const admin = getAdminSupabase();
+  if (!admin) {
+    return NextResponse.json({ error: "unconfigured" }, { status: 503 });
+  }
+  const parsed = schema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid" }, { status: 400 });
+  }
+  const tokenHash = createHash("sha256")
+    .update(parsed.data.token)
+    .digest("hex");
+
+  const { data: invite } = await admin
+    .from("member_invites")
+    .select("email, expires_at, used_at")
+    .eq("token", tokenHash)
+    .maybeSingle();
+
+  if (
+    !invite ||
+    invite.used_at ||
+    new Date(invite.expires_at).getTime() < Date.now()
+  ) {
+    return NextResponse.json({ error: "expired" }, { status: 410 });
+  }
+
+  const gen = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: invite.email,
+    options: { redirectTo: `${env.siteUrl}/admin/welcome` },
+  });
+  const hashed = gen.data?.properties?.hashed_token;
+  if (!hashed) {
+    return NextResponse.json({ error: "mint-failed" }, { status: 500 });
+  }
+
+  // Single-use: consume it now that a session token has been issued.
+  await admin
+    .from("member_invites")
+    .update({ used_at: new Date().toISOString() })
+    .eq("token", tokenHash);
+
+  return NextResponse.json({ token_hash: hashed, type: "recovery" });
+}

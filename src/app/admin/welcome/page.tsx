@@ -34,6 +34,8 @@ export default function Welcome() {
     const tokenHash = q.get("token_hash");
     const type = (q.get("type") as EmailOtpType | null) ?? "invite";
     const code = q.get("code");
+    // Our own 7-day invite token: exchange it for a fresh Supabase session token.
+    const invite = q.get("invite");
 
     function stripUrl() {
       window.history.replaceState({}, "", window.location.pathname);
@@ -54,7 +56,25 @@ export default function Welcome() {
         return;
       }
       try {
-        if (tokenHash) {
+        if (invite) {
+          // Trade our long-lived token for a fresh recovery token, then verify
+          // that into a session (same path as a normal token_hash link).
+          const res = await fetch("/api/invite/accept", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ token: invite }),
+          });
+          if (!res.ok) throw new Error("invite");
+          const fresh = (await res.json()) as {
+            token_hash: string;
+            type: EmailOtpType;
+          };
+          const { error } = await supabase.auth.verifyOtp({
+            type: fresh.type,
+            token_hash: fresh.token_hash,
+          });
+          if (error) throw error;
+        } else if (tokenHash) {
           // Preferred flow (no PKCE verifier needed).
           const { error } = await supabase.auth.verifyOtp({
             type,

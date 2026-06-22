@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomBytes, createHash } from "node:crypto";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+
+// Invite links stay valid for a week, so a collaborator has time to act on it.
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const schema = z.object({
   email: z.string().trim().email(),
@@ -45,7 +49,6 @@ export async function POST(req: Request) {
   }
   const email = parsed.data.email.toLowerCase();
   const { tripIds } = parsed.data;
-  const redirectTo = `${env.siteUrl}/admin/welcome`;
 
   let userId: string | null = null;
   let status: "invited" | "granted" = "invited";
@@ -100,18 +103,21 @@ export async function POST(req: Request) {
     );
   }
 
-  // A direct set-password link the welcome page verifies via token_hash —
-  // works regardless of email templates / PKCE.
+  // Our own 7-day invite token (Supabase's recovery links expire in ~1h). We
+  // store only its hash; the raw token rides in the link and is exchanged for a
+  // fresh Supabase session at click time (see /api/invite/accept).
   let link: string | undefined;
   if (status === "invited") {
-    const gen = await admin.auth.admin.generateLink({
-      type: "recovery",
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const { error: invErr } = await admin.from("member_invites").insert({
+      token: tokenHash,
+      user_id: userId,
       email,
-      options: { redirectTo },
+      expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(),
     });
-    const hashed = gen.data?.properties?.hashed_token;
-    if (hashed) {
-      link = `${env.siteUrl}/admin/welcome?token_hash=${hashed}&type=recovery`;
+    if (!invErr) {
+      link = `${env.siteUrl}/admin/welcome?invite=${rawToken}`;
     }
   }
 
