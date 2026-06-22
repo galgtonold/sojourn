@@ -12,6 +12,7 @@ import {
   type MapMarker,
   type PhotoPin,
   computeBounds,
+  initialView,
   orderPhotosByTime,
   photoConnectors,
 } from "@/components/trip-map";
@@ -63,16 +64,17 @@ export function StoryMap({
     setMapReady(false);
 
     const ordered = orderPhotosByTime(photoPins);
-    // Frame the camera on the content from the first frame (saves a wide initial
-    // tile fetch on slow connections). boundsRef also drives the reset view.
+    // Open roughly framed on the content (saves a wide initial tile fetch on slow
+    // connections); the load fitBounds nails the exact framing. boundsRef also
+    // drives the reset view.
     const bounds = computeBounds(markers, photoPins, tracks);
     boundsRef.current = bounds;
+    const view = initialView(bounds, 16);
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: env.mapStyleUrl,
-      ...(bounds
-        ? { bounds, fitBoundsOptions: { padding: 56, maxZoom: 16 } }
-        : { center: [0, 20] as [number, number], zoom: 1 }),
+      center: view ? view.center : [0, 20],
+      zoom: view ? view.zoom : 1,
       attributionControl: { compact: true },
     });
     mapRef.current = map;

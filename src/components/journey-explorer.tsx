@@ -9,6 +9,7 @@ import { optimizedSrc } from "@/lib/utils";
 import { buildConnectorSegments } from "@/lib/journey-connector";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { BlurImg } from "@/components/blur-img";
+import { initialView } from "@/components/trip-map";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -166,16 +167,13 @@ export function JourneyExplorer({
       padding: { top: 64, bottom: 196, left: 32, right: 32 },
       maxZoom: 15,
     };
+    const view = initialView(initialBounds, 15);
 
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
-      ...(initialBounds
-        ? { bounds: initialBounds, fitBoundsOptions: fitOpts }
-        : {
-            center: [ordered[0].lng, ordered[0].lat] as [number, number],
-            zoom: 12,
-          }),
+      center: view ? view.center : [ordered[0].lng, ordered[0].lat],
+      zoom: view ? view.zoom : 12,
       attributionControl: { compact: true },
     });
     mapRef.current = map;

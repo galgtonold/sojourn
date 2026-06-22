@@ -142,21 +142,19 @@ export function TripMap({
   useEffect(() => {
     if (!container.current || !hasContent) return;
 
-    // Initialise the camera at the content's bounds from the very first frame, so
-    // on a slow connection we only fetch tiles for the area we actually show —
-    // instead of loading a wide zoom-5 view and then fitting (downloading twice).
+    // Open already centred on the content at roughly the right zoom (derived from
+    // its span), so on a slow connection we fetch tiles for the area we actually
+    // show — not a wide zoom-5 view first. The exact framing is nailed by the
+    // fitBounds on load; this just avoids the wasteful wide initial download.
     const bounds = computeBounds(markers, photos, tracks);
     const single = markers.length + photos.length <= 1 && tracks.length === 0;
+    const view = initialView(bounds, single ? 12 : 16);
 
     const map = new maplibregl.Map({
       container: container.current,
       style: env.mapStyleUrl,
-      ...(bounds
-        ? {
-            bounds,
-            fitBoundsOptions: { padding: 64, maxZoom: single ? 12 : 16 },
-          }
-        : { center: [0, 20] as [number, number], zoom: 1 }),
+      center: view ? view.center : [0, 20],
+      zoom: view ? view.zoom : 1,
       attributionControl: { compact: true },
     });
     map.addControl(
@@ -378,4 +376,26 @@ export function computeBounds(
     }
   }
   return any ? b : null;
+}
+
+// A safe initial center + an *approximate* zoom from the bounds' degree span, so
+// the map opens roughly framed (no wide pre-load) without depending on the
+// container's measured size (which a `bounds` constructor option does). The
+// load-time fitBounds then sets the exact framing.
+export function initialView(
+  bounds: maplibregl.LngLatBounds | null,
+  maxZoom: number,
+): { center: [number, number]; zoom: number } | null {
+  if (!bounds) return null;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const center: [number, number] = [
+    (sw.lng + ne.lng) / 2,
+    (sw.lat + ne.lat) / 2,
+  ];
+  const span = Math.max(Math.abs(ne.lng - sw.lng), Math.abs(ne.lat - sw.lat));
+  // 360° ≈ zoom 0; each level halves the span. The −1 leaves a little margin so
+  // the rough view never crops tighter than the real fit.
+  const zoom = span > 1e-6 ? Math.log2(360 / span) - 1 : maxZoom;
+  return { center, zoom: Math.max(1, Math.min(maxZoom, zoom)) };
 }
