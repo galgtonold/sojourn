@@ -13,7 +13,11 @@ export function ElevationChart({ series }: { series: ElevationSeries }) {
   const W = 1000;
   const H = 240;
   const pad = 8;
-  const range = Math.max(1, max - min);
+  // Floor the vertical span at 100 m (anchored at the low point) so a nearly
+  // flat ride reads as flat — sitting low in the chart — instead of a tiny
+  // wiggle being stretched to look dramatic. Real climbs (>100 m) still fill it.
+  const MIN_RANGE_M = 100;
+  const range = Math.max(MIN_RANGE_M, max - min);
   const px = (d: number) => (d / Math.max(1, distanceM)) * W;
   const py = (e: number) => H - pad - ((e - min) / range) * (H - 2 * pad);
 
