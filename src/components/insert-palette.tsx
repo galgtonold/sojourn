@@ -2,32 +2,36 @@
 import { useMemo } from "react";
 import { Check, ImagePlus, ListChecks, MessageCircleQuestion } from "lucide-react";
 import type { Photo } from "@/lib/types";
+import type { EditorInteraction } from "@/lib/story-editor";
 import { optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { referencedPhotoIds } from "@/lib/rich";
 import { useT } from "@/components/i18n";
 
-/** The insert bar: a horizontal strip of the post's photos plus Poll and Quiz
- *  tiles. Clicking drops the corresponding markdown at the editor's caret —
- *  a [photo:<id>] tag, or a fill-in :::poll / :::quiz template. */
+/** The insert bar: a horizontal strip of the post's defined media — its photos
+ *  and its defined polls/quizzes. Clicking drops a reference at the editor's
+ *  caret: [photo:<id>] or [ask:<id>]. Already-placed items are badged. */
 export function InsertPalette({
   photos,
+  interactions,
   body,
   onInsertPhoto,
-  onInsertPoll,
-  onInsertQuiz,
+  onInsertInteraction,
 }: {
   photos: Photo[];
+  interactions: EditorInteraction[];
   body: string;
   onInsertPhoto: (id: string) => void;
-  onInsertPoll: () => void;
-  onInsertQuiz: () => void;
+  onInsertInteraction: (id: string) => void;
 }) {
   const t = useT();
-  const used = useMemo(() => referencedPhotoIds(body, photos), [body, photos]);
+  const usedPhotos = useMemo(() => referencedPhotoIds(body, photos), [body, photos]);
+  const usedAsk = useMemo(
+    () => new Set([...body.matchAll(/\[ask:([^\]\s]+)\]/g)].map((m) => m[1])),
+    [body],
+  );
 
-  const tile =
-    "grid h-16 w-20 shrink-0 place-items-center gap-1 rounded-lg border border-white/10 text-xs text-sand-100/70 transition hover:border-ember-400 hover:text-sand-50";
+  if (photos.length === 0 && interactions.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-white/10 bg-ink-800/40 p-3">
@@ -36,16 +40,8 @@ export function InsertPalette({
         {t("admin.editor.insertBar")}
       </p>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <button type="button" onClick={onInsertPoll} className={tile}>
-          <MessageCircleQuestion className="size-5 text-sage-400" />
-          {t("admin.editor.insertPoll")}
-        </button>
-        <button type="button" onClick={onInsertQuiz} className={tile}>
-          <ListChecks className="size-5 text-sage-400" />
-          {t("admin.editor.insertQuiz")}
-        </button>
         {photos.map((p, i) => {
-          const isUsed = used.has(p.id);
+          const isUsed = usedPhotos.has(p.id);
           const blur = blurhashToDataURL(p.blurhash);
           return (
             <button
@@ -79,6 +75,31 @@ export function InsertPalette({
               {p.caption && (
                 <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-ink-950/90 to-transparent px-1.5 pb-1 pt-4 text-left text-[10px] text-sand-100/90">
                   {p.caption}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        {interactions.map((it) => {
+          const isUsed = usedAsk.has(it.id);
+          const Icon = it.kind === "quiz" ? ListChecks : MessageCircleQuestion;
+          return (
+            <button
+              key={it.id}
+              type="button"
+              onClick={() => onInsertInteraction(it.id)}
+              title={it.question}
+              aria-label={t("admin.editor.insertInteraction")}
+              className="relative flex h-16 w-40 shrink-0 flex-col justify-between rounded-lg border border-white/10 p-2 text-left transition hover:border-ember-400"
+            >
+              <Icon className="size-4 shrink-0 text-sage-400" />
+              <span className="line-clamp-2 text-[11px] leading-tight text-sand-100/80">
+                {it.question}
+              </span>
+              {isUsed && (
+                <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-ember-500 text-ink-950">
+                  <Check className="size-3" />
                 </span>
               )}
             </button>

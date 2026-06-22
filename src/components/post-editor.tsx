@@ -3,6 +3,7 @@ import {
   forwardRef,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,11 @@ import { slugify } from "@/lib/utils";
 import type { Photo } from "@/lib/types";
 import { ImageUploader } from "@/components/image-uploader";
 import { LocationDialog } from "@/components/location-dialog";
-import { StoryEditor } from "@/components/story-editor";
+import {
+  InlineEditor,
+  type InlineEditorHandle,
+} from "@/components/inline-editor";
+import { InsertPalette } from "@/components/insert-palette";
 import type { EditorInteraction } from "@/lib/story-editor";
 import { Select } from "@/components/select";
 import { useT } from "@/components/i18n";
@@ -88,6 +93,7 @@ export const PostEditor = forwardRef<
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locOpen, setLocOpen] = useState(false);
+  const bodyEditorRef = useRef<InlineEditorHandle>(null);
   const isEdit = Boolean(post.id);
   // Trip may be lifted to the workspace (controlled) so it sits above the AI
   // panel; otherwise it lives in local post state.
@@ -277,13 +283,25 @@ export const PostEditor = forwardRef<
         value={post.excerpt}
         onChange={(e) => set("excerpt", e.target.value)}
       />
-      <StoryEditor
-        body={post.body}
-        onChange={(v) => set("body", v)}
-        photos={photos}
-        interactions={interactions}
-        placeholder={t("admin.editor.body")}
-      />
+      <div className="space-y-2">
+        <InsertPalette
+          photos={photos}
+          interactions={interactions}
+          body={post.body}
+          onInsertPhoto={(id) => bodyEditorRef.current?.insertToken(`[photo:${id}]`)}
+          onInsertInteraction={(id) =>
+            bodyEditorRef.current?.insertToken(`[ask:${id}]`)
+          }
+        />
+        <InlineEditor
+          ref={bodyEditorRef}
+          body={post.body}
+          onChange={(v) => set("body", v)}
+          photos={photos}
+          interactions={interactions}
+          placeholder={t("admin.editor.body")}
+        />
+      </div>
       <p className="text-xs text-sand-100/40">{t("admin.editor.hint")}</p>
       <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
 
