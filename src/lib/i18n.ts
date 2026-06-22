@@ -388,8 +388,10 @@ const en = {
   "admin.members.copy": "Copy",
   "admin.members.copied": "Copied!",
   "admin.members.noAccess": "No trips yet",
+  "admin.members.resetLink": "Login link",
 
-  "admin.welcome.title": "Set your password",
+  "admin.welcome.title": "Welcome aboard",
+  "admin.welcome.subtitle": "Set a password to finish setting up your {site} account.",
   "admin.welcome.body": "Choose a password to finish setting up your account.",
   "admin.welcome.save": "Set password",
   "admin.welcome.done": "All set — taking you in…",
@@ -901,8 +903,10 @@ const de: Dict = {
   "admin.members.copy": "Kopieren",
   "admin.members.copied": "Kopiert!",
   "admin.members.noAccess": "Noch keine Reisen",
+  "admin.members.resetLink": "Login-Link",
 
-  "admin.welcome.title": "Passwort festlegen",
+  "admin.welcome.title": "Willkommen an Bord",
+  "admin.welcome.subtitle": "Lege ein Passwort fest, um dein {site}-Konto einzurichten.",
   "admin.welcome.body":
     "Wähle ein Passwort, um die Einrichtung deines Kontos abzuschließen.",
   "admin.welcome.save": "Passwort festlegen",

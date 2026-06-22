@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { randomBytes, createHash } from "node:crypto";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { env } from "@/lib/env";
-
-// Invite links stay valid for a week, so a collaborator has time to act on it.
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import { mintInviteLink } from "@/lib/member-invite";
 
 const schema = z.object({
   email: z.string().trim().email(),
@@ -87,6 +83,10 @@ export async function POST(req: Request) {
     }
   }
 
+  if (!userId) {
+    return NextResponse.json({ error: "no-user" }, { status: 500 });
+  }
+
   // Ensure a (member) profile exists — never downgrade an existing owner.
   await admin
     .from("profiles")
@@ -108,18 +108,14 @@ export async function POST(req: Request) {
   // fresh Supabase session at click time (see /api/invite/accept).
   let link: string | undefined;
   if (status === "invited") {
-    const rawToken = randomBytes(32).toString("hex");
-    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-    const { error: invErr } = await admin.from("member_invites").insert({
-      token: tokenHash,
-      user_id: userId,
-      email,
-      expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(),
-    });
-    if (!invErr) {
-      link = `${env.siteUrl}/admin/welcome?invite=${rawToken}`;
-    }
+    link = (await mintInviteLink(admin, userId, email)) ?? undefined;
   }
 
-  return NextResponse.json({ ok: true, status, link });
+  // Hand back the member so the list can show them without a reload.
+  return NextResponse.json({
+    ok: true,
+    status,
+    link,
+    member: { id: userId, email, tripIds },
+  });
 }

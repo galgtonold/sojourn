@@ -9,6 +9,11 @@ import { env } from "@/lib/env";
 // token, then mints a *fresh* short-lived Supabase recovery token to hand back —
 // the welcome page verifies that into a session. So the week-long validity lives
 // in our token, while Supabase's token is only ever seconds old when used.
+//
+// It deliberately does NOT consume the token here: the invitee only becomes
+// usable once they set a password, so burning the token at mint-time (before the
+// password is set) would strand the account with no password and a dead link.
+// /api/invite/complete marks it used after the password is saved.
 const schema = z.object({ token: z.string().min(20) });
 
 export async function POST(req: Request) {
@@ -47,12 +52,6 @@ export async function POST(req: Request) {
   if (!hashed) {
     return NextResponse.json({ error: "mint-failed" }, { status: 500 });
   }
-
-  // Single-use: consume it now that a session token has been issued.
-  await admin
-    .from("member_invites")
-    .update({ used_at: new Date().toISOString() })
-    .eq("token", tokenHash);
 
   return NextResponse.json({ token_hash: hashed, type: "recovery" });
 }

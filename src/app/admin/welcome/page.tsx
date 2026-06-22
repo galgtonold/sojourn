@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { env } from "@/lib/env";
 import { useT } from "@/components/i18n";
 
 export default function Welcome() {
@@ -13,12 +14,14 @@ export default function Welcome() {
     "checking",
   );
   const [detail, setDetail] = useState<string | null>(null);
+  // Our own invite token, held in memory until the password is submitted — we
+  // never establish a session just from opening the link.
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // Establish a session from whatever the invite/recovery link carried.
   useEffect(() => {
     const supabase = getBrowserSupabase();
     if (!supabase) {
@@ -34,13 +37,32 @@ export default function Welcome() {
     const tokenHash = q.get("token_hash");
     const type = (q.get("type") as EmailOtpType | null) ?? "invite";
     const code = q.get("code");
-    // Our own 7-day invite token: exchange it for a fresh Supabase session token.
     const invite = q.get("invite");
 
     function stripUrl() {
       window.history.replaceState({}, "", window.location.pathname);
     }
 
+    if (errorDescription) {
+      setDetail(errorDescription);
+      setPhase("invalid");
+      return;
+    }
+
+    // Our own invite token: do NOT touch the session on open. Just show the
+    // password form; the recovery session is established at submit-time, right
+    // before the password is set (see submit()). This means merely opening the
+    // link — even while signed in as someone else — can't hijack a session or
+    // burn the token.
+    if (invite) {
+      setInviteToken(invite);
+      setPhase("ready");
+      stripUrl();
+      return;
+    }
+
+    // Legacy Supabase email links (token_hash / code / implicit) still need a
+    // session established up front so the form can call updateUser.
     let cancelled = false;
     const sub = supabase.auth.onAuthStateChange((_e, session) => {
       if (session && !cancelled) {
@@ -50,32 +72,8 @@ export default function Welcome() {
     });
 
     (async () => {
-      if (errorDescription) {
-        setDetail(errorDescription);
-        setPhase("invalid");
-        return;
-      }
       try {
-        if (invite) {
-          // Trade our long-lived token for a fresh recovery token, then verify
-          // that into a session (same path as a normal token_hash link).
-          const res = await fetch("/api/invite/accept", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ token: invite }),
-          });
-          if (!res.ok) throw new Error("invite");
-          const fresh = (await res.json()) as {
-            token_hash: string;
-            type: EmailOtpType;
-          };
-          const { error } = await supabase.auth.verifyOtp({
-            type: fresh.type,
-            token_hash: fresh.token_hash,
-          });
-          if (error) throw error;
-        } else if (tokenHash) {
-          // Preferred flow (no PKCE verifier needed).
+        if (tokenHash) {
           const { error } = await supabase.auth.verifyOtp({
             type,
             token_hash: tokenHash,
@@ -85,7 +83,6 @@ export default function Welcome() {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
         }
-        // Implicit (#access_token) links are picked up automatically.
         const { data } = await supabase.auth.getSession();
         if (data.session && !cancelled) {
           cancelled = true;
@@ -118,27 +115,68 @@ export default function Welcome() {
       setError(t("admin.account.errMin"));
       return;
     }
-    setBusy(true);
-    setError(null);
     const supabase = getBrowserSupabase();
-    const { error } = await supabase!.auth.updateUser({ password });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
+    if (!supabase) {
+      setError(t("admin.welcome.invalid"));
       return;
     }
-    setDone(true);
-    setTimeout(() => router.replace("/admin"), 1200);
+    setBusy(true);
+    setError(null);
+    try {
+      // Invite path: establish the session now (mint a fresh recovery token and
+      // verify it), then immediately set the password, then burn the token.
+      if (inviteToken) {
+        const res = await fetch("/api/invite/accept", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: inviteToken }),
+        });
+        if (!res.ok) throw new Error(t("admin.welcome.invalid"));
+        const fresh = (await res.json()) as {
+          token_hash: string;
+          type: EmailOtpType;
+        };
+        const v = await supabase.auth.verifyOtp({
+          type: fresh.type,
+          token_hash: fresh.token_hash,
+        });
+        if (v.error) throw v.error;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
+      if (inviteToken) {
+        // Single-use only now that onboarding actually succeeded (best effort).
+        await fetch("/api/invite/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: inviteToken }),
+        }).catch(() => {});
+      }
+
+      setBusy(false);
+      setDone(true);
+      setTimeout(() => router.replace("/admin"), 1200);
+    } catch (err) {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : t("admin.welcome.invalid"));
+    }
   }
 
   return (
     <div className="flex min-h-dvh items-center justify-center px-6">
-      <div className="w-full max-w-sm space-y-4">
-        <div className="flex items-center gap-2">
-          <Compass className="size-6 text-ember-400" />
-          <h1 className="font-display text-2xl font-semibold">
-            {t("admin.welcome.title")}
-          </h1>
+      <div className="w-full max-w-sm space-y-5">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Compass className="size-6 text-ember-400" />
+            <h1 className="font-display text-2xl font-semibold">
+              {t("admin.welcome.title")}
+            </h1>
+          </div>
+          <p className="text-sm text-sand-100/60">
+            {t("admin.welcome.subtitle", { site: env.siteName })}
+          </p>
         </div>
 
         {phase === "invalid" ? (
