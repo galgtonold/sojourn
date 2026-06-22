@@ -9,6 +9,7 @@ import {
   Route,
   Sparkles,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import { useT } from "@/components/i18n";
@@ -89,25 +90,26 @@ export function PostWorkspace({
   }
 
   // Save logic moved verbatim from the old PostEditor.
-  async function save(navigate = false): Promise<boolean> {
-    if (post.published && (!post.title.trim() || !post.trip_id)) {
+  async function save(navigate = false, overrides?: Partial<EditablePost>): Promise<boolean> {
+    const current = { ...post, ...(overrides ?? {}) };
+    if (current.published && (!current.title.trim() || !current.trip_id)) {
       setError(t("admin.editor.publishNeedsFields"));
       return false;
     }
     setBusy(true);
     setError(null);
     const payload = {
-      ...post,
+      ...current,
       slug:
-        post.slug && !post.slug.startsWith("entwurf-")
-          ? post.slug
-          : slugify(post.title),
-      trip_id: post.trip_id || null,
-      lat: post.lat ? Number(post.lat) : null,
-      lng: post.lng ? Number(post.lng) : null,
+        current.slug && !current.slug.startsWith("entwurf-")
+          ? current.slug
+          : slugify(current.title),
+      trip_id: current.trip_id || null,
+      lat: current.lat ? Number(current.lat) : null,
+      lng: current.lng ? Number(current.lng) : null,
     };
     try {
-      const res = await fetch(`/api/admin/posts/${post.id}`, {
+      const res = await fetch(`/api/admin/posts/${current.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -132,9 +134,24 @@ export function PostWorkspace({
   async function togglePublish() {
     const next = !post.published;
     setPost((p) => ({ ...p, published: next }));
-    // Save with the new flag; revert on failure.
-    const ok = await save(false);
+    const ok = await save(false, { published: next });
     if (!ok) setPost((p) => ({ ...p, published: !next }));
+  }
+
+  async function remove() {
+    if (
+      !post.id ||
+      !(await confirm({
+        message: t("admin.editor.deleteConfirm"),
+        danger: true,
+        confirmLabel: t("common.delete"),
+      }))
+    )
+      return;
+    setBusy(true);
+    await fetch(`/api/admin/posts/${post.id}`, { method: "DELETE" });
+    router.push("/admin/posts");
+    router.refresh();
   }
 
   function handleDraftSaved(s: DraftSaved) {
@@ -233,6 +250,19 @@ export function PostWorkspace({
       </PostSection>
 
       {error && <p className="px-1 text-sm text-red-400">{error}</p>}
+
+      {post.id && (
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={remove}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full border border-red-500/30 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/10"
+          >
+            <Trash2 className="size-4" /> {t("admin.editor.delete")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
