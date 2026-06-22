@@ -216,6 +216,65 @@ export async function getPublishedPostsByTrip(
   }
 }
 
+// Prev/next within a trip, in chronological (oldest→newest) reading order, so a
+// reader can walk a multi-day trip front-to-back. Light by design — only the
+// fields the footer nav needs (slug + the title in both languages), never the
+// bodies. `prev` is the earlier post, `next` the later one.
+export type PostNavLink = {
+  slug: string;
+  title: string;
+  titleI18n: Partial<Record<Locale, string>>;
+};
+
+function toNavLink(
+  row:
+    | { slug: string; title: string; i18n?: unknown }
+    | undefined
+    | null,
+): PostNavLink | null {
+  if (!row) return null;
+  const titleI18n: Partial<Record<Locale, string>> = {};
+  const i18n = (row.i18n ?? {}) as Partial<Record<Locale, PostTranslation>>;
+  for (const loc of ["de", "en"] as Locale[]) {
+    const tr = i18n[loc];
+    if (tr?.title) titleI18n[loc] = tr.title;
+  }
+  return { slug: row.slug, title: row.title, titleI18n };
+}
+
+export async function getTripPostNav(
+  tripId: string,
+  currentSlug: string,
+): Promise<{ prev: PostNavLink | null; next: PostNavLink | null }> {
+  const empty = { prev: null, next: null };
+  const supabase = getPublicSupabase();
+  if (!supabase) {
+    const list = demoPosts
+      .filter((p) => p.trip_id === tripId)
+      .sort((a, b) =>
+        String(a.published_at ?? "").localeCompare(String(b.published_at ?? "")),
+      );
+    const idx = list.findIndex((p) => p.slug === currentSlug);
+    if (idx === -1) return empty;
+    return { prev: toNavLink(list[idx - 1]), next: toNavLink(list[idx + 1]) };
+  }
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select("slug, title, i18n, published_at, id")
+      .eq("published", true)
+      .eq("trip_id", tripId)
+      .order("published_at", { ascending: true })
+      .order("id", { ascending: true });
+    if (error || !data) return empty;
+    const idx = data.findIndex((p) => p.slug === currentSlug);
+    if (idx === -1) return empty;
+    return { prev: toNavLink(data[idx - 1]), next: toNavLink(data[idx + 1]) };
+  } catch {
+    return empty;
+  }
+}
+
 export async function getPostBySlug(
   slug: string,
 ): Promise<PostWithRelations | null> {

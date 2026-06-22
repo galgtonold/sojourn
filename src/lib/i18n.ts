@@ -44,6 +44,8 @@ const en = {
   "post.unpublished": "Unpublished",
   "post.gallery": "Gallery",
   "post.onMap": "On the map",
+  "post.navPrev": "Previous",
+  "post.navNext": "Next",
   "post.elevation": "Elevation",
   "post.exploreJourney": "Explore the journey map",
 
@@ -513,6 +515,8 @@ const de: Dict = {
   "post.unpublished": "Unveröffentlicht",
   "post.gallery": "Galerie",
   "post.onMap": "Auf der Karte",
+  "post.navPrev": "Vorheriger",
+  "post.navNext": "Nächster",
   "post.elevation": "Höhenprofil",
   "post.exploreJourney": "Reisekarte erkunden",
 

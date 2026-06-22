@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import { getInteractions, getPostBySlug, getPostSummaries } from "@/lib/content";
+import {
+  getInteractions,
+  getPostBySlug,
+  getPostSummaries,
+  getTripPostNav,
+} from "@/lib/content";
 import { PostView } from "@/components/post-view";
 
 // Static, on-demand revalidation: the body is rendered in the default locale and
@@ -46,5 +51,16 @@ export default async function PostPage({
   // Interactions are authored content (safe fields only) — baked into the cached
   // page and refreshed on edit. Comments self-fetch on the client, so pass none.
   const interactions = await getInteractions(post.id);
-  return <PostView post={post} comments={[]} interactions={interactions} />;
+  // Prev/next within the trip, for reading a multi-day journey straight through.
+  const nav = post.trip_id
+    ? await getTripPostNav(post.trip_id, slug)
+    : { prev: null, next: null };
+  return (
+    <PostView
+      post={post}
+      comments={[]}
+      interactions={interactions}
+      nav={nav}
+    />
+  );
 }

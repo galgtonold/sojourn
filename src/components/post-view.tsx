@@ -1,7 +1,15 @@
 "use client";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, MapPin, Maximize2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Calendar,
+  Clock,
+  MapPin,
+  Maximize2,
+} from "lucide-react";
 import type { Comment, Interaction, PostWithRelations } from "@/lib/types";
+import type { PostNavLink } from "@/lib/content";
 import { cn, formatDate, readingTime } from "@/lib/utils";
 import { localizePostDeep, localizeInteraction } from "@/lib/i18n-content";
 import { Gallery } from "@/components/gallery";
@@ -27,11 +35,13 @@ export function PostView({
   post: rawPost,
   comments,
   interactions: rawInteractions = [],
+  nav,
   preview = false,
 }: {
   post: PostWithRelations;
   comments: Comment[];
   interactions?: Interaction[];
+  nav?: { prev: PostNavLink | null; next: PostNavLink | null };
   preview?: boolean;
 }) {
   const { locale } = useI18n();
@@ -255,9 +265,48 @@ export function PostView({
           where the sticky map sat. */}
       <ElevationProfile tracks={post.tracks} wrapClassName={sectionWrap} />
 
-      <section className={cn(sectionWrap, "pb-24")}>
+      <section className={cn(sectionWrap, "pb-12")}>
         <Comments postId={post.id} initial={comments} />
       </section>
+
+      {/* Walk a multi-day trip front-to-back without backtracking through the
+          trip page. Chronological: prev = earlier day, next = later day. */}
+      {nav && (nav.prev || nav.next) && (
+        <nav className={cn(sectionWrap, "pb-24")}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {nav.prev ? (
+              <Link
+                href={`/posts/${nav.prev.slug}`}
+                className="group flex flex-col gap-1 rounded-2xl border border-white/10 bg-ink-900/40 p-4 transition hover:border-ember-400/50"
+              >
+                <span className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-sand-100/50">
+                  <ArrowLeft className="size-3.5" /> <T k="post.navPrev" />
+                </span>
+                <span className="font-display text-lg font-semibold transition group-hover:text-ember-300">
+                  {nav.prev.titleI18n[locale] ?? nav.prev.title}
+                </span>
+              </Link>
+            ) : (
+              <span className="hidden sm:block" />
+            )}
+            {nav.next ? (
+              <Link
+                href={`/posts/${nav.next.slug}`}
+                className="group flex flex-col gap-1 rounded-2xl border border-white/10 bg-ink-900/40 p-4 text-right transition hover:border-ember-400/50 sm:items-end"
+              >
+                <span className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-sand-100/50">
+                  <T k="post.navNext" /> <ArrowRight className="size-3.5" />
+                </span>
+                <span className="font-display text-lg font-semibold transition group-hover:text-ember-300">
+                  {nav.next.titleI18n[locale] ?? nav.next.title}
+                </span>
+              </Link>
+            ) : (
+              <span className="hidden sm:block" />
+            )}
+          </div>
+        </nav>
+      )}
     </article>
   );
 }
