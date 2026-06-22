@@ -160,6 +160,8 @@ export function Comments({
             <motion.button
               whileTap={{ scale: 0.85 }}
               onClick={() => toggleLike(c.id)}
+              aria-label={t("comments.like")}
+              aria-pressed={isLiked}
               className={cn(
                 "inline-flex items-center gap-1.5 transition",
                 isLiked

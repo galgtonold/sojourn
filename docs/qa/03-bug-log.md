@@ -84,6 +84,31 @@ curl 'http://localhost:3000/api/comments?postId=<id>'   # {"error":"permission d
 
 ---
 
+## BUG-004 — Comment "like" buttons have no accessible name (icon-only) — S3 (a11y, WCAG 4.1.2)
+
+**Surface:** comment thread on every post page.
+**File:** `src/components/comments.tsx` (the `toggleLike` button).
+
+**Expected:** Every control has an accessible name; a screen reader announces what the like button does and its state.
+
+**Actual:** The like button renders only a `<Heart/>` icon (the count `<span>` appears only when `like_count > 0`), with no text and no `aria-label` — so it has no accessible name. The audit found 8 such nameless buttons on one post page; a screen reader announces a bare "button".
+
+**Fix shipped:** added `aria-label={t("comments.like")}` (new i18n key, en+de) and `aria-pressed={isLiked}` (it's a toggle) to the button. Verified live: post page now has **0** nameless buttons (was 8) and all 55 buttons carry an accessible name.
+
+**Status:** FIXED — verified in the browser; typecheck + 135 tests green.
+
+---
+
+## Accessibility & responsive audit (public surfaces)
+
+**a11y (home + post page):** `<html lang>` set and tracks locale; exactly one `h1`; no heading-level jumps; landmarks (`nav`/`main`/`footer`) present; **0 images without `alt`** (decorative images correctly use `alt=""`); **0 links without an accessible name**; **0 unlabeled form inputs**; after BUG-004, **0 buttons without an accessible name**. Lightbox/map/close/prev-next controls carry `aria-label`s.
+
+**Responsive (375×812 mobile):** no horizontal document overflow on home or on the deliberately-long-title / HTML-in-title edge-case post (`collab-post-with-edges`) — the long title wraps; the only sub-pixel-wide element is a clipped decorative hero backdrop (contained by its `overflow-hidden` parent), not a layout break.
+
+*Not yet audited:* admin pages, `/search`, `/map`, `/photos` a11y; tablet breakpoint; colour-contrast ratios; full keyboard-trap / focus-order traversal.
+
+---
+
 ## Verified working (demo-mode, real-user testing)
 
 - **Baseline:** `npm run typecheck` clean; `npm test` 135 passed / 1 skipped; `npm run build` succeeds zero-config.
@@ -123,7 +148,8 @@ Cannot be tested in demo mode; require a real backend:
 Environment: local `supabase start` stack + `supabase/seed.sql` (50 posts / 43 published, 8 trips, 48 photos, 440 comments, 1720 reactions, 3 interactions, 2 GPX tracks, owner + collaborator users). `.env.local` → local stack only (VAPID generated locally). After BUG-002 fix:
 
 - **Auth:** owner + collaborator log in (GoTrue password grant); wrong password rejected (400). Owner dashboard renders (50 posts / 441 comments, all 8 trips, owner-only nav: members/settings/new-trip; AI-usage correctly hidden — no AI key).
-- **Gating:** `/admin` → 307 redirect to login when unauthenticated (middleware live).
+- **Gating:** `/admin` → 307 redirect to login when unauthenticated (middleware live); `/admin/posts/new` also 307 when unauthenticated.
+- **Admin post lifecycle (UI):** "New post" creates an instant draft (`entwurf-…`) and opens the editor; editing the title/body and saving persists them and **auto-derives the slug** (`qa-smoke-test-published-via-editor`), all via the browser Supabase client (RLS) — confirmed in the DB. Publishing makes it publicly readable (real page renders, not noindex); owner delete removes it (verified create→edit→publish→public→delete). (The editor's controlled publish-checkbox couldn't be toggled via synthetic events — a test-harness limitation, not an app bug; the save mechanism itself is proven. `PATCH /api/admin/posts/[id]` returns 405 — the editor writes directly via the Supabase client, so the inventory's "PATCH route" was an over-inference.)
 - **Drafts:** unpublished post is NOT served publicly (not-found + noindex, no title/body leak); excluded from search.
 - **Persistence (anon):** reaction add → `{ok:true}` (writes); comment POST → persisted row; poll vote → tally; **quiz correct answer + explanation hidden pre-vote, revealed only post-vote** (security property holds).
 - **Comment pagination:** 225-comment post returns 200 then all 225 on "load earlier" (past the 200 window).
