@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef } from "react";
-import { AlertTriangle, ListChecks } from "lucide-react";
+import { AlertTriangle, HelpCircle, ListChecks } from "lucide-react";
 import type { Photo } from "@/lib/types";
 import type { EditorInteraction } from "@/lib/story-editor";
 import { parseDirectives, validateBody } from "@/lib/interactions-parse";
@@ -10,6 +10,7 @@ import {
 } from "@/components/inline-editor";
 import { InsertPalette } from "@/components/insert-palette";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const input =
   "w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400";
@@ -34,6 +35,7 @@ export function ArticleStage({
   onBodyChange: (v: string) => void;
 }) {
   const t = useT();
+  const confirm = useConfirm();
   const editorRef = useRef<InlineEditorHandle>(null);
   const { issues, pendingCount } = useMemo(() => {
     const ctx = {
@@ -55,6 +57,15 @@ export function ArticleStage({
         onChange={(e) => onTitleChange(e.target.value)}
       />
       <div className="space-y-2">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => confirm({ message: t("admin.editor.help"), notice: true })}
+            className="inline-flex items-center gap-1 text-xs text-sand-100/50 transition hover:text-sand-100"
+          >
+            <HelpCircle className="size-3.5" /> {t("admin.editor.helpLabel")}
+          </button>
+        </div>
         <InsertPalette
           photos={photos}
           interactions={interactions}
@@ -71,7 +82,6 @@ export function ArticleStage({
           placeholder={t("admin.editor.body")}
         />
       </div>
-      <p className="text-xs text-sand-100/40">{t("admin.litter.hint")}</p>
       {pendingCount > 0 && (
         <p className="flex items-center gap-2 text-xs text-ember-300">
           <ListChecks className="size-3.5" />

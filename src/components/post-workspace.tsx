@@ -55,7 +55,7 @@ export function PostWorkspace({
   initialNotes,
   aiConfigured,
   trips,
-  photos,
+  initialPhotos,
   tracks,
   initialInteractions,
   translationStatus,
@@ -66,7 +66,7 @@ export function PostWorkspace({
   initialNotes: string;
   aiConfigured: boolean;
   trips: { id: string; title: string }[];
-  photos: ManagedPhoto[];
+  initialPhotos: ManagedPhoto[];
   tracks: ManagedTrack[];
   initialInteractions: ManagedInteraction[];
   translationStatus: "none" | "pending" | "ready" | "error";
@@ -76,7 +76,8 @@ export function PostWorkspace({
   const confirm = useConfirm();
   const [post, setPost] = useState<EditablePost>(initial);
   const [interactions, setInteractions] = useState<ManagedInteraction[]>(initialInteractions);
-  const [photoCount, setPhotoCount] = useState(photos.length);
+  // Lifted so an uploaded photo is insertable in the article live (no reload).
+  const [photos, setPhotos] = useState<ManagedPhoto[]>(initialPhotos);
   const [trackCount, setTrackCount] = useState(tracks.length);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,8 +196,8 @@ export function PostWorkspace({
         <PostSection title={t("admin.editor.stage.trip")} icon={<MapIcon className="size-4" />} summary={trips.find((tr) => tr.id === post.trip_id)?.title} open={open.trip} onToggle={() => toggle("trip")} className={open.trip ? "lg:col-span-4" : undefined}>
           <TripStage value={post.trip_id} trips={trips} onChange={(id) => set("trip_id", id)} />
         </PostSection>
-        <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t("admin.editor.status.photos", { n: photoCount })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
-          <PhotoManager postId={postId} slug={slug} initial={photos} onCountChange={setPhotoCount} />
+        <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t("admin.editor.status.photos", { n: photos.length })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
+          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} onListChange={setPhotos} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.track")} icon={<Route className="size-4" />} summary={trackCount ? t("admin.editor.status.track", { n: tracks.reduce((s, tr) => s + Math.round((tr.distance_m ?? 0) / 1000), 0) }) : t("admin.editor.status.trackNone")} open={open.track} onToggle={() => toggle("track")} className={open.track ? "lg:col-span-4" : undefined}>
           <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} />

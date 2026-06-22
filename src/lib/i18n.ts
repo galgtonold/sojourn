@@ -290,8 +290,10 @@ const en = {
   "admin.editor.pickLocation":
     "Tap the map to set the location, or enter coordinates below.",
   "admin.editor.excerpt": "Excerpt",
-  "admin.editor.body":
-    "Body — Markdown supported (## headings, **bold**, > quotes, - lists, [links](url)). Place a gallery photo with [photo:ID] or a poll/quiz with [ask:ID] on its own line.",
+  "admin.editor.body": "Write your story…",
+  "admin.editor.helpLabel": "Formatting",
+  "admin.editor.help":
+    "Markdown: ## heading, **bold**, > quote, - list, [text](url). Add photos and polls with the insert bar above — no need to type anything.",
   "admin.editor.insertBar": "Insert — drop a photo, poll or quiz at the cursor.",
   "admin.editor.insertPhoto": "Insert this photo at the cursor",
   "admin.editor.insertInteraction": "Insert this poll or quiz at the cursor",
@@ -320,7 +322,7 @@ const en = {
   "admin.editor.bar.unpublish": "Unpublish",
   "admin.editor.cover.title": "Cover",
   "admin.editor.cover.pick": "Pick one of your photos",
-  "admin.editor.cover.advanced": "Paste a URL instead",
+  "admin.editor.cover.advanced": "URL & alt text",
   "admin.editor.cover.none": "No cover yet",
   "admin.editor.details.place": "Place",
   "admin.editor.removeObject": "Remove from the article",
@@ -793,8 +795,10 @@ const de: Dict = {
   "admin.editor.pickLocation":
     "Tippe auf die Karte, um den Ort zu setzen, oder gib unten Koordinaten ein.",
   "admin.editor.excerpt": "Kurzbeschreibung",
-  "admin.editor.body":
-    "Text — Markdown möglich (## Überschriften, **fett**, > Zitate, - Listen, [Links](url)). Setze ein Galeriefoto mit [photo:ID] oder eine Umfrage/ein Quiz mit [ask:ID] in eine eigene Zeile.",
+  "admin.editor.body": "Schreib deine Geschichte…",
+  "admin.editor.helpLabel": "Formatierung",
+  "admin.editor.help":
+    "Markdown: ## Überschrift, **fett**, > Zitat, - Liste, [Text](url). Fotos und Umfragen fügst du über die Leiste oben ein — du musst nichts tippen.",
   "admin.editor.insertBar": "Einfügen — Foto, Umfrage oder Quiz an der Cursorposition.",
   "admin.editor.insertPhoto": "Dieses Foto an der Cursorposition einfügen",
   "admin.editor.insertInteraction": "Diese Umfrage oder dieses Quiz an der Cursorposition einfügen",
@@ -823,7 +827,7 @@ const de: Dict = {
   "admin.editor.bar.unpublish": "Zurückziehen",
   "admin.editor.cover.title": "Titelbild",
   "admin.editor.cover.pick": "Eines deiner Fotos wählen",
-  "admin.editor.cover.advanced": "Stattdessen URL einfügen",
+  "admin.editor.cover.advanced": "URL & Alt-Text",
   "admin.editor.cover.none": "Noch kein Titelbild",
   "admin.editor.details.place": "Ort",
   "admin.editor.removeObject": "Aus dem Artikel entfernen",

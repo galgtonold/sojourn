@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Eye } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
@@ -111,19 +111,9 @@ export default async function EditPostPage({
       >
         <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
       </Link>
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <h1 className="font-display text-4xl font-semibold">
-          <T k={data.title ? "admin.editor.editPost" : "admin.editor.newPost"} />
-        </h1>
-        <a
-          href={`/admin/posts/${data.id}/preview`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
-        >
-          <Eye className="size-4" /> <T k="admin.preview" />
-        </a>
-      </div>
+      <h1 className="mb-2 font-display text-4xl font-semibold">
+        <T k={data.title ? "admin.editor.editPost" : "admin.editor.newPost"} />
+      </h1>
       <PostWorkspace
         postId={data.id}
         slug={data.slug ?? ""}
@@ -131,7 +121,7 @@ export default async function EditPostPage({
         initialNotes={data.ai_notes ?? ""}
         aiConfigured={isAiConfigured}
         trips={trips}
-        photos={photos ?? []}
+        initialPhotos={photos ?? []}
         tracks={tracks ?? []}
         initialInteractions={(interactions ?? []) as ManagedInteraction[]}
         translationStatus={(data.translation_status as "none" | "pending" | "ready" | "error") ?? "none"}

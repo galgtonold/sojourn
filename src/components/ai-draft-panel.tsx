@@ -342,15 +342,10 @@ export function AiDraftPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-ember-500/30 bg-ember-500/5 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-5 text-ember-400" />
-          <h2 className="font-display text-xl font-semibold">
-            {t("admin.ai.title")}
-          </h2>
-        </div>
-        <div className="flex items-center gap-0.5 rounded-full border border-white/10 p-0.5 text-xs">
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-sand-100/60">{t("admin.ai.subtitle")}</p>
+        <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-white/10 p-0.5 text-xs">
           {(["de", "en"] as Lang[]).map((l) => (
             <button
               key={l}
@@ -366,7 +361,6 @@ export function AiDraftPanel({
           ))}
         </div>
       </div>
-      <p className="mt-1 text-sm text-sand-100/60">{t("admin.ai.subtitle")}</p>
 
       <p className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-ink-800/60 px-3 py-2.5 text-xs text-sand-100/70">
         <ImageUp className="mt-0.5 size-4 shrink-0 text-ember-400" />

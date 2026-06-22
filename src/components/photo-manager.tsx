@@ -27,19 +27,21 @@ export function PhotoManager({
   postId,
   slug,
   initial,
-  onCountChange,
+  onListChange,
 }: {
   postId: string;
   slug: string;
   initial: ManagedPhoto[];
-  onCountChange?: (n: number) => void;
+  // Mirrors the live photo list up so the article's insert bar can offer a
+  // freshly-uploaded photo without a page reload.
+  onListChange?: (photos: ManagedPhoto[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initial);
   useEffect(() => {
-    onCountChange?.(photos.length);
-  }, [photos.length, onCountChange]);
+    onListChange?.(photos);
+  }, [photos, onListChange]);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
