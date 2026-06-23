@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { useT } from "@/components/i18n";
 
@@ -8,8 +8,14 @@ export function SearchBox() {
   const router = useRouter();
   // The page is statically rendered, so the current query comes from the URL on
   // the client (not a server prop).
-  const initial = useSearchParams().get("q") ?? "";
-  const [value, setValue] = useState(initial);
+  const urlQuery = useSearchParams().get("q") ?? "";
+  const [value, setValue] = useState(urlQuery);
+  // Keep the input in sync with the URL on back/forward. The page doesn't remount
+  // when only ?q changes (e.g. after a second search), so the initial useState
+  // alone would leave the field stuck on the last typed term as you go back.
+  useEffect(() => {
+    setValue(urlQuery);
+  }, [urlQuery]);
   // Surface a spinner while the results navigation is in flight — submitting felt
   // unresponsive without it, especially when only the query changes.
   const [pending, startTransition] = useTransition();
