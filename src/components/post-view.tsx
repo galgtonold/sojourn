@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,11 +15,21 @@ import { cn, formatDate, readingTime } from "@/lib/utils";
 import { localizePostDeep, localizeInteraction } from "@/lib/i18n-content";
 import { Gallery } from "@/components/gallery";
 import { RichBody } from "@/components/rich-body";
-import { StoryMap } from "@/components/story-map";
 import { parseBody, referencedPhotoIds } from "@/lib/rich";
 import { Reactions } from "@/components/reactions";
 import { Comments } from "@/components/comments";
-import { TripMap, type MapMarker, type PhotoPin } from "@/components/trip-map";
+import type { MapMarker, PhotoPin } from "@/components/trip-map";
+
+// MapLibre (~200KB) is loaded only when a post actually has a story/trip map —
+// most post bundles never pay for it. The maps are client-only anyway.
+const StoryMap = dynamic(
+  () => import("@/components/story-map").then((m) => m.StoryMap),
+  { ssr: false },
+);
+const TripMap = dynamic(
+  () => import("@/components/trip-map").then((m) => m.TripMap),
+  { ssr: false },
+);
 import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 import { RevealImage } from "@/components/reveal-image";

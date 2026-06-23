@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin, X } from "lucide-react";
 import { LocationPicker } from "@/components/location-picker";
 import { useT } from "@/components/i18n";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 /**
  * A modal wrapper around the map LocationPicker, shared by the post editor and
@@ -29,6 +30,8 @@ export function LocationDialog({
   const t = useT();
   const [lat, setLat] = useState(initialLat);
   const [lng, setLng] = useState(initialLng);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     if (open) {
@@ -56,10 +59,13 @@ export function LocationDialog({
       className="fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-label={title ?? t("admin.location.title")}
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900 shadow-2xl"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-white/5 px-5 py-3.5">
@@ -77,7 +83,7 @@ export function LocationDialog({
         </div>
 
         <div className="space-y-3 overflow-y-auto p-5">
-          <p className="text-xs text-sand-100/40">
+          <p className="text-xs text-sand-100/60">
             {t("admin.editor.pickLocation")}
           </p>
           <LocationPicker

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
 import { getBranding } from "@/lib/branding";
+import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
@@ -13,7 +14,7 @@ import {
   BrandHeroLead,
   BrandHeroAccent,
 } from "@/components/i18n";
-import { formatDate } from "@/lib/utils";
+import { coverGradient, formatDate } from "@/lib/utils";
 
 // Fully static: prerendered in the default locale and the reader's language is
 // swapped in on the client (PostCard / LocText), so it serves from cache. Cached
@@ -27,20 +28,47 @@ export default async function HomePage() {
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
+  // Background image for the hero: the lead post's cover, else the newest post
+  // that has one — so a coverless lead post never leaves the hero a black void.
+  const heroCover =
+    hero?.cover_image ?? posts.find((p) => p.cover_image)?.cover_image ?? null;
+
+  const base = env.siteUrl.replace(/\/$/, "");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteName,
+    url: base,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${base}/search?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <DocumentTitle k="meta.tagline" home />
       {/* ── Immersive hero ─────────────────────────────────────────────── */}
       <section className="relative grain h-dvh min-h-[640px] w-full overflow-hidden">
-        {hero?.cover_image && (
+        {heroCover ? (
           <RevealImage
-            src={hero.cover_image}
-            alt={hero.title}
+            src={heroCover}
+            alt={hero?.title ?? ""}
             fill
             priority
             sizes="100vw"
             imgClassName="animate-kenburns"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ backgroundImage: coverGradient(hero?.slug ?? siteName) }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-ink-950/40 via-ink-950/30 to-ink-950" />
@@ -103,7 +131,7 @@ export default async function HomePage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post, i) => (
               <Reveal key={post.id} delay={i * 0.05}>
-                <PostCard post={post} />
+                <PostCard post={post} priority={i < 3} />
               </Reveal>
             ))}
           </div>
@@ -149,6 +177,7 @@ export default async function HomePage() {
 export async function generateMetadata() {
   const { name } = await getBranding();
   return {
+    alternates: { canonical: "/" },
     description: `Latest travel stories and photography from ${name}. Updated ${formatDate(
       new Date().toISOString(),
       "en",

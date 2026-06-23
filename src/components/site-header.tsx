@@ -116,7 +116,7 @@ export function SiteHeader() {
                 </Link>
               ))}
               <div className="mt-1 flex items-center justify-between border-t border-white/10 px-3 pt-3">
-                <span className="text-xs uppercase tracking-wider text-sand-100/40">
+                <span className="text-xs uppercase tracking-wider text-sand-100/60">
                   <T k="nav.menu" />
                 </span>
                 <LanguageSwitcher />

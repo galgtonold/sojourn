@@ -55,6 +55,20 @@ export function optimizedSrc(url: string, width = 2048, quality = 80): string {
 }
 
 /**
+ * A deterministic, on-brand dark gradient derived from a seed string (a slug or
+ * title) — so a post/trip with no cover image still gets a distinctive backdrop
+ * instead of a flat black rectangle. Stays dark enough for white overlay text.
+ */
+export function coverGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  // Bias toward the warm ember/sand half of the wheel (the brand palette).
+  const hue = 18 + (h % 60); // ~18°–78° (amber → gold)
+  const hue2 = (hue + 24) % 360;
+  return `linear-gradient(150deg, hsl(${hue} 42% 16%), hsl(${hue2} 38% 8%))`;
+}
+
+/**
  * Rough reading time in minutes — body words at ~220 wpm plus time to take in
  * the photos (tapering like Medium: 12s for the first image, 11s for the next,
  * … never below 3s), since a photo-heavy entry takes longer than its word count

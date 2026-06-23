@@ -3,10 +3,14 @@ import { ArrowRight } from "lucide-react";
 import { getTrips } from "@/lib/content";
 import { Reveal } from "@/components/reveal";
 import { RevealImage } from "@/components/reveal-image";
+import { coverGradient } from "@/lib/utils";
 import { T, DocumentTitle, LocText, LocDate } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: defaultTitle("meta.trips") };
+export const metadata = {
+  title: defaultTitle("meta.trips"),
+  alternates: { canonical: "/trips" },
+};
 // Static, on-demand revalidation — trip card text/dates are localized on the client.
 export const revalidate = false;
 
@@ -31,13 +35,19 @@ export default async function TripsPage() {
               className="group relative block aspect-[16/10] overflow-hidden rounded-3xl bg-ink-800"
             >
               <div className="paint-group absolute inset-0">
-                {trip.cover_image && (
+                {trip.cover_image ? (
                   <RevealImage
                     src={trip.cover_image}
                     alt={trip.title}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     imgClassName="transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{ backgroundImage: coverGradient(trip.slug || trip.title) }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />

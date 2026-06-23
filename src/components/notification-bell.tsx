@@ -98,7 +98,7 @@ export function NotificationBell({
         subscribed
           ? "text-ember-300"
           : denied
-            ? "text-sand-100/40"
+            ? "text-sand-100/60"
             : "text-sand-100/80",
         className,
       )}

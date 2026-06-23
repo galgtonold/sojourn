@@ -28,7 +28,7 @@ export function SearchBox() {
       {pending ? (
         <Loader2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-ember-400" />
       ) : (
-        <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-sand-100/40" />
+        <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-sand-100/60" />
       )}
       <input
         autoFocus

@@ -4,7 +4,10 @@ import { PostsArchive } from "@/components/posts-archive";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: defaultTitle("meta.posts") };
+export const metadata = {
+  title: defaultTitle("meta.posts"),
+  alternates: { canonical: "/posts" },
+};
 // Static, on-demand revalidation: the whole (small) published set ships once;
 // PostsArchive slices it by `?page` on the client, so the route never goes
 // dynamic on searchParams.

@@ -31,8 +31,8 @@ export function ImageUploader({
     try {
       const { url } = await uploadImage(file, folder);
       onChange(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
+    } catch {
+      setError(t("admin.err.uploadFailed"));
     } finally {
       setBusy(false);
     }

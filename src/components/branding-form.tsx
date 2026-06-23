@@ -69,14 +69,11 @@ export function BrandingForm({
           kicker_en: vals.kicker.en,
         }),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? "failed");
-      }
+      if (!res.ok) throw new Error("failed");
       setSaved(true);
       router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
+    } catch {
+      setError(t("admin.err.save"));
     } finally {
       setBusy(false);
     }
@@ -140,7 +137,7 @@ export function BrandingForm({
         <span className="text-sm text-sand-100/70">
           {t("admin.settings.brandHeadline")}
         </span>
-        <p className="mt-0.5 text-xs text-sand-100/40">
+        <p className="mt-0.5 text-xs text-sand-100/60">
           {t("admin.settings.brandHeadlineHint")}
         </p>
         <input
@@ -162,7 +159,7 @@ export function BrandingForm({
 
       {/* Live preview of the hero + footer in the language being edited. */}
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wider text-sand-100/40">
+        <p className="mb-2 text-xs uppercase tracking-wider text-sand-100/60">
           {t("admin.settings.brandPreview")}
         </p>
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-ink-950 p-5">

@@ -192,7 +192,7 @@ export function PostWorkspace({
         statusLabel={post.published ? t("admin.editor.status.published") : t("admin.editor.status.unpublished")}
       />
 
-      <p className="px-1 pt-1 text-xs uppercase tracking-[0.18em] text-sand-100/40">{t("admin.editor.group.setup")}</p>
+      <p className="px-1 pt-1 text-xs uppercase tracking-[0.18em] text-sand-100/60">{t("admin.editor.group.setup")}</p>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <PostSection title={t("admin.editor.stage.trip")} icon={<MapIcon className="size-4" />} summary={trips.find((tr) => tr.id === post.trip_id)?.title} open={open.trip} onToggle={() => toggle("trip")} className={open.trip ? "lg:col-span-4" : undefined}>
           <TripStage value={post.trip_id} trips={trips} onChange={(id) => set("trip_id", id)} />
@@ -208,7 +208,7 @@ export function PostWorkspace({
         </PostSection>
       </div>
 
-      <p className="px-1 pt-2 text-xs uppercase tracking-[0.18em] text-sand-100/40">{t("admin.editor.group.compose")}</p>
+      <p className="px-1 pt-2 text-xs uppercase tracking-[0.18em] text-sand-100/60">{t("admin.editor.group.compose")}</p>
       {aiConfigured && (
         <PostSection title={t("admin.editor.stage.ai")} icon={<Sparkles className="size-4" />} accent open={open.ai} onToggle={() => toggle("ai")}>
           <AiDraftPanel
@@ -235,7 +235,7 @@ export function PostWorkspace({
         />
       </PostSection>
 
-      <p className="px-1 pt-2 text-xs uppercase tracking-[0.18em] text-sand-100/40">{t("admin.editor.group.finish")}</p>
+      <p className="px-1 pt-2 text-xs uppercase tracking-[0.18em] text-sand-100/60">{t("admin.editor.group.finish")}</p>
       <PostSection title={t("admin.editor.stage.details")} icon={<SlidersHorizontal className="size-4" />} open={open.details} onToggle={() => toggle("details")}>
         <DetailsStage
           cover_image={post.cover_image}

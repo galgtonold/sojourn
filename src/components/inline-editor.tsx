@@ -422,7 +422,7 @@ export const InlineEditor = forwardRef<
         className="min-h-[14rem] w-full whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-ember-400"
       />
       {body.trim() === "" && (
-        <p className="pointer-events-none absolute left-3 top-2.5 text-sm text-sand-100/40">
+        <p className="pointer-events-none absolute left-3 top-2.5 text-sm text-sand-100/60">
           {placeholder}
         </p>
       )}

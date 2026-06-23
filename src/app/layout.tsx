@@ -24,7 +24,9 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
   display: "swap",
-  axes: ["opsz", "SOFT", "WONK"],
+  // Only the optical-size axis is used; SOFT/WONK were never referenced and just
+  // enlarged the variable-font payload.
+  axes: ["opsz"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,6 +43,10 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       siteName: name,
+      locale: "de_DE",
+    },
+    twitter: {
+      card: "summary_large_image",
     },
     manifest: "/manifest.webmanifest",
   };

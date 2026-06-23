@@ -5,6 +5,8 @@ import {
   getPostSummaries,
   getTripPostNav,
 } from "@/lib/content";
+import { getBranding } from "@/lib/branding";
+import { env } from "@/lib/env";
 import { PostView } from "@/components/post-view";
 
 // Static, on-demand revalidation: the body is rendered in the default locale and
@@ -28,14 +30,23 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) return {};
+  const path = `/posts/${slug}`;
+  const images = post.cover_image
+    ? [{ url: post.cover_image, alt: post.cover_alt ?? post.title }]
+    : undefined;
   return {
     title: post.title,
     description: post.excerpt ?? undefined,
+    alternates: { canonical: path },
     openGraph: {
+      type: "article",
       title: post.title,
       description: post.excerpt ?? undefined,
-      images: post.cover_image ? [post.cover_image] : undefined,
+      url: path,
+      publishedTime: post.published_at ?? undefined,
+      images,
     },
+    twitter: { title: post.title, description: post.excerpt ?? undefined, images },
   };
 }
 
@@ -55,12 +66,28 @@ export default async function PostPage({
   const nav = post.trip_id
     ? await getTripPostNav(post.trip_id, slug)
     : { prev: null, next: null };
+
+  const { name: siteName } = await getBranding();
+  const base = env.siteUrl.replace(/\/$/, "");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt ?? undefined,
+    image: post.cover_image ?? undefined,
+    datePublished: post.published_at ?? undefined,
+    url: `${base}/posts/${slug}`,
+    author: { "@type": "Organization", name: siteName },
+    publisher: { "@type": "Organization", name: siteName },
+  };
   return (
-    <PostView
-      post={post}
-      comments={[]}
-      interactions={interactions}
-      nav={nav}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        // Authored content (title/excerpt), not user input — safe to inline.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <PostView post={post} comments={[]} interactions={interactions} nav={nav} />
+    </>
   );
 }

@@ -153,7 +153,7 @@ export function Comments({
         <div className="rounded-2xl bg-ink-800 p-4">
           <div className="flex items-center justify-between">
             <span className="font-medium text-sand-50">{c.author_name}</span>
-            <span className="text-xs text-sand-100/40">
+            <span className="text-xs text-sand-100/60">
               {formatDate(c.created_at, locale)}
             </span>
           </div>
@@ -218,7 +218,7 @@ export function Comments({
     <div className="space-y-6">
       <h3 className="font-display text-2xl font-semibold">
         {t("comments.title")}
-        <span className="ml-2 text-base font-normal text-sand-100/40">
+        <span className="ml-2 text-base font-normal text-sand-100/60">
           {total}
         </span>
       </h3>

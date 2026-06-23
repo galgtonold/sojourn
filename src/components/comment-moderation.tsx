@@ -113,7 +113,7 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
           >
             {g.title}
           </Link>
-          <span className="ml-2 text-xs text-sand-100/40">
+          <span className="ml-2 text-xs text-sand-100/60">
             {g.rows.length === 1
               ? t("admin.cmod.comment", { n: g.rows.length })
               : t("admin.cmod.comments", { n: g.rows.length })}
@@ -184,7 +184,7 @@ function Tree({
               <span className="font-medium">
                 {r.author_name}
                 {r.parent_id && (
-                  <span className="ml-2 text-xs text-sand-100/40">
+                  <span className="ml-2 text-xs text-sand-100/60">
                     {t("admin.cmod.reply")}
                   </span>
                 )}
@@ -194,7 +194,7 @@ function Tree({
                   </span>
                 )}
               </span>
-              <span className="shrink-0 text-xs text-sand-100/40">
+              <span className="shrink-0 text-xs text-sand-100/60">
                 {formatDate(r.created_at, locale)}
               </span>
             </div>

@@ -47,7 +47,7 @@ export function AiContextRefiner({
         }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "AI error");
+      if (!res.ok) throw new Error("failed");
       if (mode === "questions") {
         setQuestions(j.questions ?? []);
         setAnswers({});
@@ -56,8 +56,8 @@ export function AiContextRefiner({
         setQuestions([]);
         setAnswers({});
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "AI error");
+    } catch {
+      setError(t("admin.err.ai"));
     } finally {
       setBusy(null);
     }

@@ -34,14 +34,11 @@ export function WritingStyleForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ writing_style: value }),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? "failed");
-      }
+      if (!res.ok) throw new Error("failed");
       setSaved(true);
       router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
+    } catch {
+      setError(t("admin.err.save"));
     } finally {
       setBusy(false);
     }
@@ -60,13 +57,13 @@ export function WritingStyleForm({
         style?: string;
         error?: string;
       };
-      if (!res.ok) throw new Error(j.error ?? "failed");
+      if (!res.ok) throw new Error("failed");
       if (j.style) {
         setValue(j.style);
         setSaved(false);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
+    } catch {
+      setError(t("admin.err.ai"));
     } finally {
       setProposing(false);
     }

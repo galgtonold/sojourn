@@ -34,7 +34,7 @@ export function TripStage({
           </option>
         ))}
       </Select>
-      <p className="mt-1.5 text-xs text-sand-100/40">{t("admin.editor.tripContextHint")}</p>
+      <p className="mt-1.5 text-xs text-sand-100/60">{t("admin.editor.tripContextHint")}</p>
     </>
   );
 }

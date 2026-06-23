@@ -89,10 +89,6 @@ export function PhotoManager({
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
     const supabase = getBrowserSupabase();
-    if (!supabase) {
-      setError("Storage isn’t available.");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -133,8 +129,8 @@ export function PhotoManager({
           body: JSON.stringify({ photoId: photo.id }),
         }).catch(() => {});
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
+    } catch {
+      setError(t("admin.err.uploadFailed"));
     } finally {
       setBusy(false);
     }

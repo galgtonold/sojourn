@@ -205,7 +205,7 @@ export function MembersManager({
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex items-center gap-2 text-sm">
-                  <Mail className="size-4 text-sand-100/40" />
+                  <Mail className="size-4 text-sand-100/60" />
                   {m.email}
                 </span>
                 <span className="flex items-center gap-3 text-sm">
@@ -270,7 +270,7 @@ export function MembersManager({
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {m.tripIds.length === 0 ? (
-                    <span className="text-xs text-sand-100/40">
+                    <span className="text-xs text-sand-100/60">
                       {t("admin.members.noAccess")}
                     </span>
                   ) : (

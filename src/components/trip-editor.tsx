@@ -124,7 +124,7 @@ export function TripEditor({
           <p className="text-sm font-medium text-sand-100/80">
             {t("admin.trip.aiContext")}
           </p>
-          <p className="text-xs text-sand-100/40">
+          <p className="text-xs text-sand-100/60">
             {t("admin.trip.aiContextHint")}
           </p>
         </div>

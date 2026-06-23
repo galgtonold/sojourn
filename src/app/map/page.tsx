@@ -3,7 +3,10 @@ import { TripMap, type MapMarker } from "@/components/trip-map";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: defaultTitle("meta.map") };
+export const metadata = {
+  title: defaultTitle("meta.map"),
+  alternates: { canonical: "/map" },
+};
 // Static, on-demand revalidation: markers carry both languages' titles; TripMap
 // localizes the popup label on the client. Uses the lightweight map query (pins +
 // tracks only) so the cached HTML stays small.

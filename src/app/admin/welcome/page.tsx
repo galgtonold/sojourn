@@ -184,7 +184,7 @@ export default function Welcome() {
             <p className="text-sm text-sand-100/60">
               {t("admin.welcome.invalid")}
             </p>
-            {detail && <p className="text-xs text-sand-100/40">{detail}</p>}
+            {detail && <p className="text-xs text-sand-100/60">{detail}</p>}
           </div>
         ) : phase === "checking" ? (
           <p className="text-sm text-sand-100/50">…</p>

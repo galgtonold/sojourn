@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useT } from "@/components/i18n";
 import { cn } from "@/lib/utils";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export type ConfirmOptions = {
   message: ReactNode;
@@ -42,6 +43,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const t = useT();
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<((v: boolean) => void) | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, !!opts);
 
   const confirm = useCallback<ConfirmFn>((next) => {
     setOpts(next);
@@ -79,18 +82,26 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
+          aria-labelledby={opts.title ? "confirm-title" : undefined}
+          aria-describedby="confirm-message"
           onClick={() => settle(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-white/10 bg-ink-900 p-5 shadow-2xl"
+            ref={dialogRef}
+            tabIndex={-1}
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-ink-900 p-5 shadow-2xl outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {opts.title && (
-              <h2 className="font-display text-lg font-semibold text-sand-50">
+              <h2
+                id="confirm-title"
+                className="font-display text-lg font-semibold text-sand-50"
+              >
                 {opts.title}
               </h2>
             )}
             <div
+              id="confirm-message"
               className={cn(
                 "text-sm leading-relaxed text-sand-100/80",
                 opts.title && "mt-1.5",

@@ -4,7 +4,10 @@ import { SearchResults } from "@/components/search-results";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: defaultTitle("search.title") };
+export const metadata = {
+  title: defaultTitle("search.title"),
+  alternates: { canonical: "/search" },
+};
 
 // Static shell: the box + headings prerender and serve instantly. The actual
 // search runs on the client against /api/search (one shared embedding, parallel

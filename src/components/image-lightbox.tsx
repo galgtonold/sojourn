@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { useT } from "@/components/i18n";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 /**
  * A controlled, full-screen image viewer shared by article images and the
@@ -37,6 +38,8 @@ export function ImageLightbox({
   const [rotated, setRotated] = useState(false);
   const [hiRes, setHiRes] = useState(false);
   const ratioRef = useRef(1); // natural width / height of the photo
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open && mounted);
 
   useEffect(() => setMounted(true), []);
 
@@ -94,12 +97,22 @@ export function ImageLightbox({
     blurhashToDataURL(blurhash, 32, 32) ??
     (src ? optimizedSrc(src, 1600, 80) : null);
 
+  // Only fetch the 2560px tier when the screen can actually use it — on small or
+  // low-DPR devices the 1600px image is already sharp, so skip the heavy request.
+  const wantHiRes =
+    Math.max(window.innerWidth, window.innerHeight) *
+      (window.devicePixelRatio || 1) >
+    1600;
+
   return createPortal(
     <AnimatePresence>
       {open && src && (
         <motion.div
+          ref={dialogRef}
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
+          aria-label={alt || t("common.close")}
           onClick={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -156,17 +169,20 @@ export function ImageLightbox({
               }}
               className={imgCls}
             />
-            {/* High-res — crossfades in once it has downloaded. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={optimizedSrc(src, 2560, 85)}
-              alt=""
-              aria-hidden
-              onLoad={() => setHiRes(true)}
-              className={`absolute inset-0 transition-opacity duration-500 ${imgCls} ${
-                hiRes ? "opacity-100" : "opacity-0"
-              }`}
-            />
+            {/* High-res — crossfades in once it has downloaded. Skipped on small
+                / low-DPR screens where the 1600px tier is already sharp. */}
+            {wantHiRes && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={optimizedSrc(src, 2560, 85)}
+                alt=""
+                aria-hidden
+                onLoad={() => setHiRes(true)}
+                className={`absolute inset-0 transition-opacity duration-500 ${imgCls} ${
+                  hiRes ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            )}
           </motion.div>
         </motion.div>
       )}

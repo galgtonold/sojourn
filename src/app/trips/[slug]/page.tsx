@@ -25,7 +25,22 @@ export async function generateMetadata({
   const trips = await getTrips();
   const trip = trips.find((t) => t.slug === slug);
   if (!trip) return {};
-  return { title: trip.title, description: trip.summary ?? undefined };
+  const path = `/trips/${slug}`;
+  const images = trip.cover_image
+    ? [{ url: trip.cover_image, alt: trip.title }]
+    : undefined;
+  return {
+    title: trip.title,
+    description: trip.summary ?? undefined,
+    alternates: { canonical: path },
+    openGraph: {
+      title: trip.title,
+      description: trip.summary ?? undefined,
+      url: path,
+      images,
+    },
+    twitter: { title: trip.title, description: trip.summary ?? undefined, images },
+  };
 }
 
 export default async function TripPage({
@@ -111,8 +126,8 @@ export default async function TripPage({
 
       {tripPosts.length > 0 ? (
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {tripPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+          {tripPosts.map((post, i) => (
+            <PostCard key={post.id} post={post} priority={i < 3} />
           ))}
         </div>
       ) : (

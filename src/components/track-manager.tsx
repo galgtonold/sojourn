@@ -50,10 +50,6 @@ export function TrackManager({
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
     const supabase = getBrowserSupabase();
-    if (!supabase) {
-      setError("Storage isn’t available.");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -79,8 +75,8 @@ export function TrackManager({
       }
       setTracks((t) => [...t, ...added]);
       revalidate();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn’t read that GPX.");
+    } catch {
+      setError(t("admin.err.gpx"));
     } finally {
       setBusy(false);
     }
@@ -107,7 +103,7 @@ export function TrackManager({
       .from("tracks")
       .update({ name: next })
       .eq("id", track.id);
-    if (error) setError(error.message);
+    if (error) setError(t("admin.err.save"));
     else revalidate();
   }
 
@@ -149,7 +145,7 @@ export function TrackManager({
                     {tk.name || t("admin.routes.track")}
                   </span>
                   {tk.distance_m ? (
-                    <span className="shrink-0 text-sand-100/40">
+                    <span className="shrink-0 text-sand-100/60">
                       · {formatDistance(tk.distance_m)}
                     </span>
                   ) : null}

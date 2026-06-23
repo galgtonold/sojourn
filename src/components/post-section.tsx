@@ -47,7 +47,7 @@ export function PostSection({
         )}
         <ChevronDown
           className={cn(
-            "ml-auto size-4 shrink-0 text-sand-100/40 transition-transform",
+            "ml-auto size-4 shrink-0 text-sand-100/60 transition-transform",
             open && "rotate-180",
           )}
         />

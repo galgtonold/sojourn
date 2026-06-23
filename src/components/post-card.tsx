@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import type { PostSummary } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { coverGradient, formatDate } from "@/lib/utils";
 import { localizePostSummary } from "@/lib/i18n-content";
 import { useI18n } from "@/components/i18n";
 import { RevealImage } from "@/components/reveal-image";
@@ -38,7 +38,14 @@ export function PostCard({
             }
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+          <>
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ backgroundImage: coverGradient(post.slug || post.title) }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+          </>
         )}
       </div>
 
@@ -55,7 +62,7 @@ export function PostCard({
         <p className="mt-1.5 line-clamp-2 text-sm text-sand-100/70">
           {post.excerpt}
         </p>
-        <p className="mt-3 text-xs text-sand-100/40">
+        <p className="mt-3 text-xs text-sand-100/60">
           {formatDate(post.published_at, locale)}
         </p>
       </div>

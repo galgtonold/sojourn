@@ -1,8 +1,8 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
-/** Fades + lifts children into view on scroll. */
+/** Fades + lifts children into view on scroll. Honors prefers-reduced-motion. */
 export function Reveal({
   children,
   delay = 0,
@@ -12,6 +12,9 @@ export function Reveal({
   delay?: number;
   className?: string;
 }) {
+  const reduce = useReducedMotion();
+  // Reduced motion: render in place, no fade/lift and no scroll-driven animation.
+  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
       className={className}

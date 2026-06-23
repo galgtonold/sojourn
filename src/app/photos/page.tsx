@@ -1,8 +1,12 @@
 import { getGeotaggedPhotos } from "@/lib/content";
 import { PhotoExplorer } from "@/components/photo-explorer";
 import { T } from "@/components/i18n";
+import { defaultTitle } from "@/lib/i18n";
 
-export const metadata = { title: "Photo map" };
+export const metadata = {
+  title: defaultTitle("photos.title"),
+  alternates: { canonical: "/photos" },
+};
 // Static, on-demand revalidation: ship the raw photos (both languages) and let
 // PhotoExplorer localize caption + post title on the client.
 export const revalidate = false;
@@ -20,7 +24,7 @@ export default async function PhotosPage() {
       </p>
       {photos.length > 0 ? (
         <>
-          <p className="mt-1 text-sm text-sand-100/40">
+          <p className="mt-1 text-sm text-sand-100/60">
             <T k="photos.count" vars={{ n: photos.length }} />
           </p>
           <div className="mt-8">

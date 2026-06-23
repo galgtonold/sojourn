@@ -53,6 +53,12 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
   }, [photos]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // blurhash decodes via <canvas>, which doesn't exist during SSR. Gate the
+  // placeholder behind a post-mount flag so the first client render matches the
+  // server (no blur), then paint it on the next tick — avoids a hydration
+  // mismatch on every thumbnail (the same SSR-safe pattern the gallery uses).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   // Hold the map hidden until it has settled, then fade in — avoids the initial
   // bounds-jump + tile/cluster pop flicker.
   const [ready, setReady] = useState(false);
@@ -393,7 +399,7 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
           className="flex min-h-[6.5rem] gap-2 overflow-x-auto px-4 pb-4 pt-2"
         >
           {shown.map((p) => {
-            const blur = blurhashToDataURL(p.blurhash);
+            const blur = mounted ? blurhashToDataURL(p.blurhash) : null;
             return (
               <button
                 key={p.id}
@@ -412,7 +418,7 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={optimizedSrc(p.url, 224, 65)}
-                  alt={p.caption ?? ""}
+                  alt={p.caption ?? p.postTitle}
                   loading="lazy"
                   className="size-full bg-cover bg-center object-cover"
                   style={

@@ -58,7 +58,7 @@ export function TranslationBadge({
 
   if (!published) {
     return (
-      <span className="text-xs text-sand-100/40">
+      <span className="text-xs text-sand-100/60">
         {t("admin.translation.onPublish")}
       </span>
     );
@@ -85,7 +85,7 @@ export function TranslationBadge({
         </span>
       )}
       {status === "none" && (
-        <span className="text-sand-100/40">{t("admin.translation.none")}</span>
+        <span className="text-sand-100/60">{t("admin.translation.none")}</span>
       )}
       <button
         onClick={retranslate}

@@ -249,7 +249,7 @@ export function InteractionManager({
                     setCorrectIndex((c) => (c >= i && c > 0 ? c - 1 : c));
                   }}
                   aria-label={t("admin.ask.removeOption")}
-                  className="text-sand-100/40 hover:text-sand-100"
+                  className="text-sand-100/60 hover:text-sand-100"
                 >
                   <X className="size-4" />
                 </button>

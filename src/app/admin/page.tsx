@@ -271,7 +271,7 @@ export default async function AdminDashboard() {
             </span>
             <span className="flex shrink-0 items-center gap-3">
               {tr.start_date && (
-                <span className="hidden text-xs text-sand-100/40 sm:inline">
+                <span className="hidden text-xs text-sand-100/60 sm:inline">
                   {formatDate(tr.start_date, locale)}
                 </span>
               )}
@@ -311,7 +311,7 @@ export default async function AdminDashboard() {
           >
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{c.author_name}</span>
-              <span className="text-sand-100/40">
+              <span className="text-sand-100/60">
                 {formatDate(c.created_at, locale)}
               </span>
             </div>

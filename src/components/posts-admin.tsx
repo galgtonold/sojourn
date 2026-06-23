@@ -90,7 +90,7 @@ export function PostsAdmin({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-sand-100/40" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-sand-100/60" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -157,7 +157,7 @@ export function PostsAdmin({
                 >
                   {p.title}
                 </Link>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-sand-100/40">
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-sand-100/60">
                   <span
                     className={`rounded-full px-2 py-0.5 ${
                       p.published
