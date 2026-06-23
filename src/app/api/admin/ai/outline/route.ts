@@ -92,16 +92,23 @@ async function outline({
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
           "Erstelle einen chronologischen Gliederungsplan. Verteile ALLE oben " +
           "genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto genau einmal, in " +
-          "zeitlicher Reihenfolge). Jeder Abschnitt deckt einen ANDEREN Moment " +
+          "zeitlicher Reihenfolge) — mehr Abschnitte nur, wenn ausdrücklich " +
+          "verlangte Interaktionen sie brauchen (siehe unten). Jeder Abschnitt deckt einen ANDEREN Moment " +
           "ab — derselbe Vorfall, dieselbe Begegnung oder dasselbe Motiv darf " +
           "NICHT in mehreren Abschnitten vorkommen. Bei dünnem Material lieber " +
           "wenige, klar getrennte Abschnitte als viele, die sich überschneiden. " +
-          "Wenn es sich natürlich anbietet, darf GENAU " +
-          "EIN Abschnitt eine kleine Leser-Interaktion bekommen: eine Umfrage " +
+          "Normalerweise bekommt HÖCHSTENS EIN Abschnitt eine kleine " +
+          "Leser-Interaktion: eine Umfrage " +
           '("poll", Meinungsfrage ohne richtige Antwort) ODER ein Quiz ("quiz", ' +
-          "mit einer eindeutig richtigen Antwort aus dem Material). Setze dafür " +
-          '"interaction": { "kind": "poll"|"quiz", "idea": kurze Beschreibung der ' +
-          'Frage }. Sonst lass das Feld weg.' +
+          "mit einer eindeutig richtigen Antwort aus dem Material). VERLANGT der " +
+          'Autor aber ausdrücklich mehrere (z. B. „ein Quiz mit 5 Fragen“), ' +
+          "erstelle so viele, wie er verlangt — JEDER Abschnitt trägt aber nur " +
+          "EINE Interaktion, also verteile sie auf mehrere Abschnitte und lege " +
+          "bei Bedarf eigene kurze Abschnitte dafür an (höchstens 6 " +
+          "Interaktionen insgesamt). " +
+          'Setze pro betroffenem Abschnitt "interaction": { "kind": ' +
+          '"poll"|"quiz", "idea": kurze Beschreibung der Frage }. Sonst lass das ' +
+          "Feld weg." +
           predefinedBlock +
           " Antworte ausschließlich als JSON:\n" +
           '{ "title": string, "excerpt": string, "location": string, ' +
@@ -121,12 +128,16 @@ async function outline({
     ],
   });
   const outline = parseJsonLoose<Outline>(raw);
-  // Keep only real photo ids, at most one *invented* interaction across the post,
-  // and each author-defined interaction assigned to exactly one section.
+  // Keep only real photo ids, a bounded number of *invented* interactions (one
+  // per section — normally the model uses at most one, but when the author asks
+  // for several, e.g. "a quiz with 5 questions", it spreads them across
+  // sections), and each author-defined interaction assigned to exactly one
+  // section.
   const valid = new Set(dossier.photos.map((p) => p.id));
   const predefined = new Set(dossier.interactions.map((i) => i.id));
   const assigned = new Set<string>();
-  let interactionUsed = false;
+  const MAX_INVENTED = 6;
+  let invented = 0;
   outline.sections = (outline.sections ?? []).map((s) => {
     const refs = (Array.isArray(s.interaction_refs) ? s.interaction_refs : [])
       .filter((id) => predefined.has(id) && !assigned.has(id));
@@ -135,8 +146,8 @@ async function outline({
       s.interaction &&
       (s.interaction.kind === "poll" || s.interaction.kind === "quiz") &&
       s.interaction.idea?.trim() &&
-      !interactionUsed
-        ? ((interactionUsed = true), s.interaction)
+      invented < MAX_INVENTED
+        ? ((invented += 1), s.interaction)
         : null;
     return {
       ...s,
