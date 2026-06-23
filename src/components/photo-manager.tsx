@@ -24,11 +24,15 @@ export type ManagedPhoto = {
 };
 
 /** Gallery management for an existing post: upload, caption, delete. */
+const PHOTO_COLUMNS =
+  "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order";
+
 export function PhotoManager({
   postId,
   slug,
   initial,
   onListChange,
+  refreshKey = 0,
 }: {
   postId: string;
   slug: string;
@@ -36,6 +40,11 @@ export function PhotoManager({
   // Mirrors the live photo list up so the article's insert bar can offer a
   // freshly-uploaded photo without a page reload.
   onListChange?: (photos: ManagedPhoto[]) => void;
+  // Bumped by the parent after the AI writes captions/descriptions server-side,
+  // so the grid re-pulls and the labels appear without a manual reload. The
+  // caption fields are uncontrolled, so a re-fetch alone wouldn't update them —
+  // they're keyed on refreshKey below to remount with the fresh value.
+  refreshKey?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -43,6 +52,26 @@ export function PhotoManager({
   useEffect(() => {
     onListChange?.(photos);
   }, [photos, onListChange]);
+  // Re-pull the post's photos when the parent signals an external change (an AI
+  // captioning pass). Skipped on first mount (refreshKey 0) — we already have
+  // `initial`.
+  useEffect(() => {
+    if (!refreshKey) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = getBrowserSupabase();
+      if (!supabase) return;
+      const { data } = await supabase
+        .from("photos")
+        .select(PHOTO_COLUMNS)
+        .eq("post_id", postId)
+        .order("sort_order", { ascending: true });
+      if (!cancelled && data) setPhotos(data as ManagedPhoto[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, postId]);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +257,7 @@ export function PhotoManager({
                   box is the same height, so the caption/alt/action rows line up
                   across the grid. Longer text scrolls within the box. */}
               <textarea
+                key={`${photo.id}-${refreshKey}`}
                 defaultValue={photo.caption ?? ""}
                 placeholder={t("admin.gallery.caption")}
                 onChange={(e) => (photo.caption = e.target.value)}

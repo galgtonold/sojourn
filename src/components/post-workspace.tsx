@@ -83,6 +83,9 @@ export function PostWorkspace({
   const [interactions, setInteractions] = useState<ManagedInteraction[]>(initialInteractions);
   // Lifted so an uploaded photo is insertable in the article live (no reload).
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initialPhotos);
+  // Bumped after an AI captioning pass so PhotoManager re-pulls and shows the
+  // freshly-written labels without a manual reload.
+  const [photoRefreshKey, setPhotoRefreshKey] = useState(0);
   const [trackCount, setTrackCount] = useState(tracks.length);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,7 +213,7 @@ export function PostWorkspace({
           <TripStage value={post.trip_id} trips={trips} onChange={(id) => set("trip_id", id)} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t(photos.length === 1 ? "admin.editor.status.photo" : "admin.editor.status.photos", { n: photos.length })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
-          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} onListChange={setPhotos} />
+          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} onListChange={setPhotos} refreshKey={photoRefreshKey} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.track")} icon={<Route className="size-4" />} summary={trackCount ? t("admin.editor.status.track", { n: tracks.reduce((s, tr) => s + Math.round((tr.distance_m ?? 0) / 1000), 0) }) : t("admin.editor.status.trackNone")} open={open.track} onToggle={() => toggle("track")} className={open.track ? "lg:col-span-4" : undefined}>
           <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} />
@@ -228,6 +231,7 @@ export function PostWorkspace({
             initialNotes={initialNotes}
             hasBody={Boolean(post.body)}
             onDraftSaved={handleDraftSaved}
+            onPhotosUpdated={() => setPhotoRefreshKey((k) => k + 1)}
             onBeforeGenerate={async () => {
               await save(false);
             }}

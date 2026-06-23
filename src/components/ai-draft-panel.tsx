@@ -142,12 +142,16 @@ export function AiDraftPanel({
   initialNotes,
   hasBody,
   onDraftSaved,
+  onPhotosUpdated,
   onBeforeGenerate,
 }: {
   postId: string;
   initialNotes: string;
   hasBody: boolean;
   onDraftSaved?: (saved: DraftSaved) => void;
+  // Called after a captioning pass writes photo captions server-side, so the
+  // gallery re-pulls and the labels show without a manual reload.
+  onPhotosUpdated?: () => void;
   onBeforeGenerate?: () => Promise<void>;
 }) {
   const t = useT();
@@ -433,6 +437,9 @@ export function AiDraftPanel({
       // publish click right after generation can't PUT the stale empty draft.
       if (saved)
         onDraftSaved?.({ ...saved, interactions: saveRes.interactions ?? [] });
+      // The enrich + captions steps wrote photo captions/descriptions; pull them
+      // into the gallery so the labels appear without a manual reload.
+      onPhotosUpdated?.();
       router.refresh();
     } catch (e) {
       setStep(null);
@@ -462,6 +469,7 @@ export function AiDraftPanel({
       setStep(null);
       setPhase("idle");
       setError(null);
+      onPhotosUpdated?.();
       router.refresh();
       await confirm({
         message: t("admin.ai.autocaptionDone", { n: count }),
