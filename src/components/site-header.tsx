@@ -27,6 +27,10 @@ export function SiteHeader() {
     setOpen(false);
   }, [pathname]);
 
+  // Admin pages get their own chrome (AdminNav) instead of the reader header —
+  // except the live post preview, which is meant to look like the public site.
+  if ((pathname ?? "").startsWith("/admin") && !isPreview) return null;
+
   return (
     <header
       className={cn(

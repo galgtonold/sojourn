@@ -3,7 +3,6 @@ import {
   ArrowRight,
   FileText,
   Gauge,
-  KeyRound,
   MapPin,
   MessageSquare,
   PenLine,
@@ -15,7 +14,6 @@ import { isAiConfigured } from "@/lib/env";
 import { getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
-import { SignOutButton } from "@/components/sign-out-button";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 import { formatDate } from "@/lib/utils";
@@ -119,13 +117,6 @@ export default async function AdminDashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PushToggle />
-          <Link
-            href="/admin/account"
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
-          >
-            <KeyRound className="size-4" /> <T k="admin.password" />
-          </Link>
-          <SignOutButton />
         </div>
       </div>
 
