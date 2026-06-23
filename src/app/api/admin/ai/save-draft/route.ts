@@ -99,5 +99,14 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return { ok: true, post: saved };
+  // Return the post's current interactions too, so the editor re-seeds its list
+  // and the freshly-materialised [ask:id] tags resolve immediately (no stale
+  // "invalid reference" until a manual reload).
+  const { data: interactions } = await supabase
+    .from("interactions")
+    .select("id, kind, question, options, correct_index, explanation")
+    .eq("post_id", p.postId)
+    .order("sort_order", { ascending: true });
+
+  return { ok: true, post: saved, interactions: interactions ?? [] };
 }

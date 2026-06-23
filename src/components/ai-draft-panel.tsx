@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
+import type { ManagedInteraction } from "@/components/interaction-manager";
 import {
   maskProtectedTokens,
   allMasksPresent,
@@ -52,6 +53,9 @@ export type DraftSaved = {
   lng: number | null;
   cover_image: string | null;
   published_at: string | null;
+  // The post's interactions after materialisation, so the editor re-seeds its
+  // list and freshly-created [ask:id] tags resolve without a manual reload.
+  interactions: ManagedInteraction[];
 };
 
 async function postJson<T>(
@@ -394,8 +398,12 @@ export function AiDraftPanel({
 
       // 6. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
-      const { post: saved } = await withRetry(() =>
-        postJson<{ ok: boolean; post: DraftSaved | null }>(
+      const saveRes = await withRetry(() =>
+        postJson<{
+          ok: boolean;
+          post: Omit<DraftSaved, "interactions"> | null;
+          interactions: ManagedInteraction[];
+        }>(
           "/api/admin/ai/save-draft",
           {
             postId,
@@ -411,6 +419,7 @@ export function AiDraftPanel({
           signal,
         ),
       );
+      const saved = saveRes.post;
 
       setStep(null);
       const warnings: string[] = [];
@@ -422,7 +431,8 @@ export function AiDraftPanel({
       setPhase("done");
       // Re-seed the editor synchronously with what was actually saved, so a
       // publish click right after generation can't PUT the stale empty draft.
-      if (saved) onDraftSaved?.(saved);
+      if (saved)
+        onDraftSaved?.({ ...saved, interactions: saveRes.interactions ?? [] });
       router.refresh();
     } catch (e) {
       setStep(null);

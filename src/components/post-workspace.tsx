@@ -173,6 +173,9 @@ export function PostWorkspace({
       lng: s.lng != null ? String(s.lng) : p.lng,
       date: s.published_at ? s.published_at.slice(0, 10) : p.date,
     }));
+    // Re-seed the interactions the AI just materialised, so their [ask:id] tags
+    // resolve in the editor straight away instead of showing as invalid refs.
+    if (s.interactions) setInteractions(s.interactions);
     setOpen((o) => ({ ...o, article: true }));
   }
 
