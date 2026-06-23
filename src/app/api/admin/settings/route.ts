@@ -30,6 +30,8 @@ export async function PUT(req: Request) {
       writing_style: z.string().max(8000).optional(),
       site_name: z.string().max(80).optional(),
       tagline: z.string().max(200).optional(),
+      hero_lead: z.string().max(200).optional(),
+      hero_accent: z.string().max(200).optional(),
     })
     .safeParse(await req.json().catch(() => null));
   if (!parsed.success)
@@ -38,12 +40,14 @@ export async function PUT(req: Request) {
   const update: Record<string, string> = {};
   if (parsed.data.writing_style !== undefined)
     update.writing_style = parsed.data.writing_style;
-  if (parsed.data.site_name !== undefined)
-    update.site_name = parsed.data.site_name.trim();
-  if (parsed.data.tagline !== undefined)
-    update.tagline = parsed.data.tagline.trim();
+  for (const k of ["site_name", "tagline", "hero_lead", "hero_accent"] as const) {
+    if (parsed.data[k] !== undefined) update[k] = parsed.data[k]!.trim();
+  }
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "invalid" }, { status: 400 });
+  const brandingChanged = ["site_name", "tagline", "hero_lead", "hero_accent"].some(
+    (k) => k in update,
+  );
 
   const admin = getAdminSupabase();
   if (!admin)
@@ -58,7 +62,7 @@ export async function PUT(req: Request) {
 
   // Branding shows on every (statically cached) page via the root layout, so a
   // change must bust the cached value and revalidate everything under it.
-  if (update.site_name !== undefined || update.tagline !== undefined) {
+  if (brandingChanged) {
     revalidateTag(BRANDING_TAG);
     revalidatePath("/", "layout");
   }

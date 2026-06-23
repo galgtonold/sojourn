@@ -16,7 +16,7 @@ export const revalidate = false;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 9 });
-  const { name: siteName } = await getBranding();
+  const { name: siteName, heroLead, heroAccent } = await getBranding();
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
@@ -43,9 +43,10 @@ export default async function HomePage() {
             {siteName} — <T k="home.kicker" />
           </p>
           <h1 className="animate-float-up mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.05] sm:text-7xl">
-            <T k="home.heroLeadA" />{" "}
+            {/* A set headline wins; otherwise the localized default. */}
+            {heroLead ? heroLead : <T k="home.heroLeadA" />}{" "}
             <span className="text-gradient-ember">
-              <T k="home.heroLeadB" />
+              {heroAccent ? heroAccent : <T k="home.heroLeadB" />}
             </span>
             .
           </h1>

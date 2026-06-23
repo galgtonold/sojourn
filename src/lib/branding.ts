@@ -10,20 +10,30 @@ import { env } from "@/lib/env";
 
 export const BRANDING_TAG = "site-branding";
 
-export type Branding = { name: string; tagline: string };
+export type Branding = {
+  name: string;
+  tagline: string;
+  // Home hero headline, split so the accent clause keeps its gradient. Empty =
+  // use the localized default copy (home.heroLeadA / home.heroLeadB).
+  heroLead: string;
+  heroAccent: string;
+};
 
 export const getBranding = unstable_cache(
   async (): Promise<Branding> => {
+    const empty = { name: env.siteName, tagline: "", heroLead: "", heroAccent: "" };
     const supabase = getAdminSupabase();
-    if (!supabase) return { name: env.siteName, tagline: "" };
+    if (!supabase) return empty;
     const { data } = await supabase
       .from("site_settings")
-      .select("site_name, tagline")
+      .select("site_name, tagline, hero_lead, hero_accent")
       .eq("id", 1)
       .maybeSingle();
     return {
       name: (data?.site_name as string)?.trim() || env.siteName,
       tagline: (data?.tagline as string)?.trim() || "",
+      heroLead: (data?.hero_lead as string)?.trim() || "",
+      heroAccent: (data?.hero_accent as string)?.trim() || "",
     };
   },
   ["site-branding"],

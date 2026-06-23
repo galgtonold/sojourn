@@ -7,7 +7,7 @@ import { isAiConfigured, isSupabaseConfigured, env } from "@/lib/env";
 import { WritingStyleForm } from "@/components/writing-style-form";
 import { BrandingForm } from "@/components/branding-form";
 import { T, DocumentTitle } from "@/components/i18n";
-import { defaultTitle } from "@/lib/i18n";
+import { defaultTitle, translate, DEFAULT_LOCALE } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("admin.settings.title") };
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   const supabase = await getServerSupabase();
   const { data } = await supabase!
     .from("site_settings")
-    .select("writing_style, site_name, tagline")
+    .select("writing_style, site_name, tagline, hero_lead, hero_accent")
     .eq("id", 1)
     .maybeSingle();
 
@@ -44,7 +44,11 @@ export default async function SettingsPage() {
         <BrandingForm
           initialName={(data?.site_name as string) || ""}
           initialTagline={(data?.tagline as string) || ""}
+          initialHeroLead={(data?.hero_lead as string) || ""}
+          initialHeroAccent={(data?.hero_accent as string) || ""}
           defaultName={env.siteName}
+          defaultHeroLead={translate(DEFAULT_LOCALE, "home.heroLeadA")}
+          defaultHeroAccent={translate(DEFAULT_LOCALE, "home.heroLeadB")}
         />
       </div>
 

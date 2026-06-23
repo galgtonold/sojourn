@@ -224,9 +224,9 @@ const en = {
     "“{title}” will be permanently deleted with its photos, routes and comments. This can't be undone.",
   "admin.nav.membersSub": "Invite & manage editors",
   "admin.nav.usageSub": "AI spend & tokens",
-  "admin.nav.settingsSub": "Tone & vocabulary for AI drafts",
-  "admin.settings.title": "Writing style",
-  "admin.settings.link": "Writing style",
+  "admin.nav.settingsSub": "Branding & writing style",
+  "admin.settings.title": "Settings",
+  "admin.settings.link": "Settings",
   "admin.settings.styleHeading": "Blog writing style",
   "admin.settings.styleIntro":
     "This guidance steers every AI draft — tone, voice, and vocabulary across the whole blog. It's internal and never shown to readers.",
@@ -241,6 +241,10 @@ const en = {
   "admin.settings.brandTagline": "Tagline",
   "admin.settings.brandTaglinePlaceholder":
     "e.g. A travel journal, hopeless at staying put.",
+  "admin.settings.brandHeadline": "Home headline",
+  "admin.settings.brandHeadlineHint":
+    "Two parts: the lead, then the highlighted clause shown in the accent colour. A period is added automatically.",
+  "admin.settings.brandHeadlineAccent": "Highlighted clause",
   "admin.recentComments": "Recent comments",
   "admin.moderateAll": "Moderate all →",
   "admin.noComments": "No comments yet.",
@@ -747,9 +751,9 @@ const de: Dict = {
     "„{title}“ wird mit allen Fotos, Routen und Kommentaren endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
   "admin.nav.membersSub": "Mitwirkende einladen & verwalten",
   "admin.nav.usageSub": "KI-Kosten & Tokens",
-  "admin.nav.settingsSub": "Ton & Wortschatz für KI-Entwürfe",
-  "admin.settings.title": "Schreibstil",
-  "admin.settings.link": "Schreibstil",
+  "admin.nav.settingsSub": "Branding & Schreibstil",
+  "admin.settings.title": "Einstellungen",
+  "admin.settings.link": "Einstellungen",
   "admin.settings.styleHeading": "Schreibstil des Blogs",
   "admin.settings.styleIntro":
     "Diese Vorgabe leitet jeden KI-Entwurf — Ton, Stimme und Wortschatz im ganzen Blog. Sie ist intern und wird Lesern nie gezeigt.",
@@ -764,6 +768,10 @@ const de: Dict = {
   "admin.settings.brandTagline": "Untertitel",
   "admin.settings.brandTaglinePlaceholder":
     "z. B. Ein Reisetagebuch, beim Stillsitzen chancenlos.",
+  "admin.settings.brandHeadline": "Start-Überschrift",
+  "admin.settings.brandHeadlineHint":
+    "Zwei Teile: der Anfang und der hervorgehobene Teil in der Akzentfarbe. Ein Punkt wird automatisch ergänzt.",
+  "admin.settings.brandHeadlineAccent": "Hervorgehobener Teil",
   "admin.recentComments": "Neueste Kommentare",
   "admin.moderateAll": "Alle moderieren →",
   "admin.noComments": "Noch keine Kommentare.",

@@ -12,17 +12,27 @@ import { useT } from "@/components/i18n";
 export function BrandingForm({
   initialName,
   initialTagline,
+  initialHeroLead,
+  initialHeroAccent,
   defaultName,
+  defaultHeroLead,
+  defaultHeroAccent,
 }: {
   initialName: string;
   initialTagline: string;
-  /** What's shown when the name is left blank — used as the input placeholder. */
+  initialHeroLead: string;
+  initialHeroAccent: string;
+  /** Shown as placeholders when a field is left blank — the current defaults. */
   defaultName: string;
+  defaultHeroLead: string;
+  defaultHeroAccent: string;
 }) {
   const t = useT();
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [tagline, setTagline] = useState(initialTagline);
+  const [heroLead, setHeroLead] = useState(initialHeroLead);
+  const [heroAccent, setHeroAccent] = useState(initialHeroAccent);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +45,12 @@ export function BrandingForm({
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ site_name: name, tagline }),
+        body: JSON.stringify({
+          site_name: name,
+          tagline,
+          hero_lead: heroLead,
+          hero_accent: heroAccent,
+        }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -83,6 +98,34 @@ export function BrandingForm({
           className={`${input} mt-1.5`}
         />
       </label>
+      <div>
+        <span className="text-sm text-sand-100/70">
+          {t("admin.settings.brandHeadline")}
+        </span>
+        <p className="mt-0.5 text-xs text-sand-100/40">
+          {t("admin.settings.brandHeadlineHint")}
+        </p>
+        <input
+          value={heroLead}
+          onChange={(e) => {
+            setHeroLead(e.target.value);
+            setSaved(false);
+          }}
+          placeholder={defaultHeroLead}
+          aria-label={t("admin.settings.brandHeadline")}
+          className={`${input} mt-1.5`}
+        />
+        <input
+          value={heroAccent}
+          onChange={(e) => {
+            setHeroAccent(e.target.value);
+            setSaved(false);
+          }}
+          placeholder={defaultHeroAccent}
+          aria-label={t("admin.settings.brandHeadlineAccent")}
+          className={`${input} mt-2 text-ember-300`}
+        />
+      </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex items-center gap-3">
         <button
