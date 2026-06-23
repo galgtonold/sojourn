@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, Menu, Search, X } from "lucide-react";
-import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
-import { T, LanguageSwitcher, useT } from "@/components/i18n";
+import { T, LanguageSwitcher, useT, useI18n } from "@/components/i18n";
 import { NotificationBell } from "@/components/notification-bell";
 
 const LINKS = [
@@ -17,6 +16,7 @@ const LINKS = [
 
 export function SiteHeader() {
   const t = useT();
+  const { siteName } = useI18n();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   // The draft-preview banner is a fixed h-9 strip at the very top; drop the
@@ -44,7 +44,7 @@ export function SiteHeader() {
             className="group flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
           >
             <Compass className="size-5 text-ember-400 transition-transform group-hover:rotate-45" />
-            <span>{env.siteName}</span>
+            <span>{siteName}</span>
           </Link>
 
           {/* Desktop nav */}

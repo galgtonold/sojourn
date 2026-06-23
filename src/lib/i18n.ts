@@ -234,6 +234,13 @@ const en = {
     "e.g. Warm first-person plural, short sentences, concrete sensory detail, dry humour, no marketing-speak …",
   "admin.settings.propose": "Propose from my posts",
   "admin.settings.saved": "Saved",
+  "admin.settings.brandHeading": "Branding",
+  "admin.settings.brandIntro":
+    "The name and tagline shown across the site — in the header, footer, the home hero and page titles. Leave blank to use the defaults.",
+  "admin.settings.brandName": "Site name",
+  "admin.settings.brandTagline": "Tagline",
+  "admin.settings.brandTaglinePlaceholder":
+    "e.g. A travel journal, hopeless at staying put.",
   "admin.recentComments": "Recent comments",
   "admin.moderateAll": "Moderate all →",
   "admin.noComments": "No comments yet.",
@@ -750,6 +757,13 @@ const de: Dict = {
     "z. B. Warme Wir-Perspektive, kurze Sätze, konkrete Sinneseindrücke, trockener Humor, kein Werbe-Sprech …",
   "admin.settings.propose": "Aus meinen Beiträgen vorschlagen",
   "admin.settings.saved": "Gespeichert",
+  "admin.settings.brandHeading": "Branding",
+  "admin.settings.brandIntro":
+    "Name und Untertitel, die überall auf der Seite erscheinen — in Kopf- und Fußzeile, im Start-Hero und in den Seitentiteln. Leer lassen für die Voreinstellungen.",
+  "admin.settings.brandName": "Name der Seite",
+  "admin.settings.brandTagline": "Untertitel",
+  "admin.settings.brandTaglinePlaceholder":
+    "z. B. Ein Reisetagebuch, beim Stillsitzen chancenlos.",
   "admin.recentComments": "Neueste Kommentare",
   "admin.moderateAll": "Alle moderieren →",
   "admin.noComments": "Noch keine Kommentare.",

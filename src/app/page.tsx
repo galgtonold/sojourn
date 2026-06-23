@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries } from "@/lib/content";
-import { env } from "@/lib/env";
+import { getBranding } from "@/lib/branding";
 import { PostCard } from "@/components/post-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
@@ -16,6 +16,7 @@ export const revalidate = false;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 9 });
+  const { name: siteName } = await getBranding();
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
@@ -39,7 +40,7 @@ export default async function HomePage() {
 
         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pb-20">
           <p className="animate-float-up text-sm font-medium uppercase tracking-[0.3em] text-ember-300">
-            {env.siteName} — <T k="home.kicker" />
+            {siteName} — <T k="home.kicker" />
           </p>
           <h1 className="animate-float-up mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.05] sm:text-7xl">
             <T k="home.heroLeadA" />{" "}
@@ -138,9 +139,12 @@ export default async function HomePage() {
   );
 }
 
-export const metadata = {
-  description: `Latest travel stories and photography from ${env.siteName}. Updated ${formatDate(
-    new Date().toISOString(),
-    "en",
-  )}.`,
-};
+export async function generateMetadata() {
+  const { name } = await getBranding();
+  return {
+    description: `Latest travel stories and photography from ${name}. Updated ${formatDate(
+      new Date().toISOString(),
+      "en",
+    )}.`,
+  };
+}

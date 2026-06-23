@@ -23,6 +23,10 @@ type Ctx = {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (k: DictKey, vars?: Vars) => string;
+  // Editable branding, supplied by the server layout from the DB (with the env
+  // default as fallback). Lives here so any client chrome can read it.
+  siteName: string;
+  tagline: string;
 };
 
 const I18nCtx = createContext<Ctx | null>(null);
@@ -33,7 +37,15 @@ export function readCookieLocale(): Locale {
   return normalizeLocale(m?.[1]);
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
+export function I18nProvider({
+  children,
+  siteName = env.siteName,
+  tagline = "",
+}: {
+  children: ReactNode;
+  siteName?: string;
+  tagline?: string;
+}) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
   // Read the saved choice on the client (server always renders the default).
@@ -51,7 +63,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = (k: DictKey, vars?: Vars) => translate(locale, k, vars);
   return (
-    <I18nCtx.Provider value={{ locale, setLocale, t }}>
+    <I18nCtx.Provider value={{ locale, setLocale, t, siteName, tagline }}>
       {children}
     </I18nCtx.Provider>
   );
@@ -125,12 +137,10 @@ export function DocumentTitle({
   vars?: Vars;
   home?: boolean;
 }) {
-  const { locale } = useI18n();
+  const { locale, siteName } = useI18n();
   useEffect(() => {
     const value = translate(locale, k, vars);
-    const title = home
-      ? `${env.siteName} — ${value}`
-      : `${value} · ${env.siteName}`;
+    const title = home ? `${siteName} — ${value}` : `${value} · ${siteName}`;
     document.title = title;
     // A page's static-metadata <title> is rendered in the default locale for
     // SSR/SEO and can be (re)committed after this effect during initial,
@@ -143,7 +153,7 @@ export function DocumentTitle({
     );
     return () => ids.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale, k, home]);
+  }, [locale, k, home, siteName]);
   return null;
 }
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
+import { getBranding } from "@/lib/branding";
 import { defaultTitle } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -26,40 +27,44 @@ const fraunces = Fraunces({
   axes: ["opsz", "SOFT", "WONK"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(env.siteUrl),
-  title: {
-    default: `${env.siteName} — ${defaultTitle("meta.tagline")}`,
-    template: `%s · ${env.siteName}`,
-  },
-  description:
-    "A bold, immersive travel journal — stories, photo galleries and maps from the road.",
-  openGraph: {
-    type: "website",
-    siteName: env.siteName,
-  },
-  manifest: "/manifest.webmanifest",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { name, tagline } = await getBranding();
+  return {
+    metadataBase: new URL(env.siteUrl),
+    title: {
+      default: `${name} — ${tagline || defaultTitle("meta.tagline")}`,
+      template: `%s · ${name}`,
+    },
+    description:
+      "A bold, immersive travel journal — stories, photo galleries and maps from the road.",
+    openGraph: {
+      type: "website",
+      siteName: name,
+    },
+    manifest: "/manifest.webmanifest",
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0a0908",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { name, tagline } = await getBranding();
   return (
     <html lang="de" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
-        <I18nProvider>
+        <I18nProvider siteName={name} tagline={tagline}>
           <ServiceWorkerRegistrar />
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>
           <ConfirmProvider>
-            <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
+            <SiteChrome header={<SiteHeader />} footer={<SiteFooter name={name} tagline={tagline} />}>
               {children}
             </SiteChrome>
           </ConfirmProvider>

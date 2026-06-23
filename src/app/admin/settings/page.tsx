@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
-import { isAiConfigured, isSupabaseConfigured } from "@/lib/env";
+import { isAiConfigured, isSupabaseConfigured, env } from "@/lib/env";
 import { WritingStyleForm } from "@/components/writing-style-form";
+import { BrandingForm } from "@/components/branding-form";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
   const supabase = await getServerSupabase();
   const { data } = await supabase!
     .from("site_settings")
-    .select("writing_style")
+    .select("writing_style, site_name, tagline")
     .eq("id", 1)
     .maybeSingle();
 
@@ -32,9 +33,24 @@ export default async function SettingsPage() {
       >
         <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
       </Link>
+
       <h1 className="font-display text-4xl font-semibold">
-        <T k="admin.settings.styleHeading" />
+        <T k="admin.settings.brandHeading" />
       </h1>
+      <p className="mt-2 max-w-2xl text-sand-100/60">
+        <T k="admin.settings.brandIntro" />
+      </p>
+      <div className="mt-8">
+        <BrandingForm
+          initialName={(data?.site_name as string) || ""}
+          initialTagline={(data?.tagline as string) || ""}
+          defaultName={env.siteName}
+        />
+      </div>
+
+      <h2 className="mt-14 font-display text-3xl font-semibold">
+        <T k="admin.settings.styleHeading" />
+      </h2>
       <p className="mt-2 max-w-2xl text-sand-100/60">
         <T k="admin.settings.styleIntro" />
       </p>
