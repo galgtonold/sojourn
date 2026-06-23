@@ -32,7 +32,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(env.siteUrl),
     title: {
-      default: `${name} — ${tagline || defaultTitle("meta.tagline")}`,
+      // Metadata is rendered server-side in the default locale.
+      default: `${name} — ${tagline.de || defaultTitle("meta.tagline")}`,
       template: `%s · ${name}`,
     },
     description:
@@ -54,17 +55,18 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { name, tagline } = await getBranding();
+  const { name, tagline, heroLead, heroAccent, kicker } = await getBranding();
+  const brand = { tagline, heroLead, heroAccent, kicker };
   return (
     <html lang="de" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
-        <I18nProvider siteName={name} tagline={tagline}>
+        <I18nProvider siteName={name} brand={brand}>
           <ServiceWorkerRegistrar />
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>
           <ConfirmProvider>
-            <SiteChrome header={<SiteHeader />} footer={<SiteFooter name={name} tagline={tagline} />}>
+            <SiteChrome header={<SiteHeader />} footer={<SiteFooter name={name} />}>
               {children}
             </SiteChrome>
           </ConfirmProvider>

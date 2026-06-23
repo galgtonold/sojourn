@@ -5,7 +5,14 @@ import { getBranding } from "@/lib/branding";
 import { PostCard } from "@/components/post-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
-import { T, DocumentTitle, LocText } from "@/components/i18n";
+import {
+  T,
+  DocumentTitle,
+  LocText,
+  BrandKicker,
+  BrandHeroLead,
+  BrandHeroAccent,
+} from "@/components/i18n";
 import { formatDate } from "@/lib/utils";
 
 // Fully static: prerendered in the default locale and the reader's language is
@@ -16,7 +23,7 @@ export const revalidate = false;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 9 });
-  const { name: siteName, heroLead, heroAccent } = await getBranding();
+  const { name: siteName } = await getBranding();
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
@@ -40,13 +47,12 @@ export default async function HomePage() {
 
         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pb-20">
           <p className="animate-float-up text-sm font-medium uppercase tracking-[0.3em] text-ember-300">
-            {siteName} — <T k="home.kicker" />
+            {siteName} — <BrandKicker />
           </p>
-          <h1 className="animate-float-up mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.05] sm:text-7xl">
-            {/* A set headline wins; otherwise the localized default. */}
-            {heroLead ? heroLead : <T k="home.heroLeadA" />}{" "}
+          <h1 className="animate-float-up mt-4 max-w-3xl text-balance break-words font-display text-[2rem] font-semibold leading-[1.08] sm:text-7xl sm:leading-[1.05]">
+            <BrandHeroLead />{" "}
             <span className="text-gradient-ember">
-              {heroAccent ? heroAccent : <T k="home.heroLeadB" />}
+              <BrandHeroAccent />
             </span>
             .
           </h1>

@@ -13,20 +13,37 @@ import {
   normalizeLocale,
   translate,
   type DictKey,
+  type LangPair,
   type Locale,
 } from "@/lib/i18n";
 import { cn, formatDate } from "@/lib/utils";
 import { env } from "@/lib/env";
 
 type Vars = Record<string, string | number>;
+
+/** Editable, per-language branding copy. Empty in a language → localized default. */
+export type Brand = {
+  tagline: LangPair;
+  heroLead: LangPair;
+  heroAccent: LangPair;
+  kicker: LangPair;
+};
+const EMPTY_BRAND: Brand = {
+  tagline: { de: "", en: "" },
+  heroLead: { de: "", en: "" },
+  heroAccent: { de: "", en: "" },
+  kicker: { de: "", en: "" },
+};
+
 type Ctx = {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (k: DictKey, vars?: Vars) => string;
-  // Editable branding, supplied by the server layout from the DB (with the env
-  // default as fallback). Lives here so any client chrome can read it.
+  // Editable branding, supplied by the server layout from the DB. The name is a
+  // single value; the rest is per-language. Lives here so any client chrome can
+  // read it and swap with the reader's language.
   siteName: string;
-  tagline: string;
+  brand: Brand;
 };
 
 const I18nCtx = createContext<Ctx | null>(null);
@@ -40,11 +57,11 @@ export function readCookieLocale(): Locale {
 export function I18nProvider({
   children,
   siteName = env.siteName,
-  tagline = "",
+  brand = EMPTY_BRAND,
 }: {
   children: ReactNode;
   siteName?: string;
-  tagline?: string;
+  brand?: Brand;
 }) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
@@ -63,10 +80,30 @@ export function I18nProvider({
 
   const t = (k: DictKey, vars?: Vars) => translate(locale, k, vars);
   return (
-    <I18nCtx.Provider value={{ locale, setLocale, t, siteName, tagline }}>
+    <I18nCtx.Provider value={{ locale, setLocale, t, siteName, brand }}>
       {children}
     </I18nCtx.Provider>
   );
+}
+
+// Editable branding copy that swaps with the reader's language, falling back to
+// the localized default when that language is left blank. Each renders nothing
+// but its text, so it drops into existing chrome in place of a plain <T>.
+export function BrandTagline() {
+  const { locale, t, brand } = useI18n();
+  return <>{brand.tagline[locale] || t("footer.tagline")}</>;
+}
+export function BrandKicker() {
+  const { locale, t, brand } = useI18n();
+  return <>{brand.kicker[locale] || t("home.kicker")}</>;
+}
+export function BrandHeroLead() {
+  const { locale, t, brand } = useI18n();
+  return <>{brand.heroLead[locale] || t("home.heroLeadA")}</>;
+}
+export function BrandHeroAccent() {
+  const { locale, t, brand } = useI18n();
+  return <>{brand.heroAccent[locale] || t("home.heroLeadB")}</>;
 }
 
 export function useI18n(): Ctx {

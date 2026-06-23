@@ -25,29 +25,45 @@ export async function PUT(req: Request) {
 
   // Partial: the writing-style form sends `writing_style`; the branding form
   // sends `site_name` / `tagline`. Update only what's present.
+  const brand = z.string().max(200).optional();
   const parsed = z
     .object({
       writing_style: z.string().max(8000).optional(),
       site_name: z.string().max(80).optional(),
-      tagline: z.string().max(200).optional(),
-      hero_lead: z.string().max(200).optional(),
-      hero_accent: z.string().max(200).optional(),
+      tagline_de: brand,
+      tagline_en: brand,
+      hero_lead_de: brand,
+      hero_lead_en: brand,
+      hero_accent_de: brand,
+      hero_accent_en: brand,
+      kicker_de: brand,
+      kicker_en: brand,
     })
     .safeParse(await req.json().catch(() => null));
   if (!parsed.success)
     return NextResponse.json({ error: "invalid" }, { status: 400 });
 
+  const BRAND_KEYS = [
+    "site_name",
+    "tagline_de",
+    "tagline_en",
+    "hero_lead_de",
+    "hero_lead_en",
+    "hero_accent_de",
+    "hero_accent_en",
+    "kicker_de",
+    "kicker_en",
+  ] as const;
+
   const update: Record<string, string> = {};
   if (parsed.data.writing_style !== undefined)
     update.writing_style = parsed.data.writing_style;
-  for (const k of ["site_name", "tagline", "hero_lead", "hero_accent"] as const) {
+  for (const k of BRAND_KEYS) {
     if (parsed.data[k] !== undefined) update[k] = parsed.data[k]!.trim();
   }
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "invalid" }, { status: 400 });
-  const brandingChanged = ["site_name", "tagline", "hero_lead", "hero_accent"].some(
-    (k) => k in update,
-  );
+  const brandingChanged = BRAND_KEYS.some((k) => k in update);
 
   const admin = getAdminSupabase();
   if (!admin)

@@ -5,6 +5,9 @@ export const LOCALES: Locale[] = ["de", "en"];
 export const DEFAULT_LOCALE: Locale = "de";
 export const LOCALE_COOKIE = "locale";
 
+/** A per-language string (editable branding copy keyed by locale). */
+export type LangPair = Record<Locale, string>;
+
 export const LOCALE_LABELS: Record<Locale, string> = {
   de: "Deutsch",
   en: "English",
@@ -239,12 +242,13 @@ const en = {
     "The name and tagline shown across the site — in the header, footer, the home hero and page titles. Leave blank to use the defaults.",
   "admin.settings.brandName": "Site name",
   "admin.settings.brandTagline": "Tagline",
-  "admin.settings.brandTaglinePlaceholder":
-    "e.g. A travel journal, hopeless at staying put.",
+  "admin.settings.brandKicker": "Hero intro line",
   "admin.settings.brandHeadline": "Home headline",
   "admin.settings.brandHeadlineHint":
     "Two parts: the lead, then the highlighted clause shown in the accent colour. A period is added automatically.",
   "admin.settings.brandHeadlineAccent": "Highlighted clause",
+  "admin.settings.brandPreview": "Preview",
+  "admin.settings.brandLangNote": "Edit per language",
   "admin.recentComments": "Recent comments",
   "admin.moderateAll": "Moderate all →",
   "admin.noComments": "No comments yet.",
@@ -766,12 +770,13 @@ const de: Dict = {
     "Name und Untertitel, die überall auf der Seite erscheinen — in Kopf- und Fußzeile, im Start-Hero und in den Seitentiteln. Leer lassen für die Voreinstellungen.",
   "admin.settings.brandName": "Name der Seite",
   "admin.settings.brandTagline": "Untertitel",
-  "admin.settings.brandTaglinePlaceholder":
-    "z. B. Ein Reisetagebuch, beim Stillsitzen chancenlos.",
+  "admin.settings.brandKicker": "Hero-Einleitung",
   "admin.settings.brandHeadline": "Start-Überschrift",
   "admin.settings.brandHeadlineHint":
     "Zwei Teile: der Anfang und der hervorgehobene Teil in der Akzentfarbe. Ein Punkt wird automatisch ergänzt.",
   "admin.settings.brandHeadlineAccent": "Hervorgehobener Teil",
+  "admin.settings.brandPreview": "Vorschau",
+  "admin.settings.brandLangNote": "Pro Sprache bearbeiten",
   "admin.recentComments": "Neueste Kommentare",
   "admin.moderateAll": "Alle moderieren →",
   "admin.noComments": "Noch keine Kommentare.",

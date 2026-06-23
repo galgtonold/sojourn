@@ -7,7 +7,7 @@ import { isAiConfigured, isSupabaseConfigured, env } from "@/lib/env";
 import { WritingStyleForm } from "@/components/writing-style-form";
 import { BrandingForm } from "@/components/branding-form";
 import { T, DocumentTitle } from "@/components/i18n";
-import { defaultTitle, translate, DEFAULT_LOCALE } from "@/lib/i18n";
+import { defaultTitle, translate, type DictKey } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("admin.settings.title") };
 export const dynamic = "force-dynamic";
@@ -20,9 +20,35 @@ export default async function SettingsPage() {
   const supabase = await getServerSupabase();
   const { data } = await supabase!
     .from("site_settings")
-    .select("writing_style, site_name, tagline, hero_lead, hero_accent")
+    .select(
+      "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en",
+    )
     .eq("id", 1)
     .maybeSingle();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const s = (data as any) ?? {};
+  const pair = (k: string) => ({
+    de: (s[`${k}_de`] as string) || "",
+    en: (s[`${k}_en`] as string) || "",
+  });
+  const initial = {
+    tagline: pair("tagline"),
+    heroLead: pair("hero_lead"),
+    heroAccent: pair("hero_accent"),
+    kicker: pair("kicker"),
+  };
+  // Localized built-in copy, shown as placeholders / preview fallback per language.
+  const def = (key: DictKey) => ({
+    de: translate("de", key),
+    en: translate("en", key),
+  });
+  const defaults = {
+    tagline: def("footer.tagline"),
+    heroLead: def("home.heroLeadA"),
+    heroAccent: def("home.heroLeadB"),
+    kicker: def("home.kicker"),
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
@@ -42,13 +68,10 @@ export default async function SettingsPage() {
       </p>
       <div className="mt-8">
         <BrandingForm
-          initialName={(data?.site_name as string) || ""}
-          initialTagline={(data?.tagline as string) || ""}
-          initialHeroLead={(data?.hero_lead as string) || ""}
-          initialHeroAccent={(data?.hero_accent as string) || ""}
+          initialName={(s.site_name as string) || ""}
           defaultName={env.siteName}
-          defaultHeroLead={translate(DEFAULT_LOCALE, "home.heroLeadA")}
-          defaultHeroAccent={translate(DEFAULT_LOCALE, "home.heroLeadB")}
+          initial={initial}
+          defaults={defaults}
         />
       </div>
 
