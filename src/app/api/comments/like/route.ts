@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!rateLimit(`like:${clientIp(req)}`, 60, 60_000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
@@ -26,13 +30,13 @@ export async function POST(req: Request) {
         { comment_id: commentId, visitor_token: token },
         { onConflict: "comment_id,visitor_token", ignoreDuplicates: true },
       );
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
   } else {
     const { error } = await supabase
       .from("comment_likes")
       .delete()
       .match({ comment_id: commentId, visitor_token: token });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

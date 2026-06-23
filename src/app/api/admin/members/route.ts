@@ -1,30 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { requireOwner } from "@/lib/api/admin-auth";
 import { mintInviteLink } from "@/lib/member-invite";
 
 const schema = z.object({
   email: z.string().trim().email(),
   tripIds: z.array(z.string().uuid()).default([]),
 });
-
-/** Confirms the caller is the owner. */
-async function requireOwner() {
-  const supabase = await getServerSupabase();
-  if (!supabase) return { ok: false as const, status: 503 };
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false as const, status: 401 };
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (prof?.role !== "owner") return { ok: false as const, status: 403 };
-  return { ok: true as const };
-}
 
 export async function POST(req: Request) {
   const gate = await requireOwner();

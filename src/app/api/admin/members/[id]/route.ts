@@ -1,23 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-
-async function requireOwner() {
-  const supabase = await getServerSupabase();
-  if (!supabase) return { ok: false as const, status: 503 };
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false as const, status: 401 };
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (prof?.role !== "owner") return { ok: false as const, status: 403, self: user.id };
-  return { ok: true as const, self: user.id };
-}
+import { requireOwner } from "@/lib/api/admin-auth";
 
 const schema = z.object({
   tripIds: z.array(z.string().uuid()).default([]),

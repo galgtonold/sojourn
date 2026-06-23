@@ -30,7 +30,7 @@ import {
 } from "@/lib/types";
 import { LOCALES, type Locale } from "@/lib/i18n";
 
-function summarizeReactions(
+export function summarizeReactions(
   rows: { kind: string }[] | null | undefined,
 ): ReactionSummary {
   const out = emptyReactions();
@@ -507,20 +507,6 @@ export async function searchPhotos(
   }
 }
 
-// A photo card only localizes its parent post's TITLE — so strip the post's full
-// i18n (which also carries the translated excerpt + body) down to the title.
-// Without this, a 34-photo result shipped ~100 KB of translated post bodies.
-function postTitleI18n(
-  i18n: Partial<Record<Locale, PostTranslation>> | undefined,
-): Partial<Record<Locale, PostTranslation>> | undefined {
-  if (!i18n) return undefined;
-  const out: Partial<Record<Locale, PostTranslation>> = {};
-  for (const [loc, tr] of Object.entries(i18n) as [Locale, PostTranslation][]) {
-    if (tr?.title) out[loc] = { title: tr.title };
-  }
-  return out;
-}
-
 // Combined hybrid search over stories AND photos. Embeds the query ONCE and
 // shares the vector with both RPCs (previously each path embedded separately),
 // then runs them in parallel. Returns light summaries for a small payload.
@@ -538,7 +524,9 @@ export async function searchAll(
   ]);
   const photos = rawPhotos.map((ph) => ({
     ...ph,
-    post_i18n: postTitleI18n(ph.post_i18n),
+    // Keep only the parent post's title (drop the translated excerpt/body that
+    // would otherwise bloat the payload) — same trimming as the photo map.
+    post_i18n: trimTitleI18n(ph.post_i18n),
     // The card shows caption || place_name as its label; the AI description is a
     // long paragraph that's almost never the chosen label — don't ship it.
     ai_description: null,

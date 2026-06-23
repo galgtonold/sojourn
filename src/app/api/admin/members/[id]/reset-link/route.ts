@@ -1,27 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { requireOwner } from "@/lib/api/admin-auth";
 import { mintInviteLink } from "@/lib/member-invite";
 
 // Mint a fresh onboarding link for an existing account — so the owner can hand a
 // collaborator a new password-set link (we have no email service), or re-issue
 // an expired invite. Owner-only; the link goes through the same welcome flow.
-async function requireOwner() {
-  const supabase = await getServerSupabase();
-  if (!supabase) return { ok: false as const, status: 503 };
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false as const, status: 401 };
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (prof?.role !== "owner") return { ok: false as const, status: 403 };
-  return { ok: true as const };
-}
-
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },

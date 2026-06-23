@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getReaderLocale } from "@/lib/i18n-server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import type { Locale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,9 @@ const voteSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!rateLimit(`interactions:${clientIp(req)}`, 30, 60_000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   const parsed = voteSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
