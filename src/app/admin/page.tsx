@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isAiConfigured } from "@/lib/env";
-import { getPublishedPosts, getTrips } from "@/lib/content";
+import { getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -26,20 +26,6 @@ export const dynamic = "force-dynamic";
 
 async function loadStats(viewer: Viewer) {
   const supabase = await getServerSupabase();
-  if (!supabase) {
-    const posts = await getPublishedPosts();
-    return {
-      email: null as string | null,
-      postCount: posts.length,
-      commentCount: 0,
-      recentComments: [] as {
-        id: string;
-        author_name: string;
-        body: string;
-        created_at: string;
-      }[],
-    };
-  }
 
   const owner = viewer.isOwner;
   const scope = owner

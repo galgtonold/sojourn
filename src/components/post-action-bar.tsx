@@ -48,6 +48,11 @@ export function PostActionBar({
           type="button"
           onClick={onTogglePublish}
           disabled={saving || (!published && !canPublish)}
+          title={
+            !published && !canPublish
+              ? t("admin.editor.publishNeedsFields")
+              : undefined
+          }
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition disabled:opacity-50",
             published

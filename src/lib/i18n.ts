@@ -50,6 +50,8 @@ const en = {
   "post.navPrev": "Previous",
   "post.navNext": "Next",
   "post.elevation": "Elevation",
+  "post.share": "Share",
+  "post.linkCopied": "Link copied",
   "post.exploreJourney": "Explore the journey map",
 
   "comments.title": "Comments",
@@ -573,6 +575,8 @@ const de: Dict = {
   "post.navPrev": "Vorheriger",
   "post.navNext": "Nächster",
   "post.elevation": "Höhenprofil",
+  "post.share": "Teilen",
+  "post.linkCopied": "Link kopiert",
   "post.exploreJourney": "Reisekarte erkunden",
 
   "comments.title": "Kommentare",

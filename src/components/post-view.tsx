@@ -34,6 +34,7 @@ import { ElevationProfile } from "@/components/elevation-profile";
 import { SubscribePrompt } from "@/components/subscribe-prompt";
 import { RevealImage } from "@/components/reveal-image";
 import { BackLink } from "@/components/back-link";
+import { ShareButton } from "@/components/share-button";
 import { T, useI18n } from "@/components/i18n";
 
 /**
@@ -190,6 +191,11 @@ export function PostView({
                 </Link>
               )}
             </div>
+            {!preview && (
+              <div className="mt-5">
+                <ShareButton title={post.title} />
+              </div>
+            )}
           </div>
         </div>
       </header>

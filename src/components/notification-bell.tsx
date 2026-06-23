@@ -10,7 +10,6 @@ import {
 } from "@/lib/push-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
-import { useConfirm } from "@/components/confirm-dialog";
 
 // Push availability depends only on the public VAPID key in the browser.
 const pushAvailable = Boolean(env.vapidPublicKey);
@@ -30,7 +29,7 @@ export function NotificationBell({
   iconClassName?: string;
 }) {
   const t = useT();
-  const confirm = useConfirm();
+  const [showHelp, setShowHelp] = useState(false);
   // Start in the neutral "off" state and render immediately (no pop-in on load,
   // unlike waiting for the async getPushState). Refine once we know the real
   // state; only then can we discover an unsupported browser and hide.
@@ -64,10 +63,11 @@ export function NotificationBell({
   async function handleClick() {
     if (busy) return;
     // The browser has blocked notifications at the site level — we can't reprompt
-    // (that's the whole point of a block), so explain how to undo it instead of
-    // silently doing nothing. The subscribe prompt itself never appears here.
+    // (that's the whole point of a block), so show how to undo it in a small
+    // popover anchored to the bell (not a page-dimming modal) instead of silently
+    // doing nothing. The subscribe prompt itself never appears here.
     if (denied) {
-      await confirm({ message: t("push.blockedHelp"), notice: true });
+      setShowHelp((s) => !s);
       return;
     }
     setBusy(true);
@@ -87,24 +87,45 @@ export function NotificationBell({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={busy}
-      aria-label={hint}
-      title={hint}
-      className={cn(
-        "flex items-center justify-center rounded-full transition hover:bg-white/5 hover:text-sand-50 disabled:cursor-default disabled:opacity-60",
-        subscribed
-          ? "text-ember-300"
-          : denied
-            ? "text-sand-100/60"
-            : "text-sand-100/80",
-        className,
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={busy}
+        aria-label={hint}
+        title={hint}
+        className={cn(
+          "flex items-center justify-center rounded-full transition hover:bg-white/5 hover:text-sand-50 disabled:cursor-default disabled:opacity-60",
+          subscribed
+            ? "text-ember-300"
+            : denied
+              ? "text-sand-100/60"
+              : "text-sand-100/80",
+          className,
+        )}
+      >
+        <Icon className={cn(iconClassName, busy && "animate-spin")} />
+        <span className="sr-only">{t("push.viewer")}</span>
+      </button>
+      {showHelp && (
+        <>
+          {/* Transparent click-away catcher — closes the popover without dimming
+              the page (unlike a modal). */}
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onClick={() => setShowHelp(false)}
+            className="fixed inset-0 z-40 cursor-default"
+          />
+          <div
+            role="status"
+            className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-white/10 bg-ink-900 p-3 text-xs leading-relaxed text-sand-100/80 shadow-2xl"
+          >
+            {t("push.blockedHelp")}
+          </div>
+        </>
       )}
-    >
-      <Icon className={cn(iconClassName, busy && "animate-spin")} />
-      <span className="sr-only">{t("push.viewer")}</span>
-    </button>
+    </div>
   );
 }

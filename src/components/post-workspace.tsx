@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { slugify } from "@/lib/utils";
+import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { TranslationBadge } from "@/components/translation-badge";
@@ -75,6 +76,10 @@ export function PostWorkspace({
   const router = useRouter();
   const confirm = useConfirm();
   const [post, setPost] = useState<EditablePost>(initial);
+  // Baseline of the last-saved article fields; `dirty` warns before leaving with
+  // unsaved edits. (Photos/tracks/interactions persist immediately via their own
+  // managers, so only the article fields can be lost.)
+  const [savedSnapshot, setSavedSnapshot] = useState<EditablePost>(initial);
   const [interactions, setInteractions] = useState<ManagedInteraction[]>(initialInteractions);
   // Lifted so an uploaded photo is insertable in the article live (no reload).
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initialPhotos);
@@ -119,6 +124,7 @@ export function PostWorkspace({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? t("admin.editor.saveFailed"));
       }
+      setSavedSnapshot(current);
       if (navigate) {
         router.push("/admin/posts");
         router.refresh();
@@ -169,6 +175,9 @@ export function PostWorkspace({
     }));
     setOpen((o) => ({ ...o, article: true }));
   }
+
+  const dirty = JSON.stringify(post) !== JSON.stringify(savedSnapshot);
+  useBeforeUnload(dirty);
 
   const canPublish = Boolean(post.title.trim() && post.trip_id);
   const readMin = Math.max(1, Math.round(post.body.split(/\s+/).filter(Boolean).length / 200));

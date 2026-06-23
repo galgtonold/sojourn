@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
+import { useBeforeUnload } from "@/lib/use-before-unload";
 import { ImageUploader } from "@/components/image-uploader";
 import { AiContextRefiner } from "@/components/ai-context-refiner";
 import { useT } from "@/components/i18n";
@@ -43,6 +44,9 @@ export function TripEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = Boolean(trip.id);
+
+  // Warn before leaving with unsaved edits (a successful save navigates away).
+  useBeforeUnload(JSON.stringify(trip) !== JSON.stringify(initial ?? EMPTY));
 
   function set<K extends keyof EditableTrip>(key: K, value: EditableTrip[K]) {
     setTrip((p) => ({ ...p, [key]: value }));
