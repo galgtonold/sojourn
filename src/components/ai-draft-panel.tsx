@@ -27,6 +27,8 @@ type Section = {
   beat: string;
   photo_ids: string[];
   interaction?: { kind: "poll" | "quiz"; idea: string } | null;
+  // Ids of the author's pre-defined interactions placed in this section.
+  interaction_refs?: string[];
 };
 type Outline = {
   title: string;

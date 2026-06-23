@@ -42,7 +42,26 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
   // shows as raw ":::poll" text), then prune interactions this body no longer
   // references (e.g. a quiz a previous draft created that a regenerate replaced).
   const materialized = await materializeInteractions(supabase, p.postId, p.body);
-  const body = stripIncompleteDirectives(materialized.body);
+  let body = stripIncompleteDirectives(materialized.body);
+
+  // Safety net: every author-defined interaction MUST survive a regenerate. If
+  // the model failed to place one inline, append its [ask:id] so it's preserved
+  // (and not pruned) — the author's poll/quiz is never silently dropped.
+  const { data: authored } = await supabase
+    .from("interactions")
+    .select("id")
+    .eq("post_id", p.postId)
+    .eq("source", "author")
+    .order("sort_order", { ascending: true });
+  const missing = (authored ?? [])
+    .map((r) => r.id as string)
+    .filter((id) => !body.includes(`[ask:${id}]`));
+  if (missing.length) {
+    body = `${body.trimEnd()}\n\n${missing
+      .map((id) => `[ask:${id}]`)
+      .join("\n\n")}`;
+  }
+
   await pruneUnreferencedInteractions(supabase, p.postId, body);
 
   const update: Record<string, unknown> = {

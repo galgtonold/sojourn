@@ -158,12 +158,12 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
     expect(issues).toEqual([]);
   });
 
-  it("save-draft prunes interactions the regenerated body no longer references", async () => {
+  it("save-draft prunes AI interactions the regenerated body no longer references", async () => {
     const { postId } = setup();
-    // A regenerate: one interaction is kept (referenced), one is now stale.
+    // A regenerate: one AI interaction is kept (referenced), one is now stale.
     store.interactions = [
-      { id: "keep-1", post_id: postId, kind: "poll", question: "Stay?", options: ["a", "b"], sort_order: 0 },
-      { id: "orphan-1", post_id: postId, kind: "quiz", question: "Gone?", options: ["a", "b"], sort_order: 1 },
+      { id: "keep-1", post_id: postId, kind: "poll", question: "Stay?", options: ["a", "b"], sort_order: 0, source: "ai" },
+      { id: "orphan-1", post_id: postId, kind: "quiz", question: "Gone?", options: ["a", "b"], sort_order: 1, source: "ai" },
     ];
 
     const r = await call(saveDraft, {
@@ -176,6 +176,26 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
     const ids = store.interactions.map((it) => it.id);
     expect(ids).toContain("keep-1");
     expect(ids).not.toContain("orphan-1");
+  });
+
+  it("save-draft never drops an author-defined interaction, appending it if unplaced", async () => {
+    const { postId } = setup();
+    // The author defined a poll; a regenerate produced a body that forgot it.
+    store.interactions = [
+      { id: "mine-1", post_id: postId, kind: "poll", question: "Mine?", options: ["a", "b"], sort_order: 0, source: "author" },
+    ];
+
+    const r = await call(saveDraft, {
+      postId,
+      title: "Regenerated",
+      body: "Neuer Text ohne Verweis.\n\nSchluss.",
+    });
+    expect(r.status).toBe(200);
+
+    // Preserved (not pruned) and woven back into the body via its [ask:] tag.
+    const ids = store.interactions.map((it) => it.id);
+    expect(ids).toContain("mine-1");
+    expect(store.posts[0].body as string).toContain("[ask:mine-1]");
   });
 
   it("enriches a pending photo via the description path (no geocoding)", async () => {

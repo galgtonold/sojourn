@@ -57,6 +57,44 @@ export function interactionInstruction(
   );
 }
 
+// Instructions for placing the author's PRE-DEFINED interactions into a section.
+// The poll/quiz already exists — the model only positions it, by emitting the
+// exact [ask:<id>] tag. It must never spell out the options or the answer, nor
+// rebuild it as a :::block.
+export function predefinedInteractionInstruction(
+  items: { id: string; kind: "poll" | "quiz"; question: string }[],
+  lang: Lang,
+): string {
+  if (items.length === 0) return "";
+  const label = (kind: "poll" | "quiz") =>
+    lang === "en"
+      ? kind === "quiz"
+        ? "quiz"
+        : "poll"
+      : kind === "quiz"
+        ? "Quiz"
+        : "Umfrage";
+  const list = items
+    .map((it) => `[ask:${it.id}] (${label(it.kind)}): "${it.question}"`)
+    .join("\n");
+  if (lang === "en") {
+    return (
+      `\n- The author prepared the following reader interaction(s) for THIS ` +
+      `section. Place EACH at a natural spot, as the exact tag [ask:<id>] on its ` +
+      `own line (blank line before and after). Lead in with a short sentence, but ` +
+      `do NOT write the options or the answer into the prose and do NOT rebuild ` +
+      `it as a :::block:\n${list}`
+    );
+  }
+  return (
+    `\n- Der Autor hat für DIESEN Abschnitt die folgende(n) Leser-Interaktion(en) ` +
+    `vorbereitet. Platziere JEDE an einer natürlichen Stelle, als exakten Tag ` +
+    `[ask:<id>] in einer eigenen Zeile (Leerzeile davor und danach). Leite mit ` +
+    `einem kurzen Satz darauf hin, aber schreibe die Optionen oder die Antwort ` +
+    `NICHT in den Fließtext und baue daraus KEINEN :::-Block:\n${list}`
+  );
+}
+
 export function qaBlock(
   answers: { question: string; answer: string }[] | undefined,
   lang: Lang,

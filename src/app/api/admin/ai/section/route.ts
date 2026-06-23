@@ -7,6 +7,7 @@ import {
   langInstruction,
   qaBlock,
   interactionInstruction,
+  predefinedInteractionInstruction,
   type Lang,
 } from "@/lib/ai/prompt";
 
@@ -21,6 +22,8 @@ const sectionSchema = z.object({
   interaction: z
     .object({ kind: z.enum(["poll", "quiz"]), idea: z.string() })
     .nullish(),
+  // Ids of the author's pre-defined interactions to place in this section.
+  interaction_refs: z.array(z.string()).optional().default([]),
 });
 
 const schema = z.object({
@@ -77,13 +80,22 @@ async function sectionRoute({
     .filter(Boolean)
     .join("\n");
 
-  const interactionRule = section.interaction
-    ? interactionInstruction(
-        section.interaction.kind,
-        section.interaction.idea,
-        lang as Lang,
-      )
-    : "";
+  // Author-defined interactions assigned to this section — place their exact
+  // [ask:<id>] tags. Plus, optionally, the single interaction the model invented.
+  const refItems = (section.interaction_refs ?? [])
+    .map((id) => dossier.interactions.find((it) => it.id === id))
+    .filter((it): it is (typeof dossier.interactions)[number] => Boolean(it));
+  const interactionRule =
+    (refItems.length
+      ? predefinedInteractionInstruction(refItems, lang as Lang)
+      : "") +
+    (section.interaction
+      ? interactionInstruction(
+          section.interaction.kind,
+          section.interaction.idea,
+          lang as Lang,
+        )
+      : "");
 
   // The full plan, so this section can see every other section's scope and stay
   // out of it (sections are written independently, blind to each other's text).
@@ -120,11 +132,12 @@ async function sectionRoute({
     "- Dies ist EIN Abschnitt mitten in einem längeren Artikel, kein eigenständiger " +
     "Beitrag und kein Brief: keine Anrede, keine Grußformel und keine Unterschrift " +
     "(z. B. „Herzlich, …“, „Liebe Grüße“, Namenszeile) — weder am Anfang noch am Ende.\n" +
-    "- Stelle den Leser:innen KEINE Quiz-, Umfrage- oder Ratefrage im Fließtext: " +
-    "keine Antwortoptionen (a)/b)/c) oder A)/B)/C)), keine „Welche/r … war es?“- " +
-    "oder „Stimmt ab“-Frage ans Publikum, kein „kleine Umfrage zum Schluss“. Die " +
-    "EINZIGE erlaubte Leser-Interaktion ist ein vollständiger :::poll-/:::quiz- " +
-    "Block — und auch den NUR, wenn er unten ausdrücklich verlangt wird; sonst gar keine.\n" +
+    "- Erfinde KEINE Quiz-, Umfrage- oder Ratefrage im Fließtext: keine " +
+    "Antwortoptionen (a)/b)/c) oder A)/B)/C)), keine „Welche/r … war es?“- oder " +
+    "„Stimmt ab“-Frage ans Publikum, kein „kleine Umfrage zum Schluss“. Leser- " +
+    "Interaktionen erscheinen AUSSCHLIESSLICH (a) als [ask:<id>]-Tag für eine vom " +
+    "Autor vorbereitete Interaktion oder (b) als vollständiger :::poll-/:::quiz- " +
+    "Block — und beides NUR, wenn es unten ausdrücklich verlangt wird; sonst gar keine.\n" +
     "- Schreibe NUR diesen einen Abschnitt, ohne Wiederholung. Antworte mit reinem Markdown (kein JSON)." +
     interactionRule +
     (avoidPhotoIds.length

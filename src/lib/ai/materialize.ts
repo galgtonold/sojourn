@@ -37,6 +37,9 @@ export async function materializeInteractions(
         correct_index: d.kind === "quiz" ? d.correctIndex : null,
         explanation: d.kind === "quiz" ? d.explanation : null,
         sort_order: sort++,
+        // The AI generated this block from a :::directive; author-defined
+        // interactions are inserted elsewhere and stay source='author'.
+        source: "ai",
       })
       .select("id")
       .single();
@@ -66,10 +69,11 @@ export function stripIncompleteDirectives(body: string): string {
 
 const ASK_TAG_RE = /\[ask:([^\]\s]+)\]/g;
 
-// Deletes a post's interactions that the (already materialised) body no longer
-// references — e.g. a quiz from a previous draft that a regenerate replaced.
-// Without this, stale interactions linger and pollute the trip's sibling
-// context. Refs may be an id or a 1-based index (matching resolveInteraction).
+// Deletes a post's AI-generated interactions that the (already materialised)
+// body no longer references — e.g. a quiz from a previous draft that a
+// regenerate replaced. Author-defined interactions (source='author') are NEVER
+// pruned: they're the author's, and the draft pipeline guarantees they stay
+// referenced. Refs may be an id or a 1-based index (matching resolveInteraction).
 export async function pruneUnreferencedInteractions(
   supabase: SupabaseClient,
   postId: string,
@@ -77,10 +81,10 @@ export async function pruneUnreferencedInteractions(
 ): Promise<{ deleted: number }> {
   const { data } = await supabase
     .from("interactions")
-    .select("id")
+    .select("id, source")
     .eq("post_id", postId)
     .order("sort_order", { ascending: true });
-  const rows = (data ?? []) as { id: string }[];
+  const rows = (data ?? []) as { id: string; source?: string }[];
   if (rows.length === 0) return { deleted: 0 };
 
   const refs = new Set<string>();
@@ -89,7 +93,10 @@ export async function pruneUnreferencedInteractions(
   while ((m = re.exec(body)) !== null) refs.add(m[1]);
 
   const stale = rows
-    .filter((r, idx) => !refs.has(r.id) && !refs.has(String(idx + 1)))
+    .filter(
+      (r, idx) =>
+        r.source === "ai" && !refs.has(r.id) && !refs.has(String(idx + 1)),
+    )
     .map((r) => r.id);
   if (stale.length === 0) return { deleted: 0 };
 
