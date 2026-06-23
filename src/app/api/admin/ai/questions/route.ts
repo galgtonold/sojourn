@@ -54,9 +54,13 @@ async function questions({
           `So schreibt der Autor (Stil des späteren Beitrags):\n${styleGuide}\n\n` +
           "Stelle 4–6 kurze, konkrete Fragen, deren Antworten du brauchst, um " +
           "einen lebendigen, persönlichen Beitrag in genau diesem Stil zu " +
-          "schreiben (z. B. Begleitung, Höhepunkt, eine Anekdote, Wetter/Stimmung, " +
+          "schreiben (z. B. Begleitung, Höhepunkt, eine Anekdote, Stimmung, " +
           "Beweggrund). Frage nur nach Dingen, die aus dem Material nicht " +
-          "hervorgehen. " +
+          "hervorgehen. Nutze die Fotobeschreibungen und frage gezielt nach dem, " +
+          "was man auf den Fotos NICHT sieht — Hintergründe, Gefühle, Momente " +
+          "dazwischen —, nicht nach offensichtlich Sichtbarem. Frage NICHT nach " +
+          "dem Wetter und NICHT nach dem genauen Ort: beide werden automatisch " +
+          "aus Wetter- und Routen-/GPS-Daten ergänzt. " +
           'Antworte ausschließlich als JSON: {"questions": ["…", "…"]}.',
       },
     ],

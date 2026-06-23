@@ -198,9 +198,26 @@ export function AiDraftPanel({
     const ac = new AbortController();
     abortRef.current = ac;
     setPhase("asking");
-    setStep(t("admin.ai.step.questions"));
     setError(null);
     try {
+      // Enrich photos first so the questions are informed by what's actually in
+      // them (no asking about things the photos already show). Best effort, and
+      // it makes generate's later enrich step a no-op — not extra work.
+      setStep(t("admin.ai.step.enrich"));
+      for (let guard = 0; guard < 50; guard++) {
+        try {
+          const { remaining } = await postJson<{ remaining: number }>(
+            "/api/admin/ai/enrich-post",
+            { postId },
+            ac.signal,
+          );
+          if (remaining <= 0) break;
+        } catch (e) {
+          if (isAbort(e)) throw e;
+          break;
+        }
+      }
+      setStep(t("admin.ai.step.questions"));
       const { questions } = await postJson<{ questions: string[] }>(
         "/api/admin/ai/questions",
         { postId, notes, lang },
