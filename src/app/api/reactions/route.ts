@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { emptyReactions, REACTION_KINDS, type ReactionKind } from "@/lib/types";
 
@@ -14,14 +13,12 @@ const schema = z.object({
 
 // Live reaction counts for a post. The post page bakes counts at build time, so
 // they go stale between saves; the Reactions component refetches this on mount so
-// a returning reader sees the current totals. Returns `{ demo: true }` when there
-// is no backend, so the client keeps its baked (demo) counts instead of zeroing.
+// a returning reader sees the current totals.
 export async function GET(req: Request) {
   const postId = new URL(req.url).searchParams.get("postId");
   if (!postId) return NextResponse.json({ error: "invalid" }, { status: 400 });
 
   const supabase = getPublicSupabase();
-  if (!supabase) return NextResponse.json({ demo: true }, { status: 202 });
 
   const { data, error } = await supabase
     .from("reactions")
@@ -45,8 +42,9 @@ export async function POST(req: Request) {
   }
   const { postId, kind, token, action } = parsed.data;
 
-  const supabase = (await getServerSupabase()) ?? getAdminSupabase();
-  if (!supabase) return NextResponse.json({ demo: true }, { status: 202 });
+  // Anon client for visitors (RLS enforces the insert policy); session client
+  // when an admin is signed in.
+  const supabase = await getServerSupabase();
 
   if (action === "add") {
     const { error } = await supabase

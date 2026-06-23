@@ -2,7 +2,7 @@
 
 **A bold, immersive travel journal.** Sojourn is a self-hostable blog/journal for documenting your travels — full-bleed hero imagery, interactive maps with route lines, photo galleries with a lightbox, reactions, comments, and full-text search. It's built to feel like a magazine and run like a single, portable container.
 
-The headline feature: **it runs with zero configuration.** Clone, `npm install`, `npm run dev`, and you're looking at a fully populated demo site. Add environment variables and real features — Supabase data, the admin panel, web push — progressively light up. Nothing is locked to a single cloud vendor.
+Sojourn needs one thing to run: **Supabase** (Postgres + Auth + Storage). Point it at a local stack (`supabase start`) or a hosted project, run the migrations, and you have a working site. Everything beyond that — web push, AI authoring, semantic search, photo vision — is **optional** and lights up as you add the relevant keys. Nothing is locked to a single cloud vendor.
 
 ## Features
 
@@ -20,7 +20,6 @@ The headline feature: **it runs with zero configuration.** Clone, `npm install`,
 - **Internationalization** — German default with a DE/EN switcher across the whole UI.
 - **Web Push notifications** (VAPID) for the admin and subscribers.
 - **Installable PWA** — offline caching of visited pages and assets, add-to-home-screen.
-- **Demo mode** — bundled sample content so the app is never empty.
 - **Portable by design** — Next.js standalone output, Dockerized, no vendor lock-in.
 
 ## Tech stack
@@ -33,24 +32,32 @@ The headline feature: **it runs with zero configuration.** Clone, `npm install`,
 - **framer-motion**, **lucide-react**, **zod**.
 - **Docker** — multi-stage `Dockerfile` (Next standalone) + `docker-compose.yml`.
 
-## How "zero config" works
+## How configuration works
 
-The app reads its capabilities at runtime from `src/lib/env.ts`, which exposes:
+Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`) is **required** — the Supabase client wrappers throw a clear error if it's missing, so a misconfigured deploy fails fast instead of silently serving nothing.
 
-- `isSupabaseConfigured` — real data + auth available?
-- `isServiceRoleConfigured` — admin/server actions that bypass RLS available?
-- `isPushConfigured` — VAPID keys present for web push?
+Every other integration is **optional** and gated at runtime by a capability flag in `src/lib/env.ts`, so the app degrades gracefully feature-by-feature:
 
-When Supabase isn't configured, the data access layer (`src/lib/content.ts`) transparently falls back to bundled sample content in `src/lib/demo.ts`. As you fill in env vars, each subsystem switches from demo to live automatically — no code changes, no feature flags to flip.
+- `isServiceRoleConfigured` — admin/server actions + inline polls/quizzes (bypass RLS).
+- `isPushConfigured` — VAPID keys present for web push.
+- `isAiConfigured` / `isEmbeddingsConfigured` / `isVisionConfigured` — AI drafting, semantic search, photo descriptions.
+- `isEdgeTranslateConfigured` / `isEdgeJobConfigured` — background translation + slow LLM offload.
+
+As you add the relevant env vars, each subsystem switches on automatically — no code changes, no feature flags to flip. (Semantic search, for example, transparently falls back to full-text when no embeddings provider is set.)
 
 ## Quick start
 
+You need a Supabase to point at. The fastest path is the local stack (requires Docker + the Supabase CLI):
+
 ```bash
 npm install
+supabase start          # boots local Postgres + Auth + Storage
+supabase db reset        # applies migrations in supabase/migrations + seed.sql
+cp .env.example .env.local   # then fill in the printed local URL + anon key
 npm run dev
 ```
 
-Open **http://localhost:3000**. With no `.env.local` at all, you get the full site running in **demo mode** with sample trips, posts, photos, and map routes.
+Open **http://localhost:3000**. `supabase/seed.sql` populates sample trips, posts, photos, comments, and two admin users so the site is fully exercised in development. Prefer a hosted project instead? See **Going live with Supabase** below — the only difference is which URL/keys land in `.env.local`.
 
 Other scripts:
 
@@ -66,7 +73,7 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 
 - **Content is public-read.** Trips, posts, photos, maps, comments, and reactions are shared by URL — there are no viewer accounts.
 - **Only `/admin` is gated.** Authentication is Supabase Auth for a single admin, enforced by Next middleware in `src/middleware.ts`.
-- **Data access layer:** `src/lib/content.ts` — Supabase queries with the demo fallback baked in.
+- **Data access layer:** `src/lib/content.ts` — public reads via a cookieless anon client (RLS-bounded); query failures return empty, never fabricated content.
 - **Schema, RLS, and storage:** `supabase/migrations/0001_init.sql`.
 
 ### Database tables
@@ -91,7 +98,7 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 
 > Because content is public-read, **no viewer accounts are ever needed** — the only account that exists is the admin.
 
-Restart `npm run dev` and the site now reads from your database instead of the demo content.
+Restart `npm run dev` and the site reads from your hosted database.
 
 ## Enabling web push
 
@@ -157,8 +164,7 @@ sojourn/
 │   ├── components/           # UI: gallery, trip-map, reactions, comments, post-editor, push-toggle, …
 │   ├── lib/
 │   │   ├── supabase/         # client.ts, server.ts, admin.ts
-│   │   ├── content.ts        # data access layer (Supabase + demo fallback)
-│   │   ├── demo.ts           # bundled sample content
+│   │   ├── content.ts        # data access layer (Supabase, RLS-bounded reads)
 │   │   ├── env.ts            # isSupabaseConfigured / isServiceRoleConfigured / isPushConfigured
 │   │   ├── notify.ts         # web push helpers
 │   │   ├── types.ts
@@ -188,16 +194,14 @@ sojourn/
 | `NEXT_PUBLIC_SITE_NAME` | public | Display name of the site. |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | public | MapLibre style URL (defaults to OpenFreeMap, keyless). |
 
-All of these are optional. Leave them unset to stay in demo mode; add them to progressively enable real data, admin, and push.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are **required** — the app fails fast without them. Everything else is optional; add each to progressively enable admin/server actions, push, and the AI features.
 
 ## Roadmap
 
 Built and working, but room to grow:
 
-- **Blurhash generation** — the `photos.blurhash` column exists but nothing populates it yet; generating placeholders on upload would smooth image loading.
-- **Maskable PWA icon** — ship a properly padded maskable icon variant for crisper home-screen icons on Android.
 - **Map clustering** — cluster pins on the global `/map` as trips accumulate.
-- **RSS / Atom feed** — a feed for the journal would help with reach.
+- **Discoverability** — `sitemap.xml`, `robots.txt`, JSON-LD, and canonical/`hreflang` for the bilingual site.
 - **Share surface** — dynamic per-post Open Graph images and a native share sheet.
 
 > Several earlier roadmap items — direct **photo upload**, a **comment moderation** UI, **rich Markdown** post bodies, **AI authoring**, **collaborators**, and **i18n** — are now implemented and listed under [Features](#features).

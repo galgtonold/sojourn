@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { MembersManager } from "@/components/members-manager";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -12,7 +11,6 @@ export const metadata = { title: defaultTitle("meta.members") };
 export const dynamic = "force-dynamic";
 
 export default async function MembersPage() {
-  if (!isSupabaseConfigured) redirect("/admin");
   const viewer = await getViewer();
   if (!viewer.isOwner) redirect("/admin");
 

@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/env";
 import { useT } from "@/components/i18n";
 
 export default function AdminLogin() {
@@ -19,11 +18,6 @@ export default function AdminLogin() {
     setError(null);
     setBusy(true);
     const supabase = getBrowserSupabase();
-    if (!supabase) {
-      setError(t("admin.login.demo"));
-      setBusy(false);
-      return;
-    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
@@ -47,12 +41,6 @@ export default function AdminLogin() {
           </h1>
         </div>
         <p className="text-sm text-sand-100/50">{t("admin.login.subtitle")}</p>
-
-        {!isSupabaseConfigured && (
-          <p className="rounded-xl bg-ember-600/15 p-3 text-xs text-ember-300">
-            {t("admin.login.demo")}
-          </p>
-        )}
 
         <input
           type="email"

@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sojourn — Comprehensive Product, UX &amp; Code Audit (2026-06-23)</title>
+<style>
+  :root{
+    --ink-950:#0a0908; --ink-900:#14110f; --ink-800:#1c1815; --ink-700:#2a2521;
+    --sand-50:#faf6f0; --sand-100:#f2ebe0; --sand-300:#d8cab4;
+    --ember-300:#ffb27d; --ember-400:#ff8f4d; --ember-500:#f5701f;
+    --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.06);
+    --good:#5fd08a; --crit:#ff5c5c; --high:#ff8f4d; --med:#ffd166; --low:#7fb5ff; --nit:#9aa0a6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--ink-950); color:var(--sand-100);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:0 24px}
+  header.hero{
+    padding:64px 0 40px; border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 400px at 20% -10%, rgba(245,112,31,.16), transparent 60%);
+  }
+  .kicker{color:var(--ember-300); letter-spacing:.28em; text-transform:uppercase; font-size:12px; font-weight:600}
+  h1{font-size:40px; line-height:1.1; margin:.3em 0 .2em; font-weight:700; letter-spacing:-.01em}
+  h1 .accent{color:var(--ember-400)}
+  .sub{color:var(--sand-300); max-width:70ch; font-size:17px}
+  .meta-grid{display:flex; flex-wrap:wrap; gap:10px 28px; margin-top:22px; color:var(--sand-300); font-size:14px}
+  .meta-grid b{color:var(--sand-100); font-weight:600}
+
+  main{display:grid; grid-template-columns:240px 1fr; gap:40px; padding:40px 0 80px}
+  nav.toc{position:sticky; top:20px; align-self:start; font-size:14px; max-height:calc(100vh - 40px); overflow:auto}
+  nav.toc h4{margin:0 0 8px; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--nit)}
+  nav.toc a{display:block; color:var(--sand-300); text-decoration:none; padding:4px 10px; border-left:2px solid transparent; border-radius:0 6px 6px 0}
+  nav.toc a:hover{color:var(--sand-50); background:rgba(255,255,255,.04); border-left-color:var(--ember-500)}
+  nav.toc .group{margin-bottom:16px}
+
+  section{margin:0 0 44px; scroll-margin-top:24px}
+  h2{font-size:26px; margin:0 0 6px; letter-spacing:-.01em; padding-bottom:8px; border-bottom:1px solid var(--line)}
+  h2 .n{color:var(--ember-500); font-weight:700; margin-right:10px}
+  h3{font-size:18px; margin:26px 0 8px; color:var(--sand-50)}
+  p{margin:.5em 0}
+  .lead{color:var(--sand-300)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; background:rgba(255,255,255,.07); padding:.12em .4em; border-radius:5px; color:var(--ember-300)}
+  a{color:var(--ember-300)}
+
+  /* Finding cards */
+  .finding{border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin:14px 0; background:linear-gradient(180deg, var(--ink-900), var(--ink-950)); }
+  .finding .top{display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap}
+  .finding h4{margin:0; font-size:16.5px; flex:1 1 320px}
+  .id{color:var(--nit); font-weight:700; font-family:ui-monospace,monospace; font-size:12.5px; margin-right:8px}
+  .badge{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:999px; white-space:nowrap}
+  .b-crit{background:rgba(255,92,92,.16); color:var(--crit); border:1px solid rgba(255,92,92,.4)}
+  .b-high{background:rgba(255,143,77,.15); color:var(--high); border:1px solid rgba(255,143,77,.4)}
+  .b-med{background:rgba(255,209,102,.14); color:var(--med); border:1px solid rgba(255,209,102,.38)}
+  .b-low{background:rgba(127,181,255,.14); color:var(--low); border:1px solid rgba(127,181,255,.36)}
+  .b-nit{background:rgba(154,160,166,.14); color:var(--nit); border:1px solid rgba(154,160,166,.34)}
+  .b-good{background:rgba(95,208,138,.14); color:var(--good); border:1px solid rgba(95,208,138,.36)}
+  .finding .body{margin-top:10px}
+  .finding .label{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--nit); font-weight:700; display:block; margin:10px 0 2px}
+  .finding .rec{border-left:3px solid var(--ember-500); padding-left:12px; margin-top:8px}
+  .evi{color:var(--sand-300); font-size:14.5px}
+  .evi code{font-size:12.5px}
+
+  .pill-row{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 0}
+  .tag{font-size:11.5px; color:var(--sand-300); background:rgba(255,255,255,.05); border:1px solid var(--line); padding:2px 8px; border-radius:999px}
+
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:14px}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  th{color:var(--nit); text-transform:uppercase; letter-spacing:.1em; font-size:11px}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+
+  .callout{border:1px solid var(--line); border-left:3px solid var(--ember-500); border-radius:10px; padding:14px 16px; background:rgba(245,112,31,.05); margin:14px 0}
+  .callout.good{border-left-color:var(--good); background:rgba(95,208,138,.05)}
+  .callout.warn{border-left-color:var(--crit); background:rgba(255,92,92,.05)}
+  .small{font-size:13.5px; color:var(--nit)}
+  ul.tight{margin:.4em 0; padding-left:20px}
+  ul.tight li{margin:.25em 0}
+  .screen{display:grid; grid-template-columns:130px 1fr; gap:16px; padding:12px 0; border-bottom:1px solid var(--line-soft)}
+  .screen .path{font-family:ui-monospace,monospace; font-size:13px; color:var(--ember-300)}
+  .screen .verdict{font-size:13px}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px}
+  .legend span{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--sand-300)}
+  .dot{width:10px;height:10px;border-radius:50%}
+  footer{border-top:1px solid var(--line); padding:30px 0 60px; color:var(--nit); font-size:13px}
+  @media (max-width:880px){ main{grid-template-columns:1fr} nav.toc{position:static; max-height:none} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Sojourn · Independent Audit</div>
+    <h1>Comprehensive product, UX &amp; <span class="accent">code review</span></h1>
+    <p class="sub">A full walk-through of every screen (live, against the local Supabase stack with production-scale seed data) paired with a four-track code audit covering features, UX clarity, internationalization, accessibility, SEO, performance, architecture and security.</p>
+    <div class="meta-grid">
+      <div><b>Date:</b> 23 June 2026</div>
+      <div><b>App:</b> Sojourn (Next.js 15 · React 19 · Tailwind v4 · Supabase · MapLibre)</div>
+      <div><b>Mode:</b> Live (local Supabase, seeded: 8 trips / 51 posts / 48 photos / 441 comments)</div>
+      <div><b>Branch:</b> main</div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--crit)"></i>Critical</span>
+      <span><i class="dot" style="background:var(--high)"></i>High</span>
+      <span><i class="dot" style="background:var(--med)"></i>Medium</span>
+      <span><i class="dot" style="background:var(--low)"></i>Low</span>
+      <span><i class="dot" style="background:var(--nit)"></i>Nit</span>
+      <span><i class="dot" style="background:var(--good)"></i>Strength</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc">
+    <div class="group">
+      <h4>Overview</h4>
+      <a href="#summary">Executive summary</a>
+      <a href="#method">Method &amp; scope</a>
+      <a href="#strengths">What's working well</a>
+    </div>
+    <div class="group">
+      <h4>Walkthrough</h4>
+      <a href="#screens">Screen-by-screen</a>
+    </div>
+    <div class="group">
+      <h4>Findings</h4>
+      <a href="#bugs">A · Correctness &amp; bugs</a>
+      <a href="#ux">B · UX &amp; clarity</a>
+      <a href="#visual">C · Visual &amp; content</a>
+      <a href="#features">D · Features &amp; gaps</a>
+      <a href="#i18n">E · i18n &amp; copy</a>
+      <a href="#a11y">F · Accessibility</a>
+      <a href="#seo">G · SEO &amp; reach</a>
+      <a href="#perf">H · Performance</a>
+      <a href="#code">I · Code &amp; architecture</a>
+      <a href="#security">J · Security &amp; data</a>
+    </div>
+    <div class="group">
+      <h4>Action</h4>
+      <a href="#roadmap">Prioritized roadmap</a>
+    </div>
+  </nav>
+
+  <div class="content">
+
+  <!-- ============ EXEC SUMMARY ============ -->
+  <section id="summary">
+    <h2><span class="n">§</span>Executive summary</h2>
+    <p class="lead">Sojourn is a genuinely impressive, well-crafted travel-journal platform. The design language is distinctive (a confident editorial dark theme), the feature set is deep (immersive maps, story scrubber, AI authoring with cost metering, collaborators with per-trip RLS, full-text + semantic search, PWA, web push, editable branding), and the engineering is unusually disciplined about graceful degradation. A prior <em>bug-focused</em> QA pass already hardened many sharp edges. This audit is broader — product, UX, clarity and code health — and it surfaces a smaller number of <strong>real defects</strong> plus a longer list of <strong>polish, resilience and reach</strong> opportunities.</p>
+
+    <div class="callout warn">
+      <strong>Three things to fix first.</strong>
+      <ul class="tight">
+        <li><strong>The home hero collapses to a black void</strong> whenever the newest post has no cover image — which is the current live state of the seed (the four newest "Tag&nbsp;N — stage" posts have <code>cover_image = null</code>). The most prominent surface of the site can render empty. <span class="small">(see <a href="#A1">A‑1</a>)</span></li>
+        <li><strong>A React hydration mismatch on <code>/photos</code></strong> — the photo-strip re-applies a blurhash placeholder client-side only. It's the <em>same class</em> of bug that was already fixed in <code>gallery.tsx</code>, but the fix was never applied to <code>photo-explorer.tsx</code>. <span class="small">(see <a href="#A2">A‑2</a>)</span></li>
+        <li><strong>Reader writes silently lie.</strong> Failed comment posts keep the optimistic comment with no error, and in demo mode comments/reactions/votes look saved but aren't — with no signal at the point of interaction. <span class="small">(see <a href="#B1">B‑1</a>, <a href="#B2">B‑2</a>)</span></li>
+      </ul>
+    </div>
+
+    <p>Beyond those, the dominant themes are: (1) <strong>coverless content looks broken</strong> across the whole app — empty dark cards read like loading skeletons; (2) <strong>reach is under-built</strong> — no sitemap, robots, RSS, structured data or canonical/hreflang for a public, SEO-relevant journal; (3) <strong>resilience gaps in the admin</strong> — no unsaved-changes guard or autosave in the editors, and several "feature not configured" paths dead-end instead of explaining themselves; and (4) <strong>observability is zero</strong> — there is not a single error log in <code>src/</code>, so the many deliberate best-effort <code>catch&nbsp;{}</code> blocks hide real outages in production.</p>
+
+    <table>
+      <thead><tr><th>Category</th><th>Critical</th><th>High</th><th>Medium</th><th>Low/Nit</th></tr></thead>
+      <tbody>
+        <tr><td>A · Correctness &amp; bugs</td><td>0</td><td>2</td><td>2</td><td>2</td></tr>
+        <tr><td>B · UX &amp; clarity</td><td>0</td><td>3</td><td>4</td><td>4</td></tr>
+        <tr><td>C · Visual &amp; content</td><td>0</td><td>1</td><td>2</td><td>2</td></tr>
+        <tr><td>D · Features &amp; gaps</td><td>0</td><td>1</td><td>4</td><td>4</td></tr>
+        <tr><td>E · i18n &amp; copy</td><td>0</td><td>1</td><td>3</td><td>5</td></tr>
+        <tr><td>F · Accessibility</td><td>0</td><td>2</td><td>2</td><td>2</td></tr>
+        <tr><td>G · SEO &amp; reach</td><td>0</td><td>3</td><td>3</td><td>2</td></tr>
+        <tr><td>H · Performance</td><td>0</td><td>1</td><td>1</td><td>3</td></tr>
+        <tr><td>I · Code &amp; architecture</td><td>0</td><td>1</td><td>6</td><td>8</td></tr>
+        <tr><td>J · Security &amp; data</td><td>0</td><td>1</td><td>2</td><td>2</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Severity is editorial, not absolute. No issue here rises to "Critical" (data loss / site down) — a credit to the prior QA pass. The "High" items are the ones that visibly hurt readers or risk the admin's work.</p>
+  </section>
+
+  <!-- ============ METHOD ============ -->
+  <section id="method">
+    <h2><span class="n">§</span>Method &amp; scope</h2>
+    <p>Two tracks ran in parallel:</p>
+    <ul class="tight">
+      <li><strong>Live exploration.</strong> The dev server ran against the local Supabase stack (<code>.env.local</code>) with the production-scale seed, so every feature was exercised with real data — including the admin, signed in as both <code>owner@sojourn.test</code> and (via the pre-existing session) a scoped collaborator. Screens were captured at 1440×900 and 390×844, in both German and English. Console, network and server logs were inspected per screen.</li>
+      <li><strong>Code audit.</strong> Four independent passes over the codebase: (1) feature completeness &amp; UX-from-code, (2) i18n integrity &amp; copy quality, (3) code quality &amp; architecture, (4) accessibility / SEO / performance.</li>
+    </ul>
+    <p class="small">Items already fixed by the prior QA pass (soft-404 <code>noindex</code>, the missing table <code>GRANT</code>s in migration 0020, the <code>gallery.tsx</code> hydration fix, comment-like a11y labels) are treated as done and not re-reported — except <a href="#A2">A‑2</a>, where the same fix was needed in a second component and missed.</p>
+    <div class="callout good">
+      <strong>Note on one transient error.</strong> The home page first rendered a dev overlay (<code>Element type is invalid… resolves to undefined</code> at <code>page.tsx:50</code>). This was a stale <code>.next</code> cache artifact — it vanished after clearing the cache and rebuilding, and the imports/exports are correct. <strong>It is not a real bug</strong> and is recorded only so it isn't mistaken for one.
+    </div>
+  </section>
+
+  <!-- ============ STRENGTHS ============ -->
+  <section id="strengths">
+    <h2><span class="n">§</span>What's working well</h2>
+    <p class="lead">Worth stating plainly, because it frames everything below: this is a high-quality codebase and product. The findings are refinements on a strong base.</p>
+    <div class="finding"><div class="top"><span class="badge b-good">Strength</span><h4>Distinctive, coherent design system</h4></div>
+      <div class="body evi">The editorial dark theme (Fraunces display + warm ember accents, grain texture, Ken-Burns hero, reveal-on-scroll) is opinionated and consistent across public and admin. The post-detail reading experience — full-bleed hero, sticky story-map, inline galleries, inline polls/quizzes — is genuinely magazine-grade.</div>
+    </div>
+    <div class="finding"><div class="top"><span class="badge b-good">Strength</span><h4>Disciplined graceful degradation</h4></div>
+      <div class="body evi">The runtime-capability model (<code>isSupabaseConfigured</code> / <code>isServiceRoleConfigured</code> / <code>isPushConfigured</code>) with a demo-content fallback is elegant and lets the app run zero-config. Search transparently degrades from semantic to full-text. Migrations enable RLS on every table; SECURITY DEFINER functions pin <code>search_path</code>; invite tokens are sha256-hashed; quiz answers are never sent pre-vote.</div>
+    </div>
+    <div class="finding"><div class="top"><span class="badge b-good">Strength</span><h4>Deep, well-built admin</h4></div>
+      <div class="body evi">The post editor (SETUP panels for trip/photos/GPS/interactions, an insert palette for inline refs, an AI-assist panel with per-language target, a sticky Save/Publish bar) is thoughtfully structured. Collaborators with per-trip grants and correct RLS scoping, a threaded moderation surface, editable per-language branding with a <em>live preview</em>, and an AI cost/token dashboard are all polished and functional.</div>
+    </div>
+    <div class="finding"><div class="top"><span class="badge b-good">Strength</span><h4>i18n integrity is excellent</h4></div>
+      <div class="body evi">EN/DE key parity is perfect (439 keys each) and <em>compile-time enforced</em> via <code>type Dict = Record&lt;keyof typeof en, string&gt;</code>. German register is consistently informal ("du"), and empty/error states in the dictionary are unusually well-written and actionable — no generic "Something went wrong".</div>
+    </div>
+  </section>
+
+  <!-- ============ SCREENS ============ -->
+  <section id="screens">
+    <h2><span class="n">§</span>Screen-by-screen walkthrough</h2>
+    <p class="lead">Every route was visited live. Verdict legend: ✅ solid · ⚠️ has a flagged issue · 💡 opportunity.</p>
+
+    <h3>Public</h3>
+    <div class="screen"><div><span class="path">/</span><br><span class="small">Home</span></div><div class="verdict">⚠️ Beautiful hero + reveal grid + map teaser — but the hero is a <strong>black void</strong> when the lead post has no cover (current live state). Coverless post cards in the grid render as empty dark rectangles (<a href="#A1">A‑1</a>, <a href="#C1">C‑1</a>).</div></div>
+    <div class="screen"><div><span class="path">/posts</span><br><span class="small">Archive</span></div><div class="verdict">✅ Grid + client pagination. ⚠️ Fetches up to 1000 full posts unbounded (<a href="#H2">H‑2</a>); empty cards dominate with the current seed.</div></div>
+    <div class="screen"><div><span class="path">/posts/[slug]</span><br><span class="small">Post detail</span></div><div class="verdict">✅ Excellent: hero cover, location breadcrumb, trip badge, read-time, body with inline poll/quiz/captioned photos, sticky story-map with route + photo markers, reactions, threaded comments + form. Captions/locations stay source-language under EN (by design — <a href="#E5">E‑5</a>).</div></div>
+    <div class="screen"><div><span class="path">/trips</span><br><span class="small">Trips index</span></div><div class="verdict">✅ Strong cover cards with date ranges and a proper empty-trip state ("Leere Expedition / Noch keine Einträge").</div></div>
+    <div class="screen"><div><span class="path">/trips/[slug]</span><br><span class="small">Trip detail</span></div><div class="verdict">✅ Stat header (distance / photos / stops), "Explore the journey map" CTA shown only when map data exists. ⚠️ Coverless stage-posts → empty cards.</div></div>
+    <div class="screen"><div><span class="path">/trips/[slug]/map</span><br><span class="small">Journey explorer</span></div><div class="verdict">✅ Full-screen MapLibre, route line, photo markers, Prev/Next story scrubber ("1/13"). Polished.</div></div>
+    <div class="screen"><div><span class="path">/map</span><br><span class="small">Global map</span></div><div class="verdict">✅ "The whole map" with numbered markers. 💡 No clustering yet (roadmap) — fine now, will crowd at scale.</div></div>
+    <div class="screen"><div><span class="path">/photos</span><br><span class="small">Photo map</span></div><div class="verdict">⚠️ Map + viewport-filtered filmstrip ("41 in view") is a lovely idea — but throws a <strong>hydration mismatch</strong> (<a href="#A2">A‑2</a>) and the page title is hardcoded English (<a href="#E1">E‑1</a>).</div></div>
+    <div class="screen"><div><span class="path">/search</span><br><span class="small">Search</span></div><div class="verdict">✅ Clean; cross-lingual semantic search works ("glacier" → German "Blaues Eis"). ⚠️ API errors are indistinguishable from "no results" (<a href="#B4">B‑4</a>).</div></div>
+    <div class="screen"><div><span class="path">404</span><br><span class="small">Not found</span></div><div class="verdict">✅ On-brand "Off the map" with a clear way back. Correctly <code>noindex</code>.</div></div>
+
+    <h3>Admin</h3>
+    <div class="screen"><div><span class="path">/admin/login</span></div><div class="verdict">✅ Tidy card. Correctly redirects an authed user to the dashboard.</div></div>
+    <div class="screen"><div><span class="path">/admin</span><br><span class="small">Dashboard</span></div><div class="verdict">✅ Owner sees all (51 posts, 441 comments, Collaborators / AI usage / Settings cards, all 8 trips). Collaborator view correctly scoped (1 trip, no owner-only nav). ⚠️ The push-"blocked" help opens as a full dimming modal over the dashboard (<a href="#B7">B‑7</a>).</div></div>
+    <div class="screen"><div><span class="path">/admin/posts</span></div><div class="verdict">✅ Search + trip filter + All/Published/Drafts tabs + per-row preview/edit/delete. Empty thumbnails for coverless posts.</div></div>
+    <div class="screen"><div><span class="path">/admin/posts/[id]</span><br><span class="small">Editor</span></div><div class="verdict">✅ Rich and well-structured. ⚠️ No unsaved-changes guard / autosave (<a href="#B3">B‑3</a>); no <code>loading.tsx</code> (flashes blank).</div></div>
+    <div class="screen"><div><span class="path">/admin/comments</span></div><div class="verdict">✅ Comments grouped by post (one has 121), Hide/Delete with clear copy.</div></div>
+    <div class="screen"><div><span class="path">/admin/members</span></div><div class="verdict">✅ Invite-by-email with per-trip grant chips; members listed with Login link / Edit access / Remove.</div></div>
+    <div class="screen"><div><span class="path">/admin/settings</span></div><div class="verdict">✅ Per-language branding (name / hero intro / two-part headline / tagline) with a live preview, plus internal AI writing-style guidance.</div></div>
+    <div class="screen"><div><span class="path">/admin/ai-usage</span></div><div class="verdict">✅ Spend cards, per-operation breakdown, recent-calls log. Exact token counts.</div></div>
+  </section>
+
+  <!-- ============ A: BUGS ============ -->
+  <section id="bugs">
+    <h2><span class="n">A</span>Correctness &amp; bugs</h2>
+
+    <div class="finding" id="A1"><div class="top"><span class="id">A‑1</span><span class="badge b-high">High</span><h4>Home hero collapses to an empty black band when the lead post has no cover image</h4></div>
+      <div class="body">
+        <div class="evi">The hero only renders an image when <code>hero?.cover_image</code> is truthy (<code>src/app/page.tsx:36</code>). The newest post becomes the hero (<code>page.tsx:29</code>). With the current seed the four newest published posts ("Tag 1–4 — stage") have <code>cover_image = null</code>, so above the fold the user sees a full-viewport black rectangle with only the kicker + headline text. Verified live: the hero <code>&lt;section&gt;</code> contains zero <code>&lt;img&gt;</code> elements. It's most jarring on mobile, where the void fills nearly the whole first screen.</div>
+        <span class="label">Why it matters</span><div class="evi">An author can publish a coverless note at any time and silently break the site's most prominent surface. This is a resilience gap, not just a seed artifact.</div>
+        <div class="rec"><span class="label">Recommendation</span>Pick the newest post that <em>has</em> a cover for the hero (fall back through the list), and/or render a branded fallback (gradient + site mark, or a representative trip/photo cover) when none exists. At minimum, never let the hero be a bare black box.</div>
+      </div>
+    </div>
+
+    <div class="finding" id="A2"><div class="top"><span class="id">A‑2</span><span class="badge b-high">High</span><h4>Hydration mismatch on <code>/photos</code> — blurhash re-applied client-side only</h4></div>
+      <div class="body">
+        <div class="evi">Verified live in the console: <em>"A tree hydrated but some attributes of the server rendered HTML didn't match… This won't be patched up"</em>, repeated for every filmstrip thumbnail. The diff is <code>style.backgroundImage</code> being added on the client. Root cause: <code>src/components/photo-explorer.tsx:396</code> calls <code>blurhashToDataURL(p.blurhash)</code> <em>during render</em> and applies it at <code>:418-420</code>; the decoder returns <code>null</code> on the server (no <code>&lt;canvas&gt;</code>) but a data-URL on the client → server/client mismatch.</div>
+        <span class="label">Why it matters</span><div class="evi">This is the <strong>identical</strong> bug class fixed in <code>gallery.tsx</code> during the prior QA pass (the "mount-gate the blur" fix), but <code>photo-explorer.tsx</code> was never given the same treatment. It now fires on every <code>/photos</code> load because the seed photos carry blurhashes. React abandons patching that subtree.</div>
+        <div class="rec"><span class="label">Recommendation</span>Apply the same SSR-safe pattern: gate <code>blur</code> behind a <code>mounted</code> flag (<code>useState(false)</code> + <code>useEffect</code>) so the first client render matches the server, then paint the placeholder on the next tick. Consider extracting the gallery's already-correct logic into a shared <code>&lt;BlurImg&gt;</code> so this can't drift again.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">A‑3</span><span class="badge b-med">Medium</span><h4>Live query failures silently fall back to fabricated demo content (inconsistently)</h4></div>
+      <div class="body">
+        <div class="evi">In <code>src/lib/content.ts</code>, some readers fall back to <em>demo</em> data on error (<code>getPublishedPosts:~90</code>, <code>getTrips:~307</code>, <code>getGeotaggedPhotos:~429</code>) while siblings fall back to <em>empty</em> (<code>getPostSummaries:~191</code>, <code>getPublishedPostsByTrip:~212</code>, <code>getMapPosts:~143</code>). So a transient Supabase failure on a configured site can show Patagonia/Japan demo posts on the homepage while the trip page shows nothing — confusing and potentially misleading.</div>
+        <div class="rec"><span class="label">Recommendation</span>Fall back to demo content <em>only</em> when Supabase is unconfigured; on a live query error return empty, consistently. Don't conflate "no backend" with "backend errored".</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">A‑4</span><span class="badge b-med">Medium</span><h4>Background AI / translation jobs can hang in <code>pending</code> forever</h4></div>
+      <div class="body">
+        <div class="evi"><code>src/lib/ai/jobs.ts:~51-85</code> and <code>translate.ts:~20-38</code> set a row to <code>pending</code> then fire an Edge Function (or run a slow model call inline). If the function is killed at <code>maxDuration</code>, or accepts-then-crashes, the row is never resolved — and the poll route polls a <code>pending</code> row indefinitely. There is no timeout/reaper.</div>
+        <div class="rec"><span class="label">Recommendation</span>Add a stale-job sweep (mark <code>pending</code> rows older than N minutes as <code>error</code>) and/or a client-side poll timeout that surfaces a retry.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">A‑5</span><span class="badge b-low">Low</span><h4>"Recent comments" on the dashboard can show visually-identical rows</h4></div>
+      <div class="body"><div class="evi">On the collaborator dashboard the recent-comments list rendered six identical "Jonas — Kommentar 1" rows. This is most likely a seed coincidence (scoped to one trip whose posts share a comment template), but it reads as a dedupe bug. Worth confirming the query orders by <code>created_at</code> and isn't repeating a join row.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">A‑6</span><span class="badge b-low">Low</span><h4>Unauthenticated <code>DELETE /api/push</code> removes any subscription by endpoint</h4></div>
+      <div class="body"><div class="evi"><code>src/app/api/push/route.ts:~60-71</code> deletes by endpoint string with no auth. Endpoints are high-entropy so practical risk is low, but anyone who learns one can unsubscribe that browser. Add a minimal ownership check or accept it explicitly with a comment.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ B: UX ============ -->
+  <section id="ux">
+    <h2><span class="n">B</span>UX &amp; clarity</h2>
+
+    <div class="finding" id="B1"><div class="top"><span class="id">B‑1</span><span class="badge b-high">High</span><h4>Comment submission swallows failures — the reader thinks it posted</h4></div>
+      <div class="body">
+        <div class="evi"><code>src/components/comments.tsx:~89-99</code>: on a failed POST the <code>catch</code> keeps the optimistic comment and shows nothing — no error, no retry, no revert. On refresh the comment is gone. There is also no pending state on the submit button and no success confirmation.</div>
+        <div class="rec"><span class="label">Recommendation</span>Revert the optimistic comment on error and show an inline error with retry; add a pending state to the submit button and a brief success acknowledgement.</div>
+      </div>
+    </div>
+
+    <div class="finding" id="B2"><div class="top"><span class="id">B‑2</span><span class="badge b-high">High</span><h4>Demo mode fakes persistence at the point of interaction</h4></div>
+      <div class="body">
+        <div class="evi">A demo notice lives in the footer, but the <em>interactive controls don't say anything</em>. In demo mode comments accept input and show an optimistic comment that never persists (<code>comments.tsx:~40,86-99</code>), reactions optimistically increment then fail silently (<code>reactions.tsx</code>), and poll/quiz votes show a tally that resets on refresh. Admin moderation buttons are also live-looking but inert.</div>
+        <div class="rec"><span class="label">Recommendation</span>When <code>!isSupabaseConfigured</code>, disable these controls (or show an inline "saved only when a backend is connected" note) instead of relying on a footnote. Don't render false "it worked" affordances.</div>
+      </div>
+    </div>
+
+    <div class="finding" id="B3"><div class="top"><span class="id">B‑3</span><span class="badge b-high">High</span><h4>No unsaved-changes guard or autosave in the editors</h4></div>
+      <div class="body">
+        <div class="evi">Neither the post editor nor the trip editor has a <code>beforeunload</code> dirty-state warning or periodic autosave. A long composing session lost to a tab close, navigation, or crash is unrecoverable — a real data-loss risk for the person doing the most work in the app.</div>
+        <div class="rec"><span class="label">Recommendation</span>Add a dirty-state <code>beforeunload</code> prompt at minimum; ideally localStorage draft snapshots restored on reopen. (The app already creates an instant DB draft on "New post" — extend that to periodic saves.)</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑4</span><span class="badge b-med">Medium</span><h4>Search failure looks like "no results"</h4></div>
+      <div class="body"><div class="evi"><code>search-results.tsx</code> collapses a failed <code>/api/search</code> into an empty result set, so a 500 reads as "No results for X." Add a distinct "Search is unavailable — retry" state.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑5</span><span class="badge b-med">Medium</span><h4>Destructive actions are confirmed unevenly</h4></div>
+      <div class="body"><div class="evi">Post and trip deletion use a confirm dialog; <strong>photo deletion</strong> (<code>photo-manager.tsx:~143</code>) deletes immediately with no confirm and no rollback on failure, and the writing-style "Propose from posts" overwrite has no guard. One destructive-action policy should cover all of them.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑6</span><span class="badge b-med">Medium</span><h4>"Feature not configured" dead-ends instead of explaining itself</h4></div>
+      <div class="body"><div class="evi">When AI keys are absent the draft/enrich buttons appear functional then error or no-op; inline polls/quizzes silently vanish without a service role (<code>content.ts:~709-721</code> returns <code>[]</code>); the translation badge promises "translated automatically when published" even when the translate Edge Function isn't configured. Gate these on the relevant capability flag and show an explicit "set X to enable" hint.</div></div>
+    </div>
+
+    <div class="finding" id="B7"><div class="top"><span class="id">B‑7</span><span class="badge b-med">Medium</span><h4>Push-"blocked" help appears as a full-screen dimming modal over the dashboard</h4></div>
+      <div class="body"><div class="evi">On the owner dashboard the notification-permission help ("Re-enable in your browser: the lock icon → Site settings → Notifications → Allow") opened as a large overlay that dimmed the entire page on load. For a denied-permission hint this is heavier than warranted. Prefer the inline "Blocked in browser" chip (already present) with the help as a popover anchored to it, not a page-blocking modal.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑8</span><span class="badge b-low">Low</span><h4>Disabled publish/required-field controls give no reason</h4></div>
+      <div class="body"><div class="evi">The publish button disables on <code>!title || !trip_id</code> with no explanation; the trip-editor title is required with no inline cue. Add a tooltip/inline reason on the disabled control.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑9</span><span class="badge b-low">Low</span><h4>Map/location picker has no error state</h4></div>
+      <div class="body"><div class="evi"><code>location-picker.tsx</code> initializes MapLibre with no try/catch; a tile/network failure leaves a blank box. Add a fallback message.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑10</span><span class="badge b-low">Low</span><h4>Editor routes lack loading skeletons that the public routes have</h4></div>
+      <div class="body"><div class="evi">Public routes ship rich, layout-matched <code>loading.tsx</code> files; the admin editor routes don't, so they flash blank during fetch while the rest of the app skeletons. Add form-shaped skeletons for parity.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">B‑11</span><span class="badge b-nit">Nit</span><h4>Forms have no shared "unsaved" indicator</h4></div>
+      <div class="body"><div class="evi">Branding / writing-style forms clear a "Saved" flag on edit but show no "unsaved" state and no nav guard. A single shared dirty-state pattern would unify B‑3 and these.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ C: VISUAL ============ -->
+  <section id="visual">
+    <h2><span class="n">C</span>Visual design &amp; content presentation</h2>
+
+    <div class="finding" id="C1"><div class="top"><span class="id">C‑1</span><span class="badge b-high">High</span><h4>Coverless posts render as empty dark rectangles everywhere</h4></div>
+      <div class="body">
+        <div class="evi">Post cards fall back to a near-black gradient placeholder when there's no cover. With the current seed (many coverless "stage" posts) the home grid, <code>/posts</code>, trip detail, and the admin posts list are dominated by empty boxes that read like unfinished loading skeletons. It undercuts the otherwise premium feel.</div>
+        <div class="rec"><span class="label">Recommendation</span>Give coverless cards a real fallback: a deterministic gradient seeded by the title, a large initial/monogram, the trip's cover, or the location on a tiny static map. This single change dramatically lifts the perceived polish of every index.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">C‑2</span><span class="badge b-med">Medium</span><h4>Blur-up placeholder never shows in the marketed demo</h4></div>
+      <div class="body"><div class="evi">Blurhash is fully implemented for live uploads (<code>upload-client.ts</code> encodes on upload), but every demo photo has <code>blurhash: null</code> (<code>src/lib/demo.ts</code>). So the headline blur-up nicety is invisible in the zero-config demo the README sells as "fully populated". Precompute static blurhash strings for the bundled demo photos.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">C‑3</span><span class="badge b-med">Medium</span><h4>Translucent text risks failing contrast on dark</h4></div>
+      <div class="body"><div class="evi">Pervasive <code>text-sand-100/40</code>–<code>/60</code> on <code>ink-950</code>/<code>ink-900</code> (e.g. <code>page.tsx:86,132</code>; <code>post-view.tsx:161</code>; nav <code>site-header.tsx:119</code>). At 40–50% alpha, normal-size text likely drops below WCAG AA 4.5:1. Raise body/caption text to ≥70% alpha and reserve very-low alpha for large display text. (Also a11y — see <a href="#F4">F‑4</a>.)</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">C‑4</span><span class="badge b-low">Low</span><h4>Empty-trip subtitle/label mixes languages under EN</h4></div>
+      <div class="body"><div class="evi">"Leere Expedition / Noch keine Einträge" shows German while the UI is English. If "no entries yet" is a system label it should be localized; if it's trip-authored copy it's the expected source-language fallback (see <a href="#E5">E‑5</a>). Worth confirming which.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">C‑5</span><span class="badge b-nit">Nit</span><h4>Dark-only by design isn't stated</h4></div>
+      <div class="body"><div class="evi">No light theme or <code>prefers-color-scheme</code> handling. Almost certainly intentional (the aesthetic depends on it) — just document "dark by design" so it isn't read as missing.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ D: FEATURES ============ -->
+  <section id="features">
+    <h2><span class="n">D</span>Features &amp; gaps</h2>
+
+    <div class="finding"><div class="top"><span class="id">D‑1</span><span class="badge b-high">High</span><h4>README roadmap is stale — it undersells shipped work</h4></div>
+      <div class="body">
+        <div class="evi"><code>README.md:197-198</code> lists <strong>blurhash generation</strong> and the <strong>maskable PWA icon</strong> as roadmap, but both are shipped: <code>upload-client.ts</code> encodes a blurhash on every upload, and <code>public/icon-maskable.svg</code> is registered with <code>"purpose":"maskable"</code> in the manifest. A stale roadmap makes the project look less complete than it is and risks someone re-building done work.</div>
+        <div class="rec"><span class="label">Recommendation</span>Move blurhash + maskable icon into Features. The genuine remaining gaps are RSS, OG/share images, and sitemap/robots (below).</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">D‑2</span><span class="badge b-med">Medium</span><h4>No RSS / Atom / JSON feed</h4></div>
+      <div class="body"><div class="evi">No feed route exists; a travel journal with no feed loses subscribers. Add <code>src/app/feed.xml/route.ts</code> from published posts. (Also G — reach.)</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">D‑3</span><span class="badge b-med">Medium</span><h4>No share affordance &amp; no dynamic OG images</h4></div>
+      <div class="body"><div class="evi">No copy-link / <code>navigator.share()</code> button on posts, and no generated per-post Open Graph image — so shared links preview poorly. Add a share button + <code>next/og</code> <code>opengraph-image.tsx</code> for posts/trips.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">D‑4</span><span class="badge b-med">Medium</span><h4>No tags / categories / topical browse</h4></div>
+      <div class="body"><div class="evi"><code>Post</code>/<code>PostSummary</code> have no tags field; readers can only browse by trip or search. Optional tags with <code>/posts/tags/[tag]</code> would add a useful discovery axis.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">D‑5</span><span class="badge b-med">Medium</span><h4>No "related / more from this trip" — standalone posts dead-end</h4></div>
+      <div class="body"><div class="evi">Only trip prev/next exists; a post not in a trip dead-ends after comments. Embeddings already exist (<code>chunk-index</code>), so a semantic "related posts" block is cheap and would deepen sessions.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">D‑6</span><span class="badge b-low">Low</span><h4>Map clustering absent</h4></div>
+      <div class="body"><div class="evi">Roadmap item; fine at current scale but <code>/map</code> and <code>/photos</code> will crowd as pins accumulate.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">D‑7</span><span class="badge b-low">Low</span><h4>Pagination only on <code>/posts</code></h4></div>
+      <div class="body"><div class="evi"><code>/trips</code> and <code>/photos</code> render everything. Reasonable now; note the asymmetry deliberately (ties into <a href="#H2">H‑2</a>).</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">D‑8</span><span class="badge b-nit">Nit</span><h4>No light theme toggle</h4></div>
+      <div class="body"><div class="evi">See <a href="#C5">C‑5</a> — likely intentional.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">D‑9</span><span class="badge b-nit">Nit</span><h4>No reading-progress / table-of-contents on long posts</h4></div>
+      <div class="body"><div class="evi">Long story posts could benefit from a progress bar or section nav, given the immersive format.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ E: I18N ============ -->
+  <section id="i18n">
+    <h2><span class="n">E</span>Internationalization &amp; copy</h2>
+    <div class="callout good">Baseline is strong: perfect EN/DE key parity (439 each), compile-time enforced, consistent informal German, and high-quality error/empty states. Findings below are the edges.</div>
+
+    <div class="finding" id="E1"><div class="top"><span class="id">E‑1</span><span class="badge b-high">High</span><h4>Photos page title is hardcoded English (violates the "no hard-coded strings" rule)</h4></div>
+      <div class="body"><div class="evi"><code>src/app/photos/page.tsx:5</code> — <code>export const metadata = { title: "Photo map" }</code>. It's the only page that bypasses <code>defaultTitle("meta.…")</code>; German users get an English tab/SEO title. A <code>photos.title</code> key already exists ("Photo map" / "Fotokarte").</div>
+        <div class="rec"><span class="label">Recommendation</span><code>title: defaultTitle("photos.title")</code> (or add a <code>meta.photos</code> key for consistency with the other <code>meta.*</code> titles).</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">E‑2</span><span class="badge b-med">Medium</span><h4>Client-side error strings bypass i18n and leak raw backend messages</h4></div>
+      <div class="body"><div class="evi">User-visible error state is set with hardcoded English fallbacks and, worse, raw Supabase <code>error.message</code>: <code>photo-manager.tsx:93,137</code>, <code>track-manager.tsx:54,83</code>, <code>image-uploader.tsx:35</code>, <code>branding-form.tsx:74,79</code>, <code>writing-style-form.tsx:39,44,63,69</code>, <code>ai-context-refiner.tsx:50,60</code>. These render in the red error <code>&lt;p&gt;</code> in both languages.</div>
+        <div class="rec"><span class="label">Recommendation</span>Map known failures to localized keys (e.g. <code>admin.gallery.uploadFailed</code>); show a generic localized message for unknown errors instead of the raw English string.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">E‑3</span><span class="badge b-med">Medium</span><h4>Two button keys are byte-identical — a label distinction was lost</h4></div>
+      <div class="body"><div class="evi"><code>i18n.ts:429-430</code>: <code>admin.ai.generate</code> and <code>admin.ai.skip</code> are both "Generate draft" (de both "Entwurf erstellen"). A key named <code>skip</code> rendering "Generate draft" is confusing and suggests the skip path lost its real label. Give it a distinct label (e.g. "Skip questions &amp; generate") or remove if dead.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">E‑4</span><span class="badge b-med">Medium</span><h4><code>admin.account.errGeneric</code> asserts a demo-mode cause for any failure</h4></div>
+      <div class="body"><div class="evi"><code>i18n.ts:275/805</code>: the "generic error" key reads "Not available in demo mode." If it's the fallback for <em>any</em> password-change failure, a real production failure will wrongly blame demo mode. Split into a true generic message + a separate demo-mode message, or confirm it's only used in demo.</div></div>
+    </div>
+
+    <div class="finding" id="E5"><div class="top"><span class="id">E‑5</span><span class="badge b-low">Low</span><h4>Content fields (location, captions, untranslated trip/post copy) stay source-language under EN</h4></div>
+      <div class="body"><div class="evi">Observed live: "El Chaltén, <em>Argentinien</em>" and German photo captions while reading in English; trips without an EN translation show German subtitles. This is the documented "body in source language" design, not a bug — but it produces visibly mixed-language pages. Decide whether locations/short captions should be translatable (they're high-visibility, low-effort) and whether to label untranslated content.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">E‑6</span><span class="badge b-low">Low</span><h4><code>comments.reply</code> and <code>comments.send</code> both read "Reply"</h4></div>
+      <div class="body"><div class="evi"><code>i18n.ts:62,64</code>. The reply <em>submit</em> button reading "Reply" next to the "Reply" toggle is ambiguous; make <code>comments.send</code> "Send" / "Senden".</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">E‑7</span><span class="badge b-nit">Nit</span><h4>German plural inconsistency: "Quiz" vs "Quizze"</h4></div>
+      <div class="body"><div class="evi"><code>i18n.ts:860</code> ("Umfragen &amp; Quiz") vs <code>:1043</code> ("Umfragen &amp; Quizze") within the same feature. Pick one.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">E‑8</span><span class="badge b-nit">Nit</span><h4><code>admin.ask.edit</code> vs <code>editing</code> collide in German</h4></div>
+      <div class="body"><div class="evi"><code>i18n.ts:1048/1051</code> both render "Bearbeiten", losing the EN action/state distinction. Use "Wird bearbeitet" / "In Bearbeitung" for the state.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">E‑9</span><span class="badge b-nit">Nit</span><h4>Trailing/leading spaces in several values</h4></div>
+      <div class="body"><div class="evi"><code>quiz.right</code>, <code>quiz.wrong</code>, <code>poll.thanks</code> (<code>i18n.ts:138-140</code>) and <code>admin.cmod.recent200</code> (<code>:280</code>) carry stray spaces implying concatenation. Verify they're concatenated; otherwise trim.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ F: A11Y ============ -->
+  <section id="a11y">
+    <h2><span class="n">F</span>Accessibility</h2>
+    <p class="small">Prior QA confirmed solid basics on public pages (single <code>h1</code>, alt text, labeled inputs/buttons). These are the gaps beyond that.</p>
+
+    <div class="finding"><div class="top"><span class="id">F‑1</span><span class="badge b-high">High</span><h4>framer-motion animations ignore <code>prefers-reduced-motion</code></h4></div>
+      <div class="body"><div class="evi">The site-wide <code>Reveal</code> wrapper (<code>src/components/reveal.tsx:15-25</code>, used for every home section + card) animates opacity + 22px translate with no reduced-motion guard — while the CSS-based <code>RevealChildren</code> and <code>globals.css:210-216</code> <em>do</em> honor it. The lightbox, gallery, comments and reactions animate unconditionally too.</div>
+        <div class="rec"><span class="label">Recommendation</span>Gate framer transitions on <code>useReducedMotion()</code> (zero-duration / <code>initial=false</code> when requested); centralize in <code>Reveal</code>.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">F‑2</span><span class="badge b-high">High</span><h4>Modals/lightbox don't trap or restore focus</h4></div>
+      <div class="body"><div class="evi"><code>image-lightbox.tsx:97-175</code> sets <code>role="dialog" aria-modal</code> and handles Escape but never moves focus into the dialog, traps Tab, or restores focus to the trigger on close. <code>confirm-dialog.tsx</code> and <code>location-dialog.tsx</code> have the same gap (and miss <code>aria-labelledby</code>/<code>describedby</code>). Keyboard/SR users are left behind the overlay.</div>
+        <div class="rec"><span class="label">Recommendation</span>On open, focus the dialog (or first focusable), trap Tab, restore focus on close; wire <code>aria-labelledby</code>/<code>aria-describedby</code>.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">F‑3</span><span class="badge b-med">Medium</span><h4>SSR <code>&lt;html lang&gt;</code> and metadata are always German</h4></div>
+      <div class="body"><div class="evi"><code>layout.tsx:61</code> hardcodes <code>lang="de"</code>; the client corrects it post-hydration (<code>i18n.tsx:72</code>), but server HTML (crawlers, no-JS AT) always claims German even for English content, and metadata is rendered in the default locale. Resolve locale server-side from the cookie and set <code>lang</code> + metadata accordingly. (Ties into <a href="#G3">G‑3</a>.)</div></div>
+    </div>
+
+    <div class="finding" id="F4"><div class="top"><span class="id">F‑4</span><span class="badge b-med">Medium</span><h4>Low-contrast translucent text</h4></div>
+      <div class="body"><div class="evi">Same root as <a href="#C3">C‑3</a>: <code>text-sand-100/40–60</code> on dark likely fails AA for normal text. Audit each token against its background; keep small text ≥4.5:1.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">F‑5</span><span class="badge b-low">Low</span><h4>Smooth-scroll not disabled under reduced-motion</h4></div>
+      <div class="body"><div class="evi"><code>globals.css:38-40</code> sets <code>scroll-behavior:smooth</code> globally; add <code>scroll-behavior:auto</code> inside the reduced-motion block.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">F‑6</span><span class="badge b-low">Low</span><h4>Filmstrip thumbnails use empty <code>alt</code></h4></div>
+      <div class="body"><div class="evi"><code>photo-explorer.tsx:415</code> uses <code>alt={p.caption ?? ""}</code>; content thumbnails with no caption become decorative to a screen reader. Fall back to the post title (the button already uses it as <code>title</code>).</div></div>
+    </div>
+  </section>
+
+  <!-- ============ G: SEO ============ -->
+  <section id="seo">
+    <h2><span class="n">G</span>SEO &amp; reach</h2>
+
+    <div class="finding"><div class="top"><span class="id">G‑1</span><span class="badge b-high">High</span><h4>No <code>sitemap.xml</code> and no <code>robots.txt</code></h4></div>
+      <div class="body"><div class="evi">Neither <code>src/app/sitemap.ts</code> nor <code>robots.ts</code> exists. For a public journal with ~50 posts + 8 trips, crawlers get no index. <code>metadataBase</code> is already set, so both are trivial in the App Router (enumerate posts/trips for the sitemap).</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">G‑2</span><span class="badge b-high">High</span><h4>No structured data (JSON-LD)</h4></div>
+      <div class="body"><div class="evi">No <code>application/ld+json</code> anywhere. Add <code>Article</code>/<code>BlogPosting</code> on posts (headline, datePublished, image, author, description) and <code>WebSite</code> + <code>SearchAction</code> on the home page for richer search results.</div></div>
+    </div>
+
+    <div class="finding" id="G3"><div class="top"><span class="id">G‑3</span><span class="badge b-high">High</span><h4>No canonical URLs / no hreflang for the bilingual site</h4></div>
+      <div class="body"><div class="evi">No <code>alternates.canonical</code> or <code>languages</code> on any page. With DE/EN served from one URL via cookie, there are no <code>hreflang</code> signals and no canonical, risking duplicate-content ambiguity. Set <code>alternates.canonical</code> per page.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">G‑4</span><span class="badge b-med">Medium</span><h4>OG/Twitter cards are thin</h4></div>
+      <div class="body"><div class="evi"><code>posts/[slug]/page.tsx:34-38</code> sets <code>openGraph.images</code> to the raw cover URL (no width/height/alt); there's no <code>twitter</code> card block anywhere and no default OG image in the root layout. Add <code>twitter:{card:"summary_large_image"}</code>, OG image dimensions + alt, and consider generated cards (D‑3).</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">G‑5</span><span class="badge b-med">Medium</span><h4>RSS/Atom feed missing</h4></div>
+      <div class="body"><div class="evi">Same as <a href="#D2">D‑2</a> — counts for reach as much as features.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">G‑6</span><span class="badge b-med">Medium</span><h4>Hardcoded English metadata title on Photos</h4></div>
+      <div class="body"><div class="evi">Same as <a href="#E1">E‑1</a> — a German user's photos tab is mislabeled to crawlers and browsers.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">G‑7</span><span class="badge b-low">Low</span><h4>Listing pages have no <code>description</code></h4></div>
+      <div class="body"><div class="evi"><code>/posts</code>, <code>/trips</code>, <code>/map</code>, <code>/search</code>, <code>/photos</code> set only a title; add per-page descriptions.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">G‑8</span><span class="badge b-low">Low</span><h4>Metadata rendered in a fixed locale</h4></div>
+      <div class="body"><div class="evi">Crawlers see a fixed-language snapshot (ties into F‑3/G‑3). Resolve from the cookie server-side.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ H: PERF ============ -->
+  <section id="perf">
+    <h2><span class="n">H</span>Performance</h2>
+
+    <div class="finding"><div class="top"><span class="id">H‑1</span><span class="badge b-high">High</span><h4>maplibre-gl is imported eagerly into route bundles</h4></div>
+      <div class="body"><div class="evi">All five map components top-level <code>import maplibregl from "maplibre-gl"</code> with no <code>next/dynamic</code>. <code>TripMap</code> is rendered statically by <code>post-view.tsx:253</code>, so maplibre (~200KB+ gzipped) ships in the client bundle of <em>every post page</em> — even posts with no map.</div>
+        <div class="rec"><span class="label">Recommendation</span>Load map components via <code>next/dynamic(() =&gt; import(...), { ssr:false, loading:… })</code>, gated on <code>hasMap</code>, so maplibre is fetched only when a map actually renders.</div>
+      </div>
+    </div>
+
+    <div class="finding" id="H2"><div class="top"><span class="id">H‑2</span><span class="badge b-med">Medium</span><h4><code>/posts</code> fetches up to 1000 full posts with no virtualization</h4></div>
+      <div class="body"><div class="evi"><code>posts/page.tsx:14</code> pulls up to 1000 posts and ships them to a client-paginated grid. Payload and client memory grow linearly with content; the grid isn't windowed. Paginate server-side and/or virtualize. (Related: <code>getPublishedPosts</code> selects full bodies + all relations + every reaction row unbounded — see <a href="#I3">I‑3</a>.)</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">H‑3</span><span class="badge b-low">Low</span><h4>First above-the-fold card cover isn't prioritized</h4></div>
+      <div class="body"><div class="evi"><code>PostCard</code> defaults <code>priority=false</code>; on <code>/posts</code> and trip detail the first card LCP is lazy-loaded. Pass <code>priority</code> to the first 1–2 cards per grid.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">H‑4</span><span class="badge b-low">Low</span><h4>Lightbox loads two full-size tiers (1600 + 2560px)</h4></div>
+      <div class="body"><div class="evi"><code>image-lightbox.tsx:147-169</code> always requests both. Skip the 2560 tier on small/low-DPR screens.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">H‑5</span><span class="badge b-nit">Nit</span><h4>Fraunces loads 3 variable axes</h4></div>
+      <div class="body"><div class="evi"><code>layout.tsx:23-28</code> loads <code>opsz/SOFT/WONK</code>; drop unused axes to shrink the font payload. (<code>display:swap</code> already set — good.)</div></div>
+    </div>
+  </section>
+
+  <!-- ============ I: CODE ============ -->
+  <section id="code">
+    <h2><span class="n">I</span>Code quality &amp; architecture</h2>
+    <p class="small">Overall well-organized and disciplined. Findings are mostly Medium/Low — debt that will bite at scale or hide failures.</p>
+
+    <div class="finding"><div class="top"><span class="id">I‑1</span><span class="badge b-high">High</span><h4>Public writes run on the service-role client &amp; have no rate limiting</h4></div>
+      <div class="body"><div class="evi"><code>comments/route.ts:52</code>, <code>comments/like/route.ts:21</code>, <code>reactions/route.ts:48</code> do <code>(await getServerSupabase()) ?? getAdminSupabase()</code>; for an anonymous visitor there's no session, so the <strong>service-role client is used, bypassing RLS</strong> entirely. <code>interactions</code> uses the admin client unconditionally. So zod validation is the <em>only</em> gate on the common path, there's no abuse protection anywhere, and comment bodies (≤4000 chars) are stored raw — XSS safety rests entirely on the render layer escaping them.</div>
+        <div class="rec"><span class="label">Recommendation</span>(a) confirm the render path escapes comment bodies (React escapes by default — verify no <code>dangerouslySetInnerHTML</code> on user text); (b) add per-IP / per-token rate limiting on comment/reaction/interaction POSTs; (c) prefer the anon client so RLS is the real gate, falling back to service-role only when necessary.</div>
+      </div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑2</span><span class="badge b-med">Medium</span><h4>Zero observability — no error logging anywhere in <code>src/</code></h4></div>
+      <div class="body"><div class="evi">There is not a single <code>console.error</code> in the tree. The data layer and AI/geocode/translate/usage helpers all swallow errors to <code>null</code>/empty by design. A real outage (Supabase down, embeddings 500ing, geocode quota exhausted) is completely invisible in production.</div>
+        <div class="rec"><span class="label">Recommendation</span>Route swallowed errors through a single <code>logError(scope, err)</code> seam (no-op in tests) so failures are observable without changing the graceful fallback.</div>
+      </div>
+    </div>
+
+    <div class="finding" id="I3"><div class="top"><span class="id">I‑3</span><span class="badge b-med">Medium</span><h4>Unbounded over-fetch on hot read paths</h4></div>
+      <div class="body"><div class="evi"><code>getPublishedPosts</code>/<code>getPublishedPostsByTrip</code> select full bodies + all photos/locations/tracks + <em>every reaction row</em> (counted client-side in <code>summarizeReactions</code>) for every post, with no limit. <code>getPostSummaries</code> exists to avoid this — confirm hot paths use it, and replace the per-row reaction fetch with an aggregate count.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑4</span><span class="badge b-med">Medium</span><h4>Per-option N+1 COUNT on the unauthenticated interactions endpoint</h4></div>
+      <div class="body"><div class="evi"><code>interactions/route.ts:36-45</code> issues one <code>count</code> query per poll option on every load/vote, on the service-role client — an unauthenticated DB-load multiplier. Replace with a single group-by (or an RPC returning tallies).</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑5</span><span class="badge b-med">Medium</span><h4>Duplicated auth preamble &amp; post upsert logic across routes</h4></div>
+      <div class="body"><div class="evi"><code>requireOwner()</code> is copy-pasted in three members routes; <code>requireUser()</code> in two more; the get-session→401 block is hand-written in ~10 routes. POST and PUT for posts share an identical zod schema + materialize/translate/notify sequence with subtle drift (PUT never re-checks <code>trip_id</code> against the collaborator's grants — it relies on RLS). The <code>adminRoute</code> factory already proves the pattern; extend it to the non-AI admin routes and extract a shared <code>upsertPost</code> core.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑6</span><span class="badge b-med">Medium</span><h4>Inconsistent error-response shapes; raw DB messages leak to clients</h4></div>
+      <div class="body"><div class="evi">Bodies vary (<code>{error:"invalid"}</code>, <code>{error:"forbidden"}</code>, <code>{error:error.message}</code>) and the same 503 condition has four different strings ("unconfigured" / "not configured" / "Supabase not configured" / "unavailable"). Several routes return raw <code>error.message</code> to clients. Standardize via the factory; log details, return generic messages.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑7</span><span class="badge b-med">Medium</span><h4><code>push_subscriptions.audience</code> is unindexed</h4></div>
+      <div class="body"><div class="evi">Every notification fan-out filters on <code>audience</code> (<code>notify.ts:61-64,108-111</code>) but there's no index (migration 0002) — a full scan per send. Add <code>create index … on push_subscriptions(audience)</code>.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑8</span><span class="badge b-low">Low</span><h4><code>any</code> at the DB hydration boundary</h4></div>
+      <div class="body"><div class="evi"><code>content.ts</code> uses <code>any</code> in ~7 spots (<code>hydratePost(row:any)</code> :47, casts at :145/151/431, <code>hydratePhotoResult(row:any)</code> :547). A renamed column compiles clean and fails at runtime. Type raw rows with a minimal interface or validate with a small zod schema at the boundary.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑9</span><span class="badge b-low">Low</span><h4>Non-null assertion defeats the codebase's careful null-safety</h4></div>
+      <div class="body"><div class="evi"><code>admin/ai-usage/page.tsx:37</code> uses <code>supabase!.rpc(...)</code>; early-return on null instead of asserting.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑10</span><span class="badge b-low">Low</span><h4>Duplicated helpers worth consolidating</h4></div>
+      <div class="body"><div class="evi"><code>trimTitleI18n</code> / <code>postTitleI18n</code> / <code>trimCaptionI18n</code> in <code>content.ts</code> do near-identical i18n trimming; <code>summarizeReactions</code> is re-implemented inline in <code>reactions/route.ts:34-38</code>. Consolidate.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑11</span><span class="badge b-low">Low</span><h4>Search does two round-trips per query</h4></div>
+      <div class="body"><div class="evi">RPC → re-fetch full rows by id → re-sort (<code>searchPosts:505-522</code>). Documented and reasonable; the RPC could return card columns directly to skip the second query.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">I‑12</span><span class="badge b-nit">Nit</span><h4>Workspace-root warning from a stray lockfile</h4></div>
+      <div class="body"><div class="evi">Dev server warns it inferred the workspace root from <code>C:\Users\Philipp\package-lock.json</code> (a second lockfile above the project). Set <code>outputFileTracingRoot</code> in <code>next.config</code> or remove the stray lockfile to silence it and avoid surprising file-tracing in standalone builds.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ J: SECURITY ============ -->
+  <section id="security">
+    <h2><span class="n">J</span>Security &amp; data integrity</h2>
+    <div class="callout good">The migration layer is clean: RLS on every table, SECURITY DEFINER functions pin <code>search_path</code>, service-role-only tables (<code>ai_jobs</code>, <code>member_invites</code>) have RLS-on + no policies, invite tokens are sha256-hashed, and quiz answers/explanations are never anon-readable. The prior pass also fixed the missing table GRANTs (migration 0020).</div>
+
+    <div class="finding"><div class="top"><span class="id">J‑1</span><span class="badge b-high">High</span><h4>No abuse protection on anonymous writes</h4></div>
+      <div class="body"><div class="evi">Same root as <a href="#I1">I‑1</a>: comment/reaction/interaction POSTs are unauthenticated, run on the service-role client, and have no rate limiting or captcha. A bot can flood comments (the seed already shows 121 "Massenkommentar" on one post). Add per-IP/token throttling and consider a lightweight challenge.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">J‑2</span><span class="badge b-med">Medium</span><h4>Confirm comment bodies are escaped on render</h4></div>
+      <div class="body"><div class="evi">Bodies are stored raw; XSS safety depends entirely on the render layer. React escapes text by default, but verify no comment/markdown path uses <code>dangerouslySetInnerHTML</code> on user content, and that the markdown renderer (<code>react-markdown</code> + <code>remark-gfm</code>) for <em>post bodies</em> doesn't allow raw HTML for collaborators.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">J‑3</span><span class="badge b-med">Medium</span><h4>Push scoping is enforced in app code, not RLS</h4></div>
+      <div class="body"><div class="evi">Collaborator notification scoping lives only in <code>notify.ts:112-114</code> (the table is service-role-only). Acceptable, but a logic bug there leaks notifications across collaborators — worth a test.</div></div>
+    </div>
+
+    <div class="finding"><div class="top"><span class="id">J‑4</span><span class="badge b-low">Low</span><h4>Local <code>.env.production</code> points a local build at the live DB</h4></div>
+      <div class="body"><div class="evi">Per the prior QA note, <code>next build</code>/<code>start</code> loads <code>.env.production</code> (live Supabase, anon key). Harmless for reads, but never run write-flow tests against a prod-built local server. Worth a one-line README warning.</div></div>
+    </div>
+    <div class="finding"><div class="top"><span class="id">J‑5</span><span class="badge b-low">Low</span><h4>Unauthenticated push unsubscribe by endpoint</h4></div>
+      <div class="body"><div class="evi">Same as <a href="#A6">A‑6</a>.</div></div>
+    </div>
+  </section>
+
+  <!-- ============ ROADMAP ============ -->
+  <section id="roadmap">
+    <h2><span class="n">§</span>Prioritized roadmap</h2>
+
+    <h3>P0 — fix before it's noticed (visible defects / data risk)</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#A1">A‑1</a></td><td>Hero fallback when the lead post has no cover</td><td>S</td></tr>
+        <tr><td><a href="#A2">A‑2</a></td><td>Mount-gate the blurhash in <code>photo-explorer.tsx</code> (kill the hydration mismatch)</td><td>S</td></tr>
+        <tr><td><a href="#B1">B‑1</a>/<a href="#B2">B‑2</a></td><td>Honest comment/reaction failure + demo-mode states</td><td>M</td></tr>
+        <tr><td><a href="#B3">B‑3</a></td><td>Unsaved-changes guard / autosave in editors</td><td>M</td></tr>
+        <tr><td><a href="#C1">C‑1</a></td><td>Real fallback for coverless cards (lifts every index)</td><td>S–M</td></tr>
+      </tbody>
+    </table>
+
+    <h3>P1 — reach, resilience &amp; trust</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#G1">G‑1</a>/<a href="#G2">G‑2</a>/<a href="#G3">G‑3</a></td><td>sitemap + robots + JSON-LD + canonical/hreflang</td><td>M</td></tr>
+        <tr><td><a href="#D2">D‑2</a>/<a href="#D3">D‑3</a></td><td>RSS feed + share button + dynamic OG images</td><td>M</td></tr>
+        <tr><td><a href="#I1">I‑1</a>/<a href="#J1">J‑1</a></td><td>Rate-limit anonymous writes; prefer anon client (RLS as gate)</td><td>M</td></tr>
+        <tr><td><a href="#I2">I‑2</a></td><td>Single error-logging seam (observability)</td><td>S</td></tr>
+        <tr><td><a href="#A4">A‑4</a></td><td>Stale-job reaper for AI/translation <code>pending</code></td><td>S</td></tr>
+        <tr><td><a href="#F1">F‑1</a>/<a href="#F2">F‑2</a></td><td>Reduced-motion + modal focus management</td><td>M</td></tr>
+        <tr><td><a href="#H1">H‑1</a></td><td>Lazy-load maplibre via <code>next/dynamic</code></td><td>S</td></tr>
+        <tr><td><a href="#B6">B‑6</a></td><td>"Feature not configured" explicit states (AI / interactions / translation)</td><td>M</td></tr>
+        <tr><td><a href="#E1">E‑1</a>/<a href="#E2">E‑2</a></td><td>i18n the Photos title + client error strings</td><td>S</td></tr>
+        <tr><td><a href="#D1">D‑1</a></td><td>Refresh the README roadmap (blurhash + maskable icon are done)</td><td>XS</td></tr>
+      </tbody>
+    </table>
+
+    <h3>P2 — depth &amp; refinement</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Item</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#I3">I‑3</a>/<a href="#H2">H‑2</a>/<a href="#I4">I‑4</a></td><td>Bound the over-fetches; aggregate reaction counts; fix poll N+1</td><td>M</td></tr>
+        <tr><td><a href="#I5">I‑5</a>/<a href="#I6">I‑6</a></td><td>Consolidate auth preambles, post upsert, error shapes via the factory</td><td>M</td></tr>
+        <tr><td><a href="#D4">D‑4</a>/<a href="#D5">D‑5</a></td><td>Tags/categories; "related / more from this trip"</td><td>M</td></tr>
+        <tr><td><a href="#C3">C‑3</a>/<a href="#F4">F‑4</a></td><td>Contrast pass on translucent text tokens</td><td>S</td></tr>
+        <tr><td><a href="#B5">B‑5</a>/<a href="#B7">B‑7</a>/<a href="#B8">B‑8</a></td><td>Unify destructive-confirm; right-size push help; explain disabled controls</td><td>S–M</td></tr>
+        <tr><td><a href="#E5">E‑5</a></td><td>Decide on translatable locations/captions + "untranslated" labeling</td><td>M</td></tr>
+        <tr><td>E‑3,E‑4,E‑6→E‑9 · I‑7→I‑12 · H‑3→H‑5</td><td>The Low/Nit cleanup backlog</td><td>S each</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <div>Sojourn comprehensive audit · generated 2026-06-23 · live exploration (local Supabase, seeded) + four-track code audit. File/line references are accurate where verified directly; a handful sourced from code-audit passes are marked approximate (~) in the underlying notes — confirm the exact line before editing. No source files were modified in producing this report.</div>
+  </footer>
+  </div>
+</main>
+</body>
+</html>

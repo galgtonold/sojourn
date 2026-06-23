@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
+import { isAiConfigured } from "@/lib/env";
 import { getPublishedPosts, getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
@@ -133,23 +133,15 @@ export default async function AdminDashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PushToggle />
-          {isSupabaseConfigured && (
-            <Link
-              href="/admin/account"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
-            >
-              <KeyRound className="size-4" /> <T k="admin.password" />
-            </Link>
-          )}
-          {isSupabaseConfigured && <SignOutButton />}
+          <Link
+            href="/admin/account"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-sand-100/80 transition hover:border-white/25"
+          >
+            <KeyRound className="size-4" /> <T k="admin.password" />
+          </Link>
+          <SignOutButton />
         </div>
       </div>
-
-      {!isSupabaseConfigured && (
-        <p className="mt-6 rounded-2xl bg-ember-600/15 p-4 text-sm text-ember-300">
-          <T k="admin.demoNotice" />
-        </p>
-      )}
 
       {/* Primary actions */}
       <div className="mt-8 flex flex-wrap gap-3">
@@ -201,7 +193,7 @@ export default async function AdminDashboard() {
           <ArrowRight className="size-4 shrink-0 text-sand-100/30 transition group-hover:translate-x-0.5 group-hover:text-ember-400" />
         </Link>
 
-        {viewer.isOwner && isSupabaseConfigured && (
+        {viewer.isOwner && (
           <Link href="/admin/members" className={navCard}>
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
               <Users className="size-5" />
@@ -235,7 +227,7 @@ export default async function AdminDashboard() {
           </Link>
         )}
 
-        {viewer.isOwner && isSupabaseConfigured && (
+        {viewer.isOwner && (
           <Link href="/admin/settings" className={navCard}>
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
               <PenLine className="size-5" />

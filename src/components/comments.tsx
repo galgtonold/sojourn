@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
-import { isSupabaseConfigured } from "@/lib/env";
 import { useT, useI18n } from "@/components/i18n";
 
 const NAME_KEY = "sojourn:name";
@@ -33,11 +32,11 @@ export function Comments({
   const [name, setName] = useState("");
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const limitRef = useRef(200);
   const { t, locale } = useI18n();
 
   const refresh = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
     try {
       const res = await fetch(
         `/api/comments?postId=${encodeURIComponent(postId)}&limit=${limitRef.current}`,
@@ -85,6 +84,7 @@ export function Comments({
     };
     setComments((c) => [...c, optimistic]);
     setReplyTo(null);
+    setError(null);
 
     try {
       const res = await fetch("/api/comments", {
@@ -92,10 +92,13 @@ export function Comments({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ postId, parentId, authorName: author, body: text }),
       });
-      if (!res.ok && res.status !== 202) throw new Error("failed");
+      if (!res.ok) throw new Error("failed");
       refresh();
     } catch {
-      // keep optimistic copy on failure
+      // The post failed — drop the optimistic copy so we don't claim it saved,
+      // and tell the reader so they can retry.
+      setComments((c) => c.filter((x) => x.id !== optimistic.id));
+      setError(t("comments.error"));
     }
   }
 
@@ -233,6 +236,12 @@ export function Comments({
         <p className="text-sand-100/50">{t("comments.beFirst")}</p>
       ) : (
         <ul className="space-y-4">{roots.map((c) => renderNode(c, 0))}</ul>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm text-red-400">
+          {error}
+        </p>
       )}
 
       <CommentForm

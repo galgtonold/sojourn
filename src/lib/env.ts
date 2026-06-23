@@ -1,6 +1,8 @@
 // Centralized, typed access to environment configuration.
-// The app is designed to run with NONE of these set (demo mode), so every
-// getter is defensive and `isSupabaseConfigured` gates real data access.
+// Supabase (URL + anon key) is REQUIRED — the app fails fast without it (see the
+// Supabase client wrappers, which throw `SUPABASE_NOT_CONFIGURED`). The remaining
+// integrations (service role, push, AI, embeddings, vision, edge functions) are
+// genuinely optional and gated by their own `is*Configured` flags.
 
 export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -76,6 +78,12 @@ export const env = {
 export const isSupabaseConfigured = Boolean(
   env.supabaseUrl && env.supabaseAnonKey,
 );
+
+// Thrown by the Supabase client wrappers when the core config is missing. The
+// app requires Supabase; this surfaces a misconfigured deploy loudly instead of
+// silently serving nothing.
+export const SUPABASE_NOT_CONFIGURED =
+  "Supabase is not configured — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
 
 export const isServiceRoleConfigured = Boolean(
   isSupabaseConfigured && env.supabaseServiceRoleKey,

@@ -1,19 +1,18 @@
-// Data-access layer. Every function transparently uses Supabase when it's
-// configured and falls back to bundled demo content otherwise, so pages never
-// have to branch on environment.
+// Data-access layer. Supabase is required (see env.ts); the client wrappers
+// throw if it isn't configured.
 //
 // Public reads use a cookieless anon client (`getPublicSupabase`) so they work
-// at build time (generateStaticParams) as well as at request time. Network or
-// query failures degrade gracefully to demo content.
+// at build time (generateStaticParams) as well as at request time. A network or
+// query failure returns empty rather than crashing the page — never fabricated
+// content, so a transient outage can't masquerade as real data.
 import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { isSupabaseConfigured, isEmbeddingsConfigured } from "@/lib/env";
+import { isEmbeddingsConfigured } from "@/lib/env";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyLineStrings } from "@/lib/gpx";
 import { buildExpandedTsQuery } from "@/lib/search-expand";
-import { demoComments, demoPosts, demoTrips } from "@/lib/demo";
 import {
   emptyReactions,
   type Comment,
@@ -30,8 +29,6 @@ import {
   type Trip,
 } from "@/lib/types";
 import { LOCALES, type Locale } from "@/lib/i18n";
-
-export const DEMO_MODE = !isSupabaseConfigured;
 
 function summarizeReactions(
   rows: { kind: string }[] | null | undefined,
@@ -80,17 +77,16 @@ const POST_SELECT = `
 
 export async function getPublishedPosts(): Promise<PostWithRelations[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) return demoPosts;
   try {
     const { data, error } = await supabase
       .from("posts")
       .select(POST_SELECT)
       .eq("published", true)
       .order("published_at", { ascending: false });
-    if (error || !data) return demoPosts;
+    if (error || !data) return [];
     return data.map(hydratePost);
   } catch {
-    return demoPosts;
+    return [];
   }
 }
 
@@ -118,22 +114,6 @@ const MAP_SELECT =
 
 export async function getMapPosts(): Promise<MapPost[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    return demoPosts
-      .filter((p) => p.published)
-      .map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        location: p.location,
-        lat: p.lat,
-        lng: p.lng,
-        source_locale: p.source_locale,
-        i18n: p.i18n,
-        locations: p.locations,
-        tracks: p.tracks,
-      }));
-  }
   try {
     const { data, error } = await supabase
       .from("posts")
@@ -173,12 +153,6 @@ export async function getPostSummaries({
   total: number;
 }> {
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    const all: PostSummary[] = tripId
-      ? demoPosts.filter((p) => p.trip_id === tripId)
-      : demoPosts;
-    return { posts: all.slice(offset, offset + limit), total: all.length };
-  }
   try {
     let q = supabase
       .from("posts")
@@ -201,7 +175,6 @@ export async function getPublishedPostsByTrip(
   tripId: string,
 ): Promise<PostWithRelations[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) return demoPosts.filter((p) => p.trip_id === tripId);
   try {
     const { data, error } = await supabase
       .from("posts")
@@ -248,16 +221,6 @@ export async function getTripPostNav(
 ): Promise<{ prev: PostNavLink | null; next: PostNavLink | null }> {
   const empty = { prev: null, next: null };
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    const list = demoPosts
-      .filter((p) => p.trip_id === tripId)
-      .sort((a, b) =>
-        String(a.published_at ?? "").localeCompare(String(b.published_at ?? "")),
-      );
-    const idx = list.findIndex((p) => p.slug === currentSlug);
-    if (idx === -1) return empty;
-    return { prev: toNavLink(list[idx - 1]), next: toNavLink(list[idx + 1]) };
-  }
   try {
     const { data, error } = await supabase
       .from("posts")
@@ -279,7 +242,6 @@ export async function getPostBySlug(
   slug: string,
 ): Promise<PostWithRelations | null> {
   const supabase = getPublicSupabase();
-  if (!supabase) return demoPosts.find((p) => p.slug === slug) ?? null;
   try {
     const { data, error } = await supabase
       .from("posts")
@@ -296,7 +258,6 @@ export async function getPostBySlug(
 
 export async function getTrips(): Promise<Trip[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) return demoTrips;
   try {
     const { data, error } = await supabase
       .from("trips")
@@ -304,10 +265,10 @@ export async function getTrips(): Promise<Trip[]> {
         "id, slug, title, summary, cover_image, start_date, end_date, source_locale, i18n",
       )
       .order("start_date", { ascending: false });
-    if (error || !data) return demoTrips;
+    if (error || !data) return [];
     return data as Trip[];
   } catch {
-    return demoTrips;
+    return [];
   }
 }
 
@@ -332,24 +293,6 @@ function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
   );
 }
 
-// Project a full post down to the card columns a summary needs (for the demo
-// search path, where the source rows are full posts).
-function toSummary(p: PostWithRelations): PostSummary {
-  return {
-    id: p.id,
-    slug: p.slug,
-    title: p.title,
-    excerpt: p.excerpt,
-    location: p.location,
-    cover_image: p.cover_image,
-    cover_alt: p.cover_alt ?? null,
-    trip_id: p.trip_id,
-    published_at: p.published_at,
-    source_locale: p.source_locale,
-    i18n: p.i18n,
-  };
-}
-
 // A single geotagged photo with just enough of its parent post to link back —
 // deliberately light (no full post hydration) so the global photo map scales.
 export type GeoPhoto = {
@@ -364,25 +307,6 @@ export type GeoPhoto = {
   i18n?: Partial<Record<Locale, PhotoTranslation>>;
   postI18n?: Partial<Record<Locale, PostTranslation>>;
 };
-
-function demoGeoPhotos(): GeoPhoto[] {
-  return demoPosts.flatMap((post) =>
-    post.published
-      ? post.photos
-          .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
-          .map((ph) => ({
-            id: ph.id,
-            lat: ph.lat as number,
-            lng: ph.lng as number,
-            url: ph.url as string,
-            caption: ph.caption,
-            blurhash: ph.blurhash,
-            postSlug: post.slug,
-            postTitle: post.title,
-          }))
-      : [],
-  );
-}
 
 // Keep only the i18n fields the photo map actually renders — the photo CAPTION
 // and the post TITLE. The raw `i18n`/post `i18n` also carry the translated
@@ -415,7 +339,6 @@ function trimTitleI18n(
 // Every geotagged photo across published posts, for the global photo map.
 export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) return demoGeoPhotos();
   try {
     const { data, error } = await supabase
       .from("photos")
@@ -426,7 +349,7 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
       .not("lng", "is", null)
       .eq("posts.published", true)
       .order("taken_at", { ascending: true, nullsFirst: false });
-    if (error || !data) return demoGeoPhotos();
+    if (error || !data) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any[]).flatMap((r) => {
       const post = Array.isArray(r.posts) ? r.posts[0] : r.posts;
@@ -447,7 +370,7 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
       ];
     });
   } catch {
-    return demoGeoPhotos();
+    return [];
   }
 }
 
@@ -487,19 +410,6 @@ export async function searchPosts(
   if (!q) return [];
 
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    const needle = q.toLowerCase();
-    return demoPosts
-      .filter(
-        (p) =>
-          p.title.toLowerCase().includes(needle) ||
-          (p.excerpt ?? "").toLowerCase().includes(needle) ||
-          (p.location ?? "").toLowerCase().includes(needle) ||
-          (p.body ?? "").toLowerCase().includes(needle),
-      )
-      .map(toSummary);
-  }
-
   try {
     const emb = embedding !== undefined ? embedding : await embedQuery(q);
     const { data: ranked, error } = await supabase.rpc("search_posts_hybrid", {
@@ -573,36 +483,6 @@ export async function searchPhotos(
   if (!q) return [];
 
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    const needle = q.toLowerCase();
-    const out: PhotoSearchResult[] = [];
-    for (const p of demoPosts) {
-      for (const ph of p.photos) {
-        const haystack = [ph.caption, ph.alt, p.location, p.title]
-          .map((x) => (x ?? "").toLowerCase())
-          .join(" ");
-        if (haystack.includes(needle)) {
-          out.push({
-            id: ph.id,
-            url: ph.url,
-            caption: ph.caption,
-            alt: ph.alt,
-            ai_description: null,
-            place_name: p.location,
-            width: ph.width,
-            height: ph.height,
-            blurhash: ph.blurhash,
-            lat: ph.lat,
-            lng: ph.lng,
-            post_slug: p.slug,
-            post_title: p.title,
-          });
-        }
-      }
-    }
-    return out;
-  }
-
   try {
     const emb = embedding !== undefined ? embedding : await embedQuery(q);
     const { data: ranked, error } = await supabase.rpc("search_photos_hybrid", {
@@ -649,9 +529,9 @@ export async function searchAll(
 ): Promise<{ posts: PostSummary[]; photos: PhotoSearchResult[] }> {
   const q = query.trim();
   if (!q) return { posts: [], photos: [] };
-  // Embed once (null in demo mode / when no provider — the searches fall back to
-  // full-text, and their demo branches ignore the embedding entirely).
-  const embedding = getPublicSupabase() ? await embedQuery(q) : null;
+  // Embed once and share the vector with both searches. `embedQuery` returns null
+  // when no embeddings provider is configured — the RPCs then rank by full-text.
+  const embedding = await embedQuery(q);
   const [posts, rawPhotos] = await Promise.all([
     searchPosts(q, embedding),
     searchPhotos(q, embedding),
@@ -684,9 +564,6 @@ export function hydrateComment(row: any): Comment {
 
 export async function getComments(postId: string): Promise<Comment[]> {
   const supabase = getPublicSupabase();
-  if (!supabase) {
-    return demoComments.filter((c) => c.post_id === postId);
-  }
   try {
     // Newest 200 for first paint; the client paginates older ones via the API.
     const { data, error } = await supabase

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { getReaderLocale } from "@/lib/i18n-server";
@@ -27,7 +26,6 @@ function usd(n: number): string {
 }
 
 export default async function AiUsagePage() {
-  if (!isSupabaseConfigured) redirect("/admin");
   const viewer = await getViewer();
   if (!viewer.isOwner) redirect("/admin");
   const locale = await getReaderLocale();

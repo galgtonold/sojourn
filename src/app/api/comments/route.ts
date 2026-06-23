@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
@@ -18,7 +17,6 @@ export async function GET(req: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 200, 1), 500);
 
   const supabase = getPublicSupabase();
-  if (!supabase) return NextResponse.json({ comments: [], total: 0 });
 
   const { data, error, count } = await supabase
     .from("comments")
@@ -49,10 +47,9 @@ export async function POST(req: Request) {
   }
   const { postId, parentId, authorName, body } = parsed.data;
 
-  const supabase = (await getServerSupabase()) ?? getAdminSupabase();
-  if (!supabase) {
-    return NextResponse.json({ demo: true }, { status: 202 });
-  }
+  // Anonymous visitors get an unauthenticated anon client (RLS enforces the
+  // insert policy); a signed-in admin/collaborator gets their session client.
+  const supabase = await getServerSupabase();
 
   const { data, error } = await supabase
     .from("comments")

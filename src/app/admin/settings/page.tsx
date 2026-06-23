@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
-import { isAiConfigured, isSupabaseConfigured, env } from "@/lib/env";
+import { isAiConfigured, env } from "@/lib/env";
 import { WritingStyleForm } from "@/components/writing-style-form";
 import { BrandingForm } from "@/components/branding-form";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -13,7 +13,6 @@ export const metadata = { title: defaultTitle("admin.settings.title") };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  if (!isSupabaseConfigured) redirect("/admin");
   const viewer = await getViewer();
   if (!viewer.isOwner) redirect("/admin");
 

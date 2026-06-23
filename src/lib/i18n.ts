@@ -107,9 +107,6 @@ const en = {
   "preview.notPublished": "not published",
   "preview.backToEditor": "Back to editor",
 
-  "footer.demo":
-    "Demo mode — showing bundled sample content. Configure Supabase to go live.",
-
   "common.previous": "Previous",
   "common.next": "Next",
 
@@ -197,8 +194,6 @@ const en = {
   "admin.signedInAs": "Signed in as {email}",
   "admin.password": "Password",
   "admin.signOut": "Sign out",
-  "admin.demoNotice":
-    "Demo mode — connect Supabase and create an admin user to manage real content.",
   "admin.statPosts": "Posts",
   "admin.statComments": "Comments",
   "admin.newPost": "New post",
@@ -256,8 +251,6 @@ const en = {
   "admin.login.title": "Admin",
   "admin.login.emailPlaceholder": "you@example.com",
   "admin.login.subtitle": "Sign in to manage entries, photos and comments.",
-  "admin.login.demo":
-    "Demo mode: set Supabase env vars and create an admin user to enable login.",
   "admin.login.password": "Password",
   "admin.login.signIn": "Sign in",
   "admin.login.signingIn": "Signing in…",
@@ -278,7 +271,6 @@ const en = {
   "admin.cmod.subtitle":
     "Grouped by post and threaded. Hide spam or off-topic notes (they stay in the database) or delete them for good.",
   "admin.cmod.recent200": " Showing the 200 most recent.",
-  "admin.cmod.connect": "Connect Supabase to moderate comments.",
   "admin.cmod.none": "No comments yet.",
   "admin.cmod.reply": "reply",
   "admin.cmod.hidden": "hidden",
@@ -629,9 +621,6 @@ const de: Dict = {
   "preview.notPublished": "nicht veröffentlicht",
   "preview.backToEditor": "Zurück zum Editor",
 
-  "footer.demo":
-    "Demo-Modus — gebündelte Beispielinhalte. Richte Supabase ein, um live zu gehen.",
-
   "common.previous": "Zurück",
   "common.next": "Weiter",
 
@@ -725,8 +714,6 @@ const de: Dict = {
   "admin.signedInAs": "Angemeldet als {email}",
   "admin.password": "Passwort",
   "admin.signOut": "Abmelden",
-  "admin.demoNotice":
-    "Demo-Modus — verbinde Supabase und lege einen Admin-Benutzer an, um echte Inhalte zu verwalten.",
   "admin.statPosts": "Beiträge",
   "admin.statComments": "Kommentare",
   "admin.newPost": "Neuer Beitrag",
@@ -785,8 +772,6 @@ const de: Dict = {
   "admin.login.emailPlaceholder": "you@example.com",
   "admin.login.subtitle":
     "Melde dich an, um Beiträge, Fotos und Kommentare zu verwalten.",
-  "admin.login.demo":
-    "Demo-Modus: Setze die Supabase-Variablen und lege einen Admin-Benutzer an, um die Anmeldung zu aktivieren.",
   "admin.login.password": "Passwort",
   "admin.login.signIn": "Anmelden",
   "admin.login.signingIn": "Anmelden…",
@@ -808,7 +793,6 @@ const de: Dict = {
   "admin.cmod.subtitle":
     "Nach Beitrag gruppiert und verschachtelt. Verstecke Spam oder Themenfremdes (bleibt in der Datenbank) oder lösche es endgültig.",
   "admin.cmod.recent200": " Es werden die 200 neuesten angezeigt.",
-  "admin.cmod.connect": "Verbinde Supabase, um Kommentare zu moderieren.",
   "admin.cmod.none": "Noch keine Kommentare.",
   "admin.cmod.reply": "Antwort",
   "admin.cmod.hidden": "versteckt",

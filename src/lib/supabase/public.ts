@@ -4,10 +4,10 @@
 // is bounded by Row Level Security.
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { env, isSupabaseConfigured } from "@/lib/env";
+import { env, isSupabaseConfigured, SUPABASE_NOT_CONFIGURED } from "@/lib/env";
 
 export function getPublicSupabase() {
-  if (!isSupabaseConfigured) return null;
+  if (!isSupabaseConfigured) throw new Error(SUPABASE_NOT_CONFIGURED);
   return createClient(env.supabaseUrl, env.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

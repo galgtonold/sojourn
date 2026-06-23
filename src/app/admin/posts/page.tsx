@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
-import { getPublishedPosts, getTrips } from "@/lib/content";
+import { getTrips } from "@/lib/content";
 import { getViewer } from "@/lib/auth";
 import { PostsAdmin, type AdminPostRow } from "@/components/posts-admin";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -18,33 +17,20 @@ export default async function PostsAdminPage() {
     allTrips.map((t) => [t.id, t.title]),
   );
 
-  let rows: AdminPostRow[] = [];
   const supabase = await getServerSupabase();
-  if (supabase) {
-    const scope = viewer.isOwner
-      ? null
-      : viewer.tripIds.length
-        ? viewer.tripIds
-        : ["00000000-0000-0000-0000-000000000000"];
-    let query = supabase
-      .from("posts")
-      .select("id, title, slug, published, published_at, trip_id, cover_image")
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .order("updated_at", { ascending: false });
-    if (scope) query = query.in("trip_id", scope);
-    const { data } = await query;
-    rows = (data ?? []) as AdminPostRow[];
-  } else {
-    rows = (await getPublishedPosts()).map((p) => ({
-      id: p.id,
-      title: p.title,
-      slug: p.slug,
-      published: p.published,
-      published_at: p.published_at,
-      trip_id: p.trip_id,
-      cover_image: p.cover_image,
-    }));
-  }
+  const scope = viewer.isOwner
+    ? null
+    : viewer.tripIds.length
+      ? viewer.tripIds
+      : ["00000000-0000-0000-0000-000000000000"];
+  let query = supabase
+    .from("posts")
+    .select("id, title, slug, published, published_at, trip_id, cover_image")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("updated_at", { ascending: false });
+  if (scope) query = query.in("trip_id", scope);
+  const { data } = await query;
+  const rows = (data ?? []) as AdminPostRow[];
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
@@ -72,13 +58,7 @@ export default async function PostsAdminPage() {
         </Link>
       </div>
 
-      {!isSupabaseConfigured ? (
-        <p className="rounded-2xl bg-ember-600/15 p-4 text-sm text-ember-300">
-          <T k="admin.demoNotice" />
-        </p>
-      ) : (
-        <PostsAdmin initial={rows} trips={tripById} />
-      )}
+      <PostsAdmin initial={rows} trips={tripById} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured, isAiConfigured } from "@/lib/env";
+import { isAiConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import { PostWorkspace, type EditablePost } from "@/components/post-workspace";
 import type { ManagedInteraction } from "@/components/interaction-manager";
@@ -18,11 +18,6 @@ export default async function EditPostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  if (!isSupabaseConfigured) {
-    // No backend in demo mode — editing requires Supabase.
-    redirect("/admin");
-  }
 
   const supabase = await getServerSupabase();
   const { data, error } = await supabase!

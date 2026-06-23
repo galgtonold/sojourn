@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
 import { getViewer } from "@/lib/auth";
 import {
   CommentModeration,
@@ -15,7 +14,6 @@ export const dynamic = "force-dynamic";
 
 async function load(): Promise<ModerationRow[]> {
   const supabase = await getServerSupabase();
-  if (!supabase) return [];
 
   // Members only moderate comments on posts within their granted trips.
   const viewer = await getViewer();
@@ -78,13 +76,7 @@ export default async function CommentsAdminPage() {
         {rows.length >= 200 && <T k="admin.cmod.recent200" />}
       </p>
 
-      {!isSupabaseConfigured ? (
-        <p className="text-sand-100/50">
-          <T k="admin.cmod.connect" />
-        </p>
-      ) : (
-        <CommentModeration initial={rows} />
-      )}
+      <CommentModeration initial={rows} />
     </div>
   );
 }

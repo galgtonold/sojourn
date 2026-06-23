@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DEMO_MODE } from "@/lib/content";
 import { T, BrandTagline } from "@/components/i18n";
 
 export function SiteFooter({ name }: { name: string }) {
@@ -27,11 +26,6 @@ export function SiteFooter({ name }: { name: string }) {
           </Link>
         </nav>
       </div>
-      {DEMO_MODE && (
-        <div className="border-t border-white/5 bg-ember-600/10 px-6 py-2 text-center text-xs text-ember-300">
-          <T k="footer.demo" />
-        </div>
-      )}
     </footer>
   );
 }

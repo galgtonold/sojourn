@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { getAdminSupabase } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +17,7 @@ export async function POST(req: Request) {
   }
   const { commentId, token, action } = parsed.data;
 
-  const supabase = (await getServerSupabase()) ?? getAdminSupabase();
-  if (!supabase) return NextResponse.json({ demo: true }, { status: 202 });
+  const supabase = await getServerSupabase();
 
   if (action === "add") {
     const { error } = await supabase
