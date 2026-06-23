@@ -22,7 +22,7 @@ export function PostActionBar({
 }) {
   const t = useT();
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-ink-950/90 px-3 py-2 backdrop-blur lg:inset-x-auto lg:bottom-6 lg:left-1/2 lg:-translate-x-1/2 lg:rounded-full lg:border lg:px-3 lg:py-2 lg:shadow-2xl lg:ring-1 lg:ring-white/10">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-ink-950/90 px-3 py-2 backdrop-blur lg:inset-x-auto lg:bottom-6 lg:left-auto lg:right-6 lg:rounded-full lg:border lg:px-3 lg:py-2 lg:shadow-2xl lg:ring-1 lg:ring-white/10">
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 lg:max-w-none">
         <a
           href={previewHref}
