@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
-import { getPostSummaries } from "@/lib/content";
+import { getPostSummaries, getTrips } from "@/lib/content";
 import { getBranding } from "@/lib/branding";
 import { env } from "@/lib/env";
 import { PostCard } from "@/components/post-card";
+import { TripCard } from "@/components/trip-card";
 import { RevealImage } from "@/components/reveal-image";
 import { Reveal } from "@/components/reveal";
 import {
@@ -23,8 +24,9 @@ import { coverGradient, formatDate } from "@/lib/utils";
 export const revalidate = false;
 
 export default async function HomePage() {
-  const { posts, total } = await getPostSummaries({ limit: 9 });
+  const { posts, total } = await getPostSummaries({ limit: 6 });
   const { name: siteName } = await getBranding();
+  const trips = (await getTrips()).slice(0, 4);
   // The newest entry headlines the hero, and still appears in the grid below so
   // it isn't "missing" from the latest list.
   const hero = posts[0];
@@ -151,6 +153,35 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      {/* ── Journeys (trips) ───────────────────────────────────────────── */}
+      {trips.length > 0 && (
+        <section className="mx-auto max-w-6xl px-6 pb-20 sm:pb-28">
+          <Reveal className="mb-8 flex items-end justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-semibold sm:text-4xl">
+                <T k="home.tripsTitle" />
+              </h2>
+              <p className="mt-2 text-sand-100/60">
+                <T k="home.tripsSub" />
+              </p>
+            </div>
+            <Link
+              href="/trips"
+              className="hidden items-center gap-1 text-sm text-ember-400 hover:gap-2 sm:flex"
+            >
+              <T k="home.allTrips" /> <ArrowRight className="size-4" />
+            </Link>
+          </Reveal>
+          <div className="grid gap-6 md:grid-cols-2">
+            {trips.map((trip, i) => (
+              <Reveal key={trip.id} delay={i * 0.05}>
+                <TripCard trip={trip} />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Map teaser ─────────────────────────────────────────────────── */}
       <section className="border-y border-white/5 bg-ink-900">
