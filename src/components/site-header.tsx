@@ -11,7 +11,6 @@ const LINKS = [
   { href: "/posts", label: "nav.stories" as const },
   { href: "/trips", label: "nav.trips" as const },
   { href: "/map", label: "nav.map" as const },
-  { href: "/photos", label: "nav.photos" as const },
 ];
 
 export function SiteHeader() {

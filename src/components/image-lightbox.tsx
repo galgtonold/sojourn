@@ -25,12 +25,14 @@ export function ImageLightbox({
   src,
   alt = "",
   blurhash = null,
+  caption = null,
   onClose,
 }: {
   open: boolean;
   src: string | null;
   alt?: string;
   blurhash?: string | null;
+  caption?: string | null;
   onClose: () => void;
 }) {
   const t = useT();
@@ -184,6 +186,13 @@ export function ImageLightbox({
               />
             )}
           </motion.div>
+          {caption && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink-950/85 to-transparent px-4 pb-5 pt-12 sm:px-6 sm:pb-7">
+              <p className="mx-auto max-w-3xl text-center text-sm leading-snug text-sand-100/90 sm:text-base">
+                {caption}
+              </p>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>,

@@ -1,5 +1,5 @@
-import { getMapPosts } from "@/lib/content";
-import { TripMap, type MapMarker } from "@/components/trip-map";
+import { getGeotaggedPhotos, getMapPosts } from "@/lib/content";
+import { PhotoExplorer } from "@/components/photo-explorer";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle } from "@/lib/i18n";
 
@@ -7,24 +7,16 @@ export const metadata = {
   title: defaultTitle("meta.map"),
   alternates: { canonical: "/map" },
 };
-// Static, on-demand revalidation: markers carry both languages' titles; TripMap
-// localizes the popup label on the client. Uses the lightweight map query (pins +
-// tracks only) so the cached HTML stays small.
+// Static, on-demand revalidation. Ships the geotagged photos (both languages)
+// and the GPX routes; PhotoExplorer localizes captions on the client and draws
+// the routes underneath the photo pins. This is the merged Map + Photos view.
 export const revalidate = false;
 
 export default async function MapPage() {
-  const posts = await getMapPosts();
-
-  // One marker per post (its primary location), linking back to the entry.
-  const markers: MapMarker[] = posts.flatMap((p) => {
-    const point = p.locations[0] ?? (p.lat != null && p.lng != null
-      ? { id: p.id, name: p.location ?? p.title, lat: p.lat, lng: p.lng }
-      : null);
-    return point
-      ? [{ id: p.id, name: p.title, i18n: p.i18n, lat: point.lat, lng: point.lng, href: `/posts/${p.slug}` }]
-      : [];
-  });
-
+  const [photos, posts] = await Promise.all([
+    getGeotaggedPhotos(),
+    getMapPosts(),
+  ]);
   const tracks = posts.flatMap((p) => p.tracks);
 
   return (
@@ -36,14 +28,15 @@ export default async function MapPage() {
       <p className="mt-2 max-w-xl text-sand-100/60">
         <T k="map.subtitle" />
       </p>
-      <div className="mt-8">
-        <TripMap
-          markers={markers}
-          tracks={tracks}
-          route={false}
-          className="h-[70dvh] min-h-[480px]"
-        />
-      </div>
+      {photos.length > 0 ? (
+        <div className="mt-8">
+          <PhotoExplorer photos={photos} tracks={tracks} />
+        </div>
+      ) : (
+        <p className="mt-10 text-sand-100/50">
+          <T k="photos.empty" />
+        </p>
+      )}
     </div>
   );
 }

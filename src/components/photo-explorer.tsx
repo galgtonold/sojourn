@@ -6,8 +6,10 @@ import { env } from "@/lib/env";
 import { cn, optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { initialView } from "@/components/trip-map";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n";
 import type { GeoPhoto } from "@/lib/content";
+import type { Track } from "@/lib/types";
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
@@ -23,7 +25,13 @@ function esc(s: string): string {
  *   • Click a thumbnail (or a pin) → the map flies to it and opens the photo;
  *     the filmstrip scrolls that thumbnail into view.
  */
-export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
+export function PhotoExplorer({
+  photos: rawPhotos,
+  tracks = [],
+}: {
+  photos: GeoPhoto[];
+  tracks?: Track[];
+}) {
   const { t, locale } = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -53,6 +61,8 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
   }, [photos]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The photo shown full-screen in the viewer (opened by clicking a pin's image).
+  const [lightbox, setLightbox] = useState<GeoPhoto | null>(null);
   // blurhash decodes via <canvas>, which doesn't exist during SSR. Gate the
   // placeholder behind a post-mount flag so the first client render matches the
   // server (no blur), then paint it on the next tick — avoids a hydration
@@ -83,16 +93,16 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
         essential: true,
       });
       popupRef.current?.remove();
-      // Same shape as the per-post TripMap photo popups (.photo-popup): a flush
-      // cover image with the caption + "open story" link in a padded footer.
+      // A flush cover image (click → full-screen viewer with the caption) above a
+      // padded footer with the caption and an "open story" link to the post.
       const caption = p.caption
         ? `<div style="font-size:12.5px;line-height:1.4">${esc(p.caption)}</div>`
         : "";
-      const open = `<div style="margin-top:${p.caption ? "8px" : "0"};font-size:11px;font-weight:600;letter-spacing:.01em;color:#ff8f4d">${esc(t("map.openStory"))}</div>`;
-      const html = `<a href="/posts/${esc(p.postSlug)}#photo-${esc(p.id)}" style="display:block;width:220px;text-decoration:none;color:#faf6f0">
-          <img src="${optimizedSrc(p.url, 440, 70)}" style="width:100%;height:132px;object-fit:cover;display:block" alt="" />
+      const open = `<a href="/posts/${esc(p.postSlug)}#photo-${esc(p.id)}" style="display:inline-block;margin-top:${p.caption ? "8px" : "0"};font-size:11px;font-weight:600;letter-spacing:.01em;color:#ff8f4d;text-decoration:none">${esc(t("map.openStory"))}</a>`;
+      const html = `<div style="width:220px;color:#faf6f0">
+          <img class="js-zoom" src="${optimizedSrc(p.url, 440, 70)}" style="width:100%;height:132px;object-fit:cover;display:block;cursor:zoom-in" alt="" />
           <div style="padding:11px 13px 12px">${caption}${open}</div>
-        </a>`;
+        </div>`;
       popupRef.current = new maplibregl.Popup({
         offset: 20,
         maxWidth: "248px",
@@ -101,6 +111,10 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
         .setLngLat([p.lng, p.lat])
         .setHTML(html)
         .addTo(map);
+      popupRef.current
+        .getElement()
+        ?.querySelector(".js-zoom")
+        ?.addEventListener("click", () => setLightbox(p));
     },
     [photoById, t],
   );
@@ -110,6 +124,18 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
   // Build the map once.
   useEffect(() => {
     if (!container.current || photos.length === 0) return;
+    // Extend a bounds box with every track coordinate, so routes are framed
+    // alongside the photos rather than spilling off-screen.
+    const extendTracks = (b: maplibregl.LngLatBounds) => {
+      for (const tr of tracks) {
+        for (const f of tr.geojson?.features ?? []) {
+          for (const c of f.geometry?.coordinates ?? []) {
+            if (Number.isFinite(c[0]) && Number.isFinite(c[1]))
+              b.extend([c[0], c[1]] as [number, number]);
+          }
+        }
+      }
+    };
     // Open already framed on all the photos (computed center + zoom) so we don't
     // load a wide Scandinavia view first and then fit out to all of Europe.
     const photoBounds = new maplibregl.LngLatBounds();
@@ -117,6 +143,7 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
       if (Number.isFinite(p.lng) && Number.isFinite(p.lat))
         photoBounds.extend([p.lng, p.lat]);
     }
+    extendTracks(photoBounds);
     const view = initialView(
       photoBounds.isEmpty() ? null : photoBounds,
       photos.length <= 1 ? 9 : 14,
@@ -206,8 +233,26 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
 
     map.on("load", () => {
       map.resize();
+      // Draw the GPX route lines first, so the photo clusters + pins sit on top.
+      tracks.forEach((tr, i) => {
+        const sid = `track-${tr.id ?? i}`;
+        if (map.getSource(sid)) return;
+        map.addSource(sid, { type: "geojson", data: tr.geojson });
+        map.addLayer({
+          id: sid,
+          type: "line",
+          source: sid,
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#f56a1f",
+            "line-width": 3,
+            "line-opacity": 0.6,
+          },
+        });
+      });
       const bounds = new maplibregl.LngLatBounds();
       photos.forEach((p) => bounds.extend([p.lng, p.lat]));
+      extendTracks(bounds);
 
       map.addSource("photos", {
         type: "geojson",
@@ -430,6 +475,15 @@ export function PhotoExplorer({ photos: rawPhotos }: { photos: GeoPhoto[] }) {
           })}
         </div>
       </div>
+
+      <ImageLightbox
+        open={!!lightbox}
+        src={lightbox?.url ?? null}
+        alt={lightbox?.caption ?? lightbox?.postTitle ?? ""}
+        blurhash={lightbox?.blurhash}
+        caption={lightbox?.caption ?? null}
+        onClose={() => setLightbox(null)}
+      />
     </div>
   );
 }
