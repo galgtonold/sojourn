@@ -177,7 +177,7 @@ export function PostWorkspace({
   const interactionIds = useMemo(() => interactions.map((i) => i.id), [interactions]);
 
   return (
-    <div className="space-y-3 pb-24 lg:pb-0">
+    <div className="space-y-3 pb-24">
       <div className="mb-1">
         <TranslationBadge postId={postId} initialStatus={translationStatus} published={post.published} />
       </div>
