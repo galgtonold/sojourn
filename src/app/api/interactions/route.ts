@@ -45,22 +45,30 @@ async function buildState(
   );
   const total = counts.reduce((a, b) => a + b, 0);
 
-  if (mine == null) return { voted: false as const, counts, total };
+  // The quiz's correct answer + explanation ride along even before voting — like
+  // the tally — so the verdict can render the instant you answer (no round-trip,
+  // no wrong-looking flash). The UI keeps them hidden until you've answered.
+  const quiz =
+    it.kind === "quiz"
+      ? {
+          correctIndex: it.correct_index ?? null,
+          explanation:
+            (
+              it.i18n as Record<string, { explanation?: string | null }> | null
+            )?.[locale]?.explanation ??
+            it.explanation ??
+            null,
+        }
+      : { correctIndex: null, explanation: null };
+
+  if (mine == null) return { voted: false as const, counts, total, ...quiz };
 
   return {
     voted: true as const,
     counts,
     total,
     yourChoice: mine.choice_index as number,
-    correctIndex: it.kind === "quiz" ? (it.correct_index ?? null) : null,
-    explanation:
-      it.kind === "quiz"
-        ? ((
-            it.i18n as Record<string, { explanation?: string | null }> | null
-          )?.[locale]?.explanation ??
-          it.explanation ??
-          null)
-        : null,
+    ...quiz,
   };
 }
 

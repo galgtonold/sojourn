@@ -2,7 +2,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
-import { getBrowserSupabase } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
 import { useT, useI18n } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -20,21 +19,33 @@ export type ModerationRow = {
 
 export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   const [rows, setRows] = useState<ModerationRow[]>(initial);
+  const [error, setError] = useState<string | null>(null);
   const t = useT();
   const confirm = useConfirm();
 
   async function toggleHide(row: ModerationRow) {
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
     const hidden = !row.hidden;
+    setError(null);
+    // Optimistic flip, reverted if the server rejects it.
     setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, hidden } : r)));
-    await supabase.from("comments").update({ hidden }).eq("id", row.id);
+    try {
+      const res = await fetch(`/api/admin/comments/${row.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hidden }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setRows((rs) =>
+        rs.map((r) => (r.id === row.id ? { ...r, hidden: !hidden } : r)),
+      );
+      setError(t("admin.cmod.actionFailed"));
+    }
   }
 
   async function del(row: ModerationRow) {
     if (!(await confirm({ message: t("admin.cmod.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
+    setError(null);
     // Remove the comment and any descendants locally (DB cascades the delete).
     const toRemove = new Set([row.id]);
     let grew = true;
@@ -47,8 +58,18 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
         }
       }
     }
+    const removed = rows.filter((r) => toRemove.has(r.id));
     setRows((rs) => rs.filter((r) => !toRemove.has(r.id)));
-    await supabase.from("comments").delete().eq("id", row.id);
+    try {
+      const res = await fetch(`/api/admin/comments/${row.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Restore the subtree we optimistically dropped.
+      setRows((rs) => [...rs, ...removed]);
+      setError(t("admin.cmod.actionFailed"));
+    }
   }
 
   // Group by post, then build a comment tree within each post.
@@ -79,6 +100,11 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
 
   return (
     <div className="space-y-8">
+      {error && (
+        <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )}
       {groups.map((g) => (
         <section key={g.slug}>
           <Link

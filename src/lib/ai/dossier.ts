@@ -21,6 +21,22 @@ export type Dossier = {
   text: string;
 };
 
+// First and last coordinate of a track's GeoJSON, as [lng, lat]. A track may
+// hold several segments — start of the first, end of the last.
+function trackEndpoints(
+  geojson: GeoJSON.FeatureCollection<GeoJSON.LineString> | null | undefined,
+): { start: GeoJSON.Position; end: GeoJSON.Position } | null {
+  let start: GeoJSON.Position | null = null;
+  let end: GeoJSON.Position | null = null;
+  for (const f of geojson?.features ?? []) {
+    const cs = f.geometry?.coordinates ?? [];
+    if (!cs.length) continue;
+    if (!start) start = cs[0];
+    end = cs[cs.length - 1];
+  }
+  return start && end ? { start, end } : null;
+}
+
 function fmtTime(iso: string | null): string {
   if (!iso) return "ohne Zeit";
   const d = new Date(iso);
@@ -52,7 +68,7 @@ export async function buildDossier(
 
   const { data: tracks } = await supabase
     .from("tracks")
-    .select("name, distance_m")
+    .select("name, distance_m, geojson")
     .eq("post_id", postId);
 
   // The other published entries of this trip, so the model stays consistent
@@ -113,6 +129,36 @@ export async function buildDossier(
     }
   }
 
+  // Resolve where each GPX route actually starts and ends. A route is hard data
+  // (the model can't argue with it), so its start grounds the location and stops
+  // the outline inventing a place. Best effort — a geocoder hiccup just omits it.
+  const trackInfo: {
+    name: string | null;
+    distance_m: number | null;
+    startPlace: string | null;
+    endPlace: string | null;
+  }[] = [];
+  for (const tr of tracks ?? []) {
+    const ep = trackEndpoints(
+      tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null,
+    );
+    let startPlace: string | null = null;
+    let endPlace: string | null = null;
+    if (ep) {
+      [startPlace, endPlace] = await Promise.all([
+        reverseGeocode(ep.start[1], ep.start[0]),
+        reverseGeocode(ep.end[1], ep.end[0]),
+      ]);
+    }
+    trackInfo.push({
+      name: tr.name,
+      distance_m: tr.distance_m,
+      startPlace,
+      endPlace,
+    });
+  }
+  const gpxStart = trackInfo.find((t) => t.startPlace)?.startPlace ?? null;
+
   const lines: string[] = [];
   if (trip?.title) lines.push(`Reise: ${trip.title}`);
   if (trip?.start_date)
@@ -136,7 +182,7 @@ export async function buildDossier(
     ? post.location.trim()
     : geoPlaces.length
       ? geoPlaces.join(" · ")
-      : null;
+      : gpxStart;
   if (locationHint) lines.push(`Ort (grob): ${locationHint}`);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -185,11 +231,17 @@ export async function buildDossier(
     lines.push(parts.join(" — "));
   });
 
-  if (tracks && tracks.length) {
+  if (trackInfo.length) {
     lines.push("", "Routen (GPX):");
-    for (const t of tracks) {
+    for (const t of trackInfo) {
       const km = t.distance_m ? `${(t.distance_m / 1000).toFixed(1)} km` : "";
       lines.push(`- ${t.name || "Track"}${km ? ` (${km})` : ""}`);
+      if (t.startPlace && t.endPlace && t.startPlace === t.endPlace) {
+        lines.push(`  Start/Ziel: ${t.startPlace} (Rundtour)`);
+      } else {
+        if (t.startPlace) lines.push(`  Start: ${t.startPlace}`);
+        if (t.endPlace) lines.push(`  Ziel: ${t.endPlace}`);
+      }
     }
   }
 

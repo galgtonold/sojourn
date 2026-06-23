@@ -273,6 +273,8 @@ const en = {
   "admin.cmod.comments": "{n} comments",
   "admin.cmod.comment": "{n} comment",
   "admin.cmod.deleteConfirm": "Delete this comment (and its replies) permanently?",
+  "admin.cmod.actionFailed":
+    "That didn't go through — you may not have access, or the connection dropped. Please try again.",
 
   "admin.editor.newPost": "New post",
   "admin.editor.editPost": "Edit post",
@@ -402,8 +404,11 @@ const en = {
   "admin.ai.subtitle": "From your photos, routes and notes — in your voice.",
   "admin.ai.notes": "Notes — bullet points, route, highlights, who you were with…",
   "admin.ai.suggestQuestions": "Suggest questions",
+  "admin.ai.askMore": "Ask more questions",
+  "admin.ai.addToContext": "Add to context",
+  "admin.ai.stop": "Stop",
   "admin.ai.answersHint":
-    "Answer a few questions for a richer draft (optional):",
+    "Answer a few questions, then add them to your context or generate:",
   "admin.ai.generate": "Generate draft",
   "admin.ai.skip": "Generate draft",
   "admin.ai.generating": "Writing…",
@@ -785,6 +790,8 @@ const de: Dict = {
   "admin.cmod.comment": "{n} Kommentar",
   "admin.cmod.deleteConfirm":
     "Diesen Kommentar (und seine Antworten) endgültig löschen?",
+  "admin.cmod.actionFailed":
+    "Das hat nicht geklappt — vielleicht fehlt dir der Zugriff oder die Verbindung brach ab. Bitte versuch es erneut.",
 
   "admin.editor.newPost": "Neuer Beitrag",
   "admin.editor.editPost": "Beitrag bearbeiten",
@@ -919,8 +926,11 @@ const de: Dict = {
   "admin.ai.notes":
     "Notizen — Stichpunkte, Route, Höhepunkte, Begleitung …",
   "admin.ai.suggestQuestions": "Fragen vorschlagen",
+  "admin.ai.askMore": "Weitere Fragen",
+  "admin.ai.addToContext": "Zum Kontext hinzufügen",
+  "admin.ai.stop": "Stopp",
   "admin.ai.answersHint":
-    "Beantworte ein paar Fragen für einen besseren Entwurf (optional):",
+    "Beantworte ein paar Fragen, dann in den Kontext übernehmen oder erstellen:",
   "admin.ai.generate": "Entwurf erstellen",
   "admin.ai.skip": "Entwurf erstellen",
   "admin.ai.generating": "Schreibe…",
