@@ -84,8 +84,10 @@ export default async function PostPage({
     <>
       <script
         type="application/ld+json"
-        // Authored content (title/excerpt), not user input — safe to inline.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // Escape "<" so a title/excerpt containing "</script>" can't break out.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <PostView post={post} comments={[]} interactions={interactions} nav={nav} />
     </>

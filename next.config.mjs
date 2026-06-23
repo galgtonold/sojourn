@@ -10,6 +10,9 @@ const nextConfig = {
   // Emit a self-contained server bundle so the same image runs on Vercel,
   // any container host, or a bare VPS (`node .next/standalone/server.js`).
   output: "standalone",
+  // Pin the file-tracing root to this project so a stray lockfile in a parent
+  // directory can't make Next infer the wrong workspace root (the dev warning).
+  outputFileTracingRoot: import.meta.dirname,
   reactStrictMode: true,
   env: { NEXT_PUBLIC_SW_VERSION: swVersion },
   images: {

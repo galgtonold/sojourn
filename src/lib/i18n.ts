@@ -114,6 +114,7 @@ const en = {
   "post.elevationAria": "Elevation profile",
 
   "admin.gallery.delete": "Delete photo",
+  "admin.gallery.deleteConfirm": "Delete this photo? This can’t be undone.",
   "admin.gallery.geotagged": "Geotagged from EXIF — shows on the map",
   "admin.routes.delete": "Delete track",
   "admin.upload.remove": "Remove image",
@@ -160,6 +161,8 @@ const en = {
   "search.photos": "Photos",
   "search.searching": "Searching…",
   "search.noResults": "Nothing found for “{q}”.",
+  "search.error": "Search is unavailable right now.",
+  "search.retry": "Try again",
 
   "trips.title": "Trips",
   "trips.subtitle":
@@ -303,6 +306,7 @@ const en = {
   "admin.editor.lng": "Longitude",
   "admin.editor.pickLocation":
     "Tap the map to set the location, or enter coordinates below.",
+  "admin.editor.mapError": "Map couldn’t load — enter coordinates below instead.",
   "admin.editor.excerpt": "Excerpt",
   "admin.editor.body": "Write your story…",
   "admin.editor.helpLabel": "Formatting",
@@ -633,6 +637,7 @@ const de: Dict = {
   "post.elevationAria": "Höhenprofil",
 
   "admin.gallery.delete": "Foto löschen",
+  "admin.gallery.deleteConfirm": "Dieses Foto löschen? Das kann nicht rückgängig gemacht werden.",
   "admin.gallery.geotagged": "Geotag aus EXIF — erscheint auf der Karte",
   "admin.routes.delete": "Track löschen",
   "admin.upload.remove": "Bild entfernen",
@@ -683,6 +688,8 @@ const de: Dict = {
   "search.photos": "Fotos",
   "search.searching": "Suche läuft…",
   "search.noResults": "Nichts gefunden für „{q}“.",
+  "search.error": "Die Suche ist gerade nicht verfügbar.",
+  "search.retry": "Erneut versuchen",
 
   "trips.title": "Reisen",
   "trips.subtitle":
@@ -832,6 +839,8 @@ const de: Dict = {
   "admin.editor.lng": "Längengrad",
   "admin.editor.pickLocation":
     "Tippe auf die Karte, um den Ort zu setzen, oder gib unten Koordinaten ein.",
+  "admin.editor.mapError":
+    "Karte konnte nicht geladen werden — gib stattdessen unten Koordinaten ein.",
   "admin.editor.excerpt": "Kurzbeschreibung",
   "admin.editor.body": "Schreib deine Geschichte…",
   "admin.editor.helpLabel": "Formatierung",

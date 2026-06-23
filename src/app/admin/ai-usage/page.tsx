@@ -32,8 +32,8 @@ export default async function AiUsagePage() {
 
   const supabase = await getServerSupabase();
   const [{ data: summary }, { data: recent }] = await Promise.all([
-    supabase!.rpc("ai_usage_summary"),
-    supabase!
+    supabase.rpc("ai_usage_summary"),
+    supabase
       .from("ai_usage")
       .select("created_at, operation, model, prompt_tokens, completion_tokens, cost_usd")
       .order("created_at", { ascending: false })

@@ -69,6 +69,12 @@ npm run lint       # next lint
 npm run gen:vapid  # generate a VAPID key pair (web-push)
 ```
 
+> **Heads-up:** `next build`/`next start` run with `NODE_ENV=production`, so they
+> load `.env.production` — which points at the **live** Supabase. A local
+> production build therefore reads (and could write to) production data. Use
+> `npm run dev` (which loads `.env.local`) for local development; don't run
+> write-flow tests against a local production build.
+
 ## Architecture
 
 - **Content is public-read.** Trips, posts, photos, maps, comments, and reactions are shared by URL — there are no viewer accounts.

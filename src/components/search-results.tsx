@@ -7,7 +7,11 @@ import { PostCard } from "@/components/post-card";
 import { PhotoResultCard } from "@/components/photo-result-card";
 import { T, useI18n } from "@/components/i18n";
 
-type Results = { posts: PostSummary[]; photos: PhotoSearchResult[] };
+type Results = {
+  posts: PostSummary[];
+  photos: PhotoSearchResult[];
+  error?: boolean;
+};
 
 // Module-level cache: survives client-side back/forward navigation, so returning
 // to a search renders the SAME results instantly from memory — no re-fetch, no
@@ -30,6 +34,8 @@ export function SearchResults() {
   const q = (useSearchParams().get("q") ?? "").trim();
   const { locale } = useI18n();
   const [, rerender] = useReducer((n) => n + 1, 0);
+  // Bumped by the retry button to force a re-fetch of the same query.
+  const [retry, bumpRetry] = useReducer((n) => n + 1, 0);
   // The query currently being fetched (so the "Searching…" state is tied to the
   // live query, never a stale one).
   const [loadingQ, setLoadingQ] = useState<string | null>(null);
@@ -43,9 +49,12 @@ export function SearchResults() {
     let cancelled = false;
     setLoadingQ(q);
     fetch(`/api/search?q=${encodeURIComponent(q)}`)
-      .then((r) => (r.ok ? r.json() : { posts: [], photos: [] }))
+      .then((r) =>
+        r.ok ? r.json() : { posts: [], photos: [], error: true },
+      )
       .then((d: Results) => remember(q, d))
-      .catch(() => remember(q, { posts: [], photos: [] }))
+      // Distinguish a real failure from "no results" so the UI can offer a retry.
+      .catch(() => remember(q, { posts: [], photos: [], error: true }))
       .finally(() => {
         if (!cancelled) {
           setLoadingQ(null);
@@ -55,7 +64,7 @@ export function SearchResults() {
     return () => {
       cancelled = true;
     };
-  }, [q]);
+  }, [q, retry]);
 
   if (!q) return null;
 
@@ -68,6 +77,25 @@ export function SearchResults() {
       <div className="mt-12 flex items-center justify-center gap-2 text-sand-100/70">
         <Loader2 className="size-5 animate-spin text-ember-400" />
         <T k="search.searching" />
+      </div>
+    );
+  }
+
+  // A failed fetch (not "no results") — offer a retry instead of a misleading
+  // "nothing found".
+  if (data.error) {
+    return (
+      <div className="mt-12 flex flex-col items-center gap-3 text-sand-100/70">
+        <T k="search.error" />
+        <button
+          onClick={() => {
+            cache.delete(q);
+            bumpRetry();
+          }}
+          className="rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 hover:text-ember-400"
+        >
+          <T k="search.retry" />
+        </button>
       </div>
     );
   }

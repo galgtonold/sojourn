@@ -24,12 +24,29 @@ export async function GET(
   }
   const { data: job } = await admin
     .from("ai_jobs")
-    .select("status, output, error, user_id")
+    .select("status, output, error, user_id, created_at")
     .eq("id", id)
     .maybeSingle();
   if (!job || job.user_id !== user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+
+  // Reaper: a job still unfinished long past the longest allowed run (180s) was
+  // almost certainly killed mid-flight (function timeout / edge crash). Mark it
+  // errored so the client stops polling forever instead of spinning indefinitely.
+  const STALE_MS = 4 * 60 * 1000;
+  if (
+    (job.status === "pending" || job.status === "running") &&
+    job.created_at &&
+    Date.now() - new Date(job.created_at).getTime() > STALE_MS
+  ) {
+    await admin
+      .from("ai_jobs")
+      .update({ status: "error", error: "timed out" })
+      .eq("id", id);
+    return NextResponse.json({ status: "error", output: null, error: "timed out" });
+  }
+
   return NextResponse.json({
     status: job.status,
     output: job.output,

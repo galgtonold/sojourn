@@ -4,6 +4,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
 import { notifyComment } from "@/lib/notify";
+import { logError } from "@/lib/log";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     title: `New ${parentId ? "reply" : "comment"} from ${data.author_name}`,
     body: body.slice(0, 120),
     url: `${env.siteUrl}/admin/comments`,
-  }).catch(() => {});
+  }).catch((e) => logError("notify.comment", e));
 
   return NextResponse.json({ ...data, like_count: 0 }, { status: 201 });
 }

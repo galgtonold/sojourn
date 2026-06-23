@@ -6,6 +6,7 @@ import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 import { LocationDialog } from "@/components/location-dialog";
 
 export type ManagedPhoto = {
@@ -49,6 +50,7 @@ export function PhotoManager({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [locPhoto, setLocPhoto] = useState<ManagedPhoto | null>(null);
   const t = useT();
+  const confirm = useConfirm();
 
   async function saveLocation(photo: ManagedPhoto, latS: string, lngS: string) {
     const lat = latS.trim() === "" ? null : Number(latS);
@@ -137,8 +139,13 @@ export function PhotoManager({
   }
 
   async function remove(photo: ManagedPhoto) {
+    const ok = await confirm({
+      message: t("admin.gallery.deleteConfirm"),
+      danger: true,
+      confirmLabel: t("common.delete"),
+    });
+    if (!ok) return;
     const supabase = getBrowserSupabase();
-    if (!supabase) return;
     setPhotos((p) => p.filter((x) => x.id !== photo.id));
     await supabase.from("photos").delete().eq("id", photo.id);
     if (photo.storage_path) {

@@ -33,15 +33,17 @@ async function buildState(
     .maybeSingle();
 
   const options: string[] = it.options ?? [];
-  const counts = await Promise.all(
-    options.map((_, i) =>
-      supabase
-        .from("interaction_responses")
-        .select("*", { count: "exact", head: true })
-        .eq("interaction_id", id)
-        .eq("choice_index", i)
-        .then((r: { count: number | null }) => r.count ?? 0),
-    ),
+  // One query for all responses, tallied in memory — avoids a COUNT query per
+  // option (an N+1 on an unauthenticated, service-role endpoint).
+  const { data: responses } = await supabase
+    .from("interaction_responses")
+    .select("choice_index")
+    .eq("interaction_id", id);
+  const counts = options.map(
+    (_, i) =>
+      (responses ?? []).filter(
+        (r: { choice_index: number | null }) => r.choice_index === i,
+      ).length,
   );
   const total = counts.reduce((a, b) => a + b, 0);
 

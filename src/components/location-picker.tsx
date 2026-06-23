@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
+import { useT } from "@/components/i18n";
 
 /**
  * A small map for picking a post's location: click anywhere (or drag the pin) to
@@ -20,11 +21,13 @@ export function LocationPicker({
   onChange: (lat: string, lng: string) => void;
   className?: string;
 }) {
+  const t = useT();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const [failed, setFailed] = useState(false);
 
   const nLat = Number(lat);
   const nLng = Number(lng);
@@ -34,13 +37,20 @@ export function LocationPicker({
   // Build the map once; a click sets the coordinates.
   useEffect(() => {
     if (!container.current) return;
-    const map = new maplibregl.Map({
-      container: container.current,
-      style: env.mapStyleUrl,
-      center: hasCoords ? [nLng, nLat] : [10, 30],
-      zoom: hasCoords ? 9 : 1.3,
-      attributionControl: { compact: true },
-    });
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: container.current,
+        style: env.mapStyleUrl,
+        center: hasCoords ? [nLng, nLat] : [10, 30],
+        zoom: hasCoords ? 9 : 1.3,
+        attributionControl: { compact: true },
+      });
+    } catch {
+      // Tile/WebGL/network failure: fall back to the coordinate inputs.
+      setFailed(true);
+      return;
+    }
     mapRef.current = map;
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
@@ -89,6 +99,16 @@ export function LocationPicker({
       markerRef.current.setLngLat(ll);
     }
   }, [nLat, nLng, hasCoords]);
+
+  if (failed) {
+    return (
+      <div
+        className={`grid place-items-center bg-ink-800 p-4 text-center text-sm text-sand-100/60 ${className ?? ""}`}
+      >
+        {t("admin.editor.mapError")}
+      </div>
+    );
+  }
 
   return <div ref={container} className={className} />;
 }
