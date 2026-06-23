@@ -1,7 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, MessagesSquare, Wand2, ImageUp } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  MessagesSquare,
+  Wand2,
+  ImageUp,
+  Square,
+  ListPlus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
 import {
@@ -42,15 +50,41 @@ export type DraftSaved = {
   cover_image: string | null;
 };
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+async function postJson<T>(
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((j as { error?: string }).error ?? "failed");
   return j as T;
+}
+
+function isAbort(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
+// A 2s wait that resolves early — and rejects — if the run is interrupted, so
+// Stop feels instant even mid-poll.
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("aborted", "AbortError"));
+    const tm = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(tm);
+        reject(new DOMException("aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
 }
 
 // Retry a flaky step a few times before giving up — generation spans many model
@@ -69,9 +103,9 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
 
 // Poll an enqueued LLM job until it finishes. Slow generations run on the Edge
 // Function and land asynchronously in ai_jobs, so the client waits here.
-async function pollJob(jobId: string): Promise<string> {
+async function pollJob(jobId: string, signal?: AbortSignal): Promise<string> {
   for (let i = 0; i < 100; i++) {
-    const res = await fetch(`/api/admin/ai/job/${jobId}`);
+    const res = await fetch(`/api/admin/ai/job/${jobId}`, { signal });
     const j = (await res.json().catch(() => ({}))) as {
       status?: string;
       output?: string;
@@ -80,7 +114,7 @@ async function pollJob(jobId: string): Promise<string> {
     if (!res.ok) throw new Error(j.error ?? "poll failed");
     if (j.status === "done") return j.output ?? "";
     if (j.status === "error") throw new Error(j.error ?? "generation failed");
-    await new Promise((r) => setTimeout(r, 2000));
+    await wait(2000, signal);
   }
   throw new Error("timed out");
 }
@@ -121,10 +155,46 @@ export function AiDraftPanel({
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
+  // True once at least one round of answers has been folded into the notes, so
+  // the question button reads "Ask more" rather than "Suggest questions".
+  const [asked, setAsked] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const busy = phase === "asking" || phase === "running";
 
+  // Interrupt an in-flight run. The notes and any answers stay put, so you can
+  // adjust them and go again. Server-side jobs already enqueued finish on their
+  // own and are simply ignored — the next run starts clean.
+  function stop() {
+    abortRef.current?.abort();
+  }
+
+  // Fold the answered questions into the persisted notes, so they become part of
+  // the context for good (surviving later edits) instead of one-shot inputs. From
+  // here you can ask another round — now informed by the richer context — or
+  // generate.
+  async function addToContext() {
+    const filled = questions
+      .map((q, i) => ({ q, a: (answers[i] ?? "").trim() }))
+      .filter((x) => x.a);
+    if (filled.length) {
+      const block = filled.map((x) => `F: ${x.q}\nA: ${x.a}`).join("\n\n");
+      const next = notes.trim() ? `${notes.trim()}\n\n${block}` : block;
+      setNotes(next);
+      setAsked(true);
+      // Persist so the woven-in answers aren't lost if they leave without
+      // generating. Best effort — the next AI call would persist them anyway.
+      postJson("/api/admin/ai/notes", { postId, notes: next }).catch(() => {});
+    }
+    setQuestions([]);
+    setAnswers({});
+    setError(null);
+    setPhase("idle");
+  }
+
   async function suggestQuestions() {
+    const ac = new AbortController();
+    abortRef.current = ac;
     setPhase("asking");
     setStep(t("admin.ai.step.questions"));
     setError(null);
@@ -132,19 +202,29 @@ export function AiDraftPanel({
       const { questions } = await postJson<{ questions: string[] }>(
         "/api/admin/ai/questions",
         { postId, notes, lang },
+        ac.signal,
       );
       setQuestions(questions ?? []);
       setStep(null);
       setPhase("answering");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
       setStep(null);
+      if (isAbort(e)) {
+        setPhase("idle");
+        return;
+      }
+      setError(e instanceof Error ? e.message : "failed");
       setPhase("idle");
+    } finally {
+      abortRef.current = null;
     }
   }
 
   async function generate() {
     if (hasBody && !(await confirm({ message: t("admin.ai.overwriteConfirm") }))) return;
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const signal = ac.signal;
     setPhase("running");
     setError(null);
     setWarn(null);
@@ -165,6 +245,7 @@ export function AiDraftPanel({
           const { remaining } = await postJson<{ remaining: number }>(
             "/api/admin/ai/enrich-post",
             { postId },
+            signal,
           );
           if (remaining <= 0) break;
         } catch {
@@ -175,12 +256,16 @@ export function AiDraftPanel({
       // 2. Outline (retried — a usable plan is the backbone of the whole draft).
       setStep(t("admin.ai.step.outline"));
       const { outline } = await withRetry(() =>
-        postJson<{ outline: Outline }>("/api/admin/ai/outline", {
-          postId,
-          notes,
-          answers: qa,
-          lang,
-        }),
+        postJson<{ outline: Outline }>(
+          "/api/admin/ai/outline",
+          {
+            postId,
+            notes,
+            answers: qa,
+            lang,
+          },
+          signal,
+        ),
       );
 
       // 3. Write each section (retried independently). A section that keeps
@@ -213,9 +298,9 @@ export function AiDraftPanel({
           // Enqueue the (slow) section generation, then poll the job for its
           // markdown — the work runs on the Edge Function, off this request.
           const { jobId } = await withRetry(() =>
-            postJson<{ jobId: string }>("/api/admin/ai/section", req),
+            postJson<{ jobId: string }>("/api/admin/ai/section", req, signal),
           );
-          let markdown = await pollJob(jobId);
+          let markdown = await pollJob(jobId, signal);
 
           // If the model invented photo ids, feed them back for one repair pass
           // before giving up — the section route forbids them explicitly.
@@ -223,12 +308,16 @@ export function AiDraftPanel({
           if (invalid.length) {
             try {
               const { jobId: repairId } = await withRetry(() =>
-                postJson<{ jobId: string }>("/api/admin/ai/section", {
-                  ...req,
-                  avoidPhotoIds: invalid,
-                }),
+                postJson<{ jobId: string }>(
+                  "/api/admin/ai/section",
+                  {
+                    ...req,
+                    avoidPhotoIds: invalid,
+                  },
+                  signal,
+                ),
               );
-              const repaired = await pollJob(repairId);
+              const repaired = await pollJob(repairId, signal);
               if (repaired) {
                 markdown = repaired;
                 invalid = invalidPhotoRefs(markdown, allowed);
@@ -241,7 +330,8 @@ export function AiDraftPanel({
           // dangling ref) but warn so the author knows to check.
           if (invalid.length) photoFlagged += 1;
           if (markdown) parts.push(markdown);
-        } catch {
+        } catch (e) {
+          if (isAbort(e)) throw e; // a stop ends the whole run, not just a section
           failed.push(i + 1);
         }
       }
@@ -262,12 +352,14 @@ export function AiDraftPanel({
           const { jobId } = await postJson<{ jobId: string }>(
             "/api/admin/ai/homogenize",
             { postId, lang, body: masked },
+            signal,
           );
-          const out = stripWrappingCodeFence(await pollJob(jobId));
+          const out = stripWrappingCodeFence(await pollJob(jobId, signal));
           if (out && allMasksPresent(out, tokens)) {
             body = restoreProtectedTokens(out, tokens);
           }
-        } catch {
+        } catch (e) {
+          if (isAbort(e)) throw e;
           /* keep the raw concatenation */
         }
       }
@@ -275,7 +367,7 @@ export function AiDraftPanel({
       // 5. Captions (best effort). Pass the assembled body so captions are
       //    anchored in the article's voice, not standalone image descriptions.
       setStep(t("admin.ai.step.captions"));
-      await postJson("/api/admin/ai/captions", { postId, lang, body }).catch(
+      await postJson("/api/admin/ai/captions", { postId, lang, body }, signal).catch(
         () => {},
       );
 
@@ -294,6 +386,7 @@ export function AiDraftPanel({
             cover_photo_id: outline.cover_photo_id ?? null,
             body,
           },
+          signal,
         ),
       );
 
@@ -310,9 +403,17 @@ export function AiDraftPanel({
       if (saved) onDraftSaved?.(saved);
       router.refresh();
     } catch (e) {
-      setError(humanError(e, t as (k: string) => string));
       setStep(null);
+      // A deliberate stop isn't an error — drop back to the editable state with
+      // notes and answers untouched so they can adjust and run again.
+      if (isAbort(e)) {
+        setPhase(questions.length ? "answering" : "idle");
+        return;
+      }
+      setError(humanError(e, t as (k: string) => string));
       setPhase(questions.length ? "answering" : "idle");
+    } finally {
+      abortRef.current = null;
     }
   }
 
@@ -417,7 +518,17 @@ export function AiDraftPanel({
             ) : (
               <MessagesSquare className="size-4" />
             )}
-            {t("admin.ai.suggestQuestions")}
+            {asked
+              ? t("admin.ai.askMore")
+              : t("admin.ai.suggestQuestions")}
+          </button>
+        )}
+        {phase === "answering" && (
+          <button
+            onClick={addToContext}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400"
+          >
+            <ListPlus className="size-4" /> {t("admin.ai.addToContext")}
           </button>
         )}
         <button
@@ -434,13 +545,23 @@ export function AiDraftPanel({
             ? t("admin.ai.generate")
             : t("admin.ai.skip")}
         </button>
-        <button
-          onClick={autoCaption}
-          disabled={busy}
-          className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-sand-100/80 transition hover:border-ember-400 disabled:opacity-50"
-        >
-          <Wand2 className="size-4" /> {t("admin.ai.autocaption")}
-        </button>
+        {busy && (
+          <button
+            onClick={stop}
+            className="inline-flex items-center gap-2 rounded-full border border-red-500/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400 hover:text-red-200"
+          >
+            <Square className="size-3.5" /> {t("admin.ai.stop")}
+          </button>
+        )}
+        {phase !== "answering" && (
+          <button
+            onClick={autoCaption}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-sand-100/80 transition hover:border-ember-400 disabled:opacity-50"
+          >
+            <Wand2 className="size-4" /> {t("admin.ai.autocaption")}
+          </button>
+        )}
       </div>
     </div>
   );
