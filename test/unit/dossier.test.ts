@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import { makeFakeSupabase } from "../helpers/fake-supabase";
 
@@ -6,6 +6,16 @@ import { makeFakeSupabase } from "../helpers/fake-supabase";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const client = (db: Parameters<typeof makeFakeSupabase>[0]) =>
   makeFakeSupabase(db) as any;
+
+// buildDossier hits the network for weather (and may reverse-geocode). Keep unit
+// tests offline with a benign fetch stub; individual tests override it.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, json: async () => ({}) })),
+  );
+});
+afterEach(() => vi.unstubAllGlobals());
 
 describe("buildDossier", () => {
   it("assembles trip, photos (time-sorted), tracks and notes into text", async () => {
@@ -82,6 +92,78 @@ describe("buildDossier", () => {
     });
     const d = await buildDossier(supabase, "p1");
     expect(d.text).toContain("Ort (grob): Dietikon, Schweiz");
+  });
+
+  it("adds a weather line for the day(s) the photos were taken", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          daily: {
+            time: ["2026-06-01"],
+            weather_code: [61],
+            temperature_2m_max: [19],
+            temperature_2m_min: [11],
+            precipitation_sum: [4.2],
+          },
+        }),
+      })),
+    );
+    const supabase = client({
+      posts: [{ id: "p1", title: "T", location: "X", ai_notes: null }],
+      photos: [
+        {
+          id: "ph1",
+          post_id: "p1",
+          taken_at: "2026-06-01T08:00:00Z",
+          lat: 46.4,
+          lng: 8,
+          place_name: "Tal",
+          ai_description: "x",
+          sort_order: 0,
+        },
+      ],
+      tracks: [],
+    });
+    const d = await buildDossier(supabase, "p1");
+    expect(d.text).toContain("Wetter an diesen Tagen");
+    expect(d.text).toContain("leichter Regen");
+  });
+
+  it("lists only author-defined interactions as must-place [ask:] tags", async () => {
+    const supabase = client({
+      posts: [{ id: "p1", title: "T", location: "X", ai_notes: null }],
+      photos: [
+        { id: "ph1", post_id: "p1", taken_at: null, lat: null, lng: null, sort_order: 0 },
+      ],
+      tracks: [],
+      interactions: [
+        {
+          id: "ix1",
+          post_id: "p1",
+          kind: "poll",
+          question: "Lieblingspass?",
+          options: ["A", "B"],
+          source: "author",
+          sort_order: 0,
+        },
+        {
+          id: "ix2",
+          post_id: "p1",
+          kind: "quiz",
+          question: "Wie hoch?",
+          options: ["1", "2"],
+          source: "ai",
+          sort_order: 1,
+        },
+      ],
+    });
+    const d = await buildDossier(supabase, "p1");
+    expect(d.interactions.map((i) => i.id)).toEqual(["ix1"]); // author only
+    expect(d.text).toContain("[ask:ix1]");
+    expect(d.text).toContain("Lieblingspass?");
+    expect(d.text).not.toContain("[ask:ix2]"); // AI-generated excluded
   });
 
   it("works with no trip, tracks or notes", async () => {

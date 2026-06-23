@@ -3,6 +3,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reverseGeocode } from "@/lib/ai/geocode";
+import { dailyWeather } from "@/lib/ai/weather";
 
 export type DossierPhoto = {
   id: string;
@@ -15,9 +16,19 @@ export type DossierPhoto = {
   enriched_at: string | null;
 };
 
+// An interaction the author defined themselves (not AI-generated). These must be
+// placed into the article — the model references them by their [ask:<id>] tag.
+export type DossierInteraction = {
+  id: string;
+  kind: "poll" | "quiz";
+  question: string;
+  options: string[];
+};
+
 export type Dossier = {
   postId: string;
   photos: DossierPhoto[];
+  interactions: DossierInteraction[];
   text: string;
 };
 
@@ -55,7 +66,7 @@ export async function buildDossier(
 ): Promise<Dossier> {
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, location, ai_notes, trip_id, trips(title, summary, ai_context, start_date, end_date)")
+    .select("id, title, location, lat, lng, ai_notes, trip_id, trips(title, summary, ai_context, start_date, end_date)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -70,6 +81,24 @@ export async function buildDossier(
     .from("tracks")
     .select("name, distance_m, geojson")
     .eq("post_id", postId);
+
+  // The author's own polls/quizzes for this post — these MUST be woven into the
+  // generated article (referenced by their [ask:<id>] tag), never invented anew
+  // or dropped. AI-generated interactions from a previous draft are excluded.
+  const { data: definedInteractions } = await supabase
+    .from("interactions")
+    .select("id, kind, question, options, source")
+    .eq("post_id", postId)
+    .eq("source", "author")
+    .order("sort_order", { ascending: true });
+  const interactions: DossierInteraction[] = (definedInteractions ?? []).map(
+    (it) => ({
+      id: it.id as string,
+      kind: it.kind as "poll" | "quiz",
+      question: (it.question as string) ?? "",
+      options: (it.options as string[]) ?? [],
+    }),
+  );
 
   // The other published entries of this trip, so the model stays consistent
   // with what it already wrote and never reuses a quiz/poll question.
@@ -138,6 +167,7 @@ export async function buildDossier(
     startPlace: string | null;
     endPlace: string | null;
   }[] = [];
+  let gpxStartCoord: GeoJSON.Position | null = null;
   for (const tr of tracks ?? []) {
     const ep = trackEndpoints(
       tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null,
@@ -145,6 +175,7 @@ export async function buildDossier(
     let startPlace: string | null = null;
     let endPlace: string | null = null;
     if (ep) {
+      if (!gpxStartCoord) gpxStartCoord = ep.start;
       [startPlace, endPlace] = await Promise.all([
         reverseGeocode(ep.start[1], ep.start[0]),
         reverseGeocode(ep.end[1], ep.end[0]),
@@ -245,11 +276,76 @@ export async function buildDossier(
     }
   }
 
+  // Weather for the day(s) the photos were taken, at one representative point
+  // (the outing is localized). Falls back to the GPX start, then the post's pin.
+  const coordPhotos = photos.filter((p) => p.lat != null && p.lng != null);
+  let wLat: number | null = null;
+  let wLng: number | null = null;
+  if (coordPhotos.length) {
+    wLat =
+      coordPhotos.reduce((s, p) => s + (p.lat as number), 0) / coordPhotos.length;
+    wLng =
+      coordPhotos.reduce((s, p) => s + (p.lng as number), 0) / coordPhotos.length;
+  } else if (gpxStartCoord) {
+    wLat = gpxStartCoord[1];
+    wLng = gpxStartCoord[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } else if ((post as any)?.lat != null && (post as any)?.lng != null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    wLat = (post as any).lat;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    wLng = (post as any).lng;
+  }
+  const photoDates = [
+    ...new Set(
+      photos
+        .map((p) => p.taken_at)
+        .filter((s): s is string => Boolean(s))
+        .map((s) => s.slice(0, 10)),
+    ),
+  ].sort();
+  if (wLat != null && wLng != null && photoDates.length) {
+    const weather = await dailyWeather(
+      wLat,
+      wLng,
+      photoDates[0],
+      photoDates[photoDates.length - 1],
+    );
+    if (weather && weather.length) {
+      lines.push("", "Wetter an diesen Tagen (laut Wetterdaten):");
+      for (const w of weather) {
+        const temp =
+          w.tMin != null && w.tMax != null
+            ? `, ${Math.round(w.tMin)}–${Math.round(w.tMax)} °C`
+            : "";
+        const rain =
+          w.precipMm != null && w.precipMm >= 0.5
+            ? `, ${w.precipMm.toFixed(1)} mm Niederschlag`
+            : "";
+        lines.push(`- ${w.date}: ${w.label}${temp}${rain}`);
+      }
+    }
+  }
+
+  if (interactions.length) {
+    lines.push(
+      "",
+      "Vom Autor vordefinierte Interaktionen — diese MÜSSEN im Artikel " +
+        "vorkommen. Platziere jede an einer passenden Stelle als Tag " +
+        "[ask:<id>] in einer eigenen Zeile; schreibe die Optionen oder die " +
+        "Antwort NICHT in den Fließtext:",
+    );
+    for (const it of interactions) {
+      const label = it.kind === "quiz" ? "Quiz" : "Umfrage";
+      lines.push(`- [ask:${it.id}] (${label}): „${it.question}“`);
+    }
+  }
+
   if (post?.ai_notes?.trim()) {
     lines.push("", "Notizen des Autors:", post.ai_notes.trim());
   }
 
-  return { postId, photos, text: lines.join("\n") };
+  return { postId, photos, interactions, text: lines.join("\n") };
 }
 
 /**
