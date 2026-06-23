@@ -150,3 +150,36 @@ export async function reverseGeocode(
 ): Promise<string | null> {
   return (await photonPlace(lat, lng)) ?? (await nominatimReverse(lat, lng));
 }
+
+// Coarse "where is this" for a POST's location: the town/municipality, not the
+// nearest landmark. A GPX start in Aschheim should read "Aschheim", not the mill
+// 200 m away — so we skip Photon's landmark snapping and ask Nominatim at town
+// zoom, taking the settlement (then county/state) rather than a point feature.
+export async function reverseGeocodeArea(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+      `&lat=${lat}&lon=${lng}&zoom=12&accept-language=de`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": `Sojourn/1.0 (${env.siteUrl})` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const a = d.address ?? {};
+    return (
+      a.city ||
+      a.town ||
+      a.village ||
+      a.municipality ||
+      a.county ||
+      a.state ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}

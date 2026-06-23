@@ -37,6 +37,7 @@ type Outline = {
   lat: number | null;
   lng: number | null;
   cover_photo_id: string | null;
+  date?: string | null;
   sections: Section[];
 };
 
@@ -50,6 +51,7 @@ export type DraftSaved = {
   lat: number | null;
   lng: number | null;
   cover_image: string | null;
+  published_at: string | null;
 };
 
 async function postJson<T>(
@@ -403,6 +405,7 @@ export function AiDraftPanel({
             lat: outline.lat ?? null,
             lng: outline.lng ?? null,
             cover_photo_id: outline.cover_photo_id ?? null,
+            date: outline.date ?? undefined,
             body,
           },
           signal,

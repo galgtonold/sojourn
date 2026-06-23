@@ -5,7 +5,7 @@
 //     fills the markdown (the Edge path is exercised in prod, not here)
 //   - an AI-authored :::poll block is materialised into the interactions table
 //   - the saved body validates with no dangling references
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeFakeSupabase, type FakeSupabase } from "../helpers/fake-supabase";
 import { makeFakeDeepseek } from "../helpers/fake-deepseek";
 import { makeSeed } from "../helpers/seed";
@@ -80,7 +80,13 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
   beforeEach(() => {
     ds.fn = async () => "";
     sb.client = null;
+    // buildDossier reaches out for weather/geocoding; keep the pipeline offline.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({}) })),
+    );
   });
+  afterEach(() => vi.unstubAllGlobals());
 
   it("runs outline → sections → captions → save-draft and materialises a poll", async () => {
     const { postId, photoIds } = setup();
@@ -128,16 +134,26 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
     const caps = await call(captions, { postId, lang: "de" });
     expect(caps.body.count).toBe(photoIds.length);
 
+    // Location/coords come from the data (photo centroid here), date from the
+    // earliest photo — not the model's guess.
+    expect(o.location).toBe("Berner Oberland"); // author's typed location wins
+    expect(o.lat).not.toBeNull();
+    expect(o.date).toBe("2026-06-01");
+
     // 5. Save-draft materialises the :::poll into the interactions table.
     const saved = await call(saveDraft, {
       postId,
       title: o.title,
       excerpt: o.excerpt,
       location: o.location,
+      lat: o.lat,
+      lng: o.lng,
       cover_photo_id: o.cover_photo_id,
+      date: o.date,
       body: assembled,
     });
     expect(saved.status).toBe(200);
+    expect(store.posts[0].published_at).toContain("2026-06-01"); // dated from photos
 
     const interactions = store.interactions;
     expect(interactions).toHaveLength(1);

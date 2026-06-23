@@ -165,6 +165,7 @@ export function PostWorkspace({
       cover_image: s.cover_image ?? p.cover_image,
       lat: s.lat != null ? String(s.lat) : p.lat,
       lng: s.lng != null ? String(s.lng) : p.lng,
+      date: s.published_at ? s.published_at.slice(0, 10) : p.date,
     }));
     setOpen((o) => ({ ...o, article: true }));
   }

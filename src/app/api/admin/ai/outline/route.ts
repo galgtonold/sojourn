@@ -30,6 +30,7 @@ export type Outline = {
   lat: number | null;
   lng: number | null;
   cover_photo_id: string | null;
+  date?: string | null;
   sections: OutlineSection[];
 };
 
@@ -162,5 +163,17 @@ async function outline({
     const sec = outline.sections[i % outline.sections.length];
     sec.interaction_refs = [...(sec.interaction_refs ?? []), id];
   });
+
+  // The post's location and coordinates come from real data (GPX start / photos)
+  // when we have it — not the model's guess, which lands on the wrong place. The
+  // date defaults to the GPX/photo day. The author can still override any of
+  // these in the editor afterwards.
+  if (dossier.geo) {
+    if (dossier.geo.place) outline.location = dossier.geo.place;
+    if (dossier.geo.lat != null) outline.lat = dossier.geo.lat;
+    if (dossier.geo.lng != null) outline.lng = dossier.geo.lng;
+  }
+  outline.date = dossier.date;
+
   return { outline };
 }

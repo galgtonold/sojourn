@@ -166,6 +166,53 @@ describe("buildDossier", () => {
     expect(d.text).not.toContain("[ask:ix2]"); // AI-generated excluded
   });
 
+  it("derives location, coordinates and date from a GPX track (no geo-photos)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          address: { village: "Aschheim", county: "München", country: "Deutschland" },
+        }),
+      })),
+    );
+    const supabase = client({
+      posts: [{ id: "p1", title: "T", location: null, ai_notes: null, lat: null, lng: null }],
+      photos: [
+        { id: "ph1", post_id: "p1", taken_at: null, lat: null, lng: null, sort_order: 0 },
+      ],
+      tracks: [
+        {
+          post_id: "p1",
+          name: "Radrunde",
+          distance_m: 12000,
+          started_at: "2026-05-20T07:00:00Z",
+          geojson: {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [11.72, 48.17],
+                    [11.73, 48.18],
+                  ],
+                },
+                properties: {},
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const d = await buildDossier(supabase, "p1");
+    expect(d.geo?.place).toBe("Aschheim"); // town, not the nearest landmark
+    expect(d.geo?.lat).toBeCloseTo(48.17); // GPX start, not a photo
+    expect(d.geo?.lng).toBeCloseTo(11.72);
+    expect(d.date).toBe("2026-05-20"); // from the track's start time
+  });
+
   it("works with no trip, tracks or notes", async () => {
     const supabase = client({
       posts: [{ id: "p1", title: "T", location: null, ai_notes: null }],

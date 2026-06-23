@@ -17,6 +17,7 @@ const schema = z.object({
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
   cover_photo_id: z.string().uuid().nullable().optional(),
+  date: z.string().optional(),
   body: z.string().min(1),
 });
 
@@ -74,6 +75,19 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
   };
   if (cover?.url) update.cover_image = cover.url;
 
+  // Default the entry date from the GPX/photo day — but only when the author
+  // hasn't already set one, so a deliberate date is never overwritten.
+  if (p.date) {
+    const { data: existing } = await supabase
+      .from("posts")
+      .select("published_at")
+      .eq("id", p.postId)
+      .maybeSingle();
+    if (!existing?.published_at) {
+      update.published_at = new Date(`${p.date}T12:00:00.000Z`).toISOString();
+    }
+  }
+
   // Return the persisted fields so the editor can re-seed itself immediately
   // (the body here is the materialised version and the cover is fully resolved,
   // so this is the authoritative draft — no refetch race).
@@ -81,7 +95,7 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
     .from("posts")
     .update(update)
     .eq("id", p.postId)
-    .select("title, excerpt, body, location, lat, lng, cover_image")
+    .select("title, excerpt, body, location, lat, lng, cover_image, published_at")
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

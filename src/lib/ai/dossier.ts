@@ -2,7 +2,7 @@
 // model can narrate from, plus a style guide distilled from past posts.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { reverseGeocode } from "@/lib/ai/geocode";
+import { reverseGeocode, reverseGeocodeArea } from "@/lib/ai/geocode";
 import { dailyWeather } from "@/lib/ai/weather";
 
 export type DossierPhoto = {
@@ -29,6 +29,12 @@ export type Dossier = {
   postId: string;
   photos: DossierPhoto[];
   interactions: DossierInteraction[];
+  // Best automatic geo for the post: coordinates (GPX start → photo centroid →
+  // the post's own pin) and a town-level place name. Null when nothing is known.
+  geo: { lat: number | null; lng: number | null; place: string | null } | null;
+  // The entry's natural date (YYYY-MM-DD): earliest of the GPX track start and
+  // the photo timestamps. Null when neither carries a time.
+  date: string | null;
   text: string;
 };
 
@@ -79,7 +85,7 @@ export async function buildDossier(
 
   const { data: tracks } = await supabase
     .from("tracks")
-    .select("name, distance_m, geojson")
+    .select("name, distance_m, geojson, started_at")
     .eq("post_id", postId);
 
   // The author's own polls/quizzes for this post — these MUST be woven into the
@@ -345,7 +351,45 @@ export async function buildDossier(
     lines.push("", "Notizen des Autors:", post.ai_notes.trim());
   }
 
-  return { postId, photos, interactions, text: lines.join("\n") };
+  // The post's geo: coordinates straight from the GPX start (ground truth for a
+  // ride) → photo centroid → the post's own pin; and a town-level place name
+  // (the author's typed location wins, else the GPX area, else a photo place).
+  const gpxArea = gpxStartCoord
+    ? await reverseGeocodeArea(gpxStartCoord[1], gpxStartCoord[0])
+    : null;
+  let geoLat: number | null = null;
+  let geoLng: number | null = null;
+  if (gpxStartCoord) {
+    geoLat = gpxStartCoord[1];
+    geoLng = gpxStartCoord[0];
+  } else if (coordPhotos.length) {
+    geoLat =
+      coordPhotos.reduce((s, p) => s + (p.lat as number), 0) /
+      coordPhotos.length;
+    geoLng =
+      coordPhotos.reduce((s, p) => s + (p.lng as number), 0) /
+      coordPhotos.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } else if ((post as any)?.lat != null && (post as any)?.lng != null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    geoLat = (post as any).lat;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    geoLng = (post as any).lng;
+  }
+  const geoPlace = post?.location?.trim() || gpxArea || geoPlaces[0] || null;
+  const geo =
+    geoPlace || geoLat != null
+      ? { lat: geoLat, lng: geoLng, place: geoPlace }
+      : null;
+
+  // The entry date: earliest of the GPX start and the photo timestamps.
+  const trackDates = (tracks ?? [])
+    .map((t) => t.started_at as string | null)
+    .filter((s): s is string => Boolean(s))
+    .map((s) => s.slice(0, 10));
+  const date = [...photoDates, ...trackDates].sort()[0] ?? null;
+
+  return { postId, photos, interactions, geo, date, text: lines.join("\n") };
 }
 
 /**
