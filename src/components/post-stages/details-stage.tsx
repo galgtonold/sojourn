@@ -65,7 +65,7 @@ export function DetailsStage({
           <p className="text-xs text-sand-100/40">{t("admin.editor.cover.none")}</p>
         )}
         <div className="mt-2">
-          <ImageUploader value={cover_image} onChange={(url) => onField("cover_image", url)} />
+          <ImageUploader value={cover_image} onChange={(url) => onField("cover_image", url)} label="" />
         </div>
         <button
           type="button"

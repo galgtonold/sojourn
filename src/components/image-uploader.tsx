@@ -40,9 +40,12 @@ export function ImageUploader({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-sand-100/60">
-        {label ?? t("admin.upload.cover")}
-      </p>
+      {/* Pass label="" to suppress the heading when the caller already shows one. */}
+      {label !== "" && (
+        <p className="text-sm text-sand-100/60">
+          {label ?? t("admin.upload.cover")}
+        </p>
+      )}
 
       {value ? (
         <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-ink-800">
