@@ -25,6 +25,30 @@ const nextConfig = {
     // Lint is run explicitly in CI; don't fail production builds on it.
     ignoreDuringBuilds: true,
   },
+  // Security headers (S4). Applied to every response. `frame-ancestors` /
+  // X-Frame-Options stop the admin (and the whole site) being framed for
+  // clickjacking; nosniff, a strict referrer policy and HSTS are baseline
+  // hardening. A full Content-Security-Policy is deliberately NOT set here yet
+  // — it needs the script/style/connect/img sources scoped (self, Supabase,
+  // openfreemap tiles, unsplash) to avoid breaking the map and image pipeline;
+  // `frame-ancestors` alone is safe because it governs only embedding.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
