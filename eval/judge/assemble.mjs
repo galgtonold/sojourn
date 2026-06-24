@@ -27,6 +27,12 @@ const bySlug = Object.fromEntries(verdicts.map((v) => [v.slug, v]));
 
 const ICON = { pass: "✅", warn: "⚠️", fail: "❌" };
 const icon = (v) => ICON[v] ?? "·";
+// Judges sometimes return list items as objects ({claim, why, ...}) instead of
+// strings; render either without "[object Object]".
+const asText = (x) =>
+  typeof x === "string"
+    ? x
+    : [x?.claim, x?.issue, x?.note, x?.detail, x?.why].filter(Boolean).join(" — ") || JSON.stringify(x);
 const structScore = (slug) => {
   const c = structural[slug];
   if (!c) return "n/a";
@@ -84,13 +90,13 @@ for (const slug of Object.keys({ ...structural, ...bySlug })) {
   };
   dim("Faithfulness", v.faithfulness, (d) => [
     `- Uses the author's answers: ${d.uses_answers === false ? "no" : "yes"}`,
-    ...((d.contradictions ?? []).map((x) => `- Contradiction: ${x}`)),
+    ...((d.contradictions ?? []).map((x) => `- Contradiction: ${asText(x)}`)),
     ...(((d.contradictions ?? []).length === 0) ? ["- No contradictions with the provided facts."] : []),
   ]);
   dim("Photo↔text alignment", v.photo_alignment, (d) =>
-    (d.mismatches ?? []).length ? d.mismatches.map((x) => `- ${x}`) : ["- Captions/scenes match the photos."]);
+    (d.mismatches ?? []).length ? d.mismatches.map((x) => `- ${asText(x)}`) : ["- Captions/scenes match the photos."]);
   dim("Interactions", v.interactions, (d) =>
-    (d.issues ?? []).length ? d.issues.map((x) => `- ${x}`) : ["- Well-formed and grounded."]);
+    (d.issues ?? []).length ? d.issues.map((x) => `- ${asText(x)}`) : ["- Well-formed and grounded."]);
   dim("Prose & voice", v.prose, (d) => [`- ${d.notes ?? ""}`]);
 }
 
