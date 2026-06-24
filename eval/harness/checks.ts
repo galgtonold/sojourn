@@ -4,6 +4,7 @@ import type { LoadedFixture } from "./fixture";
 
 export type RunResult = {
   fixture: LoadedFixture;
+  title: string;
   questions: string[];
   body: string;
   interactions: { id: string; kind: "poll" | "quiz"; options: string[]; correct_index: number | null }[];
@@ -49,8 +50,11 @@ export function runChecks(run: RunResult): CheckResult[] {
   const greet = /(liebe gr(ü|ue)(ß|ss)e|herzlich|viele gr(ü|ue)(ß|ss)e)/i.test(body);
   add("no-signoff", !greet, "greeting/sign-off present");
 
-  const title = (body.match(/^#\s+(.+)$/m)?.[1] ?? body.split("\n")[0] ?? "").trim();
-  add("title-shape", title.split(/\s+/).length <= 8 && !title.includes(":"),
+  // The title is the saved post title (outline.title), not something parsed
+  // from the body — the body opens with section ## headings, no H1.
+  const title = (run.title ?? "").trim();
+  add("title-shape",
+    title.length > 0 && title.split(/\s+/).length <= 8 && !title.includes(":"),
     `title="${title}"`);
 
   add("has-headings", /^##\s/m.test(body), "no ## section headings");

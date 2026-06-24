@@ -8,6 +8,7 @@ const fx = { ask: "mach ein quiz mit 3 fragen", lang: "de", photoIds: ["p1"] } a
 function base(over: Partial<RunResult> = {}): RunResult {
   return {
     fixture: fx,
+    title: "Ein kurzer Spaziergang",
     questions: ["Wer war dabei?"],
     body: "## Titel\n\n[photo:p1]\n\n[ask:i1]",
     interactions: [{ id: "i1", kind: "quiz", options: ["a", "b"], correct_index: 0 }],
@@ -36,6 +37,14 @@ describe("checks", () => {
     expect(r.find((x) => x.name === "quiz-count")!.pass).toBe(true);
     expect(r.find((x) => x.name === "no-dangling-refs")!.pass).toBe(true);
     expect(r.find((x) => x.name === "interactions-valid")!.pass).toBe(true);
+  });
+
+  it("checks title shape from run.title, not the body", () => {
+    const ok = runChecks(base({ title: "One Day in Lisbon" }));
+    expect(ok.find((x) => x.name === "title-shape")!.pass).toBe(true);
+    // A colon-subtitle (and over-long) title fails — the case the Lisbon run hit.
+    const bad = runChecks(base({ title: "Morning: Miradouros and the Castle Walk" }));
+    expect(bad.find((x) => x.name === "title-shape")!.pass).toBe(false);
   });
 
   it("flags a malformed interaction block", () => {

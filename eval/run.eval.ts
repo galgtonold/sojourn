@@ -67,7 +67,7 @@ function jobOutput(jobId: string): string {
 async function runFixture(fx: LoadedFixture): Promise<RunResult> {
   sb.client = makeFakeSupabase(fx.db);
   await call(enrichPost, { postId: fx.postId });               // real vision over the photos
-  const q = await call(questions, { postId: fx.postId, notes: fx.notes });
+  const q = await call(questions, { postId: fx.postId, notes: fx.notes, lang: fx.lang });
   const qa = fx.answers;
   const o = (await call(outline, { postId: fx.postId, notes: fx.notes, answers: qa, lang: fx.lang })).outline;
 
@@ -98,7 +98,7 @@ async function runFixture(fx: LoadedFixture): Promise<RunResult> {
     options: (i.options as string[]) ?? [], correct_index: (i.correct_index as number | null) ?? null,
   }));
   const captionsOut = (s.photos ?? []).map((p) => ({ id: p.id as string, caption: (p.caption as string | null) ?? null }));
-  return { fixture: fx, questions: q.questions ?? [], body: (s.posts[0]?.body as string) ?? "", interactions, captions: captionsOut };
+  return { fixture: fx, title: (s.posts[0]?.title as string) ?? "", questions: q.questions ?? [], body: (s.posts[0]?.body as string) ?? "", interactions, captions: captionsOut };
 }
 
 function fixtureDirs(): string[] {

@@ -26,7 +26,7 @@ function fixtureSection(o: FixtureOutcome): string {
     ``,
     `### Generated questions`, run.questions.map((q) => `- ${q}`).join("\n") || "(none)",
     ``,
-    `### Generated draft`, fenced(run.body, "markdown"),
+    `### Generated draft`, `**Title:** ${run.title || "(none)"}`, ``, fenced(run.body, "markdown"),
     ``,
     `### Interactions`, quiz || "(none)",
     ``,

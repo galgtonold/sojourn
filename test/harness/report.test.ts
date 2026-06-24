@@ -10,7 +10,7 @@ import type { LoadedFixture } from "../../eval/harness/fixture";
 const fx = { slug: "t1", lang: "de", ask: "mach ein quiz mit 1 frage", photoIds: ["p1"],
   reference: "Ref text" } as unknown as LoadedFixture;
 const run: RunResult = {
-  fixture: fx, questions: ["Q?"], body: "## H\n\n[ask:i1]",
+  fixture: fx, title: "Test Titel", questions: ["Q?"], body: "## H\n\n[ask:i1]",
   interactions: [{ id: "i1", kind: "quiz", options: ["a", "b"], correct_index: 0 }],
   captions: [{ id: "p1", caption: "cap" }],
 };
@@ -37,6 +37,7 @@ describe("writeReport", () => {
       reference: "Human ref here", trackPresent: false } as unknown as LoadedFixture;
     const runWithFence: RunResult = {
       fixture: fxWithFence,
+      title: "Fence Test",
       questions: [],
       body: "## H\n\n```\ncode\n```\n\ntail-text",
       interactions: [],
