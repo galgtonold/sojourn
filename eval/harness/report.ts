@@ -5,12 +5,18 @@ import type { RunResult, CheckResult } from "./checks";
 
 export type FixtureOutcome = { run: RunResult; checks: CheckResult[] };
 
+function fenced(content: string, info = ""): string {
+  const longest = Math.max(0, ...[...content.matchAll(/`+/g)].map((m) => m[0].length));
+  const ticks = "`".repeat(Math.max(3, longest + 1));
+  return `${ticks}${info}\n${content}\n${ticks}`;
+}
+
 function fixtureSection(o: FixtureOutcome): string {
   const { run, checks } = o;
   const fx = run.fixture;
   const checkLines = checks.map((c) => `- ${c.pass ? "✅" : "❌"} **${c.name}** ${c.detail}`).join("\n");
   const quiz = run.interactions
-    .map((i) => `  - (${i.kind}) ${i.options.join(" / ")}${i.correct_index != null ? ` [correct: ${i.correct_index}]` : ""}`)
+    .map((i) => `  - (${i.kind}) ${(i.options ?? []).join(" / ")}${i.correct_index != null ? ` [correct: ${i.correct_index}]` : ""}`)
     .join("\n");
   return [
     `## ${fx.slug}`,
@@ -20,13 +26,13 @@ function fixtureSection(o: FixtureOutcome): string {
     ``,
     `### Generated questions`, run.questions.map((q) => `- ${q}`).join("\n") || "(none)",
     ``,
-    `### Generated draft`, "```markdown", run.body, "```",
+    `### Generated draft`, fenced(run.body, "markdown"),
     ``,
     `### Interactions`, quiz || "(none)",
     ``,
     `### Captions`, run.captions.map((c) => `- ${c.id}: ${c.caption ?? "(none)"}`).join("\n"),
     ``,
-    `### Human reference`, fx.reference ? `\n\`\`\`markdown\n${fx.reference}\n\`\`\`` : "(none)",
+    `### Human reference`, fx.reference ? `\n${fenced(fx.reference, "markdown")}` : "(none)",
     ``,
     `---`, ``,
   ].join("\n");

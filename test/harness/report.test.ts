@@ -20,8 +20,34 @@ describe("writeReport", () => {
     const dir = mkdtempSync(join(tmpdir(), "evalrun-"));
     const { reportPath, jsonPath } = writeReport(
       [{ run, checks: [{ name: "quiz-count", pass: true, detail: "" }] }], dir);
-    expect(readFileSync(reportPath, "utf8")).toContain("## t1");
+    const md = readFileSync(reportPath, "utf8");
+    expect(md).toContain("## t1");
+    expect(md).toContain("✅");
+    expect(md).toContain("quiz-count");
+    expect(md).toContain("Q?");
+    expect(md).toContain("cap");
+    expect(md).toContain("Ref text");
+    expect(md).toContain("a / b");
     const json = JSON.parse(readFileSync(jsonPath, "utf8"));
     expect(json.t1["quiz-count"]).toBe(true);
+  });
+
+  it("handles body with triple-backtick fenced block without corrupting later sections", () => {
+    const fxWithFence = { slug: "t2", lang: "en", ask: null, photoIds: [],
+      reference: "Human ref here", trackPresent: false } as unknown as LoadedFixture;
+    const runWithFence: RunResult = {
+      fixture: fxWithFence,
+      questions: [],
+      body: "## H\n\n```\ncode\n```\n\ntail-text",
+      interactions: [],
+      captions: [],
+    };
+    const dir = mkdtempSync(join(tmpdir(), "evalrun-fence-"));
+    const { reportPath } = writeReport(
+      [{ run: runWithFence, checks: [] }], dir);
+    const md = readFileSync(reportPath, "utf8");
+    // The reference section must appear intact after the body fence
+    expect(md).toContain("### Human reference");
+    expect(md).toContain("Human ref here");
   });
 });
