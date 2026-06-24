@@ -50,6 +50,7 @@ export type LoadedFixture = {
   photoIds: string[];
   reference?: string;
   trackPresent: boolean;
+  trip: { title: string; start_date: string };
 };
 
 function dataUrl(path: string): string {
@@ -96,5 +97,6 @@ export function loadFixture(dir: string): LoadedFixture {
     reference: m.reference && existsSync(join(dir, m.reference))
       ? readFileSync(join(dir, m.reference), "utf8") : undefined,
     trackPresent: Boolean(m.track),
+    trip: { title: m.trip.title, start_date: m.trip.start_date },
   };
 }

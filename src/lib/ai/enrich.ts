@@ -91,9 +91,12 @@ export async function describeImage(
   meta?: UsageMeta,
 ): Promise<string | null> {
   if (!isVisionConfigured) return null;
-  const abs = imageUrl.startsWith("http")
-    ? imageUrl
-    : `${env.siteUrl}${imageUrl}`;
+  // Absolute URLs (http) and inline data: URIs go to the vision model as-is;
+  // only a site-relative storage path needs the origin prepended.
+  const abs =
+    imageUrl.startsWith("http") || imageUrl.startsWith("data:")
+      ? imageUrl
+      : `${env.siteUrl}${imageUrl}`;
   const placeHint = place
     ? `Bekannter Aufnahmeort (zur geografischen Einordnung, nicht erfinden): ${place}.\n`
     : "";

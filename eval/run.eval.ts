@@ -1,7 +1,7 @@
 // eval/run.eval.ts — vitest entry for the AI eval harness.
 // Run with:  EVAL_FAKE=1 npm run eval
 import { expect, it, vi } from "vitest";
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeFakeSupabase } from "../test/helpers/fake-supabase";
 import { installFetchCache, type CacheKind } from "./harness/cache";
@@ -9,6 +9,7 @@ import { loadFixture, type LoadedFixture } from "./harness/fixture";
 import { runChecks, type RunResult } from "./harness/checks";
 import { writeReport, type FixtureOutcome } from "./harness/report";
 import { installFakeBackend } from "./harness/fake-backend";
+import { buildPacket } from "./harness/packet";
 import {
   maskProtectedTokens, allMasksPresent, restoreProtectedTokens, stripWrappingCodeFence,
 } from "@/lib/ai/token-mask";
@@ -67,13 +68,19 @@ function jobOutput(jobId: string): string {
   return ((store().ai_jobs ?? []).find((j) => j.id === jobId)?.output as string) ?? "";
 }
 
-async function runFixture(fx: LoadedFixture): Promise<RunResult> {
+async function runFixture(fx: LoadedFixture): Promise<{ run: RunResult; packet: string }> {
   sb.client = makeFakeSupabase(fx.db);
   // The author's `ask` (e.g. "a quiz with 3 questions") is a generation
   // instruction — in the real app it lives in ai_notes, so fold it into the
   // notes every step sees, otherwise the pipeline never learns to honour it.
   const notes = [fx.notes, fx.ask].filter(Boolean).join("\n\n") || undefined;
-  await call(enrichPost, { postId: fx.postId });               // real vision over the photos
+  // Vision enrichment runs in batches of 4 and reports how many remain; the real
+  // client loops until done, so mirror that — otherwise only the first 4 photos
+  // ever get a description.
+  for (let guard = 0; guard < 20; guard++) {
+    const r = await call(enrichPost, { postId: fx.postId });
+    if (((r?.remaining as number) ?? 0) === 0) break;
+  }
   const q = await call(questions, { postId: fx.postId, notes, lang: fx.lang });
   const qa = fx.answers;
   const o = (await call(outline, { postId: fx.postId, notes, answers: qa, lang: fx.lang })).outline;
@@ -111,7 +118,8 @@ async function runFixture(fx: LoadedFixture): Promise<RunResult> {
     options: (i.options as string[]) ?? [], correct_index: (i.correct_index as number | null) ?? null,
   }));
   const captionsOut = (s.photos ?? []).map((p) => ({ id: p.id as string, caption: (p.caption as string | null) ?? null }));
-  return { fixture: fx, title: (s.posts[0]?.title as string) ?? "", questions: q.questions ?? [], body: (s.posts[0]?.body as string) ?? "", interactions, captions: captionsOut };
+  const run: RunResult = { fixture: fx, title: (s.posts[0]?.title as string) ?? "", questions: q.questions ?? [], body: (s.posts[0]?.body as string) ?? "", interactions, captions: captionsOut };
+  return { run, packet: buildPacket(fx, s) };
 }
 
 function fixtureDirs(): string[] {
@@ -135,16 +143,23 @@ it("runs the eval and writes a report", async () => {
     : installFetchCache({ dir: join(process.cwd(), "eval/.cache"), refresh: refreshSet() });
 
   const outcomes: FixtureOutcome[] = [];
+  const packets: { slug: string; packet: string }[] = [];
   for (const dir of fixtureDirs()) {
     const fx = loadFixture(dir);
-    const run = await runFixture(fx);
+    const { run, packet } = await runFixture(fx);
     outcomes.push({ run, checks: runChecks(run) });
+    packets.push({ slug: fx.slug, packet });
   }
   restore();
 
   const runDir = join(process.cwd(), "eval/runs", new Date().toISOString().replace(/[:.]/g, "-"));
-  mkdirSync(runDir, { recursive: true });
+  mkdirSync(join(runDir, "packets"), { recursive: true });
   const { reportPath } = writeReport(outcomes, runDir);
+  // One self-contained judge packet per fixture (ground truth + generated
+  // artifacts), the input for the quality/truthfulness judge subagents.
+  for (const { slug, packet } of packets) {
+    writeFileSync(join(runDir, "packets", `${slug}.md`), packet);
+  }
   expect(existsSync(reportPath)).toBe(true);
   console.log(`\n📋 eval report: ${reportPath}\n`);
 }, 600_000);
