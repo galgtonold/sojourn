@@ -12,21 +12,30 @@ import { installFakeBackend } from "./harness/fake-backend";
 
 // Supabase is always faked; the model is controlled at the fetch boundary below.
 const sb = vi.hoisted(() => ({ client: null as unknown }));
+// fake must be read inside vi.hoisted so it's available when vi.mock factories run
+// (vi.mock is hoisted above all module-level code by vitest).
+const { fake } = vi.hoisted(() => ({ fake: process.env.EVAL_FAKE === "1" }));
 vi.mock("@/lib/supabase/server", () => ({ getServerSupabase: async () => sb.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => sb.client }));
 vi.mock("@/lib/env", async (orig) => {
   const actual = await orig<typeof import("@/lib/env")>();
   return {
     ...actual,
+    // Always: make the vision path run and force the synchronous job fallback.
     isVisionConfigured: true,
-    isAiConfigured: true,
     isEdgeJobConfigured: false,
+    // Fake mode only: override AI credentials (the fake backend intercepts fetch,
+    // so the values are never actually sent). Real mode: let actual creds through
+    // so a cache miss reaches the real provider.
+    ...(fake ? { isAiConfigured: true } : {}),
     env: {
       ...actual.env,
-      deepseekApiKey: "fake-key",
-      visionApiKey: "k",
-      visionBaseUrl: "https://vision.test/v1",
-      visionModel: "v",
+      ...(fake ? {
+        deepseekApiKey: "fake-key",
+        visionApiKey: "k",
+        visionBaseUrl: "https://vision.test/v1",
+        visionModel: "v",
+      } : {}),
     },
   };
 });
@@ -85,7 +94,7 @@ async function runFixture(fx: LoadedFixture): Promise<RunResult> {
     options: (i.options as string[]) ?? [], correct_index: (i.correct_index as number | null) ?? null,
   }));
   const captionsOut = (s.photos ?? []).map((p) => ({ id: p.id as string, caption: (p.caption as string | null) ?? null }));
-  return { fixture: fx, questions: q.questions ?? [], body: s.posts[0].body as string, interactions, captions: captionsOut };
+  return { fixture: fx, questions: q.questions ?? [], body: (s.posts[0]?.body as string) ?? "", interactions, captions: captionsOut };
 }
 
 function fixtureDirs(): string[] {

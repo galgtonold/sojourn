@@ -14,14 +14,16 @@ export function installFakeBackend(): () => void {
     if (url.includes("open-meteo.com")) return new Response(JSON.stringify({ daily: {} }), { status: 200 });
     if (url.includes("komoot") || url.includes("nominatim")) return new Response(JSON.stringify({}), { status: 200 });
     if (url.includes("/chat/completions")) {
+      // vision path → /api/admin/ai/enrich-post: prompt contains an image_url content part
       if (body.includes('"image_url"')) return chat("Eine Testbeschreibung des Fotos.");
-      // Outline: uniquely contains "Gliederungsplan" in the user prompt
+      // outline path → /api/admin/ai/outline: user prompt uniquely contains "Gliederungsplan"
       if (body.includes("Gliederungsplan")) return chat(JSON.stringify({ title: "Morgenspaziergang", excerpt: "Ein kurzer Spaziergang.", location: "Grindelwald", lat: 46.62, lng: 8.04, cover_photo_id: null, date: "2024-07-12", sections: [{ heading: "Aufbruch", beat: "Start des Spaziergangs.", photo_ids: [], interaction: null }] }));
-      // Questions: uniquely contains {"questions": in the model response schema
+      // questions path → /api/admin/ai/questions: model response schema contains {"questions":
       if (body.includes('{"questions":')) return chat(JSON.stringify({ questions: ["Wer war dabei?", "Was war der Höhepunkt?"] }));
-      // Captions: uniquely contains "items" in the model response schema
+      // captions path → /api/admin/ai/captions: model response schema contains "items":
       if (body.includes('"items":') || body.includes('"items" :')) return chat(JSON.stringify({ items: [] }));
-      // Section / homogenize: return markdown prose
+      // Fall-through: section/homogenize paths → /api/admin/ai/section and /api/admin/ai/homogenize.
+      // Both return markdown prose. Do NOT add a throw here — this fall-through is intentional and required.
       return chat("## Aufbruch\n\nEin kurzer Absatz über den Spaziergang.");
     }
     return original(input as string, init);
