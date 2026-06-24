@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 // A value that changes on every deploy, exposed to the client so the service
 // worker can name its cache per-build and purge the previous one on activate.
 // A static cache name (the old "v1") never updates, so stale assets accumulate
@@ -51,4 +53,16 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with Sentry. With no DSN / org / auth token set, this is a no-op at
+// runtime and skips source-map upload at build — so it's safe before the Sentry
+// project exists. Once you add NEXT_PUBLIC_SENTRY_DSN (and optionally
+// SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN for readable stack traces),
+// errors start flowing with no further code change.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Quiet during local builds; verbose only in CI.
+  silent: !process.env.CI,
+  // Don't phone home build telemetry to Sentry.
+  telemetry: false,
+});
