@@ -1,0 +1,14 @@
+{
+  "slug": "sample-trip",
+  "source": "synthetic sample (committed) — not a real trip",
+  "lang": "de",
+  "ask": "mach ein quiz mit 2 fragen",
+  "notes": "Kurzer Test-Spaziergang am Morgen.",
+  "answers": [],
+  "trip": { "title": "Beispiel-Spaziergang", "start_date": "2024-07-12" },
+  "photos": [
+    { "file": "photos/1.jpg", "lat": 46.62, "lng": 8.04,
+      "taken_at": "2024-07-12T08:30:00Z", "place_name": "Grindelwald" }
+  ],
+  "reference": "reference.md"
+}
