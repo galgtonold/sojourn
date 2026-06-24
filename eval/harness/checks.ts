@@ -13,11 +13,19 @@ export type RunResult = {
 
 export type CheckResult = { name: string; pass: boolean; detail: string };
 
-const NUM: Record<string, number> = { ein: 1, eine: 1, eins: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6 };
+const NUM: Record<string, number> = {
+  ein: 1, eine: 1, eins: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6,
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+};
 
+// Parses an explicit quiz request in either language: "ein Quiz mit 3 Fragen"
+// or "a quiz with 3 questions". Returns the requested count, or null if the ask
+// doesn't request a specific number.
 export function requestedQuizCount(ask: string | undefined): number | null {
   if (!ask) return null;
-  const m = ask.toLowerCase().match(/quiz\s+mit\s+(\d+|ein|eine|zwei|drei|vier|fünf|sechs)\s+frage/);
+  const m = ask.toLowerCase().match(
+    /quiz\s+(?:mit|with)\s+(\d+|ein|eine|eins|zwei|drei|vier|fünf|sechs|one|two|three|four|five|six)\s+(?:frage|question)/,
+  );
   if (!m) return null;
   return /^\d+$/.test(m[1]) ? Number(m[1]) : (NUM[m[1]] ?? null);
 }

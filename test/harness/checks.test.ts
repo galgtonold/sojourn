@@ -23,6 +23,12 @@ describe("checks", () => {
     expect(requestedQuizCount("schreib einfach")).toBeNull();
   });
 
+  it("parses an English quiz request", () => {
+    expect(requestedQuizCount("please add a quiz with 3 questions")).toBe(3);
+    expect(requestedQuizCount("include a quiz with two questions")).toBe(2);
+    expect(requestedQuizCount("just write it nicely")).toBeNull();
+  });
+
   it("flags a quiz-count shortfall", () => {
     const r = runChecks(base()); // asked 3, got 1
     const c = r.find((x) => x.name === "quiz-count")!;

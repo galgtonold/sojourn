@@ -1,8 +1,22 @@
 // eval/harness/fixture.ts
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { z } from "zod";
+
+// A deterministic, valid UUID derived from a seed. Fixture post/photo ids must
+// be stable across runs: a random id changes the dossier text (it carries
+// [photo:<id>] tags) on every run, which busts the content-addressed request
+// cache and makes generation non-deterministic. Shaped as a v5 UUID so the
+// routes' z.string().uuid() accepts it.
+function stableUuid(seed: string): string {
+  const h = createHash("sha256").update(seed).digest("hex");
+  const variant = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  return (
+    h.slice(0, 8) + "-" + h.slice(8, 12) + "-5" + h.slice(13, 16) + "-" +
+    variant + h.slice(17, 20) + "-" + h.slice(20, 32)
+  );
+}
 
 const manifest = z.object({
   slug: z.string(),
@@ -45,10 +59,10 @@ function dataUrl(path: string): string {
 
 export function loadFixture(dir: string): LoadedFixture {
   const m = manifest.parse(JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8")));
-  const postId = randomUUID();
+  const postId = stableUuid(m.slug);
   const photoIds: string[] = [];
   const photos = m.photos.map((p, i) => {
-    const id = randomUUID();
+    const id = stableUuid(`${m.slug}:photo:${i}`);
     photoIds.push(id);
     return {
       id, post_id: postId,
@@ -67,10 +81,17 @@ export function loadFixture(dir: string): LoadedFixture {
     ai_notes: m.notes ?? null, trip_id: null, published: false, published_at: null,
     source_locale: m.lang, translation_status: "none", i18n: null, i18n_source_hash: null,
   };
+  // A track file is a JSON object matching the `tracks` row the pipeline reads
+  // ({ name, distance_m, geojson, started_at }); attach it to this post so the
+  // GPX path (location grounding, weather fallback, the "Routen (GPX)" dossier
+  // section) is genuinely exercised. Absent → no track, as before.
+  const tracks = m.track
+    ? [{ post_id: postId, ...(JSON.parse(readFileSync(join(dir, m.track), "utf8")) as Record<string, unknown>) }]
+    : [];
   return {
     slug: m.slug, lang: m.lang, ask: m.ask, notes: m.notes,
     answers: m.answers.map((x) => ({ question: x.q, answer: x.a })),
-    db: { posts: [post], photos, tracks: [], interactions: [] },
+    db: { posts: [post], photos, tracks, interactions: [] },
     postId, photoIds,
     reference: m.reference && existsSync(join(dir, m.reference))
       ? readFileSync(join(dir, m.reference), "utf8") : undefined,

@@ -9,6 +9,9 @@ import { loadFixture, type LoadedFixture } from "./harness/fixture";
 import { runChecks, type RunResult } from "./harness/checks";
 import { writeReport, type FixtureOutcome } from "./harness/report";
 import { installFakeBackend } from "./harness/fake-backend";
+import {
+  maskProtectedTokens, allMasksPresent, restoreProtectedTokens, stripWrappingCodeFence,
+} from "@/lib/ai/token-mask";
 
 // Supabase is always faked; the model is controlled at the fetch boundary below.
 const sb = vi.hoisted(() => ({ client: null as unknown }));
@@ -66,25 +69,35 @@ function jobOutput(jobId: string): string {
 
 async function runFixture(fx: LoadedFixture): Promise<RunResult> {
   sb.client = makeFakeSupabase(fx.db);
+  // The author's `ask` (e.g. "a quiz with 3 questions") is a generation
+  // instruction — in the real app it lives in ai_notes, so fold it into the
+  // notes every step sees, otherwise the pipeline never learns to honour it.
+  const notes = [fx.notes, fx.ask].filter(Boolean).join("\n\n") || undefined;
   await call(enrichPost, { postId: fx.postId });               // real vision over the photos
-  const q = await call(questions, { postId: fx.postId, notes: fx.notes, lang: fx.lang });
+  const q = await call(questions, { postId: fx.postId, notes, lang: fx.lang });
   const qa = fx.answers;
-  const o = (await call(outline, { postId: fx.postId, notes: fx.notes, answers: qa, lang: fx.lang })).outline;
+  const o = (await call(outline, { postId: fx.postId, notes, answers: qa, lang: fx.lang })).outline;
 
   const parts: string[] = [];
   for (let i = 0; i < o.sections.length; i++) {
     const { jobId } = await call(section, {
       postId: fx.postId, index: i, total: o.sections.length, title: o.title,
       section: o.sections[i], outline: o.sections.map((s: { heading: string; beat?: string }) => ({ heading: s.heading, beat: s.beat })),
-      notes: fx.notes, answers: qa, lang: fx.lang,
+      notes, answers: qa, lang: fx.lang,
     });
     parts.push(jobOutput(jobId));
   }
-  let body = parts.join("\n\n");
+  // Homogenize exactly as the client does: mask every [photo:]/[ask:] tag to a
+  // [[KEEP-n]] sentinel first, then restore the originals — otherwise the rewrite
+  // mangles the tags (the route's prompt assumes a masked body). On any dropped
+  // sentinel, fall back to the raw section concatenation.
+  const rawBody = parts.join("\n\n");
+  let body = rawBody;
   if (parts.length >= 2) {
-    const { jobId } = await call(homogenize, { postId: fx.postId, lang: fx.lang, body });
-    const out = jobOutput(jobId);
-    if (out) body = out;
+    const { masked, tokens } = maskProtectedTokens(rawBody);
+    const { jobId } = await call(homogenize, { postId: fx.postId, lang: fx.lang, body: masked });
+    const out = stripWrappingCodeFence(jobOutput(jobId));
+    if (out && allMasksPresent(out, tokens)) body = restoreProtectedTokens(out, tokens);
   }
   await call(captions, { postId: fx.postId, lang: fx.lang, body });
   await call(saveDraft, {

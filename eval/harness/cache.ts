@@ -55,6 +55,10 @@ export function installFetchCache(opts: { dir: string; refresh: Set<CacheKind> |
       return new Response(s.body, { status: s.status, headers: s.headers });
     }
     const res = await original(input, init);
+    // Never cache a failed response: a transient error (429/5xx) during a run
+    // would otherwise be replayed forever, poisoning every later run with an
+    // empty/error result. Let it through uncached so the next run retries.
+    if (!res.ok) return res;
     const text = await res.clone().text();
     const stored: Stored = { status: res.status, headers: [...res.headers.entries()], body: text };
     writeFileSync(file, JSON.stringify(stored));
