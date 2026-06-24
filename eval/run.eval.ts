@@ -18,6 +18,10 @@ const { fake } = vi.hoisted(() => ({ fake: process.env.EVAL_FAKE === "1" }));
 vi.mock("@/lib/supabase/server", () => ({ getServerSupabase: async () => sb.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => sb.client }));
 vi.mock("@/lib/env", async (orig) => {
+  // Real runs: load .env.local BEFORE the real env module evaluates, so its
+  // derived flags (isAiConfigured, …) see the operator's provider keys. (Fake
+  // runs don't need real creds — the fake backend intercepts fetch.)
+  if (!fake) await import("./harness/load-env");
   const actual = await orig<typeof import("@/lib/env")>();
   return {
     ...actual,
