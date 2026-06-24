@@ -1,5 +1,5 @@
 // test/harness/cache.test.ts
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import { classify, installFetchCache, type CacheKind } from "../../eval/harness/
 
 const dir = mkdtempSync(join(tmpdir(), "evalcache-"));
 afterEach(() => vi.unstubAllGlobals());
+afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 function stubFetch() {
   let calls = 0;

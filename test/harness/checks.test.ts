@@ -35,5 +35,12 @@ describe("checks", () => {
     }));
     expect(r.find((x) => x.name === "quiz-count")!.pass).toBe(true);
     expect(r.find((x) => x.name === "no-dangling-refs")!.pass).toBe(true);
+    expect(r.find((x) => x.name === "interactions-valid")!.pass).toBe(true);
+  });
+
+  it("flags a malformed interaction block", () => {
+    // A quiz block with no marked correct answer is malformed.
+    const r = runChecks(base({ body: "## Titel\n\n:::quiz Frage?\n- a\n- b\n:::" }));
+    expect(r.find((x) => x.name === "interactions-valid")!.pass).toBe(false);
   });
 });

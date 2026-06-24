@@ -33,6 +33,11 @@ export function runChecks(run: RunResult): CheckResult[] {
   const dangling = issues.filter((i) => i.type === "unknown-photo" || i.type === "unknown-ask");
   add("no-dangling-refs", dangling.length === 0, dangling.map((d) => JSON.stringify(d)).join(", "));
 
+  // validateBody also flags malformed :::poll/:::quiz blocks it finds in the body.
+  const badBlocks = issues.filter((i) => i.type === "bad-interaction");
+  add("interactions-valid", badBlocks.length === 0,
+    badBlocks.length ? `${badBlocks.length} malformed :::poll/:::quiz block(s)` : "");
+
   add("no-raw-blocks", !body.includes(":::poll") && !body.includes(":::quiz"),
     "raw :::poll/:::quiz left in saved body");
 
