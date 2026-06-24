@@ -123,6 +123,12 @@ async function sectionRoute({
     "Tiere oder Sichtachsen („zwischen den Bäumen tauchten die Dächer auf“). " +
     "Frei erfinden darfst du NUR Stimmung, Gefühl und Licht — keine konkreten " +
     "Ereignisse und keine überprüfbaren Tatsachen.\n" +
+    "- Erfinde auch NICHT das Verbindende zwischen den belegten Momenten: keine " +
+    "ausgedachten Anmarschwege, Zwischenstationen, Verkehrsmittel oder " +
+    "Zeitangaben („gegen sieben saßen wir im Zug“), keine erfundenen Panoramen " +
+    "oder Fernblicke und nichts, was „unterwegs“ gesehen oder gehört wurde, " +
+    "sofern es nicht im Material steht. Verbinde die belegten Szenen knapp und " +
+    "über die Stimmung, nicht über ausgedachte Ereignisse.\n" +
     "- Lieber kurz als erfunden: Ist das Material für einen Moment dünn, schreibe " +
     "KNAPPER und bleib bei der Stimmung — fülle die Lücke NICHT mit ausgedachten " +
     "Szenen. Lebendigkeit entsteht aus dem, was wirklich da ist, plus Stimmung, " +
@@ -182,7 +188,7 @@ async function sectionRoute({
     // answer, so any tight cap risks truncating the prose — mid-sentence, or
     // mid-poll (leaving a bare ":::poll"). A section's actual prose is short, so
     // set the cap absurdly high: it only ever acts as a stop, never a squeeze.
-    { model: aiModels.reasoner, temperature: 0.8, maxTokens: 32000, messages },
+    { model: aiModels.reasoner, temperature: 0.5, maxTokens: 32000, messages },
     { operation: "section", postId, userId: user.id },
   );
   return { jobId };
