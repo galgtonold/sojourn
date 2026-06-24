@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ai:live": "RUN_LIVE_AI=1 vitest run test/e2e/live.test.ts",
+    "eval": "vitest run --config vitest.eval.config.ts",
     "gen:vapid": "web-push generate-vapid-keys"
   },
   "dependencies": {

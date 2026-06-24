@@ -43,3 +43,8 @@ yarn-error.log*
 /.idea
 /.vscode
 coverage/
+
+# eval harness (sourced trip data, runs, cache — never committed)
+/eval/fixtures
+/eval/runs
+/eval/.cache
