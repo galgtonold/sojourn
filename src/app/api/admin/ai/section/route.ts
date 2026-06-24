@@ -114,13 +114,19 @@ async function sectionRoute({
     "\n" +
     styleGuide +
     "\n\nRegeln:\n" +
-    "- Erfinde NICHTS dazu, was der Autor erlebt hat. Was gesehen, getan, gehört, " +
-    "gegessen oder gesagt wurde, stammt AUSSCHLIESSLICH aus dem Material (Fotos, " +
-    "Notizen, Antworten). Lege dem Autor keine konkrete Beobachtung, Handlung, " +
-    "Begegnung oder Aussage in den Mund, die dort nicht steht — kein erfundenes " +
-    "Trinken aus einer Quelle, kein erfundenes Zitat, keine erfundenen Tiere, " +
-    "Personen oder Sichtachsen. Frei erfinden darfst du NUR Stimmung und " +
-    "Atmosphäre (Gefühle, Licht, Ruhe), keine überprüfbaren Tatsachen.\n" +
+    "- Erfinde KEINE Erlebnisse. Alles, was der Autor konkret sieht, tut, hört, " +
+    "riecht, schmeckt, sagt oder erlebt, MUSS aus dem Material stammen (Fotos, " +
+    "Notizen, Antworten). Erfinde insbesondere NICHT: ausgemalte Ess- oder " +
+    "Verkostungsszenen („wir tauchten den Löffel in die Creme …“), Café- oder " +
+    "Innenraum-Szenen, Geräusche (Vögel, Musik, Radio), konkrete Handgriffe und " +
+    "Abläufe („er hob den Balg und öffnete das Türchen“), Begegnungen, Zitate, " +
+    "Tiere oder Sichtachsen („zwischen den Bäumen tauchten die Dächer auf“). " +
+    "Frei erfinden darfst du NUR Stimmung, Gefühl und Licht — keine konkreten " +
+    "Ereignisse und keine überprüfbaren Tatsachen.\n" +
+    "- Lieber kurz als erfunden: Ist das Material für einen Moment dünn, schreibe " +
+    "KNAPPER und bleib bei der Stimmung — fülle die Lücke NICHT mit ausgedachten " +
+    "Szenen. Lebendigkeit entsteht aus dem, was wirklich da ist, plus Stimmung, " +
+    "nicht aus erfundenen Details.\n" +
     "- Zu einem BERÜHMTEN Ort darfst du sparsam einen kurzen, allgemein bekannten " +
     "und sicher zutreffenden Fakt als Hintergrund einflechten (z. B. eine bekannte " +
     "Bauweise oder Geschichte) — aber nur, wenn du dir der Richtigkeit wirklich " +
