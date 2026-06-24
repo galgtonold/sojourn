@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Edge runtime (middleware). Same posture as the Node server config.
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const dsn = process.env.SENTRY_DSN;
 
 Sentry.init({
   dsn,

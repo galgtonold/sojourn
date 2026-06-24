@@ -55,7 +55,7 @@ const nextConfig = {
 
 // Wrap with Sentry. With no DSN / org / auth token set, this is a no-op at
 // runtime and skips source-map upload at build — so it's safe before the Sentry
-// project exists. Once you add NEXT_PUBLIC_SENTRY_DSN (and optionally
+// project exists. Once you add SENTRY_DSN (and optionally
 // SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN for readable stack traces),
 // errors start flowing with no further code change.
 export default withSentryConfig(nextConfig, {
