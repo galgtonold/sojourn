@@ -62,11 +62,18 @@ Read, in order:
    model's per-photo descriptions, place names, track) and the GENERATED draft,
    captions, and interactions under evaluation, plus a reference for coverage only.
 
-Cardinal rule: a factual claim about a visited place is a FABRICATION unless it
-traces to the packet's ground truth (a photo description, a note, an answer, or a
-place name). A claim being true in the real world is NOT grounding — judge only
-against the packet. Do NOT use your own knowledge of these places. Atmosphere,
-mood, and feeling are allowed invention; facts about the sites are not.
+Cardinal rule — never make anything up, in two forms (both fail truthfulness):
+(1) INVENTED EXPERIENCE — the draft says the AUTHOR saw / did / heard / met /
+tasted a specific thing not in the packet's ground truth (photo descriptions,
+notes, answers, place name). This always fails, however plausible.
+(2) FALSE / SHAKY FACT — a stated fact that is untrue, or that you are not
+genuinely confident is correct.
+ALLOWED: atmosphere, mood, feeling; AND accurate, well-known, confident context
+about a famous place (a true historical/cultural/architectural fact, lightly woven
+in as a narrator). USE your own knowledge to verify any such fact is genuinely
+true — pass it if it is, flag it if it's wrong or uncertain. The decisive question
+per claim: is this the AUTHOR'S specific first-hand experience (must be grounded in
+the packet) or general true context about the place (allowed if accurate)?
 
 Write your verdict as JSON to <REPO>/<RUNDIR>/judge-<SLUG>.json using the Write
 tool, matching the schema in JUDGING.md exactly (truthfulness{verdict,
@@ -107,11 +114,12 @@ node eval/judge/assemble.mjs <RUNDIR>     # writes <RUNDIR>/quality-report.md
 ## 5. The iteration loop
 
 The report exists to drive generation fixes:
-1. Identify the systemic failure (e.g. the generator stating site-facts it was
-   never given).
+1. Identify the systemic failure (e.g. the generator inventing the author's own
+   experiences — things seen, done, or said that were never provided).
 2. Change the **generation** prompts (`outline`/`section` routes) — e.g. add:
-   *state facts only if they appear in the provided material; invent mood and
-   atmosphere, never facts about the places.*
+   *never invent the author's experiences (what they saw, did, were told, or
+   tasted) — those come only from the material; you may add a brief, accurate,
+   well-known fact about a famous place, but invent only mood and atmosphere.*
 3. `EVAL_REFRESH=llm npm run eval` to regenerate, then re-run steps 2-4.
 4. Diff the roll-up. Critical fabrications should drop without the prose
    collapsing. Bump the rubric version in JUDGING.md if criteria changed.
@@ -120,9 +128,14 @@ The report exists to drive generation fixes:
 
 ## Reliability rules (the things that go wrong)
 
-- **The packet is the only truth.** The single most common judge error is using
-  world knowledge ("there really are peacocks at São Jorge") as grounding. The
-  prompt forbids it; reinforce if a judge slips.
+- **Experience comes from the packet; facts may use world knowledge.** The split
+  the judge must hold: the author's *experiences* (saw/did/heard/met/tasted) are
+  grounded only by the packet — world knowledge can't supply them ("there really
+  are peacocks at São Jorge" does NOT justify the author seeing peacocks). But a
+  stated *general fact* about a famous place IS checked against world knowledge:
+  true and confident → allowed, wrong or uncertain → fabrication. Watch for a
+  judge collapsing the two — either flagging accurate famous-place context, or
+  excusing an invented first-hand observation because it's plausible.
 - **Re-run the eval after every prompt change.** Stale packets judge the wrong
   draft. The packet's draft must be the one you're reasoning about.
 - **Sonnet for truthfulness, always.** Don't downgrade to save tokens; the cost

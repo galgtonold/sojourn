@@ -11,57 +11,56 @@ It is written to double as the **instruction sheet handed to a judge subagent**.
 
 ---
 
-## The cardinal rule: truthfulness
+## The cardinal rule: never make anything up
 
-> A draft may invent **atmosphere**. It must never invent **facts about the
-> places the author actually visited.**
+> A draft may invent **atmosphere and feeling**, and may add **accurate, well-
+> known context about a famous place**. It must never **make things up** — neither
+> invent the author's own experiences nor state facts that are false or uncertain.
 
-This is the single most important axis, and it gates everything else. A draft
-with even one fabricated site-fact has failed, no matter how good the prose is.
+This is the gating axis. A draft with even one made-up thing fails truthfulness,
+no matter how good the prose is. "Made up" takes two forms, both fail:
 
-The pipeline reads beautifully *because* the model pads thin input with its own
-encyclopedic knowledge of famous places — and that is exactly the danger. The
-facts are often correct about the world, but they are **ungrounded for this
-author's trip**: they put observations and knowledge into the author's mouth
-that the author never recorded. On a lesser-known trip, or where the model's
-knowledge is stale, the same behaviour invents outright falsehoods in the
-author's voice.
+1. **Invented experience.** Presenting as the author's own first-hand experience
+   something not grounded in the photos, notes, or answers: a specific thing seen,
+   an action taken, a person met, words someone said, a thing tasted or heard. The
+   *events and observations of the trip* must come from the material — the model
+   may narrate them, never author them. (e.g. "we cupped our hands and drank from
+   the waterfall"; a quote attributed to the watchmaker; "ravens flew overhead";
+   "a fado musician began to play"; "a German couple offered to take our photo".)
+2. **False or shaky facts.** Stating as fact something untrue, or something the
+   model cannot be genuinely confident is correct. (e.g. an invented statistic, a
+   wrong attribution, a guessed species or rock type asserted as certain.)
 
-### Two categories every concrete statement falls into
+### What IS allowed
 
-**1. Atmosphere & interiority — invention is allowed.**
-The writer's craft: the author's feelings, mood, pacing, framing, hypotheticals,
-and *generic* sensory texture that isn't a checkable claim about that specific
-site. These are fine even when nothing in the input prompted them.
-- "the silence settled on us like a gift"
-- "our legs reminded us who was boss"
-- "the morning still felt like night"
-- "a stray cat warming itself on the wall" (generic, plausible, not a notable
-  feature being asserted)
+- **Atmosphere & interiority.** The author's feelings, mood, pacing, framing, and
+  *generic* sensory texture that isn't a checkable claim about that specific site —
+  "the silence settled like a gift", "our legs reminded us who was boss", "a stray
+  cat warming on the wall".
+- **Accurate, well-known context about a famous place.** A confident, verifiable
+  historical / cultural / architectural fact about a landmark, woven in lightly as
+  a knowledgeable narrator would — "Kiyomizu's stage is famously built without
+  nails", "the temple's name means 'pure water'", "Fushimi Inari's torii are
+  donated by businesses". It must be **true and uncontroversial**; if the model
+  can't be sure, it's a shaky fact (above). Keep it light: a guidebook lecture is
+  a prose smell even when it's true.
 
-**2. Asserted facts about the visited site or world — must be grounded.**
-Anything a reader would take as *information about the place*: who built it, what
-it is made of, its history, its name/identity, what wildlife or objects or
-adjacent landmarks are there, measurements, dates, what is visible from it.
-These must trace to a source in the input (below). If they cannot, they are
-**fabrications** — and a fabrication is a defect *even when the real-world fact
-is correct*.
+The line between allowed context and invented experience is **framing**:
+"Kiyomizu's stage is famously built without nails" (general, true, narrator
+context) is fine; "we ran our hands along the joints, marvelling that not one nail
+held it together" (a specific first-hand action that didn't happen) is not.
 
-Real examples flagged from our own drafts (all currently **unflagged** by the
-structural checks):
-- Lisbon — "Peacocks strutted among the ruins" (wildlife claim); "the bronze
-  horseman of King José I" (statue identity); "the twin towers of São Vicente de
-  Fora and the dome of the National Pantheon" (named landmarks asserted visible);
-  "the smell of grilled sardines" (specific sensory-factual).
-- Kyoto — "no nails used in the construction" (Kiyomizu construction fact); the
-  Golden Pavilion's "ground floor keeps a simpler, darker elegance" (architectural
-  fact); "Kennin-ji, Kyoto's oldest Zen temple ... twin dragons" (a whole site +
-  its features the author never mentioned visiting).
-- Norway — the steps "Nepali sherpas had laid" (historical attribution).
+### The judge uses its own knowledge here
 
-### The grounding set (the judge's source of truth)
+Unlike a pure grounding check, this rubric **requires** world knowledge: to
+confirm an "allowed" historical fact is actually true and well established, and to
+catch a false or dubious one. A confident, correct, famous-place fact passes; a
+wrong or uncertain one is a fabrication.
 
-A factual claim is **grounded** only if it traces to one of:
+### The grounding set (what the author actually provided)
+
+The author's *experience* — what was seen, done, and said on the trip — must trace
+to one of:
 - a **photo's vision description** (what is actually visible in the image),
 - the author's **notes** (`ai_notes`),
 - the author's **answers** to the generated questions,
@@ -70,30 +69,28 @@ A factual claim is **grounded** only if it traces to one of:
 - the **weather** data for the day,
 - the **trip title / date**.
 
-Grounding is **per-claim, not per-subject.** Naming Kinkaku-ji is grounded (it's
-a geotagged photo); asserting its ground floor is ungilded is *not*, unless a
-photo description says so. Describing "ornate carved stonework" at Jerónimos is
-grounded if it's visible in the photo; "no nails used" never is — it's
-encyclopedic.
+If the draft says the author saw / did / heard / met / tasted something specific
+that is not here, it is an **invented experience** — even if such a thing is
+plausible at that place.
 
-### Decision procedure (per sentence)
+### Decision procedure (per claim)
 
-1. Is this a **checkable factual claim** about a place/object/event, or is it
-   **atmosphere / interiority**?
-2. Atmosphere → allowed. (Only flag if it *contradicts* the input or is wildly
-   implausible.)
-3. Factual → look for a grounding source. Grounded → OK. Ungrounded →
-   **fabrication**: record the claim, why it's ungrounded, and a severity.
+1. Atmosphere / feeling / generic texture? → allowed (flag only if it contradicts
+   the material).
+2. A general, well-known fact about the famous place, stated as narrator context?
+   → allowed **if** it is true and the model is confident; flag as a **false/shaky
+   fact** if it is wrong or uncertain.
+3. Presented as the author's specific first-hand experience or observation
+   (saw / did / heard / met / tasted / was told) and not in the grounding set?
+   → **invented experience** (fabrication), regardless of plausibility.
 
 ### Severity
 
-- **Critical** — a specific factual claim a reader would trust as the author's
-  first-hand knowledge: construction, history, attribution, identity, wildlife,
-  named adjacent landmarks, measurements, dates. *Any single critical fabrication
-  fails the draft on truthfulness.*
-- **Minor** — a specific-but-trivial sensory claim that leans factual ("the smell
-  of grilled sardines", "a fado guitarist drifted up"). Record it; it does not by
-  itself fail the draft. These are the calibration grey zone (see below).
+- **Critical** — an invented experience, or a false/shaky factual claim. *Any
+  single critical fabrication fails the draft.*
+- **Minor** — a borderline sensory-factual detail that leans invented but is
+  trivial and plausible ("the air smelled faintly of green tea"). Record it; it
+  does not by itself fail the draft.
 
 ---
 
@@ -209,14 +206,20 @@ The report exists to drive generation fixes, not just to grade:
 ## Calibration (open, for human tuning)
 
 These are deliberate judgement calls to settle as we see real verdicts:
-- **The atmosphere/fact line.** "Grilled sardines on the air" — allowed colour or
-  a fabricated site-detail? Current stance: *minor*, not gating. Tighten or relax
-  after a first run.
-- **Visible-vs-encyclopedic for famous places.** We hold the line at "only what a
-  photo shows or the input states," even for landmarks the model obviously knows.
-  This is strict on purpose; it's the whole point.
+- **Famous-place facts are allowed when accurate and confident** (revised after
+  the first run). A true, well-known historical/cultural fact about a landmark is
+  context, not a fabrication. The judge must verify it's actually true; a wrong or
+  uncertain "fact" is a fabrication. The hard cases are the model's *confidence*
+  threshold and how heavy the context can get before it's a prose (not
+  truthfulness) problem.
+- **Invented experience is the real target.** The decisive question is whether the
+  draft claims the *author* personally saw/did/heard/met/tasted a specific thing
+  that isn't in the material. That always fails, however plausible.
+- **The atmosphere/experience line.** "Grilled sardines on the air" — allowed
+  generic colour, or an invented specific observation? Current stance: *minor*
+  unless framed as a definite first-hand observation. Tune as verdicts come in.
 - **How strict on prose** before a `warn` — guidebook drift is a smell, not yet a
   fail.
 - **Reference weight.** `reference.md` is a sanity anchor for *coverage/arc*, not
-  a target to match word-for-word; the ground-truth set, not the reference, is
-  what truthfulness is judged against.
+  a target to match word-for-word; the grounding set (plus the judge's
+  verification of any stated facts) is what truthfulness is judged against.
