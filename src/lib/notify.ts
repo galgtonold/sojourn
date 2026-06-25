@@ -119,3 +119,57 @@ export async function notifyComment(
 export async function notifyViewers(input: NotifyInput) {
   await fanOut("viewer", input);
 }
+
+// Reader-facing: push the author of `commentId` when their comment gets a reply
+// or like. Resolves the owner via visitor_token → that reader's VIEWER push
+// subscriptions. Never notifies the actor about their own comment, and no-ops
+// silently when push is off, the comment is a pre-feature (token-less) row, or
+// the owner has no subscription.
+export async function notifyCommentAuthor(
+  commentId: string,
+  actorToken: string | null | undefined,
+  event: { kind: "reply" | "like"; actorName?: string; bodyExcerpt?: string },
+): Promise<void> {
+  ensureVapid();
+  if (!isPushConfigured) return;
+  const supabase = getAdminSupabase();
+  if (!supabase) return;
+
+  const { data: comment } = await supabase
+    .from("comments")
+    .select("visitor_token, post_id")
+    .eq("id", commentId)
+    .maybeSingle();
+  const owner = comment?.visitor_token as string | null | undefined;
+  if (!owner) return; // pre-feature comment, or none
+  if (actorToken && actorToken === owner) return; // no self-notification
+
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("audience", "viewer")
+    .eq("visitor_token", owner);
+  if (!subs?.length) return;
+
+  const { data: post } = await supabase
+    .from("posts")
+    .select("slug, source_locale")
+    .eq("id", comment!.post_id as string)
+    .maybeSingle();
+  const slug = (post?.slug as string) ?? "";
+  const de = (post?.source_locale as string) !== "en";
+  const title =
+    event.kind === "reply"
+      ? de
+        ? `${event.actorName ?? "Jemand"} hat auf deinen Kommentar geantwortet`
+        : `${event.actorName ?? "Someone"} replied to your comment`
+      : de
+        ? "Neuer Like für deinen Kommentar"
+        : "New like on your comment";
+
+  await deliver(supabase, subs as Sub[], {
+    title,
+    body: event.bodyExcerpt,
+    url: `${env.siteUrl}/posts/${slug}#comment-${commentId}`,
+  });
+}
