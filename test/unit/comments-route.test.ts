@@ -30,13 +30,13 @@ beforeEach(() => {
 
 describe("POST /api/comments", () => {
   it("stores the visitor_token and notifies the parent author on a reply", async () => {
-    const res = await call({ postId: "p1", parentId: "parent-1", authorName: "Bob", body: "nice", visitorToken: "tok-bob-123" });
+    const res = await call({ postId: "p1", parentId: "11111111-1111-1111-1111-111111111111", authorName: "Bob", body: "nice", visitorToken: "tok-bob-123" });
     expect(res.status).toBe(201);
     const row = (sb.client as FakeSupabase).store.comments[0];
     expect(row.visitor_token).toBe("tok-bob-123");
     expect(spies.notifyCommentAuthor).toHaveBeenCalledTimes(1);
     expect(spies.notifyCommentAuthor).toHaveBeenCalledWith(
-      "parent-1",
+      "11111111-1111-1111-1111-111111111111",
       "tok-bob-123",
       expect.objectContaining({ kind: "reply", actorName: "Bob" }),
     );

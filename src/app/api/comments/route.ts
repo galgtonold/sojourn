@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
 const schema = z.object({
   postId: z.string().min(1),
-  parentId: z.string().min(1).nullish(),
+  parentId: z.string().uuid().nullish(),
   authorName: z.string().trim().max(60).optional(),
   body: z.string().trim().min(1).max(4000),
   visitorToken: z.string().min(8).max(64).optional(),
