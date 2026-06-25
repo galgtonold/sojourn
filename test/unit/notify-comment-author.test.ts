@@ -52,6 +52,7 @@ describe("notifyCommentAuthor", () => {
     const payload = JSON.parse(sent.calls[0].body);
     expect(payload.url).toBe("https://example.test/posts/tag-an-der-mosel#comment-c1");
     expect(payload.title).toContain("Bob");
+    expect(payload.title).toContain("hat auf deinen Kommentar geantwortet");
   });
 
   it("does not notify the actor for their own comment (self-reply/self-like)", async () => {
@@ -81,5 +82,18 @@ describe("notifyCommentAuthor", () => {
     admin.client = null;
     await expect(notifyCommentAuthor("c1", "x", { kind: "like" })).resolves.toBeUndefined();
     expect(sent.calls).toHaveLength(0);
+  });
+
+  it("defaults to an English title when source_locale is null", async () => {
+    admin.client = makeFakeSupabase({
+      comments: [{ id: "c1", post_id: "p1", visitor_token: "owner" }],
+      posts: [{ id: "p1", slug: "s", source_locale: null }],
+      push_subscriptions: [
+        { id: "s1", endpoint: "e1", p256dh: "x", auth: "y", audience: "viewer", visitor_token: "owner" },
+      ],
+    });
+    await notifyCommentAuthor("c1", "replier", { kind: "reply", actorName: "Bob" });
+    expect(sent.calls).toHaveLength(1);
+    expect(JSON.parse(sent.calls[0].body).title).toContain("replied to your comment");
   });
 });

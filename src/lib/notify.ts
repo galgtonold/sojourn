@@ -157,7 +157,7 @@ export async function notifyCommentAuthor(
     .eq("id", comment!.post_id as string)
     .maybeSingle();
   const slug = (post?.slug as string) ?? "";
-  const de = (post?.source_locale as string) !== "en";
+  const de = (post?.source_locale as string) === "de";
   const title =
     event.kind === "reply"
       ? de
