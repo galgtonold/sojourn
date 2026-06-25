@@ -5,20 +5,10 @@ import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { useT, useI18n } from "@/components/i18n";
+import { visitorToken } from "@/lib/visitor";
 
 const NAME_KEY = "sojourn:name";
-const VID_KEY = "sojourn:vid";
 const LIKED_KEY = "sojourn:liked-comments";
-
-function visitorToken(): string {
-  if (typeof window === "undefined") return "";
-  let t = localStorage.getItem(VID_KEY);
-  if (!t) {
-    t = crypto.randomUUID();
-    localStorage.setItem(VID_KEY, t);
-  }
-  return t;
-}
 
 export function Comments({
   postId,
@@ -90,7 +80,7 @@ export function Comments({
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ postId, parentId, authorName: author, body: text }),
+        body: JSON.stringify({ postId, parentId, authorName: author, body: text, visitorToken: visitorToken() }),
       });
       if (!res.ok) throw new Error("failed");
       refresh();
@@ -149,7 +139,7 @@ export function Comments({
     const kids = childrenOf.get(c.id) ?? [];
     const isLiked = liked.has(c.id);
     return (
-      <li key={c.id} className={depth > 0 ? "mt-3" : ""}>
+      <li key={c.id} id={`comment-${c.id}`} className={depth > 0 ? "mt-3" : ""}>
         <div className="rounded-2xl bg-ink-800 p-4">
           <div className="flex items-center justify-between">
             <span className="font-medium text-sand-50">{c.author_name}</span>

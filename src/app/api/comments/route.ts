@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
-import { notifyComment } from "@/lib/notify";
+import { notifyComment, notifyCommentAuthor } from "@/lib/notify";
 import { logError } from "@/lib/log";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
@@ -37,9 +37,10 @@ export async function GET(req: Request) {
 
 const schema = z.object({
   postId: z.string().min(1),
-  parentId: z.string().uuid().nullish(),
+  parentId: z.string().min(1).nullish(),
   authorName: z.string().trim().max(60).optional(),
   body: z.string().trim().min(1).max(4000),
+  visitorToken: z.string().min(8).max(64).optional(),
 });
 
 export async function POST(req: Request) {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
-  const { postId, parentId, authorName, body } = parsed.data;
+  const { postId, parentId, authorName, body, visitorToken } = parsed.data;
 
   // Anonymous visitors get an unauthenticated anon client (RLS enforces the
   // insert policy); a signed-in admin/collaborator gets their session client.
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
       parent_id: parentId ?? null,
       author_name: authorName || "Anonymous",
       body,
+      visitor_token: visitorToken ?? null,
     })
     .select("id, post_id, parent_id, author_name, body, created_at")
     .single();
@@ -77,6 +79,14 @@ export async function POST(req: Request) {
     body: body.slice(0, 120),
     url: `${env.siteUrl}/admin/comments`,
   }).catch((e) => logError("notify.comment", e));
+
+  if (parentId) {
+    notifyCommentAuthor(parentId, visitorToken, {
+      kind: "reply",
+      actorName: data.author_name,
+      bodyExcerpt: body.slice(0, 120),
+    }).catch((e) => logError("notify.reply", e));
+  }
 
   return NextResponse.json({ ...data, like_count: 0 }, { status: 201 });
 }
