@@ -78,7 +78,12 @@ the packet) or general true context about the place (allowed if accurate)?
 Write your verdict as JSON to <REPO>/<RUNDIR>/judge-<SLUG>.json using the Write
 tool, matching the schema in JUDGING.md exactly (truthfulness{verdict,
 fabrications[], allowed_embellishments[]}, faithfulness, photo_alignment,
-interactions, prose, overall, summary). Ensure it is valid, parseable JSON.
+interactions, prose, overall, summary).
+
+JSON SAFETY (judges fail here ~1 in 4): output STRICTLY VALID JSON. Inside any
+string value NEVER use a literal double-quote — to quote a phrase use single
+quotes 'like this'. Keep claim text short. After writing, re-read the file and
+confirm it parses.
 
 Return only one line: "<SLUG>: <overall> — N critical fabrications". Nothing else.
 ```

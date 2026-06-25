@@ -22,7 +22,13 @@ const structural = readJson(join(runDir, "results.json"), {});
 const judgeFiles = existsSync(runDir)
   ? readdirSync(runDir).filter((f) => f.startsWith("judge-") && f.endsWith(".json"))
   : [];
-const verdicts = judgeFiles.map((f) => readJson(join(runDir, f), null)).filter(Boolean);
+const verdicts = judgeFiles
+  .map((f) => {
+    const v = readJson(join(runDir, f), null);
+    if (!v) console.warn(`⚠️  skipped unparseable judge file: ${f} (re-run that judge)`);
+    return v;
+  })
+  .filter(Boolean);
 const bySlug = Object.fromEntries(verdicts.map((v) => [v.slug, v]));
 
 const ICON = { pass: "✅", warn: "⚠️", fail: "❌" };
