@@ -2,6 +2,8 @@
 // Browser-side Web Push helpers, shared by the admin toggle and the viewer
 // subscribe prompt.
 
+import { visitorToken } from "@/lib/visitor";
+
 export type PushAudience = "admin" | "viewer";
 
 export type PushState =
@@ -80,6 +82,7 @@ export async function subscribeToPush(
       ...sub.toJSON(),
       audience,
       userAgent: navigator.userAgent,
+      visitorToken: audience === "viewer" ? visitorToken() : undefined,
     }),
   });
   if (!res.ok) return { ok: false, reason: "store-failed" };

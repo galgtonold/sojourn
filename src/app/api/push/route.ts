@@ -10,6 +10,7 @@ const subscribeSchema = z.object({
   keys: z.object({ p256dh: z.string(), auth: z.string() }),
   audience: z.enum(["admin", "viewer"]).default("viewer"),
   userAgent: z.string().optional(),
+  visitorToken: z.string().min(8).max(64).optional(),
 });
 
 async function getUser() {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
-  const { endpoint, keys, audience, userAgent } = parsed.data;
+  const { endpoint, keys, audience, userAgent, visitorToken } = parsed.data;
 
   // Admin subscriptions require an authenticated user (owner OR collaborator);
   // viewer subscriptions are open to anyone (it's their own browser opting in).
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
       // Tag admin subscriptions with the subscriber so comment alerts can be
       // scoped to a collaborator's accessible posts. Viewers stay anonymous.
       user_id: audience === "admin" ? user?.id ?? null : null,
+      visitor_token: audience === "viewer" ? visitorToken ?? null : null,
     },
     { onConflict: "endpoint" },
   );
