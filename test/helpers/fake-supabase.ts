@@ -36,6 +36,11 @@ class Query {
     this.insertRows = Array.isArray(rows) ? rows : [rows];
     return this;
   }
+  upsert(rows: Row | Row[]): this {
+    this.op = "insert";
+    this.insertRows = Array.isArray(rows) ? rows : [rows];
+    return this;
+  }
   update(patch: Row): this {
     this.op = "update";
     this.patch = patch;

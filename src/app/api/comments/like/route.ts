@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { notifyCommentAuthor } from "@/lib/notify";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,9 @@ export async function POST(req: Request) {
         { onConflict: "comment_id,visitor_token", ignoreDuplicates: true },
       );
     if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
+    notifyCommentAuthor(commentId, token, { kind: "like" }).catch((e) =>
+      logError("notify.like", e),
+    );
   } else {
     const { error } = await supabase
       .from("comment_likes")
