@@ -533,6 +533,8 @@ const en = {
 
   "push.enable": "Enable notifications",
   "push.enabling": "Enabling…",
+  "push.permissionHint":
+    "Still waiting? Chrome may be hiding the prompt behind the bell icon in your address bar — click it to allow.",
   "push.viewer": "Notifications",
   "push.on": "Notifications on",
   "push.blocked": "Blocked in browser",
@@ -1083,6 +1085,8 @@ const de: Dict = {
 
   "push.enable": "Benachrichtigungen aktivieren",
   "push.enabling": "Aktivieren…",
+  "push.permissionHint":
+    "Immer noch nichts? Chrome zeigt die Anfrage manchmal nur als Glocken-Symbol in der Adressleiste an — klicke darauf, um zuzulassen.",
   "push.viewer": "Benachrichtigungen",
   "push.on": "Benachrichtigungen an",
   "push.blocked": "Im Browser blockiert",

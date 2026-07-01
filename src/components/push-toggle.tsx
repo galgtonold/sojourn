@@ -14,9 +14,17 @@ import { useT } from "@/components/i18n";
 // private key is a server secret and is never present in the browser bundle.
 const pushAvailable = Boolean(env.vapidPublicKey);
 
+// Chrome's "quiet" permission UI replaces the request popup with a muted bell
+// in the address bar; requestPermission() then just hangs until the reader
+// notices it and clicks it themselves. There's no API to detect that quiet
+// state, so after a few seconds of no response we surface a hint pointing
+// them at the address bar instead of leaving the button spinning silently.
+const PERMISSION_HINT_DELAY_MS = 4000;
+
 export function PushToggle() {
   const [state, setState] = useState<PushState>("default");
   const [busy, setBusy] = useState(false);
+  const [showPermissionHint, setShowPermissionHint] = useState(false);
   const t = useT();
 
   useEffect(() => {
@@ -25,10 +33,17 @@ export function PushToggle() {
 
   async function enable() {
     setBusy(true);
+    setShowPermissionHint(false);
+    const hintTimer = setTimeout(
+      () => setShowPermissionHint(true),
+      PERMISSION_HINT_DELAY_MS,
+    );
     try {
       const res = await subscribeToPush("admin", env.vapidPublicKey);
       setState(res.ok ? "subscribed" : res.reason === "denied" ? "denied" : "default");
     } finally {
+      clearTimeout(hintTimer);
+      setShowPermissionHint(false);
       setBusy(false);
     }
   }
@@ -76,12 +91,19 @@ export function PushToggle() {
   }
 
   return (
-    <button
-      onClick={enable}
-      disabled={busy}
-      className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
-    >
-      <Bell className="size-4" /> {busy ? t("push.enabling") : t("push.enable")}
-    </button>
+    <div className="space-y-1.5">
+      <button
+        onClick={enable}
+        disabled={busy}
+        className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400 disabled:opacity-50"
+      >
+        <Bell className="size-4" /> {busy ? t("push.enabling") : t("push.enable")}
+      </button>
+      {showPermissionHint && (
+        <p className="max-w-xs text-xs leading-relaxed text-sand-100/50">
+          {t("push.permissionHint")}
+        </p>
+      )}
+    </div>
   );
 }
