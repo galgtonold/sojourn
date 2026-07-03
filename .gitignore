@@ -48,3 +48,6 @@ coverage/
 /eval/fixtures
 /eval/runs
 /eval/.cache
+
+# database backups (private data + downloaded storage files — never committed)
+/backups
