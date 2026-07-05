@@ -36,7 +36,7 @@ export default defineConfig({
         "src/lib/push-client.ts",
         "src/lib/upload-client.ts",
         "src/lib/notify.ts",
-        "src/lib/gpx.ts", // parseGpx needs a DOM; only pure helpers are tested
+        "src/lib/gpx.ts", // parseGpxSplit needs a DOM; only pure helpers are tested
       ],
     },
   },

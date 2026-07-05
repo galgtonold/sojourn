@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
-import { parseGpx, formatDistance } from "@/lib/gpx";
+import { parseGpxSplit, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
 
@@ -56,22 +56,31 @@ export function TrackManager({
       const added: ManagedTrack[] = [];
       for (const file of Array.from(files)) {
         const xml = await file.text();
-        const parsed = parseGpx(xml);
-        const { data, error } = await supabase
-          .from("tracks")
-          .insert({
-            post_id: postId,
-            trip_id: tripId,
-            name: parsed.name ?? file.name.replace(/\.gpx$/i, ""),
-            geojson: parsed.geojson,
-            distance_m: parsed.distanceM,
-            started_at: parsed.startedAt,
-            ended_at: parsed.endedAt,
-          })
-          .select("id, name, distance_m")
-          .single();
-        if (error) throw new Error(error.message);
-        added.push(data as ManagedTrack);
+        // A recording paused for public transport comes in as one file but is
+        // really several legs; split it so each leg is its own track and the
+        // transit hop is excluded from every distance.
+        const legs = parseGpxSplit(xml);
+        const base = legs[0].name ?? file.name.replace(/\.gpx$/i, "");
+        for (let i = 0; i < legs.length; i++) {
+          const parsed = legs[i];
+          const name =
+            legs.length > 1 ? `${base} — ${t("admin.routes.part", { n: i + 1 })}` : base;
+          const { data, error } = await supabase
+            .from("tracks")
+            .insert({
+              post_id: postId,
+              trip_id: tripId,
+              name,
+              geojson: parsed.geojson,
+              distance_m: parsed.distanceM,
+              started_at: parsed.startedAt,
+              ended_at: parsed.endedAt,
+            })
+            .select("id, name, distance_m")
+            .single();
+          if (error) throw new Error(error.message);
+          added.push(data as ManagedTrack);
+        }
       }
       setTracks((t) => [...t, ...added]);
       revalidate();

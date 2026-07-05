@@ -30,52 +30,103 @@ export type ParsedGpx = {
   endedAt: string | null;
 };
 
-export function parseGpx(xml: string): ParsedGpx {
-  const doc = new DOMParser().parseFromString(xml, "application/xml");
-  if (doc.querySelector("parsererror")) throw new Error("Invalid GPX file.");
+// A single trackpoint: its [lon, lat(, ele)] coordinate and epoch-ms time (null
+// when the GPX had no <time> for it).
+export type GpxPoint = { coord: number[]; time: number | null };
 
+// A jump between consecutive points counts as a "you paused and travelled"
+// gap when it is both long enough in time and far enough in space. Without
+// timestamps we fall back to distance alone.
+export const MIN_GAP_MS = 600_000; // 10 minutes
+export const MIN_GAP_M = 500;
+
+// Split a point sequence wherever a transport-style gap appears, returning the
+// contiguous runs between gaps. A walk → train → walk recording becomes two
+// runs, so the train hop is never inside a run (and thus excluded from that
+// run's distance). Pure and DOM-free so it can be unit-tested.
+export function splitOnGaps(points: GpxPoint[]): GpxPoint[][] {
+  const runs: GpxPoint[][] = [];
+  let cur: GpxPoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    if (i > 0) {
+      const prev = points[i - 1];
+      const p = points[i];
+      const dist = haversine(prev.coord, p.coord);
+      const isGap =
+        prev.time != null && p.time != null
+          ? p.time - prev.time > MIN_GAP_MS && dist > MIN_GAP_M
+          : dist > MIN_GAP_M;
+      if (isGap) {
+        runs.push(cur);
+        cur = [];
+      }
+    }
+    cur.push(points[i]);
+  }
+  if (cur.length) runs.push(cur);
+  return runs;
+}
+
+// Pull the track name and a flat, in-document-order point sequence out of a
+// parsed GPX document. All <trkseg>s are concatenated, so segment boundaries
+// become ordinary candidate split points for splitOnGaps.
+function extractGpx(doc: Document): { name: string | null; points: GpxPoint[] } {
   const name =
     doc.querySelector("trk > name")?.textContent?.trim() ||
     doc.querySelector("metadata > name")?.textContent?.trim() ||
     doc.querySelector("rte > name")?.textContent?.trim() ||
     null;
 
-  const lines: number[][][] = [];
-  const times: number[] = [];
+  const points: GpxPoint[] = [];
   const collect = (segSelector: string, pointTag: string) => {
     doc.querySelectorAll(segSelector).forEach((seg) => {
-      const coords: number[][] = [];
       seg.querySelectorAll(pointTag).forEach((pt) => {
         const lon = parseFloat(pt.getAttribute("lon") || "");
         const lat = parseFloat(pt.getAttribute("lat") || "");
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         const ele = parseFloat(pt.querySelector("ele")?.textContent || "");
-        coords.push(Number.isFinite(ele) ? [lon, lat, ele] : [lon, lat]);
+        const coord = Number.isFinite(ele) ? [lon, lat, ele] : [lon, lat];
         const tm = Date.parse(pt.querySelector("time")?.textContent?.trim() || "");
-        if (Number.isFinite(tm)) times.push(tm);
+        points.push({ coord, time: Number.isFinite(tm) ? tm : null });
       });
-      if (coords.length > 1) lines.push(coords);
     });
   };
 
   collect("trkseg", "trkpt");
-  if (lines.length === 0) collect("rte", "rtept");
-  if (lines.length === 0) throw new Error("No track points found in this GPX.");
+  if (points.length === 0) collect("rte", "rtept");
+  return { name, points };
+}
 
-  const features: GeoJSON.Feature<GeoJSON.LineString>[] = lines.map((coords) => ({
-    type: "Feature",
-    properties: {},
-    geometry: { type: "LineString", coordinates: coords },
-  }));
-
+function runToParsed(name: string | null, run: GpxPoint[]): ParsedGpx {
+  const coords = run.map((p) => p.coord);
+  const times = run.flatMap((p) => (p.time == null ? [] : [p.time]));
   return {
     name,
-    geojson: { type: "FeatureCollection", features },
-    distanceM: lines.reduce((s, c) => s + lineLength(c), 0),
-    pointCount: lines.reduce((s, c) => s + c.length, 0),
+    geojson: {
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } },
+      ],
+    },
+    distanceM: lineLength(coords),
+    pointCount: coords.length,
     startedAt: times.length ? new Date(Math.min(...times)).toISOString() : null,
     endedAt: times.length ? new Date(Math.max(...times)).toISOString() : null,
   };
+}
+
+// Parse a GPX file and split it at transport gaps: returns one ParsedGpx per
+// contiguous leg. A file with no gaps yields a single-element array. Runs of
+// fewer than two points (e.g. a lone stray fix) are dropped. Browser-only —
+// relies on DOMParser.
+export function parseGpxSplit(xml: string): ParsedGpx[] {
+  const doc = new DOMParser().parseFromString(xml, "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("Invalid GPX file.");
+
+  const { name, points } = extractGpx(doc);
+  const runs = splitOnGaps(points).filter((r) => r.length > 1);
+  if (runs.length === 0) throw new Error("No track points found in this GPX.");
+  return runs.map((run) => runToParsed(name, run));
 }
 
 export function formatDistance(m: number | null | undefined): string {
