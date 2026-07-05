@@ -35,10 +35,11 @@ const en = {
   "home.allTrips": "All journeys",
   "home.tripsTitle": "Journeys",
   "home.tripsSub": "Every trip, gathered — routes, stories and galleries.",
-  "home.browseAll": "Browse all {n} stories",
+  "home.browseAll": "Browse all {n, plural, one {# story} other {# stories}}",
   "home.noMore": "No more stories yet — check back soon.",
   "home.mapTitle": "Every step, on the map",
-  "home.mapBody": "Follow the routes, pins and detours across {n} stories and counting.",
+  "home.mapBody":
+    "Follow the routes, pins and detours across {n, plural, one {# story} other {# stories}} and counting.",
   "home.exploreMap": "Explore the map",
 
   "common.back": "Back",
@@ -152,7 +153,8 @@ const en = {
   "litter.brokenAsk": "Missing poll/quiz: {ref}",
   "admin.litter.hint":
     "Add a poll/quiz inline with :::poll or :::quiz … ::: (mark a quiz’s correct option with «=»). It becomes a real interaction on save.",
-  "admin.litter.pending": "{n} inline poll/quiz block(s) will be created on save.",
+  "admin.litter.pending":
+    "{n, plural, one {# inline poll/quiz block} other {# inline poll/quiz blocks}} will be created on save.",
   "admin.litter.brokenPhoto": "Reference [photo:{ref}] doesn’t match any photo.",
   "admin.litter.brokenAsk": "Reference [ask:{ref}] doesn’t match any poll/quiz.",
   "admin.litter.badBlock": "Incomplete {kind} block: {problems}.",
@@ -160,8 +162,8 @@ const en = {
   "search.title": "Search",
   "search.subtitle": "Find a place, a trip, or a moment.",
   "search.placeholder": "Patagonia, glaciers, Kyoto…",
-  "search.results": "{n} results for “{q}”",
-  "search.result": "{n} result for “{q}”",
+  "search.results":
+    "{n, plural, one {# result} other {# results}} for “{q}”",
   "search.stories": "Stories",
   "search.photos": "Photos",
   "search.searching": "Searching…",
@@ -177,12 +179,14 @@ const en = {
   "trips.exploreTitle": "Explore the journey map",
   "trips.exploreBody":
     "Walk the route step by step — every stop and photo on an interactive map.",
-  "trips.photos": "{n} located photos",
-  "trips.stops": "{n} stops",
+  "trips.photos":
+    "{n, plural, one {# located photo} other {# located photos}}",
+  "trips.stops": "{n, plural, one {# stop} other {# stops}}",
   "trips.empty": "No stories in this trip yet — once one is published it shows up here.",
 
   "archive.title": "All stories",
-  "archive.subtitle": "{n} stories from the road.",
+  "archive.subtitle":
+    "{n, plural, one {# story} other {# stories}} from the road.",
   "archive.empty": "Nothing here yet.",
 
   "map.title": "The whole map",
@@ -191,7 +195,8 @@ const en = {
   "photos.title": "Photo map",
   "photos.subtitle":
     "Every geotagged photo, where it was taken. Zoom in to explore; tap a pin to open the story.",
-  "photos.count": "{n} photos on the map.",
+  "photos.count":
+    "{n, plural, one {# photo} other {# photos}} on the map.",
   "photos.empty": "No geotagged photos yet.",
   "photos.inView": "{n} in view",
   "photos.noneInView": "No photos in view — zoom out or pan to find more.",
@@ -221,7 +226,8 @@ const en = {
   "admin.translation.retranslate": "Re-translate",
   "admin.noPosts": "No posts yet.",
   "admin.posts.title": "Posts",
-  "admin.posts.subtitle": "{n} entries — search, filter, edit or delete.",
+  "admin.posts.subtitle":
+    "{n, plural, one {# entry} other {# entries}} — search, filter, edit or delete.",
   "admin.posts.search": "Search posts…",
   "admin.posts.filter.all": "All",
   "admin.posts.filter.published": "Published",
@@ -449,7 +455,8 @@ const en = {
   "admin.ai.step.captions": "Captions",
   "admin.ai.step.save": "Saving",
   "admin.ai.autocaption": "Auto-caption photos",
-  "admin.ai.autocaptionDone": "Captioned {n} photos.",
+  "admin.ai.autocaptionDone":
+    "Captioned {n, plural, one {# photo} other {# photos}}.",
   "admin.ai.workflowHint":
     "Add your photos and GPX tracks first — the AI weaves them straight into the story. No photos yet? You can still draft from notes and attach them later.",
   "admin.ai.err.parse": "The AI returned malformed output. Please try again.",
@@ -461,7 +468,7 @@ const en = {
   "admin.ai.warn.partial":
     "Draft saved, but section(s) {list} failed — regenerate, or write those in by hand.",
   "admin.ai.warn.photos":
-    "{n} section(s) referenced photos that don’t exist — they’re flagged in the editor below; remove or replace them.",
+    "{n, plural, one {# section} other {# sections}} referenced photos that don’t exist — they’re flagged in the editor below; remove or replace them.",
 
   "admin.usage.link": "AI usage",
   "admin.usage.title": "AI usage & cost",
@@ -483,7 +490,7 @@ const en = {
   "admin.gallery.title": "Gallery",
   "admin.gallery.subtitle":
     "Saved automatically — uploads, captions and deletions apply instantly (no need to press Save).",
-  "admin.gallery.photos": "{n} photos",
+  "admin.gallery.photos": "{n, plural, one {# photo} other {# photos}}",
   "admin.gallery.caption": "Caption…",
   "admin.gallery.alt": "Alt text…",
   "admin.gallery.copyTag": "Copy inline tag",
@@ -569,11 +576,12 @@ const de: Dict = {
   "home.allTrips": "Alle Reisen",
   "home.tripsTitle": "Reisen",
   "home.tripsSub": "Jede Reise, gesammelt — Routen, Geschichten und Galerien.",
-  "home.browseAll": "Alle {n} Geschichten ansehen",
+  "home.browseAll":
+    "Alle {n, plural, one {# Geschichte} other {# Geschichten}} ansehen",
   "home.noMore": "Noch keine weiteren Geschichten — schau bald wieder vorbei.",
   "home.mapTitle": "Jeder Schritt, auf der Karte",
   "home.mapBody":
-    "Folge den Routen, Pins und Abstechern über {n} Geschichten und mehr.",
+    "Folge den Routen, Pins und Abstechern über {n, plural, one {# Geschichte} other {# Geschichten}} und mehr.",
   "home.exploreMap": "Karte erkunden",
 
   "common.back": "Zurück",
@@ -691,7 +699,7 @@ const de: Dict = {
   "admin.litter.hint":
     "Umfrage/Quiz direkt im Text mit :::poll oder :::quiz … ::: einfügen (richtige Quiz-Option mit «=» markieren). Wird beim Speichern zu einer echten Interaktion.",
   "admin.litter.pending":
-    "{n} Inline-Umfrage/-Quiz-Block/-Blöcke werden beim Speichern erstellt.",
+    "{n, plural, one {# Inline-Umfrage/-Quiz-Block wird} other {# Inline-Umfrage/-Quiz-Blöcke werden}} beim Speichern erstellt.",
   "admin.litter.brokenPhoto": "Verweis [photo:{ref}] passt zu keinem Foto.",
   "admin.litter.brokenAsk": "Verweis [ask:{ref}] passt zu keiner Umfrage/Quiz.",
   "admin.litter.badBlock": "Unvollständiger {kind}-Block: {problems}.",
@@ -699,8 +707,8 @@ const de: Dict = {
   "search.title": "Suche",
   "search.subtitle": "Finde einen Ort, eine Reise oder einen Moment.",
   "search.placeholder": "Patagonien, Gletscher, Kyoto…",
-  "search.results": "{n} Treffer für „{q}“",
-  "search.result": "{n} Treffer für „{q}“",
+  "search.results":
+    "{n, plural, one {# Treffer} other {# Treffer}} für „{q}“",
   "search.stories": "Geschichten",
   "search.photos": "Fotos",
   "search.searching": "Suche läuft…",
@@ -716,12 +724,14 @@ const de: Dict = {
   "trips.exploreTitle": "Reisekarte erkunden",
   "trips.exploreBody":
     "Geh die Route Schritt für Schritt ab — jeder Halt und jedes Foto auf einer interaktiven Karte.",
-  "trips.photos": "{n} verortete Fotos",
-  "trips.stops": "{n} Stationen",
+  "trips.photos":
+    "{n, plural, one {# verortetes Foto} other {# verortete Fotos}}",
+  "trips.stops": "{n, plural, one {# Station} other {# Stationen}}",
   "trips.empty": "Noch keine Geschichten in dieser Reise — sobald eine veröffentlicht ist, erscheint sie hier.",
 
   "archive.title": "Alle Geschichten",
-  "archive.subtitle": "{n} Geschichten von unterwegs.",
+  "archive.subtitle":
+    "{n, plural, one {# Geschichte} other {# Geschichten}} von unterwegs.",
   "archive.empty": "Hier ist noch nichts.",
 
   "map.title": "Die ganze Karte",
@@ -731,7 +741,8 @@ const de: Dict = {
   "photos.title": "Fotokarte",
   "photos.subtitle":
     "Jedes Foto mit Standort, dort wo es entstand. Zoome hinein; tippe einen Pin an, um die Geschichte zu öffnen.",
-  "photos.count": "{n} Fotos auf der Karte.",
+  "photos.count":
+    "{n, plural, one {# Foto} other {# Fotos}} auf der Karte.",
   "photos.empty": "Noch keine Fotos mit Standort.",
   "photos.inView": "{n} im Blick",
   "photos.noneInView":
@@ -762,7 +773,8 @@ const de: Dict = {
   "admin.translation.retranslate": "Neu übersetzen",
   "admin.noPosts": "Noch keine Beiträge.",
   "admin.posts.title": "Beiträge",
-  "admin.posts.subtitle": "{n} Einträge — suchen, filtern, bearbeiten oder löschen.",
+  "admin.posts.subtitle":
+    "{n, plural, one {# Eintrag} other {# Einträge}} — suchen, filtern, bearbeiten oder löschen.",
   "admin.posts.search": "Beiträge suchen…",
   "admin.posts.filter.all": "Alle",
   "admin.posts.filter.published": "Veröffentlicht",
@@ -1000,7 +1012,8 @@ const de: Dict = {
   "admin.ai.step.captions": "Bildunterschriften",
   "admin.ai.step.save": "Speichern",
   "admin.ai.autocaption": "Fotos automatisch beschriften",
-  "admin.ai.autocaptionDone": "{n} Fotos beschriftet.",
+  "admin.ai.autocaptionDone":
+    "{n, plural, one {# Foto} other {# Fotos}} beschriftet.",
   "admin.ai.workflowHint":
     "Lade zuerst deine Fotos und GPX-Tracks hoch — die KI baut sie direkt in die Geschichte ein. Noch keine Fotos? Du kannst auch aus Notizen schreiben und sie später ergänzen.",
   "admin.ai.err.parse":
@@ -1014,7 +1027,7 @@ const de: Dict = {
   "admin.ai.warn.partial":
     "Entwurf gespeichert, aber Abschnitt(e) {list} sind fehlgeschlagen — neu generieren oder von Hand ergänzen.",
   "admin.ai.warn.photos":
-    "{n} Abschnitt(e) verweisen auf nicht vorhandene Fotos — im Editor unten markiert; bitte entfernen oder ersetzen.",
+    "{n, plural, one {# Abschnitt verweist} other {# Abschnitte verweisen}} auf nicht vorhandene Fotos — im Editor unten markiert; bitte entfernen oder ersetzen.",
 
   "admin.usage.link": "KI-Kosten",
   "admin.usage.title": "KI-Nutzung & Kosten",
@@ -1036,7 +1049,7 @@ const de: Dict = {
   "admin.gallery.title": "Galerie",
   "admin.gallery.subtitle":
     "Automatisch gespeichert — Uploads, Bildunterschriften und Löschungen wirken sofort (kein Speichern nötig).",
-  "admin.gallery.photos": "{n} Fotos",
+  "admin.gallery.photos": "{n, plural, one {# Foto} other {# Fotos}}",
   "admin.gallery.caption": "Bildunterschrift…",
   "admin.gallery.alt": "Alt-Text…",
   "admin.gallery.copyTag": "Inline-Tag kopieren",
@@ -1101,12 +1114,79 @@ const de: Dict = {
 export const dictionaries: Record<Locale, Dict> = { de, en };
 export type DictKey = keyof typeof en;
 
+// Split `one {…} other {…}` (a plural block's body) into its named forms,
+// respecting nested braces so a form can itself contain `{…}`.
+function parsePluralForms(body: string): Record<string, string> {
+  const forms: Record<string, string> = {};
+  let i = 0;
+  while (i < body.length) {
+    const m = /(=\d+|\w+)\s*\{/.exec(body.slice(i));
+    if (!m) break;
+    const start = i + m.index + m[0].length;
+    let depth = 1;
+    let j = start;
+    for (; j < body.length && depth > 0; j++) {
+      if (body[j] === "{") depth++;
+      else if (body[j] === "}") depth--;
+    }
+    forms[m[1]] = body.slice(start, j - 1);
+    i = j;
+  }
+  return forms;
+}
+
+// Resolve ICU-style `{name, plural, one {# thing} other {# things}}` blocks so a
+// single string can carry its own locale-correct plural (and German verb /
+// adjective agreement) — `Intl.PluralRules` picks the form and `#` becomes the
+// count. Strings without a plural block are returned untouched.
+function selectPlurals(
+  locale: Locale,
+  s: string,
+  vars?: Record<string, string | number>,
+): string {
+  if (!s.includes(", plural,")) return s;
+  const pr = new Intl.PluralRules(locale);
+  let out = "";
+  let i = 0;
+  while (i < s.length) {
+    const open = s.indexOf("{", i);
+    if (open === -1) {
+      out += s.slice(i);
+      break;
+    }
+    out += s.slice(i, open);
+    const head = /^\{\s*(\w+)\s*,\s*plural\s*,/.exec(s.slice(open));
+    if (!head) {
+      out += "{";
+      i = open + 1;
+      continue;
+    }
+    let depth = 0;
+    let j = open;
+    for (; j < s.length; j++) {
+      if (s[j] === "{") depth++;
+      else if (s[j] === "}" && --depth === 0) break;
+    }
+    if (depth !== 0) {
+      out += s.slice(open); // unbalanced — leave the remainder verbatim
+      break;
+    }
+    const n = Number(vars?.[head[1]] ?? 0);
+    const forms = parsePluralForms(s.slice(open + head[0].length, j));
+    const chosen = forms[`=${n}`] ?? forms[pr.select(n)] ?? forms.other ?? "";
+    out += chosen.replace(/#/g, String(n));
+    i = j + 1;
+  }
+  return out;
+}
+
 export function translate(
   locale: Locale,
   key: DictKey,
   vars?: Record<string, string | number>,
 ): string {
   let s: string = (dictionaries[locale] ?? de)[key] ?? en[key] ?? key;
+  s = selectPlurals(locale, s, vars);
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
