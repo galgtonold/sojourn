@@ -4,6 +4,7 @@ import {
   buildElevationSeries,
   splitOnGaps,
   type GpxPoint,
+  runToParsed,
 } from "@/lib/gpx";
 
 describe("formatDistance", () => {
@@ -110,6 +111,21 @@ describe("splitOnGaps", () => {
   it("returns a single fragment for a clean walk", () => {
     const runs = splitOnGaps([pt(0.0, 0), pt(0.0005, 1), pt(0.001, 2)]);
     expect(runs).toHaveLength(1);
+  });
+});
+
+describe("runToParsed", () => {
+  it("emits per-point epoch-ms times aligned with coordinates", () => {
+    const p = runToParsed("t", [
+      { coord: [0, 0], time: 1000 },
+      { coord: [0, 1], time: 2000 },
+      { coord: [0, 2], time: null },
+    ]);
+    const f = p.geojson.features[0];
+    expect(f.geometry.coordinates).toHaveLength(3);
+    expect((f.properties as { times: (number | null)[] }).times).toEqual([
+      1000, 2000, null,
+    ]);
   });
 });
 

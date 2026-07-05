@@ -97,7 +97,7 @@ function extractGpx(doc: Document): { name: string | null; points: GpxPoint[] } 
   return { name, points };
 }
 
-function runToParsed(name: string | null, run: GpxPoint[]): ParsedGpx {
+export function runToParsed(name: string | null, run: GpxPoint[]): ParsedGpx {
   const coords = run.map((p) => p.coord);
   const times = run.flatMap((p) => (p.time == null ? [] : [p.time]));
   return {
@@ -105,7 +105,11 @@ function runToParsed(name: string | null, run: GpxPoint[]): ParsedGpx {
     geojson: {
       type: "FeatureCollection",
       features: [
-        { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } },
+        {
+          type: "Feature",
+          properties: { times: run.map((p) => p.time) },
+          geometry: { type: "LineString", coordinates: coords },
+        },
       ],
     },
     distanceM: lineLength(coords),
@@ -149,13 +153,13 @@ export function simplifyLineStrings(
       const coords = f.geometry?.coordinates ?? [];
       const flat = ([lng, lat]: GeoJSON.Position): GeoJSON.Position => [lng, lat];
       if (coords.length <= maxPoints) {
-        return { ...f, geometry: { ...f.geometry, coordinates: coords.map(flat) } };
+        return { ...f, properties: {}, geometry: { ...f.geometry, coordinates: coords.map(flat) } };
       }
       const step = (coords.length - 1) / (maxPoints - 1);
       const out: GeoJSON.Position[] = [];
       for (let i = 0; i < maxPoints; i++) out.push(flat(coords[Math.round(i * step)]));
       out[out.length - 1] = flat(coords[coords.length - 1]);
-      return { ...f, geometry: { ...f.geometry, coordinates: out } };
+      return { ...f, properties: {}, geometry: { ...f.geometry, coordinates: out } };
     }),
   };
 }
