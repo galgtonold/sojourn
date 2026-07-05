@@ -89,7 +89,11 @@ export function ImageLightbox({
   const sizeCls = rotated
     ? "h-[95vw] w-[92dvh]"
     : "h-[96dvh] w-[96vw]";
-  const imgCls = `object-contain ${rotated ? "rotate-90" : ""} ${sizeCls}`;
+  // max-w-none: the rotated box is intentionally wider than the viewport
+  // (w-[92dvh] on a portrait phone), but Preflight's `img { max-width: 100% }`
+  // would otherwise clamp it back to viewport width, collapsing the rotated
+  // photo to a fraction of its size. object-contain still letterboxes cleanly.
+  const imgCls = `object-contain max-w-none ${rotated ? "rotate-90" : ""} ${sizeCls}`;
   // Instant placeholder. With a stored blurhash, a decoded data URL — no network
   // at all. Otherwise reuse the EXACT size the page already displayed
   // (optimizedSrc(src,1600,80)), so the backdrop is a cache hit and paints
@@ -120,6 +124,9 @@ export function ImageLightbox({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
+          // Kill the mobile tap flash on the close button / image (the property
+          // is inherited, so one declaration on the root covers every child).
+          style={{ WebkitTapHighlightColor: "transparent" }}
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-ink-950/90 p-2 backdrop-blur-sm sm:p-4"
         >
           {/* Instant blurred backdrop — keeps the viewer from flashing black.
@@ -142,7 +149,10 @@ export function ImageLightbox({
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className="absolute right-3 top-3 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-sand-50 transition hover:bg-white/20 sm:right-5 sm:top-5"
+            // outline-none + focus-visible ring: the focus trap moves focus here
+            // on open, so a plain :focus outline would flash a ring on every
+            // (tap/click) open; a keyboard-only ring keeps a11y without the noise.
+            className="absolute right-3 top-3 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-sand-50 outline-none transition hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 active:bg-white/25 sm:right-5 sm:top-5"
           >
             <X className="size-5" />
           </button>
