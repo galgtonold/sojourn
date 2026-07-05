@@ -21,12 +21,22 @@ export default function ExifDebug() {
     // 0) CAPTURE TIME — the go/no-go for geotag-from-GPX. GPS redaction leaves
     // DateTimeOriginal intact, so this should survive even when location doesn't.
     try {
-      const t = await exifr.parse(file, ["DateTimeOriginal", "CreateDate", "ModifyDate"]);
+      const t = await exifr.parse(file, [
+        "DateTimeOriginal",
+        "CreateDate",
+        "ModifyDate",
+        "OffsetTimeOriginal",
+        "OffsetTime",
+      ]);
       out.push({
-        method: "CAPTURE TIME (DateTimeOriginal)",
+        method: "CAPTURE TIME + TZ",
         note:
           "DateTimeOriginal=" +
           JSON.stringify(t?.DateTimeOriginal) +
+          " | OffsetTimeOriginal=" +
+          JSON.stringify(t?.OffsetTimeOriginal) +
+          " | OffsetTime=" +
+          JSON.stringify(t?.OffsetTime) +
           " | CreateDate=" +
           JSON.stringify(t?.CreateDate) +
           " | file.lastModified=" +
