@@ -92,11 +92,31 @@ export default function ExifDebug() {
       <p style={{ margin: "8px 0 16px", opacity: 0.7 }}>
         Pick the ORIGINAL failing photo. Nothing is uploaded — this reads it in your browser.
       </p>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => e.target.files?.[0] && inspect(e.target.files[0])}
-      />
+      <div style={{ display: "grid", gap: 14, margin: "12px 0" }}>
+        <label style={{ display: "grid", gap: 4 }}>
+          <b>A) accept=&quot;image/*&quot; (what the app uses today → Photo Picker)</b>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files?.[0] && inspect(e.target.files[0])}
+          />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <b>B) no accept (should offer &quot;Files&quot;)</b>
+          <input
+            type="file"
+            onChange={(e) => e.target.files?.[0] && inspect(e.target.files[0])}
+          />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <b>C) accept=&quot;.jpg,.jpeg,.png,.heic&quot; (extension-based)</b>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.heic"
+            onChange={(e) => e.target.files?.[0] && inspect(e.target.files[0])}
+          />
+        </label>
+      </div>
       {meta && <p style={{ marginTop: 16, fontWeight: 600 }}>{meta}</p>}
       <div style={{ marginTop: 12 }}>
         {rows.map((r, i) => (
