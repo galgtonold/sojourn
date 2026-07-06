@@ -1,0 +1,255 @@
+"use client";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Loader2, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useT } from "@/components/i18n";
+import { applyFinding, type Finding, type ProofField } from "@/lib/ai/proofread";
+
+// Signature of the user-written content, used by the publish nudge to tell
+// whether the current text has been proofread.
+export function proofreadSignature(
+  title: string,
+  excerpt: string,
+  body: string,
+): string {
+  return `${title} ${excerpt} ${body}`;
+}
+
+type Status = "pending" | "applied" | "skipped" | "stale";
+
+export function ProofreadDialog({
+  open,
+  onClose,
+  postId,
+  lang,
+  title,
+  excerpt,
+  body,
+  onApply,
+  onRan,
+}: {
+  open: boolean;
+  onClose: () => void;
+  postId: string;
+  lang: "de" | "en";
+  title: string;
+  excerpt: string;
+  body: string;
+  onApply: (field: ProofField, value: string) => void;
+  onRan?: (content: { title: string; excerpt: string; body: string }) => void;
+}) {
+  const t = useT();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [ran, setRan] = useState(false);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [status, setStatus] = useState<Record<string, Status>>({});
+  const [idx, setIdx] = useState(0);
+  // Working copy so sequential applies compose correctly and the parent can't
+  // change underneath a modal. Seeded on open.
+  const [draft, setDraft] = useState({ title, excerpt, body });
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    setFindings([]);
+    setStatus({});
+    setIdx(0);
+    setDraft({ title, excerpt, body });
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/ai/proofread", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ postId, title, excerpt, body, lang }),
+        });
+        if (!res.ok) throw new Error("proofread failed");
+        const j = (await res.json()) as { findings: Finding[] };
+        if (cancelled) return;
+        setFindings(j.findings ?? []);
+        setRan(true);
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Re-run only when the modal (re)opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (!open) return null;
+
+  function close() {
+    if (ran) onRan?.(draft);
+    setRan(false);
+    onClose();
+  }
+
+  function apply(f: Finding) {
+    const cur = draft[f.field];
+    const next = applyFinding(cur, f.original, f.suggestion);
+    if (next == null) {
+      setStatus((s) => ({ ...s, [f.id]: "stale" }));
+    } else {
+      setDraft((d) => ({ ...d, [f.field]: next }));
+      onApply(f.field, next);
+      setStatus((s) => ({ ...s, [f.id]: "applied" }));
+    }
+    setIdx((i) => Math.min(i + 1, findings.length - 1));
+  }
+
+  function skip(f: Finding) {
+    setStatus((s) => ({ ...s, [f.id]: "skipped" }));
+    setIdx((i) => Math.min(i + 1, findings.length - 1));
+  }
+
+  function applyAll() {
+    const next = { ...draft };
+    const st: Record<string, Status> = { ...status };
+    for (const f of findings) {
+      if (st[f.id] === "applied" || st[f.id] === "skipped") continue;
+      const r = applyFinding(next[f.field], f.original, f.suggestion);
+      if (r == null) st[f.id] = "stale";
+      else {
+        next[f.field] = r;
+        st[f.id] = "applied";
+      }
+    }
+    setDraft(next);
+    (["title", "excerpt", "body"] as ProofField[]).forEach((field) => {
+      if (next[field] !== draft[field]) onApply(field, next[field]);
+    });
+    setStatus(st);
+  }
+
+  const appliedCount = Object.values(status).filter((s) => s === "applied").length;
+  const skippedCount = Object.values(status).filter(
+    (s) => s === "skipped" || s === "stale",
+  ).length;
+  const current = findings[idx];
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[130] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={close}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-white/10 bg-ink-900 p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold text-sand-50">
+            {t("admin.proofread.title")}
+          </h2>
+          <button
+            onClick={close}
+            aria-label={t("admin.proofread.done")}
+            className="text-sand-100/50 transition hover:text-sand-50"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {loading && (
+          <p className="mt-6 flex items-center gap-2 text-sm text-sand-100/70">
+            <Loader2 className="size-4 animate-spin" />
+            {t("admin.proofread.loading")}
+          </p>
+        )}
+        {error && !loading && (
+          <p className="mt-6 text-sm text-red-400">{t("admin.proofread.error")}</p>
+        )}
+        {!loading && !error && findings.length === 0 && (
+          <p className="mt-6 text-sm text-sand-100/80">{t("admin.proofread.none")}</p>
+        )}
+
+        {!loading && !error && current && (
+          <div className="mt-4">
+            <div className="flex items-center gap-2 text-xs text-sand-100/60">
+              <span>
+                {t("admin.proofread.progress", { n: idx + 1, total: findings.length })}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5">
+                {t(`admin.proofread.field.${current.field}` as never)}
+              </span>
+              <span className="rounded-full bg-ember-500/15 px-2 py-0.5 text-ember-300">
+                {t(`admin.proofread.type.${current.type}` as never)}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-red-200 line-through decoration-red-400/60">
+                {current.original}
+              </p>
+              <p className="rounded-lg bg-sage-500/10 px-3 py-2 text-sage-200">
+                {current.suggestion}
+              </p>
+              <p className="text-xs text-sand-100/60">{current.explanation}</p>
+              {status[current.id] === "stale" && (
+                <p className="text-xs text-amber-300/80">{t("admin.proofread.stale")}</p>
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => apply(current)}
+                className="inline-flex items-center gap-1 rounded-full bg-ember-500 px-4 py-1.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+              >
+                <Check className="size-4" /> {t("admin.proofread.apply")}
+              </button>
+              <button
+                onClick={() => skip(current)}
+                className="rounded-full px-3 py-1.5 text-sm text-sand-100/70 transition hover:text-sand-50"
+              >
+                {t("admin.proofread.skip")}
+              </button>
+              <button
+                onClick={applyAll}
+                className="rounded-full px-3 py-1.5 text-sm text-sand-100/70 transition hover:text-sand-50"
+              >
+                {t("admin.proofread.applyAll")}
+              </button>
+              <span className="ml-auto flex items-center gap-1">
+                <button
+                  onClick={() => setIdx((i) => Math.max(0, i - 1))}
+                  disabled={idx === 0}
+                  aria-label={t("admin.proofread.prev")}
+                  className="rounded-full p-1.5 text-sand-100/60 transition hover:text-sand-50 disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  onClick={() => setIdx((i) => Math.min(findings.length - 1, i + 1))}
+                  disabled={idx >= findings.length - 1}
+                  aria-label={t("admin.proofread.next")}
+                  className="rounded-full p-1.5 text-sand-100/60 transition hover:text-sand-50 disabled:opacity-40"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-3">
+          <span className="text-xs text-sand-100/50">
+            {t("admin.proofread.summary", { applied: appliedCount, skipped: skippedCount })}
+          </span>
+          <button
+            onClick={close}
+            className="rounded-full bg-white/10 px-4 py-1.5 text-sm text-sand-50 transition hover:bg-white/20"
+          >
+            {t("admin.proofread.done")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
