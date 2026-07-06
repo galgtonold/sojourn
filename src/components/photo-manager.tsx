@@ -126,7 +126,7 @@ export function PhotoManager({
       let order = photos.length;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
-        const { url, path, lat, lng, takenAt, width, height, blurhash } =
+        const { url, path, lat, lng, takenAt, takenOffsetMin, width, height, blurhash } =
           await uploadImage(file, postId);
         const { data, error } = await supabase
           .from("photos")
@@ -137,6 +137,7 @@ export function PhotoManager({
             lat,
             lng,
             taken_at: takenAt,
+            taken_at_offset_min: takenOffsetMin,
             width,
             height,
             blurhash,

@@ -17,6 +17,7 @@ export type UploadResult = {
   lat: number | null;
   lng: number | null;
   takenAt: string | null;
+  takenOffsetMin: number | null;
   width: number | null;
   height: number | null;
   blurhash: string | null;
@@ -26,10 +27,16 @@ export type UploadResult = {
 // EXIF, so this must run first). Best-effort — returns nulls on any failure.
 async function readExif(
   file: File,
-): Promise<{ lat: number | null; lng: number | null; takenAt: string | null }> {
+): Promise<{
+  lat: number | null;
+  lng: number | null;
+  takenAt: string | null;
+  takenOffsetMin: number | null;
+}> {
   let lat: number | null = null;
   let lng: number | null = null;
   let takenAt: string | null = null;
+  let takenOffsetMin: number | null = null;
   try {
     const gps = await exifr.gps(file);
     if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
@@ -40,15 +47,23 @@ async function readExif(
     /* no gps */
   }
   try {
-    const meta = await exifr.parse(file, ["DateTimeOriginal"]);
-    if (meta?.DateTimeOriginal) {
-      const d = new Date(meta.DateTimeOriginal);
-      if (!Number.isNaN(d.getTime())) takenAt = d.toISOString();
-    }
+    // Read raw (un-revived) strings so capture time is independent of the
+    // browser's timezone: DateTimeOriginal has no zone, so we label the exact
+    // wall-clock as UTC and keep the real offset separately.
+    const meta = await exifr.parse(file, {
+      pick: ["DateTimeOriginal", "OffsetTimeOriginal"],
+      reviveValues: false,
+    });
+    const raw = typeof meta?.DateTimeOriginal === "string" ? meta.DateTimeOriginal : "";
+    const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(raw);
+    if (m) takenAt = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+    const off = typeof meta?.OffsetTimeOriginal === "string" ? meta.OffsetTimeOriginal.trim() : "";
+    const om = /^([+-])(\d{2}):(\d{2})$/.exec(off);
+    if (om) takenOffsetMin = (om[1] === "-" ? -1 : 1) * (Number(om[2]) * 60 + Number(om[3]));
   } catch {
     /* no date */
   }
-  return { lat, lng, takenAt };
+  return { lat, lng, takenAt, takenOffsetMin };
 }
 
 // Capture pixel dimensions + a blurhash placeholder by decoding the image
