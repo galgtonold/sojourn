@@ -28,7 +28,23 @@ export type PhotoPin = {
   caption?: string | null;
   href?: string;
   takenAt?: string | null;
+  // Minutes offset of the capture-time zone; taken_at is naive local labelled
+  // UTC, so true UTC = takenAt − this (see Photo.taken_at_offset_min).
+  takenAtOffsetMin?: number | null;
 };
+
+// Convert a photo's stored capture time (naive local wall-clock labelled UTC)
+// to true UTC by subtracting its zone offset, so it can be compared with GPX
+// track timestamps (which are already UTC). Returns null when absent/unparseable.
+function toTrueUtc(
+  takenAt: string | null | undefined,
+  offsetMin: number | null | undefined,
+): string | null {
+  if (!takenAt) return null;
+  const ms = Date.parse(takenAt);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms - (offsetMin ?? 0) * 60000).toISOString();
+}
 
 /**
  * Dashed connector polylines for a single journey. Lays the recorded tracks and
@@ -52,7 +68,15 @@ export function buildJourneyConnectors(
         (f) => f.geometry?.coordinates ?? [],
       ),
     })),
-    geo.map((p) => ({ takenAt: p.takenAt ?? null, lng: p.lng, lat: p.lat })),
+    geo.map((p) => ({
+      // Photo capture time is stored as naive local wall-clock; convert to true
+      // UTC (subtract the zone offset) so it lines up with the GPX track times,
+      // which are already UTC. Without this a photo near a track boundary can be
+      // mis-slotted by up to the offset (1–2 h).
+      takenAt: toTrueUtc(p.takenAt, p.takenAtOffsetMin),
+      lng: p.lng,
+      lat: p.lat,
+    })),
     { clampPhotosToTrackWindow: true },
   );
   // No timed track to bridge across: chain the photos themselves — but only when

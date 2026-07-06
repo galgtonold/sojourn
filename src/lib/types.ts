@@ -65,6 +65,10 @@ export type Photo = {
   lat: number | null;
   lng: number | null;
   taken_at?: string | null;
+  // Minutes offset of the capture-time zone (EXIF OffsetTimeOriginal). taken_at
+  // holds the naive local wall-clock labelled UTC, so true UTC = taken_at minus
+  // this offset — needed to line photos up against GPX track times (real UTC).
+  taken_at_offset_min?: number | null;
   created_at?: string | null;
   sort_order: number;
   i18n?: Partial<Record<Locale, PhotoTranslation>>;

@@ -78,6 +78,7 @@ export function PostView({
       url: p.url as string,
       caption: p.caption,
       takenAt: p.taken_at ?? null,
+      takenAtOffsetMin: p.taken_at_offset_min ?? null,
     }));
   const hasMap =
     markers.length > 0 || post.tracks.length > 0 || photoPins.length > 0;
