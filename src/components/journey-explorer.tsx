@@ -26,6 +26,9 @@ export type JourneyStop = {
   name: string;
   lat: number;
   lng: number;
+  // The sequence the author chose (posts oldest→newest × gallery sort_order),
+  // assigned by the page. When present it drives the walk order directly.
+  order?: number;
   photoUrl?: string | null;
   blurhash?: string | null;
   caption?: string | null;
@@ -89,6 +92,15 @@ export function JourneyExplorer({
 
   // Order the stops along the route so "next" walks the journey in sequence.
   const ordered = useMemo(() => {
+    // Prefer the explicit order the page assigned — the gallery order the author
+    // chose (posts oldest→newest, photos in their arranged sort_order). This is
+    // authoritative; the timestamp/spatial heuristics below only cover older
+    // payloads that predate it.
+    if (stops.length > 0 && stops.every((s) => s.order != null)) {
+      return [...stops].sort(
+        (a, b) => (a.order as number) - (b.order as number),
+      );
+    }
     // Chronological order (by photo time) is the most intuitive way to walk a
     // multi-day journey — use it whenever every stop carries a timestamp.
     if (
@@ -120,9 +132,12 @@ export function JourneyExplorer({
     return [...stops].sort((a, b) => key(a) - key(b));
   }, [stops, tracks]);
 
-  // The dashed connector only bridges the gaps the solid GPX tracks leave —
-  // it never retraces a track and never hangs off a photo taken mid-track.
-  // Falls back to a single line through every stop when no GPX timestamps exist.
+  // The dashed connector bridges the gaps between the recorded GPX tracks — it
+  // never retraces a track. On the trip map photos are pins, not waypoints, so
+  // we don't weave them into the route: that keeps a photo with a stray or
+  // wrong timestamp (e.g. shot the day before its post) from being mis-slotted
+  // into the line. When there are no tracks, fall back to a single dashed line
+  // through the stops in the chosen gallery order.
   const connectorSegments = useMemo(() => {
     const trackInput = tracks.map((tr) => ({
       startedAt: tr.started_at,
@@ -131,14 +146,11 @@ export function JourneyExplorer({
         (f) => f.geometry?.coordinates ?? [],
       ),
     }));
-    const photoInput = stops
-      .filter((s) => s.type === "photo")
-      .map((s) => ({ takenAt: s.takenAt, lng: s.lng, lat: s.lat }));
-    const segs = buildConnectorSegments(trackInput, photoInput);
+    const segs = buildConnectorSegments(trackInput, []);
     if (segs.length === 0 && ordered.length > 1)
       return [ordered.map((s) => [s.lng, s.lat])];
     return segs;
-  }, [tracks, stops, ordered]);
+  }, [tracks, ordered]);
 
   // Build the map once.
   useEffect(() => {

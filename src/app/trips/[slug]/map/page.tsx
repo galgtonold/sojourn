@@ -28,27 +28,40 @@ export default async function TripMapPage({
   if (!trip) notFound();
 
   const tripPosts = await getPublishedPostsByTrip(trip.id);
-  const tracks = tripPosts.flatMap((p) => p.tracks);
-
-  const waypointStops: JourneyStop[] = tripPosts.flatMap((p) =>
-    p.locations.map((l) => ({
-      id: l.id,
-      type: "waypoint" as const,
-      name: l.name,
-      lat: l.lat,
-      lng: l.lng,
-      href: `/posts/${p.slug}`,
-    })),
+  // getPublishedPostsByTrip returns newest-first; walk the trip oldest→newest so
+  // the map sequence matches the reading order.
+  const orderedPosts = [...tripPosts].sort((a, b) =>
+    (a.published_at ?? "").localeCompare(b.published_at ?? ""),
   );
-  const photoStops: JourneyStop[] = tripPosts.flatMap((p) =>
-    p.photos
-      .filter((ph) => ph.lat != null && ph.lng != null && ph.url)
-      .map((ph) => ({
+  const tracks = orderedPosts.flatMap((p) => p.tracks);
+
+  // Emit stops in the gallery order the author chose: posts oldest→newest, and
+  // within each post its photos in their arranged sort_order (p.photos is
+  // already sorted). `order` carries that sequence to the client so the journey
+  // walk follows it instead of re-deriving order from photo timestamps (which
+  // mis-slots a photo whose capture time sits outside its post's day).
+  let order = 0;
+  const stops: JourneyStop[] = [];
+  for (const p of orderedPosts) {
+    for (const l of p.locations) {
+      stops.push({
+        id: l.id,
+        type: "waypoint",
+        name: l.name,
+        lat: l.lat,
+        lng: l.lng,
+        href: `/posts/${p.slug}`,
+        order: order++,
+      });
+    }
+    for (const ph of p.photos) {
+      if (ph.lat == null || ph.lng == null || !ph.url) continue;
+      stops.push({
         id: ph.id,
-        type: "photo" as const,
+        type: "photo",
         name: ph.caption ?? p.title,
-        lat: ph.lat as number,
-        lng: ph.lng as number,
+        lat: ph.lat,
+        lng: ph.lng,
         photoUrl: ph.url,
         blurhash: ph.blurhash,
         caption: ph.caption,
@@ -58,9 +71,10 @@ export default async function TripMapPage({
         captionI18n: ph.i18n,
         postTitle: p.title,
         postTitleI18n: p.i18n,
-      })),
-  );
-  const stops = [...waypointStops, ...photoStops];
+        order: order++,
+      });
+    }
+  }
 
   if (stops.length === 0) notFound();
 
