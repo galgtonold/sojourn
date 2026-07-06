@@ -89,6 +89,9 @@ export function PostWorkspace({
   const [photoRefreshKey, setPhotoRefreshKey] = useState(0);
   const [trackCount, setTrackCount] = useState(tracks.length);
   const [busy, setBusy] = useState(false);
+  // The AI notes autosave on their own, but a still-pending edit shouldn't be
+  // lost on reload — track it so the leave-guard warns for notes too.
+  const [notesDirty, setNotesDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proofreadOpen, setProofreadOpen] = useState(false);
   const [proofreadSig, setProofreadSig] = useState<string | null>(null);
@@ -202,7 +205,7 @@ export function PostWorkspace({
   }
 
   const dirty = JSON.stringify(post) !== JSON.stringify(savedSnapshot);
-  useBeforeUnload(dirty);
+  useBeforeUnload(dirty || notesDirty);
 
   const canPublish = Boolean(post.title.trim() && post.trip_id);
   const readMin = Math.max(1, Math.round(post.body.split(/\s+/).filter(Boolean).length / 200));
@@ -258,6 +261,7 @@ export function PostWorkspace({
             hasBody={Boolean(post.body)}
             onDraftSaved={handleDraftSaved}
             onPhotosUpdated={() => setPhotoRefreshKey((k) => k + 1)}
+            onNotesDirty={setNotesDirty}
             onBeforeGenerate={async () => {
               await save(false);
             }}

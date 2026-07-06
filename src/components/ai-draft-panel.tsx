@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -144,6 +144,7 @@ export function AiDraftPanel({
   onDraftSaved,
   onPhotosUpdated,
   onBeforeGenerate,
+  onNotesDirty,
 }: {
   postId: string;
   initialNotes: string;
@@ -153,12 +154,46 @@ export function AiDraftPanel({
   // gallery re-pulls and the labels show without a manual reload.
   onPhotosUpdated?: () => void;
   onBeforeGenerate?: () => Promise<void>;
+  // Reports whether the notes textarea holds edits not yet persisted, so the
+  // workspace's leave-guard can warn before the tab is closed mid-type.
+  onNotesDirty?: (dirty: boolean) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("de");
   const [notes, setNotes] = useState(initialNotes);
+  // Last value known to be persisted server-side. The notes textarea is plain
+  // React state — the main Save never carried it — so without this it lived only
+  // in the tab and vanished on reload. We autosave every edit to ai_notes.
+  const savedNotesRef = useRef(initialNotes);
+  // Always-current notes, so the pagehide flush reads the latest value without
+  // re-subscribing the listener on every keystroke.
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+
+  // Persist the notes to their own column (best effort). `keepalive` lets the
+  // request outlive an unloading page, so a reload right after typing still
+  // saves. No-ops when nothing changed since the last successful save.
+  const persistNotes = useCallback(
+    async (value: string, keepalive = false) => {
+      if (value === savedNotesRef.current) return;
+      try {
+        const res = await fetch("/api/admin/ai/notes", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ postId, notes: value }),
+          keepalive,
+        });
+        if (!res.ok) return; // leave it dirty so a later flush/leave-guard retries
+        savedNotesRef.current = value;
+        onNotesDirty?.(false);
+      } catch {
+        /* still dirty; the pagehide flush or next edit will retry */
+      }
+    },
+    [postId, onNotesDirty],
+  );
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [phase, setPhase] = useState<
@@ -173,6 +208,29 @@ export function AiDraftPanel({
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = phase === "asking" || phase === "running";
+
+  // Debounced autosave: whenever the notes drift from what's saved, mark dirty
+  // and persist shortly after typing stops. Skipped while an AI run is in
+  // flight — those flows (questions/outline) persist the notes themselves.
+  useEffect(() => {
+    if (busy) return;
+    if (notes === savedNotesRef.current) {
+      onNotesDirty?.(false);
+      return;
+    }
+    onNotesDirty?.(true);
+    const id = setTimeout(() => void persistNotes(notes), 800);
+    return () => clearTimeout(id);
+  }, [notes, busy, persistNotes, onNotesDirty]);
+
+  // Final safety net: flush any unsaved notes when the tab is closed, reloaded,
+  // or backgrounded — before the debounce would have fired. `keepalive` keeps
+  // the request alive through the unload.
+  useEffect(() => {
+    const flush = () => void persistNotes(notesRef.current, true);
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
+  }, [persistNotes]);
 
   // Interrupt an in-flight run. The notes and any answers stay put, so you can
   // adjust them and go again. Server-side jobs already enqueued finish on their
@@ -196,7 +254,7 @@ export function AiDraftPanel({
       setAsked(true);
       // Persist so the woven-in answers aren't lost if they leave without
       // generating. Best effort — the next AI call would persist them anyway.
-      postJson("/api/admin/ai/notes", { postId, notes: next }).catch(() => {});
+      void persistNotes(next);
     }
     setQuestions([]);
     setAnswers({});
@@ -233,6 +291,10 @@ export function AiDraftPanel({
         { postId, notes, lang },
         ac.signal,
       );
+      // The route just wrote these notes to ai_notes — record that so autosave
+      // doesn't redundantly re-post the same value.
+      savedNotesRef.current = notes;
+      onNotesDirty?.(false);
       setQuestions(questions ?? []);
       setStep(null);
       setPhase("answering");
@@ -296,6 +358,9 @@ export function AiDraftPanel({
           signal,
         ),
       );
+      // Outline persisted these notes to ai_notes; sync so autosave stays quiet.
+      savedNotesRef.current = notes;
+      onNotesDirty?.(false);
 
       // 3. Write each section (retried independently). A section that keeps
       //    failing is skipped rather than sinking the run, so the draft still
@@ -511,6 +576,7 @@ export function AiDraftPanel({
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
+        onBlur={() => void persistNotes(notes)}
         rows={4}
         disabled={busy}
         placeholder={t("admin.ai.notes")}
