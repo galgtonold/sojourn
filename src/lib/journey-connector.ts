@@ -33,9 +33,14 @@ type Anchor = {
 };
 
 // Returns a list of 2-point segments ([from, to]) to draw as dashed lines.
+// With `clampPhotosToTrackWindow`, photos taken outside the recorded tracks'
+// overall time span are ignored — otherwise a photo from another day (or long
+// after you stopped recording) anchors at the far end of the timeline and gets
+// bridged to a track with one long, nonsensical line.
 export function buildConnectorSegments(
   tracks: ConnectorTrack[],
   photos: ConnectorPhoto[],
+  options: { clampPhotosToTrackWindow?: boolean } = {},
 ): number[][][] {
   const anchors: Anchor[] = [];
   const spans: { s: number; e: number }[] = [];
@@ -55,9 +60,16 @@ export function buildConnectorSegments(
     });
   });
 
+  // The window the recorded tracks span (only meaningful when at least one
+  // timed track exists — otherwise the clamp is a no-op and photos chain freely).
+  const winStart = spans.length ? Math.min(...spans.map((sp) => sp.s)) : -Infinity;
+  const winEnd = spans.length ? Math.max(...spans.map((sp) => sp.e)) : Infinity;
+
   for (const ph of photos) {
     const t = ph.takenAt ? Date.parse(ph.takenAt) : NaN;
     if (!Number.isFinite(t)) continue;
+    if (options.clampPhotosToTrackWindow && (t < winStart || t > winEnd))
+      continue; // outside the journey's recorded window — not a waypoint
     if (spans.some((sp) => t >= sp.s && t <= sp.e)) continue; // covered already
     anchors.push({ t, coord: [ph.lng, ph.lat] });
   }

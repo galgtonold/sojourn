@@ -53,6 +53,7 @@ export function buildJourneyConnectors(
       ),
     })),
     geo.map((p) => ({ takenAt: p.takenAt ?? null, lng: p.lng, lat: p.lat })),
+    { clampPhotosToTrackWindow: true },
   );
   // No timed track to bridge across: chain the photos themselves — but only when
   // there's no track at all (an untimed track's coverage is unknown, so we don't

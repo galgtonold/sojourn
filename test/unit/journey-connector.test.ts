@@ -67,4 +67,43 @@ describe("buildConnectorSegments", () => {
     );
     expect(segs).toEqual([]);
   });
+
+  it("with the clamp, ignores a photo taken outside the tracks' window", () => {
+    const segs = buildConnectorSegments(
+      [
+        track("2026-07-06T09:00:00Z", "2026-07-06T13:00:00Z", [[0, 0], [1, 1]]),
+        track("2026-07-06T14:00:00Z", "2026-07-06T15:00:00Z", [[2, 2], [3, 3]]),
+      ],
+      [{ takenAt: "2026-07-05T15:00:00Z", lng: 9, lat: 9 }], // the day before
+      { clampPhotosToTrackWindow: true },
+    );
+    // Only the track→track bridge; the stray day-before photo is not woven in.
+    expect(segs).toEqual([[[1, 1], [2, 2]]]);
+    expect(JSON.stringify(segs)).not.toContain("9");
+  });
+
+  it("without the clamp, a stray earlier photo still anchors (default)", () => {
+    const segs = buildConnectorSegments(
+      [track("2026-07-06T09:00:00Z", "2026-07-06T13:00:00Z", [[0, 0], [1, 1]])],
+      [{ takenAt: "2026-07-05T15:00:00Z", lng: 9, lat: 9 }],
+    );
+    // Preserves the journey-explorer behaviour: photo precedes the track, so it
+    // bridges photo → track start.
+    expect(segs).toEqual([[[9, 9], [0, 0]]]);
+  });
+
+  it("with the clamp, still weaves a photo between two tracks (a ferry gap)", () => {
+    const segs = buildConnectorSegments(
+      [
+        track("2026-07-06T09:00:00Z", "2026-07-06T13:00:00Z", [[0, 0], [1, 1]]),
+        track("2026-07-06T14:00:00Z", "2026-07-06T15:00:00Z", [[2, 2], [3, 3]]),
+      ],
+      [{ takenAt: "2026-07-06T13:30:00Z", lng: 1.5, lat: 1.5 }], // during the gap
+      { clampPhotosToTrackWindow: true },
+    );
+    expect(segs).toEqual([
+      [[1, 1], [1.5, 1.5]],
+      [[1.5, 1.5], [2, 2]],
+    ]);
+  });
 });
