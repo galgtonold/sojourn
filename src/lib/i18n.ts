@@ -122,6 +122,13 @@ const en = {
   "admin.gallery.delete": "Delete photo",
   "admin.gallery.deleteConfirm": "Delete this photo? This can’t be undone.",
   "admin.gallery.geotagged": "Geotagged from EXIF — shows on the map",
+  "admin.gallery.geo.button": "Locate photos from track",
+  "admin.gallery.geo.busy": "Locating…",
+  "admin.gallery.geo.done":
+    "Placed {n, plural, one {# photo} other {# photos}} of {total} from the track.",
+  "admin.gallery.geo.noTimes":
+    "No timestamped track found. Upload a GPX recorded with times (re-upload older tracks).",
+  "admin.gallery.geo.err": "Couldn’t locate photos from the track.",
   "admin.routes.delete": "Delete track",
   "admin.upload.remove": "Remove image",
   "admin.upload.coverAlt": "Cover preview",
@@ -664,6 +671,13 @@ const de: Dict = {
   "admin.gallery.delete": "Foto löschen",
   "admin.gallery.deleteConfirm": "Dieses Foto löschen? Das kann nicht rückgängig gemacht werden.",
   "admin.gallery.geotagged": "Geotag aus EXIF — erscheint auf der Karte",
+  "admin.gallery.geo.button": "Fotos per Track verorten",
+  "admin.gallery.geo.busy": "Wird verortet…",
+  "admin.gallery.geo.done":
+    "{n, plural, one {# Foto} other {# Fotos}} von {total} per Track verortet.",
+  "admin.gallery.geo.noTimes":
+    "Kein Track mit Zeitstempeln gefunden. Lade eine GPX mit Zeiten hoch (ältere Tracks neu hochladen).",
+  "admin.gallery.geo.err": "Fotos konnten nicht per Track verortet werden.",
   "admin.routes.delete": "Track löschen",
   "admin.upload.remove": "Bild entfernen",
   "admin.upload.coverAlt": "Cover-Vorschau",

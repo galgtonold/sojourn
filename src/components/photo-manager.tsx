@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Camera, Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { trackSamples, geotagPhotos, type PhotoTime } from "@/lib/geotag-from-track";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -75,6 +76,7 @@ export function PhotoManager({
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [locPhoto, setLocPhoto] = useState<ManagedPhoto | null>(null);
@@ -92,6 +94,61 @@ export function PhotoManager({
     const supabase = getBrowserSupabase();
     await supabase?.from("photos").update({ lat, lng }).eq("id", photo.id);
     revalidate();
+  }
+
+  // Place photos that have no location by matching their capture time to a
+  // timestamped GPX track for this post. Re-runnable; never overwrites a pin.
+  async function locateFromTrack() {
+    const supabase = getBrowserSupabase();
+    if (!supabase) return;
+    setBusy(true);
+    setError(null);
+    setGeoMsg(null);
+    try {
+      const { data: trackRows } = await supabase
+        .from("tracks")
+        .select("geojson")
+        .eq("post_id", postId);
+      const samples = trackSamples(
+        (trackRows ?? []).map(
+          (r) => r.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString>,
+        ),
+      );
+      if (samples.length === 0) {
+        setError(t("admin.gallery.geo.noTimes"));
+        return;
+      }
+      const { data: photoRows } = await supabase
+        .from("photos")
+        .select("id, taken_at, taken_at_offset_min, lat, lng")
+        .eq("post_id", postId)
+        .order("sort_order", { ascending: true });
+      const targets = (photoRows ?? []).filter(
+        (p) => p.lat == null || p.lng == null,
+      );
+      const times: PhotoTime[] = targets.map((p) => ({
+        localMs: p.taken_at ? Date.parse(p.taken_at as string) : NaN,
+        offsetMin: (p.taken_at_offset_min as number | null) ?? null,
+      }));
+      const placed = geotagPhotos(times, samples);
+      let n = 0;
+      for (let i = 0; i < targets.length; i++) {
+        const pos = placed[i];
+        if (!pos) continue;
+        const id = targets[i].id as string;
+        await supabase.from("photos").update({ lat: pos.lat, lng: pos.lng }).eq("id", id);
+        setPhotos((ps) =>
+          ps.map((x) => (x.id === id ? { ...x, lat: pos.lat, lng: pos.lng } : x)),
+        );
+        n++;
+      }
+      setGeoMsg(t("admin.gallery.geo.done", { n, total: targets.length }));
+      revalidate();
+    } catch {
+      setError(t("admin.gallery.geo.err"));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function copyTag(photo: ManagedPhoto) {
@@ -324,6 +381,23 @@ export function PhotoManager({
           )}
           {busy ? t("admin.upload.uploading") : t("admin.gallery.add")}
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={locateFromTrack}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 disabled:opacity-50"
+        >
+          {busy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <MapPin className="size-4" />
+          )}
+          {busy ? t("admin.gallery.geo.busy") : t("admin.gallery.geo.button")}
+        </button>
+        {geoMsg && <span className="text-sm text-sand-100/70">{geoMsg}</span>}
       </div>
 
       <input
