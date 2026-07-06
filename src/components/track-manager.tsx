@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
 import { parseGpxSplit, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { geotagPostPhotos } from "@/lib/geotag-photos";
 import { useT } from "@/components/i18n";
 
 export type ManagedTrack = {
@@ -17,12 +18,14 @@ export function TrackManager({
   slug,
   initial,
   onCountChange,
+  onPhotosLocated,
 }: {
   postId: string;
   tripId: string | null;
   slug: string;
   initial: ManagedTrack[];
   onCountChange?: (n: number) => void;
+  onPhotosLocated?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tracks, setTracks] = useState<ManagedTrack[]>(initial);
@@ -31,6 +34,7 @@ export function TrackManager({
   }, [tracks.length, onCountChange]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const t = useT();
@@ -84,6 +88,17 @@ export function TrackManager({
       }
       setTracks((t) => [...t, ...added]);
       revalidate();
+      // A newly-uploaded track can place photos that were waiting for one.
+      // Best-effort; shows a note and refreshes the photo grid only if it hits.
+      try {
+        const { updated, total } = await geotagPostPhotos(postId);
+        if (updated.length) {
+          setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
+          onPhotosLocated?.();
+        }
+      } catch {
+        /* best-effort */
+      }
     } catch {
       setError(t("admin.err.gpx"));
     } finally {
@@ -213,6 +228,7 @@ export function TrackManager({
         onChange={(e) => addFiles(e.target.files)}
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {geoMsg && <p className="text-sm text-sand-100/70">{geoMsg}</p>}
     </div>
   );
 }

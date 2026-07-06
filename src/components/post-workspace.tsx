@@ -216,7 +216,7 @@ export function PostWorkspace({
           <PhotoManager postId={postId} slug={slug} initial={initialPhotos} onListChange={setPhotos} refreshKey={photoRefreshKey} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.track")} icon={<Route className="size-4" />} summary={trackCount ? t("admin.editor.status.track", { n: tracks.reduce((s, tr) => s + Math.round((tr.distance_m ?? 0) / 1000), 0) }) : t("admin.editor.status.trackNone")} open={open.track} onToggle={() => toggle("track")} className={open.track ? "lg:col-span-4" : undefined}>
-          <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} />
+          <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} onPhotosLocated={() => setPhotoRefreshKey((k) => k + 1)} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.polls")} icon={<MessageCircle className="size-4" />} summary={t("admin.editor.status.polls", { n: interactions.length })} open={open.polls} onToggle={() => toggle("polls")} className={open.polls ? "lg:col-span-4" : undefined}>
           <InteractionManager postId={postId} slug={slug} list={interactions} onListChange={setInteractions} />
