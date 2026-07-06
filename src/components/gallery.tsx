@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc } from "@/lib/utils";
@@ -62,16 +62,39 @@ export function Gallery({ photos }: { photos: Photo[] }) {
               onClick={() => setOpen(i)}
               className="group relative aspect-square scroll-mt-24 overflow-hidden rounded-2xl bg-ink-800"
             >
-              {photo.url && (
-                <Image
-                  src={photo.url}
-                  alt={photo.caption ?? ""}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 33vw"
-                  placeholder={blur ? "blur" : "empty"}
-                  blurDataURL={blur ?? undefined}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
+              {photo.media_type === "video" ? (
+                <>
+                  {photo.poster_url ? (
+                    <Image
+                      src={photo.poster_url}
+                      alt={photo.caption ?? ""}
+                      fill
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                      placeholder={blur ? "blur" : "empty"}
+                      blurDataURL={blur ?? undefined}
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-ink-800" />
+                  )}
+                  <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                    <span className="grid size-12 place-items-center rounded-full bg-ink-950/50 ring-1 ring-white/30">
+                      <Play className="size-6 translate-x-0.5 text-white" />
+                    </span>
+                  </span>
+                </>
+              ) : (
+                photo.url && (
+                  <Image
+                    src={photo.url}
+                    alt={photo.caption ?? ""}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 33vw"
+                    placeholder={blur ? "blur" : "empty"}
+                    blurDataURL={blur ?? undefined}
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )
               )}
             </button>
           );
@@ -126,14 +149,25 @@ export function Gallery({ photos }: { photos: Photo[] }) {
               animate={{ scale: 1, opacity: 1 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {photos[open].url && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={optimizedSrc(photos[open].url!, 2048, 80)}
-                  alt={photos[open].caption ?? ""}
-                  className="mx-auto max-h-[80dvh] w-auto rounded-2xl object-contain"
-                />
-              )}
+              {photos[open].media_type === "video"
+                ? photos[open].url && (
+                    <video
+                      src={photos[open].url!}
+                      poster={photos[open].poster_url ?? undefined}
+                      controls
+                      playsInline
+                      autoPlay
+                      className="mx-auto max-h-[80dvh] w-auto rounded-2xl"
+                    />
+                  )
+                : photos[open].url && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={optimizedSrc(photos[open].url!, 2048, 80)}
+                      alt={photos[open].caption ?? ""}
+                      className="mx-auto max-h-[80dvh] w-auto rounded-2xl object-contain"
+                    />
+                  )}
               {photos[open].caption && (
                 <figcaption className="mt-3 text-center text-sm text-sand-100/70">
                   {photos[open].caption}

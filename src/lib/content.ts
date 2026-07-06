@@ -499,6 +499,7 @@ export async function searchPhotos(
     const { data, error: fetchErr } = await supabase
       .from("photos")
       .select(PHOTO_SEARCH_SELECT)
+      .eq("media_type", "image")
       .in("id", ids);
     if (fetchErr || !data) return [];
     return orderByIds(data.map(hydratePhotoResult), ids);

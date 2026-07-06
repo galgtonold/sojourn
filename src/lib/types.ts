@@ -60,6 +60,8 @@ export type Photo = {
   width: number | null;
   height: number | null;
   blurhash: string | null;
+  media_type?: "image" | "video";
+  poster_url?: string | null;
   lat: number | null;
   lng: number | null;
   taken_at?: string | null;
