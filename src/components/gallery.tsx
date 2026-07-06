@@ -60,6 +60,9 @@ export function Gallery({ photos }: { photos: Photo[] }) {
               key={photo.id}
               id={`photo-${photo.id}`}
               onClick={() => setOpen(i)}
+              aria-label={
+                photo.media_type === "video" ? t("gallery.playVideo") : undefined
+              }
               className="group relative aspect-square scroll-mt-24 overflow-hidden rounded-2xl bg-ink-800"
             >
               {photo.media_type === "video" ? (

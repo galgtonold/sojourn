@@ -409,7 +409,7 @@ export function PhotoManager({
           ) : (
             <ImagePlus className="size-5" />
           )}
-          {busy ? t("admin.upload.uploading") : t("admin.gallery.add")}
+          {busy ? t("admin.upload.uploading") : t("admin.gallery.addMedia")}
         </button>
       </div>
 
