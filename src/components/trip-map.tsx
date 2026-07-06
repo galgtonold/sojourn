@@ -29,19 +29,6 @@ export type PhotoPin = {
   takenAt?: string | null;
 };
 
-/** Chronological order (by taken_at); photos without a timestamp keep their
- *  given order and sort last. Used to number pins and connect them in time. */
-export function orderPhotosByTime(photos: PhotoPin[]): PhotoPin[] {
-  return [...photos].sort((a, b) => {
-    const ta = a.takenAt,
-      tb = b.takenAt;
-    if (ta && tb) return ta < tb ? -1 : ta > tb ? 1 : 0;
-    if (ta) return -1;
-    if (tb) return 1;
-    return 0;
-  });
-}
-
 function trackEndpoints(t: Track): { start: number[]; end: number[] } | null {
   const feats = t.geojson?.features ?? [];
   const first = feats[0]?.geometry?.coordinates;
@@ -57,15 +44,19 @@ function trackEndpoints(t: Track): { start: number[]; end: number[] } | null {
  * photos taken before the track started chain into its start point, photos
  * taken after it ended chain out of its end point, and photos taken while the
  * track was recording get no line — the track already is their path. When no
- * track carries timestamps every photo is chained in chronological order
- * instead; when an untimed track exists we draw nothing (we can't tell which
- * photos it covers).
+ * track carries timestamps every photo is chained in gallery order instead;
+ * when an untimed track exists we draw nothing (we can't tell which photos it
+ * covers).
+ *
+ * Photos arrive in the gallery's order (chronological by default, or the
+ * author's manual arrangement), so the connector line follows the same order as
+ * the numbered pins rather than re-deriving a separate chronological one.
  */
 export function photoConnectors(
   photos: PhotoPin[],
   tracks: Track[],
 ): number[][][] {
-  const ordered = orderPhotosByTime(photos).filter(
+  const ordered = photos.filter(
     (p) => Number.isFinite(p.lng) && Number.isFinite(p.lat),
   );
   if (ordered.length === 0) return [];
@@ -126,8 +117,8 @@ export function TripMap({
   tracks?: Track[];
   photos?: PhotoPin[];
   route?: boolean;
-  /** Number the photo pins in chronological order and, when there's no GPX
-   *  track, join them with a dashed line. For single-journey (per-post) maps. */
+  /** Number the photo pins in gallery order and, when there's no GPX track,
+   *  join them with a dashed line. For single-journey (per-post) maps. */
   connectPhotos?: boolean;
   className?: string;
 }) {
@@ -238,9 +229,10 @@ export function TripMap({
           .addTo(map);
       });
 
-      // Photo pins — numbered in chronological order, and joined by a dashed
-      // "photo journey" line when there's no GPX track already drawing the route.
-      const orderedPhotos = connectPhotos ? orderPhotosByTime(photos) : photos;
+      // Photo pins — numbered in gallery order (chronological by default, or the
+      // author's manual arrangement), and joined by a dashed "photo journey"
+      // line when there's no GPX track already drawing the route.
+      const orderedPhotos = photos;
       const connectors = connectPhotos ? photoConnectors(photos, tracks) : [];
       if (connectors.length) {
         map.addSource("photo-path", {

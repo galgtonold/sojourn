@@ -13,7 +13,6 @@ import {
   type PhotoPin,
   computeBounds,
   initialView,
-  orderPhotosByTime,
   photoConnectors,
 } from "@/components/trip-map";
 import { Figure, mdComponents } from "@/components/prose";
@@ -63,7 +62,9 @@ export function StoryMap({
     if (!isDesktop || !mapContainer.current) return;
     setMapReady(false);
 
-    const ordered = orderPhotosByTime(photoPins);
+    // Number the pins in the gallery's order (chronological by default, or the
+    // author's manual arrangement) — the same order the reader sees elsewhere.
+    const ordered = photoPins;
     // Open roughly framed on the content (saves a wide initial tile fetch on slow
     // connections); the load fitBounds nails the exact framing. boundsRef also
     // drives the reset view.
