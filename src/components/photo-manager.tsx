@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Camera, Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { uploadImage } from "@/lib/upload-client";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { trackSamples, geotagPhotos, type PhotoTime } from "@/lib/geotag-from-track";
+import { geotagPostPhotos } from "@/lib/geotag-photos";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -99,50 +99,24 @@ export function PhotoManager({
   // Place photos that have no location by matching their capture time to a
   // timestamped GPX track for this post. Re-runnable; never overwrites a pin.
   async function locateFromTrack() {
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
     setBusy(true);
     setError(null);
     setGeoMsg(null);
     try {
-      const { data: trackRows } = await supabase
-        .from("tracks")
-        .select("geojson")
-        .eq("post_id", postId);
-      const samples = trackSamples(
-        (trackRows ?? []).map(
-          (r) => r.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString>,
-        ),
-      );
-      if (samples.length === 0) {
+      const { updated, total, hadTimedTrack } = await geotagPostPhotos(postId);
+      if (!hadTimedTrack) {
         setError(t("admin.gallery.geo.noTimes"));
         return;
       }
-      const { data: photoRows } = await supabase
-        .from("photos")
-        .select("id, taken_at, taken_at_offset_min, lat, lng")
-        .eq("post_id", postId)
-        .order("sort_order", { ascending: true });
-      const targets = (photoRows ?? []).filter(
-        (p) => p.lat == null || p.lng == null,
-      );
-      const times: PhotoTime[] = targets.map((p) => ({
-        localMs: p.taken_at ? Date.parse(p.taken_at as string) : NaN,
-        offsetMin: (p.taken_at_offset_min as number | null) ?? null,
-      }));
-      const placed = geotagPhotos(times, samples);
-      let n = 0;
-      for (let i = 0; i < targets.length; i++) {
-        const pos = placed[i];
-        if (!pos) continue;
-        const id = targets[i].id as string;
-        await supabase.from("photos").update({ lat: pos.lat, lng: pos.lng }).eq("id", id);
+      if (updated.length) {
         setPhotos((ps) =>
-          ps.map((x) => (x.id === id ? { ...x, lat: pos.lat, lng: pos.lng } : x)),
+          ps.map((x) => {
+            const u = updated.find((y) => y.id === x.id);
+            return u ? { ...x, lat: u.lat, lng: u.lng } : x;
+          }),
         );
-        n++;
       }
-      setGeoMsg(t("admin.gallery.geo.done", { n, total: targets.length }));
+      setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
       revalidate();
     } catch {
       setError(t("admin.gallery.geo.err"));
