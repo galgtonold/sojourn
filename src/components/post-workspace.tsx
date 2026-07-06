@@ -15,6 +15,7 @@ import { slugify } from "@/lib/utils";
 import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
+import { ProofreadDialog, proofreadSignature } from "@/components/proofread-dialog";
 import { TranslationBadge } from "@/components/translation-badge";
 import { PostSection } from "@/components/post-section";
 import { PostActionBar } from "@/components/post-action-bar";
@@ -89,6 +90,8 @@ export function PostWorkspace({
   const [trackCount, setTrackCount] = useState(tracks.length);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proofreadOpen, setProofreadOpen] = useState(false);
+  const [proofreadSig, setProofreadSig] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<SectionId, boolean>>(
     defaultOpenSections(Boolean(initial.body)),
   );
@@ -143,6 +146,22 @@ export function PostWorkspace({
 
   async function togglePublish() {
     const next = !post.published;
+    // Nudge a proofread before the first publish of an unproofread version.
+    if (next) {
+      const sig = proofreadSignature(post.title, post.excerpt ?? "", post.body ?? "");
+      if (sig !== proofreadSig) {
+        const proceed = await confirm({
+          title: t("admin.proofread.nudgeTitle"),
+          message: t("admin.proofread.nudgeBody"),
+          confirmLabel: t("admin.proofread.publishAnyway"),
+          cancelLabel: t("admin.proofread.proofreadFirst"),
+        });
+        if (!proceed) {
+          setProofreadOpen(true);
+          return;
+        }
+      }
+    }
     setPost((p) => ({ ...p, published: next }));
     const ok = await save(false, { published: next });
     if (!ok) setPost((p) => ({ ...p, published: !next }));
@@ -195,6 +214,13 @@ export function PostWorkspace({
     <div className="space-y-3 pb-24">
       <div className="mb-1">
         <TranslationBadge postId={postId} initialStatus={translationStatus} published={post.published} />
+        <button
+          type="button"
+          onClick={() => setProofreadOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-sand-100/70 transition hover:border-ember-400 hover:text-ember-400"
+        >
+          {t("admin.proofread.button")}
+        </button>
       </div>
 
       <PostActionBar
@@ -281,6 +307,18 @@ export function PostWorkspace({
           </button>
         </div>
       )}
+
+      <ProofreadDialog
+        open={proofreadOpen}
+        onClose={() => setProofreadOpen(false)}
+        postId={postId}
+        lang="de"
+        title={post.title}
+        excerpt={post.excerpt ?? ""}
+        body={post.body ?? ""}
+        onApply={(field, value) => set(field, value)}
+        onRan={(c) => setProofreadSig(proofreadSignature(c.title, c.excerpt, c.body))}
+      />
     </div>
   );
 }
