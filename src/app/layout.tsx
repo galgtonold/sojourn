@@ -54,6 +54,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   themeColor: "#0a0908",
+  // The site ships a single, dark palette. Declaring the scheme (this emits
+  // <meta name="color-scheme" content="dark">, read during navigation before CSS
+  // parses) stops Android Chrome's "auto dark theme" from force-darkening an
+  // already-dark page — which was recolouring the map number badges, boxes and
+  // buttons. Pairs with `:root { color-scheme: dark }` in globals.css.
+  colorScheme: "dark",
 };
 
 export default async function RootLayout({
