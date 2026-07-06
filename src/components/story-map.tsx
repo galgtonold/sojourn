@@ -13,7 +13,7 @@ import {
   type PhotoPin,
   computeBounds,
   initialView,
-  photoConnectors,
+  buildJourneyConnectors,
 } from "@/components/trip-map";
 import { Figure, mdComponents } from "@/components/prose";
 import { InteractiveBlock } from "@/components/interactive-block";
@@ -111,7 +111,7 @@ export function StoryMap({
 
       // Bridge photos to the track across the gaps it doesn't cover (before it
       // started / after it ended); photos taken during it stay unconnected.
-      const connectors = photoConnectors(photoPins, tracks);
+      const connectors = buildJourneyConnectors(photoPins, tracks);
       if (connectors.length) {
         map.addSource("photo-path", {
           type: "geojson",

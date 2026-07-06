@@ -7,6 +7,7 @@ import { optimizedSrc } from "@/lib/utils";
 import { readCookieLocale } from "@/components/i18n";
 import { translate, type Locale } from "@/lib/i18n";
 import type { PostTranslation, Track } from "@/lib/types";
+import { buildConnectorSegments } from "@/lib/journey-connector";
 
 export type MapMarker = {
   id: string;
@@ -29,70 +30,37 @@ export type PhotoPin = {
   takenAt?: string | null;
 };
 
-function trackEndpoints(t: Track): { start: number[]; end: number[] } | null {
-  const feats = t.geojson?.features ?? [];
-  const first = feats[0]?.geometry?.coordinates;
-  const last = feats[feats.length - 1]?.geometry?.coordinates;
-  const a = first?.[0];
-  const b = last?.[last.length - 1];
-  if (!a || !b) return null;
-  return { start: [a[0], a[1]], end: [b[0], b[1]] };
-}
-
 /**
- * Dashed connector polylines that bridge photos to a *timed* GPX track:
- * photos taken before the track started chain into its start point, photos
- * taken after it ended chain out of its end point, and photos taken while the
- * track was recording get no line — the track already is their path. When no
- * track carries timestamps every photo is chained in gallery order instead;
- * when an untimed track exists we draw nothing (we can't tell which photos it
- * covers).
- *
- * Photos arrive in the gallery's order (chronological by default, or the
- * author's manual arrangement), so the connector line follows the same order as
- * the numbered pins rather than re-deriving a separate chronological one.
+ * Dashed connector polylines for a single journey. Lays the recorded tracks and
+ * the geotagged photos on one timeline and bridges every gap the solid GPX lines
+ * leave — track→track (e.g. a ferry crossing between two rides), track→photo and
+ * photo→photo — while never retracing a track or hanging off a photo taken
+ * mid-track. Falls back to chaining the photos when there's no track at all.
  */
-export function photoConnectors(
+export function buildJourneyConnectors(
   photos: PhotoPin[],
   tracks: Track[],
 ): number[][][] {
-  const ordered = photos.filter(
+  const geo = photos.filter(
     (p) => Number.isFinite(p.lng) && Number.isFinite(p.lat),
   );
-  if (ordered.length === 0) return [];
-
-  const ms = (s: string) => Date.parse(s);
-  const timed = tracks
-    .map((t) => ({ pts: trackEndpoints(t), s: t.started_at, e: t.ended_at }))
-    .filter(
-      (t): t is { pts: { start: number[]; end: number[] }; s: string; e: string } =>
-        !!t.pts &&
-        !!t.s &&
-        !!t.e &&
-        Number.isFinite(ms(t.s)) &&
-        Number.isFinite(ms(t.e)),
-    );
-
-  if (timed.length === 0) {
-    // No timed track to split on: chain all photos when there's no track at
-    // all; with only an untimed track present, leave the photos unconnected.
-    return tracks.length === 0 && ordered.length > 1
-      ? [ordered.map((p) => [p.lng, p.lat])]
-      : [];
+  const segments = buildConnectorSegments(
+    tracks.map((t) => ({
+      startedAt: t.started_at,
+      endedAt: t.ended_at,
+      coords: (t.geojson?.features ?? []).flatMap(
+        (f) => f.geometry?.coordinates ?? [],
+      ),
+    })),
+    geo.map((p) => ({ takenAt: p.takenAt ?? null, lng: p.lng, lat: p.lat })),
+  );
+  // No timed track to bridge across: chain the photos themselves — but only when
+  // there's no track at all (an untimed track's coverage is unknown, so we don't
+  // guess).
+  if (segments.length === 0 && tracks.length === 0 && geo.length > 1) {
+    return [geo.map((p) => [p.lng, p.lat])];
   }
-
-  const winStart = Math.min(...timed.map((t) => ms(t.s)));
-  const winEnd = Math.max(...timed.map((t) => ms(t.e)));
-  const startPt = timed.reduce((a, b) => (ms(a.s) <= ms(b.s) ? a : b)).pts.start;
-  const endPt = timed.reduce((a, b) => (ms(a.e) >= ms(b.e) ? a : b)).pts.end;
-
-  const pre = ordered.filter((p) => p.takenAt && ms(p.takenAt) < winStart);
-  const post = ordered.filter((p) => p.takenAt && ms(p.takenAt) > winEnd);
-
-  const lines: number[][][] = [];
-  if (pre.length) lines.push([...pre.map((p) => [p.lng, p.lat]), startPt]);
-  if (post.length) lines.push([endPt, ...post.map((p) => [p.lng, p.lat])]);
-  return lines;
+  return segments;
 }
 
 function esc(s: string): string {
@@ -233,7 +201,7 @@ export function TripMap({
       // author's manual arrangement), and joined by a dashed "photo journey"
       // line when there's no GPX track already drawing the route.
       const orderedPhotos = photos;
-      const connectors = connectPhotos ? photoConnectors(photos, tracks) : [];
+      const connectors = connectPhotos ? buildJourneyConnectors(photos, tracks) : [];
       if (connectors.length) {
         map.addSource("photo-path", {
           type: "geojson",
