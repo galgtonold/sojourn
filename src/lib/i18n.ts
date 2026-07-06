@@ -538,6 +538,11 @@ const en = {
   "admin.gallery.located": "Located",
   "admin.gallery.saved": "Saved ✓",
   "admin.gallery.addMedia": "Add photo or video",
+  "admin.gallery.reorder": "Reorder",
+  "admin.gallery.reorderHint": "Drag photos into the order you want.",
+  "admin.gallery.reorderDone": "Done",
+  "admin.gallery.sortByTime": "Sort by capture time",
+  "admin.gallery.sortedByTime": "Sorted by capture time.",
   "gallery.playVideo": "Play video",
 
   "admin.location.title": "Set location",
@@ -1137,6 +1142,11 @@ const de: Dict = {
   "admin.gallery.located": "Verortet",
   "admin.gallery.saved": "Gespeichert ✓",
   "admin.gallery.addMedia": "Foto oder Video hinzufügen",
+  "admin.gallery.reorder": "Sortieren",
+  "admin.gallery.reorderHint": "Zieh die Fotos in die gewünschte Reihenfolge.",
+  "admin.gallery.reorderDone": "Fertig",
+  "admin.gallery.sortByTime": "Nach Aufnahmezeit sortieren",
+  "admin.gallery.sortedByTime": "Nach Aufnahmezeit sortiert.",
   "gallery.playVideo": "Video abspielen",
 
   "admin.location.title": "Standort wählen",

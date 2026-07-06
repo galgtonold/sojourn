@@ -65,6 +65,7 @@ export type Photo = {
   lat: number | null;
   lng: number | null;
   taken_at?: string | null;
+  created_at?: string | null;
   sort_order: number;
   i18n?: Partial<Record<Locale, PhotoTranslation>>;
 };

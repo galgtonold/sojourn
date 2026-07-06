@@ -1,7 +1,19 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Code2, ImagePlus, Loader2, MapPin, PlayCircle, Trash2 } from "lucide-react";
+import { Reorder } from "framer-motion";
+import {
+  ArrowDownUp,
+  Camera,
+  Check,
+  Code2,
+  GripVertical,
+  ImagePlus,
+  Loader2,
+  MapPin,
+  PlayCircle,
+  Trash2,
+} from "lucide-react";
 import { uploadImage, uploadVideo } from "@/lib/upload-client";
 import { mediaKind } from "@/lib/media-kind";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -35,12 +47,16 @@ export function PhotoManager({
   postId,
   slug,
   initial,
+  initialManualOrder = false,
   onListChange,
   refreshKey = 0,
 }: {
   postId: string;
   slug: string;
   initial: ManagedPhoto[];
+  // Whether the author hand-arranged this post's photos. When false, a new
+  // upload re-sorts the gallery by capture time; when true it just appends.
+  initialManualOrder?: boolean;
   // Mirrors the live photo list up so the article's insert bar can offer a
   // freshly-uploaded photo without a page reload.
   onListChange?: (photos: ManagedPhoto[]) => void;
@@ -53,6 +69,13 @@ export function PhotoManager({
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<ManagedPhoto[]>(initial);
+  // Tracks whether the gallery is hand-ordered. A ref mirror lets the async
+  // upload flow read the latest value without being re-created each render.
+  const [manualOrder, setManualOrder] = useState(initialManualOrder);
+  const manualRef = useRef(manualOrder);
+  manualRef.current = manualOrder;
+  // Toggles the drag-to-reorder list view.
+  const [reordering, setReordering] = useState(false);
   useEffect(() => {
     onListChange?.(photos);
   }, [photos, onListChange]);
@@ -69,7 +92,8 @@ export function PhotoManager({
         .from("photos")
         .select(PHOTO_COLUMNS)
         .eq("post_id", postId)
-        .order("sort_order", { ascending: true });
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
       if (!cancelled && data) setPhotos(data as ManagedPhoto[]);
     })();
     return () => {
@@ -151,13 +175,78 @@ export function PhotoManager({
     }
   }
 
+  // Persist a photo order server-side. Returns the authoritative id order (the
+  // server validates ids and denses the sort_order), or null on failure.
+  async function requestReorder(body: {
+    order?: string[];
+    mode?: "time";
+  }): Promise<string[] | null> {
+    try {
+      const res = await fetch("/api/admin/photos/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ postId, ...body }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { order?: string[] };
+      if (!res.ok) return null;
+      return j.order ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Reorder local state to match an id order coming back from the server.
+  function applyOrder(ids: string[]) {
+    setPhotos((ps) => {
+      const byId = new Map(ps.map((p) => [p.id, p]));
+      const next = ids
+        .map((id) => byId.get(id))
+        .filter((p): p is ManagedPhoto => Boolean(p));
+      // Safety: keep any photo the server didn't mention.
+      for (const p of ps) if (!ids.includes(p.id)) next.push(p);
+      return next;
+    });
+  }
+
+  // (Re)apply chronological order by capture time; clears the manual flag.
+  async function sortByTime() {
+    setBusy(true);
+    setError(null);
+    setGeoMsg(null);
+    try {
+      const ids = await requestReorder({ mode: "time" });
+      if (!ids) {
+        setError(t("admin.err.uploadFailed"));
+        return;
+      }
+      applyOrder(ids);
+      setManualOrder(false);
+      setGeoMsg(t("admin.gallery.sortedByTime"));
+      revalidate();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Save the current hand-arranged order and leave reorder mode.
+  async function saveManualOrder() {
+    setReordering(false);
+    setManualOrder(true);
+    const ids = await requestReorder({ order: photos.map((p) => p.id) });
+    if (ids) applyOrder(ids);
+    revalidate();
+  }
+
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
     const supabase = getBrowserSupabase();
     setBusy(true);
     setError(null);
     try {
-      let order = photos.length;
+      // Collision-free: start past the current highest sort_order (not the
+      // count, which duplicated/skipped values when a slow upload landed late).
+      let order =
+        photos.reduce((m, p) => Math.max(m, p.sort_order ?? -1), -1) + 1;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
         const kind = mediaKind(file.type);
@@ -229,6 +318,13 @@ export function PhotoManager({
       } catch {
         /* auto-geotag is best-effort */
       }
+      // Keep the gallery chronological unless the author hand-arranged it — so a
+      // fresh upload (including a timestamp-less camera import, which sorts to
+      // the end) slots in by capture time instead of wherever it landed.
+      if (!manualRef.current) {
+        const ids = await requestReorder({ mode: "time" });
+        if (ids) applyOrder(ids);
+      }
     } catch {
       setError(t("admin.err.uploadFailed"));
     } finally {
@@ -290,6 +386,55 @@ export function PhotoManager({
         </div>
       </div>
 
+      {reordering ? (
+        <div className="space-y-3">
+          <p className="text-sm text-sand-100/60">
+            {t("admin.gallery.reorderHint")}
+          </p>
+          <Reorder.Group
+            axis="y"
+            values={photos}
+            onReorder={setPhotos}
+            className="space-y-2"
+          >
+            {photos.map((photo) => {
+              const thumb =
+                photo.media_type === "video" ? photo.poster_url : photo.url;
+              return (
+                <Reorder.Item
+                  key={photo.id}
+                  value={photo}
+                  className="flex touch-none cursor-grab items-center gap-3 rounded-xl border border-white/10 bg-ink-800 p-2 active:cursor-grabbing"
+                >
+                  <GripVertical className="size-4 shrink-0 text-sand-100/40" />
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-ink-900">
+                    {thumb && (
+                      <Image
+                        src={thumb}
+                        alt={photo.caption ?? ""}
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  <span className="line-clamp-2 flex-1 text-xs text-sand-100/70">
+                    {photo.caption?.trim() || t("admin.gallery.caption")}
+                  </span>
+                </Reorder.Item>
+              );
+            })}
+          </Reorder.Group>
+          <button
+            type="button"
+            onClick={saveManualOrder}
+            className="inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+          >
+            <Check className="size-4" /> {t("admin.gallery.reorderDone")}
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {photos.map((photo) => (
           <div key={photo.id} className="space-y-1.5">
@@ -427,8 +572,30 @@ export function PhotoManager({
           )}
           {busy ? t("admin.gallery.geo.busy") : t("admin.gallery.geo.button")}
         </button>
+        {photos.length >= 2 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setReordering(true)}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 disabled:opacity-50"
+            >
+              <GripVertical className="size-4" /> {t("admin.gallery.reorder")}
+            </button>
+            <button
+              type="button"
+              onClick={sortByTime}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-ember-400 disabled:opacity-50"
+            >
+              <ArrowDownUp className="size-4" /> {t("admin.gallery.sortByTime")}
+            </button>
+          </>
+        )}
         {geoMsg && <span className="text-sm text-sand-100/70">{geoMsg}</span>}
       </div>
+        </>
+      )}
 
       <input
         ref={inputRef}

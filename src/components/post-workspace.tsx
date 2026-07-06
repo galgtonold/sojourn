@@ -55,6 +55,7 @@ export function PostWorkspace({
   slug,
   initial,
   initialNotes,
+  initialPhotoManualOrder,
   aiConfigured,
   trips,
   initialPhotos,
@@ -66,6 +67,7 @@ export function PostWorkspace({
   slug: string;
   initial: EditablePost;
   initialNotes: string;
+  initialPhotoManualOrder: boolean;
   aiConfigured: boolean;
   trips: { id: string; title: string }[];
   initialPhotos: ManagedPhoto[];
@@ -242,7 +244,7 @@ export function PostWorkspace({
           <TripStage value={post.trip_id} trips={trips} onChange={(id) => set("trip_id", id)} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t(photos.length === 1 ? "admin.editor.status.photo" : "admin.editor.status.photos", { n: photos.length })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
-          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} onListChange={setPhotos} refreshKey={photoRefreshKey} />
+          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} initialManualOrder={initialPhotoManualOrder} onListChange={setPhotos} refreshKey={photoRefreshKey} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.track")} icon={<Route className="size-4" />} summary={trackCount ? t("admin.editor.status.track", { n: tracks.reduce((s, tr) => s + Math.round((tr.distance_m ?? 0) / 1000), 0) }) : t("admin.editor.status.trackNone")} open={open.track} onToggle={() => toggle("track")} className={open.track ? "lg:col-span-4" : undefined}>
           <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} onPhotosLocated={() => setPhotoRefreshKey((k) => k + 1)} />

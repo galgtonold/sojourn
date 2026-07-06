@@ -46,7 +46,9 @@ function hydratePost(row: any): PostWithRelations {
     ...row,
     trip: row.trip ?? null,
     photos: (row.photos ?? []).sort(
-      (a: Photo, b: Photo) => a.sort_order - b.sort_order,
+      (a: Photo, b: Photo) =>
+        a.sort_order - b.sort_order ||
+        (a.created_at ?? "").localeCompare(b.created_at ?? ""),
     ),
     locations: (row.locations ?? []).sort(
       (a: GeoPoint, b: GeoPoint) => a.sort_order - b.sort_order,

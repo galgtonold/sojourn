@@ -23,7 +23,7 @@ export default async function EditPostPage({
   const { data, error } = await supabase!
     .from("posts")
     .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, updated_at, translation_status, source_locale",
+      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, photos_manual_order, updated_at, translation_status, source_locale",
     )
     .eq("id", id)
     .maybeSingle();
@@ -36,7 +36,8 @@ export default async function EditPostPage({
       "id, url, storage_path, caption, alt, lat, lng, place_name, width, height, blurhash, sort_order",
     )
     .eq("post_id", id)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   const { data: tracks } = await supabase!
     .from("tracks")
@@ -114,6 +115,7 @@ export default async function EditPostPage({
         slug={data.slug ?? ""}
         initial={initial}
         initialNotes={data.ai_notes ?? ""}
+        initialPhotoManualOrder={data.photos_manual_order ?? false}
         aiConfigured={isAiConfigured}
         trips={trips}
         initialPhotos={photos ?? []}
