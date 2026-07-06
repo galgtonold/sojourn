@@ -38,6 +38,8 @@ export function RichBody({
                 alt={b.photo.caption ?? undefined}
                 caption={b.photo.caption}
                 blurhash={b.photo.blurhash}
+                mediaType={b.photo.media_type}
+                poster={b.photo.poster_url}
               />
             </Reveal>
           );

@@ -8,21 +8,36 @@ export function Figure({
   alt,
   id,
   blurhash,
+  mediaType,
+  poster,
 }: {
   src: string;
   caption?: string | null;
   alt?: string;
   id?: string;
   blurhash?: string | null;
+  mediaType?: "image" | "video";
+  poster?: string | null;
 }) {
   return (
     <figure id={id} className="my-8 scroll-mt-24">
-      <ZoomableImage
-        src={src}
-        alt={alt ?? caption ?? ""}
-        blurhash={blurhash}
-        className="w-full rounded-3xl"
-      />
+      {mediaType === "video" ? (
+        <video
+          src={src}
+          poster={poster ?? undefined}
+          controls
+          playsInline
+          preload="metadata"
+          className="w-full rounded-3xl"
+        />
+      ) : (
+        <ZoomableImage
+          src={src}
+          alt={alt ?? caption ?? ""}
+          blurhash={blurhash}
+          className="w-full rounded-3xl"
+        />
+      )}
       {caption && (
         <figcaption className="mt-2 text-center text-sm text-sand-100/60">
           {caption}
