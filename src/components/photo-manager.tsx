@@ -192,6 +192,23 @@ export function PhotoManager({
           body: JSON.stringify({ photoId: photo.id }),
         }).catch(() => {});
       }
+      // Auto-place the new photos from a timestamped track (best-effort; the
+      // matcher only fills photos that arrived without GPS). Silent unless it
+      // actually places some.
+      try {
+        const { updated, total } = await geotagPostPhotos(postId);
+        if (updated.length) {
+          setPhotos((ps) =>
+            ps.map((x) => {
+              const u = updated.find((y) => y.id === x.id);
+              return u ? { ...x, lat: u.lat, lng: u.lng } : x;
+            }),
+          );
+          setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
+        }
+      } catch {
+        /* auto-geotag is best-effort */
+      }
     } catch {
       setError(t("admin.err.uploadFailed"));
     } finally {
