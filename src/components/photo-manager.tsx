@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Code2, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
-import { uploadImage } from "@/lib/upload-client";
+import { Camera, Code2, ImagePlus, Loader2, MapPin, PlayCircle, Trash2 } from "lucide-react";
+import { uploadImage, uploadVideo } from "@/lib/upload-client";
+import { mediaKind } from "@/lib/media-kind";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
 import { cn } from "@/lib/utils";
@@ -21,12 +22,14 @@ export type ManagedPhoto = {
   width: number | null;
   height: number | null;
   blurhash: string | null;
+  media_type?: "image" | "video";
+  poster_url?: string | null;
   sort_order: number;
 };
 
 /** Gallery management for an existing post: upload, caption, delete. */
 const PHOTO_COLUMNS =
-  "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order";
+  "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, media_type, poster_url, sort_order";
 
 export function PhotoManager({
   postId,
@@ -157,26 +160,42 @@ export function PhotoManager({
       let order = photos.length;
       const added: ManagedPhoto[] = [];
       for (const file of Array.from(files)) {
-        const { url, path, lat, lng, takenAt, takenOffsetMin, width, height, blurhash } =
-          await uploadImage(file, postId);
+        const kind = mediaKind(file.type);
+        if (kind === null) {
+          setError(
+            file.type.startsWith("video/")
+              ? t("admin.err.videoFormat")
+              : t("admin.err.uploadFailed"),
+          );
+          continue;
+        }
+        if (kind === "video" && file.size > 52428800) {
+          setError(t("admin.err.videoTooLarge"));
+          continue;
+        }
+        const res =
+          kind === "video"
+            ? await uploadVideo(file, postId)
+            : await uploadImage(file, postId);
         const { data, error } = await supabase
           .from("photos")
           .insert({
             post_id: postId,
-            url,
-            storage_path: path,
-            lat,
-            lng,
-            taken_at: takenAt,
-            taken_at_offset_min: takenOffsetMin,
-            width,
-            height,
-            blurhash,
+            url: res.url,
+            storage_path: res.path,
+            media_type: res.mediaType,
+            poster_url: res.posterUrl,
+            poster_path: res.posterPath,
+            lat: res.lat,
+            lng: res.lng,
+            taken_at: res.takenAt,
+            taken_at_offset_min: res.takenOffsetMin,
+            width: res.width,
+            height: res.height,
+            blurhash: res.blurhash,
             sort_order: order++,
           })
-          .select(
-            "id, url, storage_path, caption, alt, lat, lng, width, height, blurhash, sort_order",
-          )
+          .select(PHOTO_COLUMNS)
           .single();
         if (error) throw new Error(error.message);
         added.push(data as ManagedPhoto);
@@ -186,6 +205,7 @@ export function PhotoManager({
       // Enrich each new photo (vision description + place name) in the
       // background — best effort, never blocks the upload.
       for (const photo of added) {
+        if (photo.media_type === "video") continue;
         fetch("/api/admin/ai/enrich-photo", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -274,14 +294,33 @@ export function PhotoManager({
         {photos.map((photo) => (
           <div key={photo.id} className="space-y-1.5">
             <div className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800">
-              {photo.url && (
-                <Image
-                  src={photo.url}
-                  alt={photo.caption ?? ""}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 33vw"
-                  className="object-cover"
-                />
+              {photo.media_type === "video" ? (
+                <>
+                  {photo.poster_url ? (
+                    <Image
+                      src={photo.poster_url}
+                      alt={photo.caption ?? ""}
+                      fill
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-ink-800" />
+                  )}
+                  <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                    <PlayCircle className="size-10 text-white/90 drop-shadow" />
+                  </span>
+                </>
+              ) : (
+                photo.url && (
+                  <Image
+                    src={photo.url}
+                    alt={photo.caption ?? ""}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 33vw"
+                    className="object-cover"
+                  />
+                )
               )}
               <button
                 type="button"
@@ -394,7 +433,7 @@ export function PhotoManager({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/mp4,video/webm"
         multiple
         className="hidden"
         onChange={(e) => addFiles(e.target.files)}

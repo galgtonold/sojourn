@@ -295,6 +295,8 @@ const en = {
   "admin.err.gpx": "Couldn’t read that GPX file.",
   "admin.err.save": "Couldn’t save. Please try again.",
   "admin.err.ai": "The AI request failed. Please try again.",
+  "admin.err.videoFormat": "That video format isn’t supported — please use MP4.",
+  "admin.err.videoTooLarge": "Video is larger than 50 MB.",
 
   "admin.cmod.title": "Comments",
   "admin.cmod.subtitle":
@@ -535,6 +537,8 @@ const en = {
   "admin.gallery.camera": "Camera",
   "admin.gallery.located": "Located",
   "admin.gallery.saved": "Saved ✓",
+  "admin.gallery.addMedia": "Add photo or video",
+  "gallery.playVideo": "Play video",
 
   "admin.location.title": "Set location",
   "admin.location.photoTitle": "Photo location",
@@ -880,6 +884,8 @@ const de: Dict = {
   "admin.err.gpx": "GPX-Datei konnte nicht gelesen werden.",
   "admin.err.save": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
   "admin.err.ai": "Die KI-Anfrage ist fehlgeschlagen. Bitte erneut versuchen.",
+  "admin.err.videoFormat": "Dieses Videoformat wird nicht unterstützt — bitte MP4 verwenden.",
+  "admin.err.videoTooLarge": "Video ist größer als 50 MB.",
 
   "admin.cmod.title": "Kommentare",
   "admin.cmod.subtitle":
@@ -1130,6 +1136,8 @@ const de: Dict = {
   "admin.gallery.camera": "Kamera",
   "admin.gallery.located": "Verortet",
   "admin.gallery.saved": "Gespeichert ✓",
+  "admin.gallery.addMedia": "Foto oder Video hinzufügen",
+  "gallery.playVideo": "Video abspielen",
 
   "admin.location.title": "Standort wählen",
   "admin.location.photoTitle": "Foto-Standort",
