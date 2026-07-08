@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
+import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier } from "@/lib/ai/dossier";
 import { langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
 
@@ -66,10 +66,9 @@ async function outline({
       'eigene neue Interaktion über "interaction" ergänzen — oder keine.'
     : "";
 
-  const raw = await deepseekChat({
+  const outline = await deepseekJson<Outline>({
     model: aiModels.fast,
     temperature: 0.6,
-    json: true,
     // Generous headroom: a truncated outline is the #1 cause of an unparseable
     // response, and a half-written plan derails every section that follows.
     maxTokens: 3000,
@@ -127,7 +126,6 @@ async function outline({
       },
     ],
   });
-  const outline = parseJsonLoose<Outline>(raw);
   // Keep only real photo ids, a bounded number of *invented* interactions (one
   // per section — normally the model uses at most one, but when the author asks
   // for several, e.g. "a quiz with 5 questions", it spreads them across

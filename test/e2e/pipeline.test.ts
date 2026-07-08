@@ -17,7 +17,16 @@ const sb = vi.hoisted(() => ({ client: null as unknown }));
 
 vi.mock("@/lib/ai/deepseek", async (orig) => {
   const actual = await orig<typeof import("@/lib/ai/deepseek")>();
-  return { ...actual, deepseekChat: (o: unknown) => ds.fn(o) };
+  // Both model entry points share one scripted seam. deepseekJson delegates to
+  // the same fake as deepseekChat (its real impl calls the module-internal
+  // deepseekChat, which a mock of the export alone wouldn't intercept).
+  const deepseekChat = (o: unknown) => ds.fn(o);
+  return {
+    ...actual,
+    deepseekChat,
+    deepseekJson: async (o: Record<string, unknown>) =>
+      actual.parseJsonLoose(await deepseekChat({ ...o, json: true })),
+  };
 });
 vi.mock("@/lib/supabase/server", () => ({
   getServerSupabase: async () => sb.client,

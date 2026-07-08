@@ -154,6 +154,18 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
   return last;
 }
 
+// A JSON-mode call whose parsed object you want. Sets JSON mode, runs the same
+// retry + repair as deepseekChat, then parses (throwing on a genuinely
+// unparseable response — callers that want a fallback catch it). Concentrates
+// the `deepseekChat({ json: true }) + parseJsonLoose` pattern the AI routes
+// repeated.
+export async function deepseekJson<T>(
+  opts: Omit<ChatOpts, "json">,
+): Promise<T> {
+  const raw = await deepseekChat({ ...opts, json: true });
+  return parseJsonLoose<T>(raw);
+}
+
 function isParseableJson(raw: string): boolean {
   try {
     parseJsonLoose(raw);

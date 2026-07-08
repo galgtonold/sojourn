@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
+import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 
 export const maxDuration = 60;
@@ -36,10 +36,9 @@ async function questions({
     buildStyleGuide(supabase, input.postId),
   ]);
 
-  const raw = await deepseekChat({
+  const data = await deepseekJson<{ questions: string[] }>({
     model: aiModels.fast,
     temperature: 0.6,
-    json: true,
     maxTokens: 1200,
     meta: { operation: "questions", postId: input.postId, userId: user.id },
     messages: [
@@ -83,7 +82,6 @@ async function questions({
       },
     ],
   });
-  const data = parseJsonLoose<{ questions: string[] }>(raw);
   const questionList = (data.questions ?? []).filter(Boolean).slice(0, 6);
   return { questions: questionList };
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { deepseekChat, aiModels, parseJsonLoose } from "@/lib/ai/deepseek";
+import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
 import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
@@ -69,10 +69,11 @@ async function captions({
     .map((p) => `${p.id} | ${p.place_name ?? ""} | ${p.ai_description ?? ""}`)
     .join("\n");
 
-  const raw = await deepseekChat({
+  const data = await deepseekJson<{
+    items: { id: string; caption: string }[];
+  }>({
     model: aiModels.fast,
     temperature: 0.5,
-    json: true,
     maxTokens: 2500,
     meta: { operation: "captions", postId, userId: user.id },
     messages: [
@@ -103,9 +104,6 @@ async function captions({
       },
     ],
   });
-  const data = parseJsonLoose<{
-    items: { id: string; caption: string }[];
-  }>(raw);
 
   const valid = new Set(targets.map((p) => p.id));
   let count = 0;
