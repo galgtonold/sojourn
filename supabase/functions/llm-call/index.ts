@@ -7,6 +7,7 @@
 // Secrets needed: EDGE_SHARED_SECRET, DEEPSEEK_API_KEY, (optional DEEPSEEK_BASE_URL).
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { chatCompletion } from "../_shared/deepseek.ts";
 
 Deno.serve(async (req: Request) => {
   const secret = Deno.env.get("EDGE_SHARED_SECRET");
@@ -49,48 +50,17 @@ Deno.serve(async (req: Request) => {
         maxTokens?: number;
         json?: boolean;
       };
-      const base =
-        Deno.env.get("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
-      const payload = JSON.stringify({
+
+      // Shared client: one retry policy across the edge functions (5xx + 429 +
+      // 408 with backoff), so a rate-limit blip in a burst of section calls
+      // doesn't lose the job.
+      const output = await chatCompletion({
         model: job.model,
         messages: input.messages,
         temperature: input.temperature ?? 0.7,
-        max_tokens: input.maxTokens ?? 4096,
-        ...(input.json ? { response_format: { type: "json_object" } } : {}),
+        maxTokens: input.maxTokens,
+        json: input.json,
       });
-
-      // Retry transient upstream failures (network drops, 5xx) the same way the
-      // Node client does — a single blip shouldn't lose the whole section. 4xx
-      // is deterministic, so surface it immediately.
-      let output = "";
-      let lastErr: unknown = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        let retryable = true;
-        try {
-          const res = await fetch(`${base}/chat/completions`, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
-            },
-            body: payload,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            output = data?.choices?.[0]?.message?.content ?? "";
-            lastErr = null;
-            break;
-          }
-          retryable = res.status >= 500;
-          const detail = await res.text().catch(() => "");
-          throw new Error(`LLM ${res.status}: ${detail.slice(0, 200)}`);
-        } catch (e) {
-          lastErr = e;
-          if (!retryable || attempt === 2) break;
-          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
-        }
-      }
-      if (lastErr) throw lastErr;
 
       await supabase
         .from("ai_jobs")

@@ -13,14 +13,10 @@
 // Secrets: EDGE_SHARED_SECRET, DEEPSEEK_API_KEY, (optional DEEPSEEK_BASE_URL,
 // DEEPSEEK_MODEL_FAST). SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are injected.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { chatCompletion } from "../_shared/deepseek.ts";
 
 type Locale = "de" | "en";
 const LANG: Record<Locale, string> = { de: "German", en: "English" };
-
-const apiBase = () =>
-  Deno.env.get("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
-const fastModel = () =>
-  Deno.env.get("DEEPSEEK_MODEL_FAST") ?? "deepseek-v4-flash";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -29,47 +25,18 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-// One chat completion with a transient-retry policy. Rate limits (429) and
-// request timeouts (408) are retried alongside 5xx — a rate-limit race when two
-// posts publish together was silently failing the translation before.
-async function chat(
+// Thin adapter over the shared client: translation defaults to a lower
+// temperature; the retry policy lives in one place (../_shared/deepseek.ts).
+function chat(
   messages: unknown,
   opts: { json?: boolean; maxTokens?: number; temperature?: number } = {},
 ): Promise<string> {
-  const payload = JSON.stringify({
-    model: fastModel(),
+  return chatCompletion({
     messages,
     temperature: opts.temperature ?? 0.3,
-    max_tokens: opts.maxTokens ?? 4096,
-    ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+    maxTokens: opts.maxTokens,
+    json: opts.json,
   });
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    let retryable = true;
-    try {
-      const res = await fetch(`${apiBase()}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
-        },
-        body: payload,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data?.choices?.[0]?.message?.content ?? "";
-      }
-      retryable = res.status >= 500 || res.status === 429 || res.status === 408;
-      const detail = await res.text().catch(() => "");
-      throw new Error(`LLM ${res.status}: ${detail.slice(0, 200)}`);
-    } catch (e) {
-      lastErr = e;
-      if (!retryable || attempt === 3) break;
-      // Exponential backoff with a little headroom for rate-limit windows.
-      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1) * (attempt + 1)));
-    }
-  }
-  throw lastErr ?? new Error("LLM call failed");
 }
 
 function parseJsonLoose<T>(raw: string): T {
