@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { orderByCaptureTime, orderByGallery } from "@/lib/photo-order";
+import {
+  orderByCaptureTime,
+  orderByGallery,
+  resolvePhotoOrder,
+} from "@/lib/photo-order";
 
 const p = (
   id: string,
@@ -91,5 +95,32 @@ describe("orderByGallery", () => {
     const before = input.map((x) => x.id);
     orderByGallery(input);
     expect(input.map((x) => x.id)).toEqual(before);
+  });
+});
+
+describe("resolvePhotoOrder", () => {
+  const rows = [
+    { id: "a", taken_at: "2026-07-06T10:00:00Z", sort_order: 0 },
+    { id: "b", taken_at: null, sort_order: 1 },
+    { id: "c", taken_at: "2026-07-06T09:00:00Z", sort_order: 2 },
+  ];
+
+  it("mode 'time' orders by capture time and is not manual", () => {
+    const { orderedIds, manual } = resolvePhotoOrder(rows, { mode: "time" });
+    expect(orderedIds).toEqual(["c", "a", "b"]); // b (no time) last
+    expect(manual).toBe(false);
+  });
+
+  it("honours a drag order, appends omitted ids by sort_order, marks manual", () => {
+    const { orderedIds, manual } = resolvePhotoOrder(rows, { order: ["c", "a"] });
+    expect(orderedIds).toEqual(["c", "a", "b"]); // b omitted → appended
+    expect(manual).toBe(true);
+  });
+
+  it("drops ids in the given order that don't belong to the post", () => {
+    const { orderedIds } = resolvePhotoOrder(rows, {
+      order: ["b", "ghost", "a"],
+    });
+    expect(orderedIds).toEqual(["b", "a", "c"]); // ghost ignored, c appended
   });
 });

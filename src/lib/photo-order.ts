@@ -50,3 +50,25 @@ export function orderByCaptureTime<T extends OrderablePhoto>(photos: T[]): T[] {
 
 const cmpId = (a: OrderablePhoto, b: OrderablePhoto): number =>
   a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+
+// Resolve a reorder request into the final id order + whether it's a manual
+// arrangement. Pure, so the (fiddly) rules — honour a drag order but only for
+// ids that belong to the post, append the rest by their current sort_order, or
+// fall back to capture time — are tested without a database. The data-access
+// command in db/photos.ts wraps this with the fetch + writes.
+export function resolvePhotoOrder<T extends OrderablePhoto>(
+  rows: T[],
+  input: { order?: string[]; mode?: "time" },
+): { orderedIds: string[]; manual: boolean } {
+  if (input.order?.length) {
+    const known = new Set(rows.map((r) => r.id));
+    const given = input.order.filter((id) => known.has(id));
+    const givenSet = new Set(given);
+    const rest = rows
+      .filter((r) => !givenSet.has(r.id))
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((r) => r.id);
+    return { orderedIds: [...given, ...rest], manual: true };
+  }
+  return { orderedIds: orderByCaptureTime(rows).map((r) => r.id), manual: false };
+}
