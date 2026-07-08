@@ -173,8 +173,56 @@ export type ElevationSeries = {
   max: number;
 };
 
+// Phone GPS/barometer altitude is noisy — single samples can be tens of metres
+// off, so summing raw deltas reports absurd climb (e.g. 2000 m of "ascent" up a
+// 90 m hill) and draws a jagged line. These constants tame that without
+// flattening real terrain, which spans many samples.
+const EL_MEDIAN_WINDOW = 11; // rejects spikes and short dropouts (robust to outliers)
+const EL_MEAN_WINDOW = 7; // smooths residual jitter into a readable line
+const EL_GAIN_DEADBAND_M = 3; // ignore sub-threshold wobble in ascent/descent
+// Below this, a smoothing window would average most of the series and flatten
+// real terrain, so short tracks are left raw (the deadband still filters noise).
+const EL_SMOOTH_MIN_POINTS = 12;
+
+function movingMedian(values: number[], window: number): number[] {
+  if (window <= 1 || values.length < window) return values.slice();
+  const half = Math.floor(window / 2);
+  return values.map((_, i) => {
+    const w = values
+      .slice(Math.max(0, i - half), Math.min(values.length, i + half + 1))
+      .sort((a, b) => a - b);
+    return w[Math.floor(w.length / 2)];
+  });
+}
+
+function movingAverage(values: number[], window: number): number[] {
+  if (window <= 1) return values.slice();
+  const half = Math.floor(window / 2);
+  return values.map((_, i) => {
+    let sum = 0;
+    let n = 0;
+    for (
+      let j = Math.max(0, i - half);
+      j < Math.min(values.length, i + half + 1);
+      j++
+    ) {
+      sum += values[j];
+      n++;
+    }
+    return sum / n;
+  });
+}
+
+// Median filter (spike removal) followed by a short moving average (jitter
+// smoothing). Exported for testing.
+export function smoothElevations(eles: number[]): number[] {
+  if (eles.length < EL_SMOOTH_MIN_POINTS) return eles.slice();
+  return movingAverage(movingMedian(eles, EL_MEDIAN_WINDOW), EL_MEAN_WINDOW);
+}
+
 // Builds a distance-vs-elevation series from a track's GeoJSON, or null if the
-// track has no elevation data.
+// track has no elevation data. The elevation profile is smoothed and ascent/
+// descent are accumulated with a deadband, so noisy phone data reads sensibly.
 export function buildElevationSeries(
   geojson: GeoJSON.FeatureCollection<GeoJSON.LineString> | null | undefined,
 ): ElevationSeries | null {
@@ -185,30 +233,40 @@ export function buildElevationSeries(
   if (coords.length < 2) return null;
   if (!coords.some((c) => c.length >= 3 && Number.isFinite(c[2]))) return null;
 
-  let d = 0;
+  // Cumulative distance across the whole line; keep (distance, raw elevation)
+  // for every point that carries an elevation.
+  let total = 0;
+  const raw: { d: number; e: number }[] = [];
+  for (let i = 0; i < coords.length; i++) {
+    if (i > 0) total += haversine(coords[i - 1], coords[i]);
+    const e = coords[i][2];
+    if (Number.isFinite(e)) raw.push({ d: total, e });
+  }
+  if (raw.length < 2) return null;
+
+  const smoothed = smoothElevations(raw.map((p) => p.e));
+  const points = raw.map((p, i) => ({ d: p.d, e: smoothed[i] }));
+
+  // Accumulate gain/loss with a deadband (hysteresis): only a move of more than
+  // EL_GAIN_DEADBAND_M past the last committed point counts, so residual wobble
+  // can't inflate the totals.
   let ascent = 0;
   let descent = 0;
-  let min = Infinity;
-  let max = -Infinity;
-  let prevE: number | null = null;
-  const points: { d: number; e: number }[] = [];
-
-  for (let i = 0; i < coords.length; i++) {
-    if (i > 0) d += haversine(coords[i - 1], coords[i]);
-    const e = coords[i][2];
-    if (!Number.isFinite(e)) continue;
-    if (prevE != null) {
-      const delta = e - prevE;
-      if (delta > 0) ascent += delta;
-      else descent -= delta;
+  let ref = smoothed[0];
+  let min = smoothed[0];
+  let max = smoothed[0];
+  for (let i = 1; i < smoothed.length; i++) {
+    const e = smoothed[i];
+    if (e - ref > EL_GAIN_DEADBAND_M) {
+      ascent += e - ref;
+      ref = e;
+    } else if (ref - e > EL_GAIN_DEADBAND_M) {
+      descent += ref - e;
+      ref = e;
     }
-    prevE = e;
-    min = Math.min(min, e);
-    max = Math.max(max, e);
-    points.push({ d, e });
+    if (e < min) min = e;
+    if (e > max) max = e;
   }
 
-  return points.length >= 2
-    ? { points, distanceM: d, ascent, descent, min, max }
-    : null;
+  return { points, distanceM: total, ascent, descent, min, max };
 }
