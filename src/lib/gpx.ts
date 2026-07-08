@@ -177,21 +177,49 @@ export type ElevationSeries = {
 // off, so summing raw deltas reports absurd climb (e.g. 2000 m of "ascent" up a
 // 90 m hill) and draws a jagged line. These constants tame that without
 // flattening real terrain, which spans many samples.
-const EL_MEDIAN_WINDOW = 11; // rejects spikes and short dropouts (robust to outliers)
-const EL_MEAN_WINDOW = 7; // smooths residual jitter into a readable line
+// A Hampel filter first rejects gross outliers — GPS/barometer dropouts that
+// jump tens of metres between adjacent samples — replacing any point that sits
+// more than K MADs from its local median. Then a median + short mean smooth the
+// rest. Gain is accumulated with a small deadband. The deadband stays small on
+// purpose: a large one silently erases real rolling terrain (a run of 20 m hills
+// would vanish), so outlier rejection, not the deadband, does the heavy lifting.
+const EL_HAMPEL_WINDOW = 21;
+const EL_HAMPEL_K = 1.5;
+const EL_MEDIAN_WINDOW = 9; // rejects residual spikes/short dropouts
+const EL_MEAN_WINDOW = 5; // smooths residual jitter into a readable line
 const EL_GAIN_DEADBAND_M = 3; // ignore sub-threshold wobble in ascent/descent
 // Below this, a smoothing window would average most of the series and flatten
 // real terrain, so short tracks are left raw (the deadband still filters noise).
 const EL_SMOOTH_MIN_POINTS = 12;
 
+function median(values: number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  return s[s.length >> 1];
+}
+
 function movingMedian(values: number[], window: number): number[] {
   if (window <= 1 || values.length < window) return values.slice();
   const half = Math.floor(window / 2);
-  return values.map((_, i) => {
-    const w = values
-      .slice(Math.max(0, i - half), Math.min(values.length, i + half + 1))
-      .sort((a, b) => a - b);
-    return w[Math.floor(w.length / 2)];
+  return values.map((_, i) =>
+    median(values.slice(Math.max(0, i - half), Math.min(values.length, i + half + 1))),
+  );
+}
+
+// Replace points that deviate more than `k` scaled-MADs from their local median
+// with that median — a robust despiker that leaves the rest of the signal (and
+// real terrain) untouched. The MAD is floored so a flat, low-noise stretch
+// doesn't flag every tiny wobble as an outlier.
+function hampelFilter(values: number[], window: number, k: number): number[] {
+  if (window <= 1 || values.length < window) return values.slice();
+  const half = Math.floor(window / 2);
+  return values.map((x, i) => {
+    const win = values.slice(
+      Math.max(0, i - half),
+      Math.min(values.length, i + half + 1),
+    );
+    const m = median(win);
+    const mad = median(win.map((v) => Math.abs(v - m))) * 1.4826;
+    return Math.abs(x - m) > k * Math.max(mad, 0.8) ? m : x;
   });
 }
 
@@ -217,7 +245,8 @@ function movingAverage(values: number[], window: number): number[] {
 // smoothing). Exported for testing.
 export function smoothElevations(eles: number[]): number[] {
   if (eles.length < EL_SMOOTH_MIN_POINTS) return eles.slice();
-  return movingAverage(movingMedian(eles, EL_MEDIAN_WINDOW), EL_MEAN_WINDOW);
+  const despiked = hampelFilter(eles, EL_HAMPEL_WINDOW, EL_HAMPEL_K);
+  return movingAverage(movingMedian(despiked, EL_MEDIAN_WINDOW), EL_MEAN_WINDOW);
 }
 
 // Builds a distance-vs-elevation series from a track's GeoJSON, or null if the
