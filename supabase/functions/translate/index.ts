@@ -29,7 +29,9 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-// One chat completion with the same transient-retry policy as llm-call.
+// One chat completion with a transient-retry policy. Rate limits (429) and
+// request timeouts (408) are retried alongside 5xx — a rate-limit race when two
+// posts publish together was silently failing the translation before.
 async function chat(
   messages: unknown,
   opts: { json?: boolean; maxTokens?: number; temperature?: number } = {},
@@ -42,7 +44,7 @@ async function chat(
     ...(opts.json ? { response_format: { type: "json_object" } } : {}),
   });
   let lastErr: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     let retryable = true;
     try {
       const res = await fetch(`${apiBase()}/chat/completions`, {
@@ -57,13 +59,14 @@ async function chat(
         const data = await res.json();
         return data?.choices?.[0]?.message?.content ?? "";
       }
-      retryable = res.status >= 500;
+      retryable = res.status >= 500 || res.status === 429 || res.status === 408;
       const detail = await res.text().catch(() => "");
       throw new Error(`LLM ${res.status}: ${detail.slice(0, 200)}`);
     } catch (e) {
       lastErr = e;
-      if (!retryable || attempt === 2) break;
-      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      if (!retryable || attempt === 3) break;
+      // Exponential backoff with a little headroom for rate-limit windows.
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1) * (attempt + 1)));
     }
   }
   throw lastErr ?? new Error("LLM call failed");
@@ -130,7 +133,7 @@ async function translateBody(
       },
       { role: "user", content: body },
     ],
-    { maxTokens: 4096, temperature: 0.3 },
+    { maxTokens: 8000, temperature: 0.3 },
   );
   return out.trim();
 }
@@ -167,7 +170,7 @@ async function translatePostShort(
       },
       { role: "user", content: JSON.stringify(input) },
     ],
-    { json: true, maxTokens: 2000, temperature: 0.3 },
+    { json: true, maxTokens: 4000, temperature: 0.3 },
   );
   return parseJsonLoose<ShortPost>(out);
 }
@@ -187,7 +190,7 @@ async function translateTrip(
       },
       { role: "user", content: JSON.stringify(input) },
     ],
-    { json: true, maxTokens: 600, temperature: 0.3 },
+    { json: true, maxTokens: 800, temperature: 0.3 },
   );
   return parseJsonLoose(out);
 }
@@ -255,6 +258,7 @@ async function translatePost(supabase: any, id: string): Promise<string | null> 
         },
       },
       translation_status: "ready",
+      translation_error: null,
     })
     .eq("id", id);
 
@@ -303,6 +307,7 @@ async function translateTripEntity(supabase: any, id: string): Promise<string | 
       source_locale: source,
       i18n: { [target]: { title: t.title, summary: t.summary } },
       translation_status: "ready",
+      translation_error: null,
     })
     .eq("id", id);
   return trip.slug ?? null;
@@ -384,7 +389,10 @@ Deno.serve(async (req: Request) => {
       const table = entity === "post" ? "posts" : "trips";
       await supabase
         .from(table)
-        .update({ translation_status: "error" })
+        .update({
+          translation_status: "error",
+          translation_error: String(e).slice(0, 500),
+        })
         .eq("id", entityId);
       console.error("translate failed", entity, entityId, String(e));
     }

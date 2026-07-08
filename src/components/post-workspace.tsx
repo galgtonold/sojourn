@@ -9,6 +9,7 @@ import {
   Route,
   Sparkles,
   SlidersHorizontal,
+  SpellCheck,
   Trash2,
 } from "lucide-react";
 import { slugify } from "@/lib/utils";
@@ -217,13 +218,14 @@ export function PostWorkspace({
 
   return (
     <div className="space-y-3 pb-24">
-      <div className="mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-white/10 bg-ink-900/50 px-3.5 py-2.5">
         <TranslationBadge postId={postId} initialStatus={translationStatus} published={post.published} />
         <button
           type="button"
           onClick={() => setProofreadOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-sand-100/70 transition hover:border-ember-400 hover:text-ember-400"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-sand-100/80 transition hover:border-ember-400 hover:text-ember-400"
         >
+          <SpellCheck className="size-3.5" />
           {t("admin.proofread.button")}
         </button>
       </div>

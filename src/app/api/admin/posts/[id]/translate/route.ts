@@ -19,12 +19,13 @@ export async function GET(
 
   const { data } = await supabase
     .from("posts")
-    .select("translation_status, source_locale")
+    .select("translation_status, source_locale, translation_error")
     .eq("id", id)
     .maybeSingle();
   return NextResponse.json({
     status: data?.translation_status ?? "none",
     source_locale: data?.source_locale ?? null,
+    error: data?.translation_error ?? null,
   });
 }
 
