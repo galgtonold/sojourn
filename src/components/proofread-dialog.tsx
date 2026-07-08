@@ -44,7 +44,9 @@ export function ProofreadDialog({
   const [ran, setRan] = useState(false);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [status, setStatus] = useState<Record<string, Status>>({});
-  const [idx, setIdx] = useState(0);
+  // Cursor into the *unresolved* findings — applied/skipped ones drop out of the
+  // queue, so it always points at something still to review.
+  const [cursor, setCursor] = useState(0);
   // Working copy so sequential applies compose correctly and the parent can't
   // change underneath a modal. Seeded on open.
   const [draft, setDraft] = useState({ title, excerpt, body });
@@ -56,7 +58,7 @@ export function ProofreadDialog({
     setError(false);
     setFindings([]);
     setStatus({});
-    setIdx(0);
+    setCursor(0);
     setDraft({ title, excerpt, body });
     (async () => {
       try {
@@ -91,6 +93,9 @@ export function ProofreadDialog({
     onClose();
   }
 
+  // Applying or skipping marks the finding resolved; it then drops out of the
+  // queue and the cursor naturally lands on the next unresolved one (no need to
+  // advance — the shrinking list does it). The cursor is clamped at render.
   function apply(f: Finding) {
     const cur = draft[f.field];
     const next = applyFinding(cur, f.original, f.suggestion);
@@ -101,12 +106,10 @@ export function ProofreadDialog({
       onApply(f.field, next);
       setStatus((s) => ({ ...s, [f.id]: "applied" }));
     }
-    setIdx((i) => Math.min(i + 1, findings.length - 1));
   }
 
   function skip(f: Finding) {
     setStatus((s) => ({ ...s, [f.id]: "skipped" }));
-    setIdx((i) => Math.min(i + 1, findings.length - 1));
   }
 
   function applyAll() {
@@ -132,7 +135,10 @@ export function ProofreadDialog({
   const skippedCount = Object.values(status).filter(
     (s) => s === "skipped" || s === "stale",
   ).length;
-  const current = findings[idx];
+  // Only the findings still awaiting a decision; the cursor walks these.
+  const pending = findings.filter((f) => !status[f.id]);
+  const current = pending[Math.min(cursor, Math.max(0, pending.length - 1))];
+  const reviewedAll = ran && findings.length > 0 && pending.length === 0;
 
   return createPortal(
     <div
@@ -170,12 +176,20 @@ export function ProofreadDialog({
         {!loading && !error && findings.length === 0 && (
           <p className="mt-6 text-sm text-sand-100/80">{t("admin.proofread.none")}</p>
         )}
+        {!loading && !error && reviewedAll && (
+          <p className="mt-6 flex items-center gap-2 text-sm text-sage-300">
+            <Check className="size-4" /> {t("admin.proofread.allDone")}
+          </p>
+        )}
 
         {!loading && !error && current && (
           <div className="mt-4">
             <div className="flex items-center gap-2 text-xs text-sand-100/60">
               <span>
-                {t("admin.proofread.progress", { n: idx + 1, total: findings.length })}
+                {t("admin.proofread.progress", {
+                  n: findings.findIndex((x) => x.id === current.id) + 1,
+                  total: findings.length,
+                })}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5">
                 {t(`admin.proofread.field.${current.field}` as never)}
@@ -185,16 +199,19 @@ export function ProofreadDialog({
               </span>
             </div>
             <div className="mt-3 space-y-2 text-sm">
-              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-red-200 line-through decoration-red-400/60">
-                {current.original}
-              </p>
-              <p className="rounded-lg bg-sage-500/10 px-3 py-2 text-sage-200">
-                {current.suggestion}
+              {/* The fix shown in its sentence: struck original, then the
+                  suggestion, so the author sees where the change lands. */}
+              <p className="rounded-lg bg-ink-800/70 px-3 py-2.5 leading-relaxed text-sand-100/85">
+                <span className="text-sand-100/45">{current.before}</span>
+                <del className="rounded bg-red-500/15 px-0.5 text-red-300 line-through decoration-red-400/60">
+                  {current.original}
+                </del>{" "}
+                <ins className="rounded bg-sage-500/15 px-0.5 text-sage-200 no-underline">
+                  {current.suggestion}
+                </ins>
+                <span className="text-sand-100/45">{current.after}</span>
               </p>
               <p className="text-xs text-sand-100/60">{current.explanation}</p>
-              {status[current.id] === "stale" && (
-                <p className="text-xs text-amber-300/80">{t("admin.proofread.stale")}</p>
-              )}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
@@ -217,16 +234,16 @@ export function ProofreadDialog({
               </button>
               <span className="ml-auto flex items-center gap-1">
                 <button
-                  onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                  disabled={idx === 0}
+                  onClick={() => setCursor((c) => Math.max(0, c - 1))}
+                  disabled={cursor <= 0}
                   aria-label={t("admin.proofread.prev")}
                   className="rounded-full p-1.5 text-sand-100/60 transition hover:text-sand-50 disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
                 <button
-                  onClick={() => setIdx((i) => Math.min(findings.length - 1, i + 1))}
-                  disabled={idx >= findings.length - 1}
+                  onClick={() => setCursor((c) => Math.min(pending.length - 1, c + 1))}
+                  disabled={cursor >= pending.length - 1}
                   aria-label={t("admin.proofread.next")}
                   className="rounded-full p-1.5 text-sand-100/60 transition hover:text-sand-50 disabled:opacity-40"
                 >

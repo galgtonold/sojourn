@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFinding, validateFindings } from "@/lib/ai/proofread";
+import { applyFinding, buildContext, validateFindings } from "@/lib/ai/proofread";
 
 describe("applyFinding", () => {
   it("replaces the first literal occurrence", () => {
@@ -14,6 +14,30 @@ describe("applyFinding", () => {
     expect(applyFinding("cost is 5$ today", "5$", "5 EUR")).toBe(
       "cost is 5 EUR today",
     );
+  });
+});
+
+describe("buildContext", () => {
+  it("returns the surrounding text when nothing is truncated", () => {
+    expect(buildContext("The quick brwon fox jumps", 10, 5)).toEqual({
+      before: "The quick ",
+      after: " fox jumps",
+    });
+  });
+
+  it("elides [[KEEP-n]] placeholders and collapses whitespace", () => {
+    // "Start [[KEEP-0]] mid Fehlar end" — "Fehlar" begins at index 21.
+    const hay = "Start [[KEEP-0]] mid Fehlar end";
+    expect(buildContext(hay, hay.indexOf("Fehlar"), 6).before).toBe("Start mid ");
+  });
+
+  it("marks a truncated edge with an ellipsis and snaps to whole words", () => {
+    const lead = "alpha bravo charlie delta echo foxtrot golf hotel india ";
+    const hay = `${lead}TARGET and the rest of a much longer sentence follows on`;
+    const { before, after } = buildContext(hay, lead.length, "TARGET".length);
+    expect(before.startsWith("… ")).toBe(true);
+    expect(before).not.toContain("alpha"); // partial/early words dropped
+    expect(after.endsWith(" …")).toBe(true);
   });
 });
 

@@ -16,7 +16,39 @@ export type Finding = {
   original: string;
   suggestion: string;
   explanation: string;
+  // The text immediately around `original` in its field, so the author can see
+  // where the fix lands in context. Media/interaction placeholders are elided
+  // and whitespace collapsed; a leading/trailing "…" marks a truncated edge.
+  before: string;
+  after: string;
 };
+
+const KEEP_RE = /\[\[KEEP-\d+\]\]/g;
+
+// Build the display context around a match: up to ~42 chars either side, snapped
+// to whole words, with media/interaction placeholders removed and runs of
+// whitespace (incl. newlines) collapsed to single spaces.
+export function buildContext(
+  hay: string,
+  index: number,
+  len: number,
+): { before: string; after: string } {
+  const W = 42;
+  const startTrunc = index > W;
+  const endTrunc = index + len + W < hay.length;
+  const clean = (s: string) => s.replace(KEEP_RE, " ").replace(/\s+/g, " ");
+  let before = clean(hay.slice(Math.max(0, index - W), index));
+  let after = clean(hay.slice(index + len, index + len + W));
+  // Drop a partial word at a truncated edge so context reads cleanly.
+  if (startTrunc) before = before.replace(/^\S*\s/, "");
+  if (endTrunc) after = after.replace(/\s\S*$/, "");
+  before = before.trimStart();
+  after = after.trimEnd();
+  return {
+    before: (startTrunc ? "… " : "") + before,
+    after: after + (endTrunc ? " …" : ""),
+  };
+}
 
 const TYPES: ProofType[] = [
   "spelling",
@@ -61,7 +93,9 @@ export function validateFindings(
     if (!original || !suggestion || original === suggestion) continue;
     if (original.includes("[[KEEP-")) continue;
     const hay = fields[f.field as ProofField] ?? "";
-    if (!hay.includes(original)) continue;
+    const at = hay.indexOf(original);
+    if (at === -1) continue;
+    const { before, after } = buildContext(hay, at, original.length);
     out.push({
       id: `f${out.length}`,
       field: f.field as ProofField,
@@ -69,6 +103,8 @@ export function validateFindings(
       original,
       suggestion,
       explanation,
+      before,
+      after,
     });
   }
   return out;
