@@ -261,6 +261,7 @@ export function PostWorkspace({
             postId={postId}
             initialNotes={initialNotes}
             hasBody={Boolean(post.body)}
+            hasCaptions={photos.some((p) => (p.caption ?? "").trim() !== "")}
             onDraftSaved={handleDraftSaved}
             onPhotosUpdated={() => setPhotoRefreshKey((k) => k + 1)}
             onNotesDirty={setNotesDirty}

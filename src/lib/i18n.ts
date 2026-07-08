@@ -463,9 +463,11 @@ const en = {
   "admin.ai.step.homogenize": "Polishing into one article",
   "admin.ai.step.captions": "Captions",
   "admin.ai.step.save": "Saving",
-  "admin.ai.autocaption": "Auto-caption photos",
-  "admin.ai.autocaptionDone":
-    "Captioned {n, plural, one {# photo} other {# photos}}.",
+  "admin.ai.captionsOverwrite.title": "Existing captions",
+  "admin.ai.captionsOverwrite.body":
+    "Some photos already have captions. Rewrite them all in the article’s voice, or keep them and only caption the photos that don’t have one yet?",
+  "admin.ai.captionsOverwrite.all": "Rewrite all",
+  "admin.ai.captionsOverwrite.onlyEmpty": "Only empty",
   "admin.ai.workflowHint":
     "Add your photos and GPX tracks first — the AI weaves them straight into the story. No photos yet? You can still draft from notes and attach them later.",
   "admin.ai.err.parse": "The AI returned malformed output. Please try again.",
@@ -1066,9 +1068,11 @@ const de: Dict = {
   "admin.ai.step.homogenize": "Zu einem Artikel verschmelzen",
   "admin.ai.step.captions": "Bildunterschriften",
   "admin.ai.step.save": "Speichern",
-  "admin.ai.autocaption": "Fotos automatisch beschriften",
-  "admin.ai.autocaptionDone":
-    "{n, plural, one {# Foto} other {# Fotos}} beschriftet.",
+  "admin.ai.captionsOverwrite.title": "Vorhandene Bildunterschriften",
+  "admin.ai.captionsOverwrite.body":
+    "Einige Fotos haben schon Bildunterschriften. Alle im Ton des Artikels neu schreiben – oder behalten und nur die Fotos ohne Unterschrift beschriften?",
+  "admin.ai.captionsOverwrite.all": "Alle neu schreiben",
+  "admin.ai.captionsOverwrite.onlyEmpty": "Nur leere",
   "admin.ai.workflowHint":
     "Lade zuerst deine Fotos und GPX-Tracks hoch — die KI baut sie direkt in die Geschichte ein. Noch keine Fotos? Du kannst auch aus Notizen schreiben und sie später ergänzen.",
   "admin.ai.err.parse":

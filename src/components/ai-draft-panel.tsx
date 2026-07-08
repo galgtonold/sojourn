@@ -5,7 +5,6 @@ import {
   Sparkles,
   Loader2,
   MessagesSquare,
-  Wand2,
   ImageUp,
   Square,
   ListPlus,
@@ -141,6 +140,7 @@ export function AiDraftPanel({
   postId,
   initialNotes,
   hasBody,
+  hasCaptions,
   onDraftSaved,
   onPhotosUpdated,
   onBeforeGenerate,
@@ -149,6 +149,9 @@ export function AiDraftPanel({
   postId: string;
   initialNotes: string;
   hasBody: boolean;
+  // Whether any photo already has a caption — gates the overwrite prompt so we
+  // only ask when there's something to overwrite.
+  hasCaptions: boolean;
   onDraftSaved?: (saved: DraftSaved) => void;
   // Called after a captioning pass writes photo captions server-side, so the
   // gallery re-pulls and the labels show without a manual reload.
@@ -313,6 +316,18 @@ export function AiDraftPanel({
 
   async function generate() {
     if (hasBody && !(await confirm({ message: t("admin.ai.overwriteConfirm") }))) return;
+    // Generation captions every image (in the article's voice). When some photos
+    // already have captions, ask whether to replace them or keep them and only
+    // caption the empty ones. "Cancel"/dismiss defaults to the safe choice.
+    let captionsOnlyEmpty = false;
+    if (hasCaptions) {
+      captionsOnlyEmpty = !(await confirm({
+        title: t("admin.ai.captionsOverwrite.title"),
+        message: t("admin.ai.captionsOverwrite.body"),
+        confirmLabel: t("admin.ai.captionsOverwrite.all"),
+        cancelLabel: t("admin.ai.captionsOverwrite.onlyEmpty"),
+      }));
+    }
     const ac = new AbortController();
     abortRef.current = ac;
     const signal = ac.signal;
@@ -460,10 +475,13 @@ export function AiDraftPanel({
 
       // 5. Captions (best effort). Pass the assembled body so captions are
       //    anchored in the article's voice, not standalone image descriptions.
+      //    `onlyEmpty` honours the author's choice about existing captions.
       setStep(t("admin.ai.step.captions"));
-      await postJson("/api/admin/ai/captions", { postId, lang, body }, signal).catch(
-        () => {},
-      );
+      await postJson(
+        "/api/admin/ai/captions",
+        { postId, lang, body, onlyEmpty: captionsOnlyEmpty },
+        signal,
+      ).catch(() => {});
 
       // 6. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
@@ -518,32 +536,6 @@ export function AiDraftPanel({
       setPhase(questions.length ? "answering" : "idle");
     } finally {
       abortRef.current = null;
-    }
-  }
-
-  async function autoCaption() {
-    setPhase("running");
-    setStep(t("admin.ai.autocaption"));
-    setError(null);
-    setWarn(null);
-    try {
-      const { count } = await postJson<{ count: number }>(
-        "/api/admin/ai/captions",
-        { postId, lang, onlyEmpty: true },
-      );
-      setStep(null);
-      setPhase("idle");
-      setError(null);
-      onPhotosUpdated?.();
-      router.refresh();
-      await confirm({
-        message: t("admin.ai.autocaptionDone", { n: count }),
-        notice: true,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed");
-      setStep(null);
-      setPhase("idle");
     }
   }
 
@@ -657,15 +649,6 @@ export function AiDraftPanel({
             className="inline-flex items-center gap-2 rounded-full border border-red-500/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400 hover:text-red-200"
           >
             <Square className="size-3.5" /> {t("admin.ai.stop")}
-          </button>
-        )}
-        {phase !== "answering" && (
-          <button
-            onClick={autoCaption}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-sand-100/80 transition hover:border-ember-400 disabled:opacity-50"
-          >
-            <Wand2 className="size-4" /> {t("admin.ai.autocaption")}
           </button>
         )}
       </div>
