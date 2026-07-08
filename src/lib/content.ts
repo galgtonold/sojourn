@@ -12,6 +12,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { isEmbeddingsConfigured } from "@/lib/env";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyLineStrings } from "@/lib/gpx";
+import { orderByGallery } from "@/lib/photo-order";
 import { buildExpandedTsQuery } from "@/lib/search-expand";
 import {
   emptyReactions,
@@ -45,11 +46,7 @@ function hydratePost(row: any): PostWithRelations {
   return {
     ...row,
     trip: row.trip ?? null,
-    photos: (row.photos ?? []).sort(
-      (a: Photo, b: Photo) =>
-        a.sort_order - b.sort_order ||
-        (a.created_at ?? "").localeCompare(b.created_at ?? ""),
-    ),
+    photos: orderByGallery(row.photos ?? []),
     locations: (row.locations ?? []).sort(
       (a: GeoPoint, b: GeoPoint) => a.sort_order - b.sort_order,
     ),

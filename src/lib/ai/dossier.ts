@@ -4,6 +4,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reverseGeocode, reverseGeocodeArea } from "@/lib/ai/geocode";
 import { dailyWeather } from "@/lib/ai/weather";
+import { orderByCaptureTime } from "@/lib/photo-order";
 
 export type DossierPhoto = {
   id: string;
@@ -118,14 +119,7 @@ export async function buildDossier(
         .order("published_at", { ascending: true })
     : { data: null };
 
-  const photos: DossierPhoto[] = (photoRows ?? [])
-    .slice()
-    .sort((a, b) => {
-      const ta = a.taken_at ? Date.parse(a.taken_at) : Infinity;
-      const tb = b.taken_at ? Date.parse(b.taken_at) : Infinity;
-      if (ta !== tb) return ta - tb;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    })
+  const photos: DossierPhoto[] = orderByCaptureTime(photoRows ?? [])
     .map((p) => ({
       id: p.id,
       url: p.url,
