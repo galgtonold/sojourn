@@ -151,6 +151,12 @@ async function sectionRoute({
     "trotzdem in dieser lockeren Du-Stimme.\n" +
     "- Beginne mit einer Markdown-Zwischenüberschrift (## …). Kein H1, kein Titel.\n" +
     "- Setze die angegebenen [photo:ID]-Tags jeweils in eine eigene Zeile, dort wo sie passen.\n" +
+    "- Zu JEDEM Bild wird automatisch eine eigene Bildunterschrift angezeigt. " +
+    "Beschreibe das Bild daher NICHT im Fließtext und schreibe keine " +
+    "bildunterschriften-artige Zeile dazu — der [photo:ID]-Tag steht für sich. " +
+    "Erzähle den Moment und die Stimmung, statt zu benennen, was auf dem Bild " +
+    "ohnehin zu sehen ist; die Fotobeschreibung ist nur dein Kontext, nicht Text " +
+    "zum Abschreiben.\n" +
     "- Verwende nur die unten angegebenen Foto-IDs, erfinde keine.\n" +
     "- Dies ist EIN Abschnitt mitten in einem längeren Artikel, kein eigenständiger " +
     "Beitrag und kein Brief: keine Anrede, keine Grußformel und keine Unterschrift " +
