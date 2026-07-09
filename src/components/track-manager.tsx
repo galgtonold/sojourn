@@ -4,6 +4,7 @@ import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
 import { parseGpxSplit, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
+import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { useT } from "@/components/i18n";
 
 export type ManagedTrack = {
@@ -38,18 +39,6 @@ export function TrackManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const t = useT();
-
-  async function revalidate() {
-    try {
-      await fetch("/api/admin/revalidate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path: `/posts/${slug}` }),
-      });
-    } catch {
-      /* best effort */
-    }
-  }
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -87,7 +76,7 @@ export function TrackManager({
         }
       }
       setTracks((t) => [...t, ...added]);
-      revalidate();
+      revalidatePublicPost(slug);
       // A newly-uploaded track can place photos that were waiting for one.
       // Best-effort; shows a note and refreshes the photo grid only if it hits.
       try {
@@ -111,7 +100,7 @@ export function TrackManager({
     if (!supabase) return;
     setTracks((ts) => ts.filter((x) => x.id !== track.id));
     await supabase.from("tracks").delete().eq("id", track.id);
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   async function rename(track: ManagedTrack, name: string) {
@@ -128,7 +117,7 @@ export function TrackManager({
       .update({ name: next })
       .eq("id", track.id);
     if (error) setError(t("admin.err.save"));
-    else revalidate();
+    else revalidatePublicPost(slug);
   }
 
   return (

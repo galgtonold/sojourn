@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Code2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 
@@ -37,18 +38,6 @@ export function InteractionManager({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const t = useT();
-
-  async function revalidate() {
-    try {
-      await fetch("/api/admin/revalidate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path: `/posts/${slug}` }),
-      });
-    } catch {
-      /* best effort */
-    }
-  }
 
   function reset() {
     setKind("poll");
@@ -103,7 +92,7 @@ export function InteractionManager({
         list.map((x) => (x.id === editingId ? (data as ManagedInteraction) : x)),
       );
       reset();
-      revalidate();
+      revalidatePublicPost(slug);
       return;
     }
 
@@ -116,7 +105,7 @@ export function InteractionManager({
     if (error) return setError(error.message);
     onListChange([...list, data as ManagedInteraction]);
     reset();
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   async function remove(it: ManagedInteraction) {
@@ -125,7 +114,7 @@ export function InteractionManager({
     if (editingId === it.id) reset();
     onListChange(list.filter((x) => x.id !== it.id));
     await supabase.from("interactions").delete().eq("id", it.id);
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   async function copyTag(id: string) {

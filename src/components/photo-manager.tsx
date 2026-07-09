@@ -18,6 +18,7 @@ import { uploadImage, uploadVideo } from "@/lib/upload-client";
 import { mediaKind } from "@/lib/media-kind";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
+import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -120,7 +121,7 @@ export function PhotoManager({
     );
     const supabase = getBrowserSupabase();
     await supabase?.from("photos").update({ lat, lng }).eq("id", photo.id);
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   // Place photos that have no location by matching their capture time to a
@@ -144,7 +145,7 @@ export function PhotoManager({
         );
       }
       setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
-      revalidate();
+      revalidatePublicPost(slug);
     } catch {
       setError(t("admin.gallery.geo.err"));
     } finally {
@@ -159,19 +160,6 @@ export function PhotoManager({
       setTimeout(() => setCopiedId((id) => (id === photo.id ? null : id)), 1500);
     } catch {
       /* clipboard unavailable */
-    }
-  }
-
-  // Bust the cached public post page so gallery changes appear immediately.
-  async function revalidate() {
-    try {
-      await fetch("/api/admin/revalidate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path: `/posts/${slug}` }),
-      });
-    } catch {
-      // best effort
     }
   }
 
@@ -222,7 +210,7 @@ export function PhotoManager({
       applyOrder(ids);
       setManualOrder(false);
       setGeoMsg(t("admin.gallery.sortedByTime"));
-      revalidate();
+      revalidatePublicPost(slug);
     } finally {
       setBusy(false);
     }
@@ -234,7 +222,7 @@ export function PhotoManager({
     setManualOrder(true);
     const ids = await requestReorder({ order: photos.map((p) => p.id) });
     if (ids) applyOrder(ids);
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   async function addFiles(files: FileList | null) {
@@ -290,7 +278,7 @@ export function PhotoManager({
         added.push(data as ManagedPhoto);
       }
       setPhotos((p) => [...p, ...added]);
-      revalidate();
+      revalidatePublicPost(slug);
       // Enrich each new photo (vision description + place name) in the
       // background — best effort, never blocks the upload.
       for (const photo of added) {
@@ -345,7 +333,7 @@ export function PhotoManager({
     if (photo.storage_path) {
       await supabase.storage.from("photos").remove([photo.storage_path]);
     }
-    revalidate();
+    revalidatePublicPost(slug);
   }
 
   async function saveCaption(photo: ManagedPhoto) {
