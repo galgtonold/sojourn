@@ -74,38 +74,76 @@ function landmarkRank(p: PhotonProps): number {
   return 5; // tourism=artwork/viewpoint/picnic_site, …
 }
 
+export type PhotonFeature = {
+  properties?: PhotonProps;
+  geometry?: { coordinates?: number[] };
+};
+
+// Pure: visitable named features within 500 m of the point, ranked
+// landmark-first then nearest. Shared by the single-best place snap and the
+// candidate list handed to the vision model.
+export function rankNearbyCandidates(
+  features: PhotonFeature[],
+  lat: number,
+  lng: number,
+): PhotonProps[] {
+  const scored: { p: PhotonProps; dist: number }[] = [];
+  for (const f of features) {
+    const p = f.properties ?? {};
+    const c = f.geometry?.coordinates; // [lon, lat]
+    if (!isVisitable(p) || !c || c.length < 2) continue;
+    const dist = distanceM(lat, lng, c[1], c[0]);
+    if (dist > 500) continue;
+    scored.push({ p, dist });
+  }
+  scored.sort((a, b) => landmarkRank(a.p) - landmarkRank(b.p) || a.dist - b.dist);
+  return scored.map((s) => s.p);
+}
+
 // Photon: nearest named features → the most landmark-like one within ~500 m,
 // labelled "<name>, <city/region>, <country>".
 async function photonPlace(lat: number, lng: number): Promise<string | null> {
   try {
     const url =
-      `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}` +
-      `&lang=de&limit=25`;
+      `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}` + `&lang=de&limit=25`;
     const res = await fetch(url, {
       headers: { "User-Agent": `Sojourn/1.0 (${env.siteUrl})` },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
     const d = await res.json();
-    type Feat = { properties?: PhotonProps; geometry?: { coordinates?: number[] } };
-    const candidates: { p: PhotonProps; dist: number }[] = [];
-    for (const f of (d.features ?? []) as Feat[]) {
-      const p = f.properties ?? {};
-      const c = f.geometry?.coordinates; // [lon, lat]
-      if (!isVisitable(p) || !c || c.length < 2) continue;
-      const dist = distanceM(lat, lng, c[1], c[0]);
-      if (dist > 500) continue;
-      candidates.push({ p, dist });
-    }
-    if (!candidates.length) return null;
-    candidates.sort(
-      (a, b) => landmarkRank(a.p) - landmarkRank(b.p) || a.dist - b.dist,
-    );
-    const best = candidates[0].p;
+    const ranked = rankNearbyCandidates((d.features ?? []) as PhotonFeature[], lat, lng);
+    const best = ranked[0];
+    if (!best) return null;
     const region = best.city || best.district || best.county || best.state || null;
     return [best.name, region, best.country].filter(Boolean).join(", ") || null;
   } catch {
     return null;
+  }
+}
+
+// Up to `limit` nearby landmark names (camera-vicinity), handed to the vision
+// model so it can bind what it actually sees to the right name. Best effort.
+export async function nearbyPlaces(
+  lat: number,
+  lng: number,
+  limit = 4,
+): Promise<string[]> {
+  try {
+    const url =
+      `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}` + `&lang=de&limit=25`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": `Sojourn/1.0 (${env.siteUrl})` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const d = await res.json();
+    const names = rankNearbyCandidates((d.features ?? []) as PhotonFeature[], lat, lng)
+      .map((p) => p.name)
+      .filter((n): n is string => Boolean(n));
+    return [...new Set(names)].slice(0, limit);
+  } catch {
+    return [];
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { reverseGeocode } from "@/lib/ai/geocode";
+import { reverseGeocode, rankNearbyCandidates } from "@/lib/ai/geocode";
 
 function mockFetch(impl: () => unknown) {
   vi.stubGlobal("fetch", vi.fn(async () => impl()));
@@ -114,5 +114,40 @@ describe("reverseGeocode", () => {
     expect(await reverseGeocode(58.8, 14)).toBe(
       "Sjötorp, Västra Götaland, Schweden",
     );
+  });
+});
+
+describe("rankNearbyCandidates", () => {
+  const feat = (
+    name: string,
+    osm_key: string,
+    osm_value: string,
+    coordinates: number[],
+  ) => ({ properties: { name, osm_key, osm_value }, geometry: { coordinates } });
+
+  it("ranks landmark-first then nearest, dropping far and non-visitable features", () => {
+    const lat = 47.404978;
+    const lng = 8.381622;
+    const out = rankNearbyCandidates(
+      [
+        feat("Theaterplatz", "tourism", "artwork", [8.38158, 47.40508]), // rank 5, near
+        feat("Bruno Weber Park", "tourism", "museum", [8.38102, 47.40517]), // rank 0, near
+        feat("Hauptstrasse", "highway", "residential", [8.3816, 47.4049]), // not visitable
+        feat("Fernes Schloss", "historic", "castle", [14.06, 58.84]), // >500 m
+      ],
+      lat,
+      lng,
+    );
+    expect(out.map((p) => p.name)).toEqual(["Bruno Weber Park", "Theaterplatz"]);
+  });
+
+  it("returns an empty array when nothing visitable is in range", () => {
+    expect(
+      rankNearbyCandidates(
+        [{ properties: { name: "Road", osm_key: "highway", osm_value: "primary" }, geometry: { coordinates: [8.38, 47.4] } }],
+        47.4,
+        8.38,
+      ),
+    ).toEqual([]);
   });
 });
