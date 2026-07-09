@@ -8,6 +8,7 @@ import {
   ImageUp,
   Square,
   ListPlus,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
@@ -75,6 +76,13 @@ async function postJson<T>(
 
 function isAbort(e: unknown): boolean {
   return e instanceof DOMException && e.name === "AbortError";
+}
+
+// "m:ss" for the per-step elapsed timer.
+function fmtElapsed(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 // A 2s wait that resolves early — and rejects — if the run is interrupted, so
@@ -207,6 +215,43 @@ export function AiDraftPanel({
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
+  // Progress display for the generate() pipeline: a per-step elapsed timer, a
+  // coarse overall bar, and a section checklist — so a slow step (a reasoner
+  // section can run minutes) reads as working, not frozen.
+  const [stepStartedAt, setStepStartedAt] = useState<number | null>(null);
+  const [elapsedS, setElapsedS] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [sections, setSections] = useState<{ done: number; total: number } | null>(
+    null,
+  );
+
+  // Start a step: set its label, reset its timer, and advance the overall bar.
+  const beginStep = useCallback((label: string, fraction = 0) => {
+    setStep(label);
+    setStepStartedAt(Date.now());
+    setProgress(fraction);
+  }, []);
+
+  // Tick the elapsed timer once a second while a step is running.
+  useEffect(() => {
+    if (stepStartedAt == null) {
+      setElapsedS(0);
+      return;
+    }
+    const tick = () =>
+      setElapsedS(Math.floor((Date.now() - stepStartedAt) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [stepStartedAt]);
+
+  // Clearing the step label ends its timer and hides the section checklist.
+  useEffect(() => {
+    if (step === null) {
+      setStepStartedAt(null);
+      setSections(null);
+    }
+  }, [step]);
   // True once at least one round of answers has been folded into the notes, so
   // the question button reads "Ask more" rather than "Suggest questions".
   const [asked, setAsked] = useState(false);
@@ -276,7 +321,7 @@ export function AiDraftPanel({
       // Enrich photos first so the questions are informed by what's actually in
       // them (no asking about things the photos already show). Best effort, and
       // it makes generate's later enrich step a no-op — not extra work.
-      setStep(t("admin.ai.step.enrich"));
+      beginStep(t("admin.ai.step.enrich"));
       for (let guard = 0; guard < 50; guard++) {
         try {
           const { remaining } = await postJson<{ remaining: number }>(
@@ -290,7 +335,7 @@ export function AiDraftPanel({
           break;
         }
       }
-      setStep(t("admin.ai.step.questions"));
+      beginStep(t("admin.ai.step.questions"));
       const { questions } = await postJson<{ questions: string[] }>(
         "/api/admin/ai/questions",
         { postId, notes, lang },
@@ -347,7 +392,7 @@ export function AiDraftPanel({
     try {
       // 1. Enrich photos in batches until none remain (best effort — captions
       //    can be filled later, so a hiccup here shouldn't block the draft).
-      setStep(t("admin.ai.step.enrich"));
+      beginStep(t("admin.ai.step.enrich"), 0.03);
       for (let guard = 0; guard < 50; guard++) {
         try {
           const { remaining } = await postJson<{ remaining: number }>(
@@ -362,7 +407,7 @@ export function AiDraftPanel({
       }
 
       // 2. Outline (retried — a usable plan is the backbone of the whole draft).
-      setStep(t("admin.ai.step.outline"));
+      beginStep(t("admin.ai.step.outline"), 0.12);
       const { outline } = await withRetry(() =>
         postJson<{ outline: Outline }>(
           "/api/admin/ai/outline",
@@ -387,7 +432,10 @@ export function AiDraftPanel({
       let photoFlagged = 0;
       const total = outline.sections.length;
       for (let i = 0; i < total; i++) {
-        setStep(t("admin.ai.step.section", { a: i + 1, b: total }));
+        // Sections are the long stretch (each reasoner call can run minutes);
+        // give them the bulk of the bar and a per-section checklist.
+        beginStep(t("admin.ai.step.section", { a: i + 1, b: total }), 0.2 + 0.55 * (i / total));
+        setSections({ done: i, total });
         try {
           const section = outline.sections[i];
           const allowed = section.photo_ids ?? [];
@@ -448,6 +496,7 @@ export function AiDraftPanel({
       }
 
       if (parts.length === 0) throw new Error(t("admin.ai.err.noSections"));
+      setSections({ done: total, total }); // all sections written
 
       // 4. Homogenize: stitch the independently-written sections into one
       //    coherent article (smooth transitions, drop repetition and stray
@@ -457,7 +506,7 @@ export function AiDraftPanel({
       const rawBody = parts.join("\n\n");
       let body = rawBody;
       if (parts.length >= 2) {
-        setStep(t("admin.ai.step.homogenize"));
+        beginStep(t("admin.ai.step.homogenize"), 0.78);
         try {
           const { masked, tokens } = maskProtectedTokens(rawBody);
           const { jobId } = await postJson<{ jobId: string }>(
@@ -478,7 +527,7 @@ export function AiDraftPanel({
       // 5. Captions (best effort). Pass the assembled body so captions are
       //    anchored in the article's voice, not standalone image descriptions.
       //    `onlyEmpty` honours the author's choice about existing captions.
-      setStep(t("admin.ai.step.captions"));
+      beginStep(t("admin.ai.step.captions"), 0.92);
       let captionsFailed = false;
       await postJson(
         "/api/admin/ai/captions",
@@ -491,7 +540,7 @@ export function AiDraftPanel({
       });
 
       // 6. Save the assembled draft (retried — never lose finished prose).
-      setStep(t("admin.ai.step.save"));
+      beginStep(t("admin.ai.step.save"), 0.97);
       const saveRes = await withRetry(() =>
         postJson<{
           ok: boolean;
@@ -602,9 +651,53 @@ export function AiDraftPanel({
       )}
 
       {step && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-ember-300">
-          <Loader2 className="size-4 animate-spin" /> {step}…
-        </p>
+        <div className="mt-3 space-y-2">
+          <p className="flex items-center gap-2 text-sm text-ember-300">
+            <Loader2 className="size-4 animate-spin" />
+            <span>{step}…</span>
+            {stepStartedAt != null && (
+              <span className="tabular-nums text-xs text-sand-100/40">
+                {fmtElapsed(elapsedS)}
+              </span>
+            )}
+          </p>
+          {phase === "running" && (
+            <div
+              className="h-1 overflow-hidden rounded-full bg-white/10"
+              role="progressbar"
+              aria-valuenow={Math.round(progress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full rounded-full bg-ember-500 transition-all duration-700 ease-out"
+                style={{ width: `${Math.max(3, Math.round(progress * 100))}%` }}
+              />
+            </div>
+          )}
+          {sections && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {Array.from({ length: sections.total }, (_, i) => {
+                const done = i < sections.done;
+                const active = i === sections.done;
+                return (
+                  <span
+                    key={i}
+                    className={cn(
+                      "grid size-5 place-items-center rounded-full text-[10px] font-medium transition",
+                      done && "bg-sage-500/25 text-sage-300",
+                      active &&
+                        "bg-ember-500/20 text-ember-300 ring-1 ring-ember-400/50",
+                      !done && !active && "bg-white/5 text-sand-100/40",
+                    )}
+                  >
+                    {done ? <Check className="size-3" /> : i + 1}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       {warn && <p className="mt-3 text-sm text-amber-400">{warn}</p>}
