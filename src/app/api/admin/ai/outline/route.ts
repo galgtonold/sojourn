@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier } from "@/lib/ai/dossier";
+import { assignLeftoverPhotos } from "@/lib/ai/outline-plan";
 import { langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
 
 export const maxDuration = 60;
@@ -93,10 +94,13 @@ async function outline({
         role: "user",
         content:
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
-          "Erstelle einen chronologischen Gliederungsplan. Verteile ALLE oben " +
-          "genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto genau einmal, in " +
-          "zeitlicher Reihenfolge) — mehr Abschnitte nur, wenn ausdrücklich " +
-          "verlangte Interaktionen sie brauchen (siehe unten). Jeder Abschnitt deckt einen ANDEREN Moment " +
+          "Erstelle einen chronologischen Gliederungsplan. " +
+          "Verteile ALLE oben genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto " +
+          "genau einmal). BEHALTE DABEI DIE VORGEGEBENE REIHENFOLGE DER FOTOS BEI " +
+          "und weiche nur ab, wenn es der Erzählung klar dient. Erfinde KEINEN " +
+          "Abschnitt nur, um ein einzelnes Foto unterzubringen — hänge es an den " +
+          "thematisch nächsten Abschnitt. Mehr als 5 Abschnitte nur, wenn " +
+          "ausdrücklich verlangte Interaktionen sie brauchen. Jeder Abschnitt deckt einen ANDEREN Moment " +
           "ab — derselbe Vorfall, dieselbe Begegnung oder dasselbe Motiv darf " +
           "NICHT in mehreren Abschnitten vorkommen. Bei dünnem Material lieber " +
           "wenige, klar getrennte Abschnitte als viele, die sich überschneiden. " +
@@ -169,6 +173,12 @@ async function outline({
       },
     ];
   }
+  // Every photo must land somewhere: a stray the model dropped joins its
+  // nearest section by order, so nothing is lost and no junk section is spawned.
+  outline.sections = assignLeftoverPhotos(
+    outline.sections,
+    dossier.photos.map((p) => p.id),
+  );
   // Any author interaction the model didn't place gets distributed round-robin,
   // so every one is guaranteed a home (the section writer emits its [ask:] tag).
   const leftover = [...predefined].filter((id) => !assigned.has(id));
