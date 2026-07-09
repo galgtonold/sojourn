@@ -10,7 +10,7 @@ import "server-only";
 import { env, isVisionConfigured } from "@/lib/env";
 import { recordUsage } from "@/lib/ai/usage";
 import type { UsageMeta } from "@/lib/ai/deepseek";
-import { reverseGeocode } from "@/lib/ai/geocode";
+import { reverseGeocode, nearbyPlaces } from "@/lib/ai/geocode";
 
 export type EnrichablePhoto = {
   id: string;
@@ -33,6 +33,26 @@ const SYSTEM =
   "Detail. Spekuliere nicht über die Identität konkreter Personen und erfinde " +
   "keine Orte; stütze dich nur auf das Sichtbare (und den ggf. genannten " +
   "Aufnahmeort).";
+
+// The user-turn text for the vision call. Frames the geocoded place as where
+// the CAMERA stood (not necessarily the subject) and offers nearby candidates
+// the model may bind to what it actually sees — never as a licence to guess.
+export function visionUserText(place: string | null, candidates: string[]): string {
+  const lines: string[] = [];
+  if (place)
+    lines.push(
+      `Kamera-Standort (nur grobe Einordnung, NICHT zwingend das Motiv, nicht erfinden): ${place}.`,
+    );
+  const others = candidates.filter((c) => c && c !== place);
+  if (others.length)
+    lines.push(
+      `In der Nähe liegen u. a.: ${others.join("; ")}. Eines davon KANN das Motiv sein — ` +
+        "benenne es nur, wenn es klar zum Sichtbaren passt; sonst beschreibe nur das " +
+        "Sichtbare und rate NICHT.",
+    );
+  lines.push("Beschreibe dieses Reisefoto so ausführlich wie möglich.");
+  return lines.join("\n");
+}
 
 // One call to the (OpenAI-compatible) vision provider.
 async function visionChat(
@@ -88,24 +108,16 @@ async function visionChat(
 export async function describeImage(
   imageUrl: string,
   place: string | null,
+  candidates: string[],
   meta?: UsageMeta,
 ): Promise<string | null> {
   if (!isVisionConfigured) return null;
-  // Absolute URLs (http) and inline data: URIs go to the vision model as-is;
-  // only a site-relative storage path needs the origin prepended.
   const abs =
     imageUrl.startsWith("http") || imageUrl.startsWith("data:")
       ? imageUrl
       : `${env.siteUrl}${imageUrl}`;
-  const placeHint = place
-    ? `Bekannter Aufnahmeort (zur geografischen Einordnung, nicht erfinden): ${place}.\n`
-    : "";
   try {
-    const text = await visionChat(
-      abs,
-      `${placeHint}Beschreibe dieses Reisefoto so ausführlich wie möglich.`,
-      meta,
-    );
+    const text = await visionChat(abs, visionUserText(place, candidates), meta);
     return text.trim() || null;
   } catch {
     return null;
@@ -129,11 +141,15 @@ export async function computeEnrichment(
     : photo.place_name;
 
   const needsDescription = !photo.ai_description && Boolean(photo.url);
+  const candidates =
+    needsDescription && photo.lat != null && photo.lng != null
+      ? await nearbyPlaces(photo.lat as number, photo.lng as number)
+      : [];
   // Hand the stored URL straight to the vision model (a WebP/JPEG it can fetch);
   // we avoid the Next optimizer here because it can negotiate AVIF, which vision
   // APIs reject.
   const description = needsDescription
-    ? await describeImage(photo.url as string, place ?? null, meta)
+    ? await describeImage(photo.url as string, place ?? null, candidates, meta)
     : photo.ai_description;
 
   return {
