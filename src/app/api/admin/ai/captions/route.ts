@@ -16,6 +16,10 @@ const schema = z.object({
   // freshly-assembled body (not yet persisted); the standalone button omits it
   // and we fall back to the saved body.
   body: z.string().optional(),
+  phase: z.enum(["draft", "polish"]).default("polish"),
+  // Polish targets exactly these ids (the ones the draft wrote), so it never
+  // skips a just-drafted caption nor touches a manual one the draft excluded.
+  photoIds: z.array(z.string()).optional(),
 });
 
 // Strip photo/interaction tokens and directive fences so the model sees clean
@@ -54,12 +58,14 @@ async function captions({
   }
   const context = narrativeContext(body);
 
-  const targets = selectCaptionTargets(
-    await fetchCaptionSources(supabase, postId),
-    { onlyEmpty },
-  );
+  const { phase } = input;
+  const sources = await fetchCaptionSources(supabase, postId);
+  const targets =
+    phase === "polish" && input.photoIds
+      ? selectCaptionTargets(sources, { onlyEmpty: false, ids: input.photoIds })
+      : selectCaptionTargets(sources, { onlyEmpty });
 
-  if (targets.length === 0) return { count: 0 };
+  if (targets.length === 0) return phase === "draft" ? { count: 0, ids: [] } : { count: 0 };
 
   const list = targets
     .map((p) => {
@@ -71,6 +77,34 @@ async function captions({
     })
     .join("\n");
 
+  const placeNote =
+    "Der jeweils genannte Ort ist der Kamera-Standort, nicht zwingend das Motiv — " +
+    "verlasse dich auf die Beschreibung, nicht auf den Ortsnamen.\n";
+
+  const draftInstruction =
+    "Für jede Zeile (id | ort | beschreibung) erstelle eine kurze " +
+    "Bildunterschrift (caption, max ~12 Wörter), die das Bild für nicht-sehende " +
+    "Leser erkennbar macht und zum lockeren Ton des Blogs passt. Kein „Foto von …“. " +
+    placeNote +
+    'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
+    list;
+
+  const polishInstruction =
+    (context
+      ? "Hier der fertige Artikel, zu dem die Fotos gehören. Verankere die " +
+        "Bildunterschriften in seiner Stimme und Erzählung und WIEDERHOLE NICHT, " +
+        "was der Text ohnehin schon sagt:\n\n" +
+        context +
+        "\n\n---\n\n"
+      : "") +
+    "Überarbeite für jede Zeile (id | ort | beschreibung) die Bildunterschrift " +
+    "(caption, max ~12 Wörter), sodass sie sich wie ein Teil des Artikels liest, " +
+    "seinen Ton trifft und das Bild zugleich erkennbar macht. Keine Wiederholung " +
+    'des Fließtexts, kein „Foto von …“. ' +
+    placeNote +
+    'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
+    list;
+
   const data = await deepseekJson<{
     items: { id: string; caption: string }[];
   }>({
@@ -81,7 +115,7 @@ async function captions({
     // caption step is best-effort, so it would fail silently, leaving every
     // caption empty. (2500 was hit exactly on a 10-photo post.)
     maxTokens: 8000,
-    meta: { operation: "captions", postId, userId: user.id },
+    meta: { operation: phase === "draft" ? "captions:draft" : "captions", postId, userId: user.id },
     messages: [
       {
         role: "system",
@@ -90,24 +124,7 @@ async function captions({
           "Reiseblog – locker, im „du“, niemals förmlich. " +
           langInstruction(lang as Lang),
       },
-      {
-        role: "user",
-        content:
-          (context
-            ? "Hier der Artikel, zu dem die Fotos gehören. Die Bildunterschriften " +
-              "sollen in seiner Stimme und Erzählung verankert sein – greife den " +
-              "Moment, den Ton und die Wortwahl des Textes auf, statt das Bild " +
-              "neutral zu beschreiben:\n\n" +
-              context +
-              "\n\n---\n\n"
-            : "") +
-          "Für jede Zeile (id | ort | beschreibung) erstelle eine kurze " +
-          "Bildunterschrift (caption, max ~12 Wörter), die sich wie ein Teil des " +
-          "Artikels liest und das Bild zugleich für nicht-sehende Leser erkennbar " +
-          "macht. Keine Wiederholung des Fließtexts, kein „Foto von …“. " +
-          'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
-          list,
-      },
+      { role: "user", content: phase === "draft" ? draftInstruction : polishInstruction },
     ],
   });
 
@@ -119,5 +136,5 @@ async function captions({
     postId,
     userId: user.id,
   });
-  return { count };
+  return phase === "draft" ? { count, ids: targets.map((p) => p.id) } : { count };
 }
