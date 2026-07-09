@@ -126,14 +126,16 @@ async function pollJob(jobId: string, signal?: AbortSignal): Promise<string> {
   throw new Error("timed out");
 }
 
-// Turn a raw error into something a non-engineer can act on.
+// Turn a raw error into something a non-engineer can act on. Never surfaces raw
+// technical text — an unrecognised error falls back to a plain "try again".
 function humanError(e: unknown, t: (k: string) => string): string {
   const raw = e instanceof Error ? e.message : String(e);
+  if (/truncat|too long|token/i.test(raw)) return t("admin.ai.err.parse");
   if (/parse|json/i.test(raw)) return t("admin.ai.err.parse");
   if (/\b(429|rate)\b/i.test(raw)) return t("admin.ai.err.rate");
   if (/\b5\d\d\b|network|fetch|timeout|abort/i.test(raw))
     return t("admin.ai.err.network");
-  return raw;
+  return t("admin.ai.err.generic");
 }
 
 export function AiDraftPanel({
@@ -477,11 +479,16 @@ export function AiDraftPanel({
       //    anchored in the article's voice, not standalone image descriptions.
       //    `onlyEmpty` honours the author's choice about existing captions.
       setStep(t("admin.ai.step.captions"));
+      let captionsFailed = false;
       await postJson(
         "/api/admin/ai/captions",
         { postId, lang, body, onlyEmpty: captionsOnlyEmpty },
         signal,
-      ).catch(() => {});
+      ).catch((e) => {
+        // Best effort — a caption failure never sinks the draft, but surface it
+        // as a warning rather than silently leaving captions empty.
+        if (!isAbort(e)) captionsFailed = true;
+      });
 
       // 6. Save the assembled draft (retried — never lose finished prose).
       setStep(t("admin.ai.step.save"));
@@ -514,6 +521,7 @@ export function AiDraftPanel({
         warnings.push(t("admin.ai.warn.partial", { list: failed.join(", ") }));
       if (photoFlagged)
         warnings.push(t("admin.ai.warn.photos", { n: photoFlagged }));
+      if (captionsFailed) warnings.push(t("admin.ai.warn.captions"));
       if (warnings.length) setWarn(warnings.join(" "));
       setPhase("done");
       // Re-seed the editor synchronously with what was actually saved, so a

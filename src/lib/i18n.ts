@@ -474,8 +474,11 @@ const en = {
   "admin.ai.err.network": "Network hiccup reaching the AI. Please try again.",
   "admin.ai.err.rate":
     "The AI is busy right now (rate limit). Wait a moment and retry.",
+  "admin.ai.err.generic": "That step didn’t work. Please try again.",
   "admin.ai.err.noSections":
     "The AI couldn’t write any sections. Try again, or add a few notes first.",
+  "admin.ai.warn.captions":
+    "Draft saved, but the captions couldn’t be generated — regenerate the draft, or add them in the gallery.",
   "admin.ai.warn.partial":
     "Draft saved, but section(s) {list} failed — regenerate, or write those in by hand.",
   "admin.ai.warn.photos":
@@ -1081,8 +1084,11 @@ const de: Dict = {
     "Verbindungsproblem zur KI. Bitte versuch es erneut.",
   "admin.ai.err.rate":
     "Die KI ist gerade ausgelastet (Rate-Limit). Kurz warten und erneut versuchen.",
+  "admin.ai.err.generic": "Dieser Schritt hat nicht geklappt. Bitte versuch es erneut.",
   "admin.ai.err.noSections":
     "Die KI konnte keine Abschnitte schreiben. Erneut versuchen oder zuerst ein paar Notizen ergänzen.",
+  "admin.ai.warn.captions":
+    "Entwurf gespeichert, aber die Bildunterschriften konnten nicht erstellt werden — Entwurf neu generieren oder in der Galerie ergänzen.",
   "admin.ai.warn.partial":
     "Entwurf gespeichert, aber Abschnitt(e) {list} sind fehlgeschlagen — neu generieren oder von Hand ergänzen.",
   "admin.ai.warn.photos":

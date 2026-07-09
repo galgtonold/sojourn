@@ -1,7 +1,7 @@
 // Server-only DeepSeek client (OpenAI-compatible Chat Completions API).
 import "server-only";
 import { env, isAiConfigured } from "@/lib/env";
-import { recordUsage } from "@/lib/ai/usage";
+import { recordUsage, recordAiFailure } from "@/lib/ai/usage";
 
 export type UsageMeta = {
   operation: string;
@@ -34,12 +34,14 @@ type ChatOpts = {
   meta?: UsageMeta;
 };
 
-// One round-trip to the model. Throws on HTTP error with the status attached so
-// the caller can decide whether the failure is worth retrying.
+// One round-trip to the model. Returns the text plus `finishReason` ("stop" |
+// "length" | …) so the caller can tell a truncated response from a complete
+// one. Throws on HTTP error with the status attached so the caller can decide
+// whether the failure is worth retrying.
 async function singleCompletion(
   opts: ChatOpts,
   messages: ChatMessage[],
-): Promise<string> {
+): Promise<{ content: string; finishReason: string | null }> {
   const res = await fetch(`${env.deepseekBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -64,6 +66,7 @@ async function singleCompletion(
     throw err;
   }
   const data = await res.json();
+  const finishReason = data?.choices?.[0]?.finish_reason ?? null;
 
   if (opts.meta) {
     const u = data?.usage ?? {};
@@ -78,6 +81,7 @@ async function singleCompletion(
       model: opts.model,
       postId: opts.meta.postId,
       userId: opts.meta.userId,
+      finishReason,
       usage: {
         prompt_tokens: prompt,
         completion_tokens: u.completion_tokens ?? 0,
@@ -88,7 +92,7 @@ async function singleCompletion(
     });
   }
 
-  return data?.choices?.[0]?.message?.content ?? "";
+  return { content: data?.choices?.[0]?.message?.content ?? "", finishReason };
 }
 
 export async function deepseekChat(opts: ChatOpts): Promise<string> {
@@ -100,14 +104,28 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
   const json = Boolean(opts.json);
   const attempts = json ? 3 : 1;
   let last = "";
+  let lastFinish: string | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      last = await singleCompletion(opts, opts.messages);
+      const r = await singleCompletion(opts, opts.messages);
+      last = r.content;
+      lastFinish = r.finishReason;
     } catch (e) {
       const status = (e as { status?: number }).status ?? 0;
       // Retry transient upstream errors; surface client errors immediately.
       if (attempt < attempts && status >= 500) continue;
+      // About to give up on this call — persist why (a thrown error records no
+      // usage row, so this is the only trace).
+      if (opts.meta) {
+        await recordAiFailure({
+          operation: opts.meta.operation,
+          model: opts.model,
+          postId: opts.meta.postId,
+          userId: opts.meta.userId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
       throw e;
     }
     if (!json || isParseableJson(last)) return last;
@@ -145,10 +163,29 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
           },
         ],
       );
-      if (isParseableJson(repaired)) return repaired;
+      if (isParseableJson(repaired.content)) return repaired.content;
+      last = repaired.content;
+      lastFinish = repaired.finishReason;
     } catch {
       /* fall through and return the last raw output */
     }
+  }
+
+  // Give up: the JSON never parsed. Record why (truncated at the cap vs.
+  // malformed) so it's diagnosable, then return the raw text — the caller's
+  // parse throws, which the UI turns into a friendly message.
+  if (json && opts.meta) {
+    await recordAiFailure({
+      operation: opts.meta.operation,
+      model: opts.model,
+      postId: opts.meta.postId,
+      userId: opts.meta.userId,
+      finishReason: lastFinish,
+      error:
+        lastFinish === "length"
+          ? `output truncated at the ${opts.maxTokens ?? 4096}-token cap`
+          : "unparseable model JSON after retries + repair",
+    });
   }
 
   return last;
