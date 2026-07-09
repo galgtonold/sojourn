@@ -4,7 +4,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reverseGeocode, reverseGeocodeArea } from "@/lib/ai/geocode";
 import { dailyWeather } from "@/lib/ai/weather";
-import { orderByCaptureTime } from "@/lib/photo-order";
+import { orderPhotosForNarrative } from "@/lib/photo-order";
 
 export type DossierPhoto = {
   id: string;
@@ -14,6 +14,7 @@ export type DossierPhoto = {
   taken_at: string | null;
   place_name: string | null;
   ai_description: string | null;
+  caption: string | null;
   enriched_at: string | null;
 };
 
@@ -73,14 +74,14 @@ export async function buildDossier(
 ): Promise<Dossier> {
   const { data: post } = await supabase
     .from("posts")
-    .select("id, title, location, lat, lng, ai_notes, trip_id, trips(title, summary, ai_context, start_date, end_date)")
+    .select("id, title, location, lat, lng, ai_notes, photos_manual_order, trip_id, trips(title, summary, ai_context, start_date, end_date)")
     .eq("id", postId)
     .maybeSingle();
 
   const { data: photoRows } = await supabase
     .from("photos")
     .select(
-      "id, url, lat, lng, taken_at, place_name, ai_description, enriched_at, sort_order",
+      "id, url, lat, lng, taken_at, place_name, ai_description, caption, enriched_at, sort_order",
     )
     .eq("post_id", postId);
 
@@ -119,8 +120,9 @@ export async function buildDossier(
         .order("published_at", { ascending: true })
     : { data: null };
 
-  const photos: DossierPhoto[] = orderByCaptureTime(photoRows ?? [])
-    .map((p) => ({
+  const manualOrder = Boolean((post as { photos_manual_order?: boolean } | null)?.photos_manual_order);
+  const photos: DossierPhoto[] = orderPhotosForNarrative(photoRows ?? [], manualOrder).map(
+    (p) => ({
       id: p.id,
       url: p.url,
       lat: p.lat,
@@ -128,8 +130,10 @@ export async function buildDossier(
       taken_at: p.taken_at,
       place_name: p.place_name,
       ai_description: p.ai_description,
+      caption: p.caption,
       enriched_at: p.enriched_at,
-    }));
+    }),
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const trip = (Array.isArray((post as any)?.trips)
@@ -246,7 +250,12 @@ export async function buildDossier(
     }
   }
 
-  lines.push("", "Fotos in zeitlicher Reihenfolge (mit echten IDs):");
+  lines.push(
+    "",
+    manualOrder
+      ? "Fotos in der vom Autor gewählten Reihenfolge (mit echten IDs). Der Ort ist der Kamera-Standort, nicht zwingend das Motiv:"
+      : "Fotos in zeitlicher Reihenfolge (mit echten IDs). Der Ort ist der Kamera-Standort, nicht zwingend das Motiv:",
+  );
   photos.forEach((p, i) => {
     // The full description can be many paragraphs (it powers search); the
     // outline only needs a gist, so trim it to keep the prompt fast.
