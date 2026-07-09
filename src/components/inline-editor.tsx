@@ -33,7 +33,10 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   chip.dataset.token = seg.token;
   const broken = seg.chipKind === "broken";
   chip.className = [
-    "mx-0.5 inline-flex max-w-[min(22rem,75vw)] select-none items-center gap-1 rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
+    // Cap at 100% of the textbox (not 75vw — the editor sits in a padded card,
+    // so a viewport-relative cap can exceed the box) and clip, so a long caption
+    // can never push the chip past the textbox edge on mobile.
+    "mx-0.5 inline-flex max-w-[min(22rem,100%)] select-none items-center gap-1 overflow-hidden rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
     broken
       ? "bg-red-500/10 text-red-300 ring-red-500/40"
       : "bg-ember-500/15 text-sand-50 ring-ember-400/30",
@@ -53,7 +56,9 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   }
 
   const label = document.createElement("span");
-  label.className = "truncate";
+  // min-w-0 lets the flex child actually shrink so `truncate` ellipsises a long
+  // caption instead of forcing the chip wider than its max-width.
+  label.className = "min-w-0 truncate";
   label.textContent = seg.label || (seg.chipKind === "photo" ? "" : seg.token);
   chip.appendChild(label);
 
