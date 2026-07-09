@@ -5,6 +5,8 @@
 import "server-only";
 import type { ServerSupabase } from "@/lib/api/admin-route";
 import { resolvePhotoOrder } from "@/lib/photo-order";
+import type { CaptionSource } from "@/lib/ai/caption-select";
+import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
 // Persist a photo order for a post: write a dense, unique sort_order = position,
 // and set whether this is a manual arrangement. Returns the resolved id order.
@@ -37,4 +39,41 @@ export async function reorderPhotos(
   if (pErr) throw new Error(pErr.message);
 
   return { orderedIds, manual };
+}
+
+// The fields the captioner needs to decide targets and write the prompt.
+export async function fetchCaptionSources(
+  supabase: ServerSupabase,
+  postId: string,
+): Promise<CaptionSource[]> {
+  const { data, error } = await supabase
+    .from("photos")
+    .select("id, ai_description, place_name, caption")
+    .eq("post_id", postId);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as CaptionSource[];
+}
+
+// Persist generated captions, refreshing each photo's embedding so the caption
+// (part of its searchable text) stays in sync. Returns how many were written.
+export async function saveCaptions(
+  supabase: ServerSupabase,
+  items: { id: string; caption: string }[],
+  meta: { postId: string; userId: string },
+): Promise<number> {
+  let count = 0;
+  for (const item of items) {
+    const { error } = await supabase
+      .from("photos")
+      .update({ caption: item.caption?.trim() || null })
+      .eq("id", item.id);
+    if (error) throw new Error(error.message);
+    await embedPhotoRecord(supabase, item.id, {
+      operation: "photo_embed",
+      postId: meta.postId,
+      userId: meta.userId,
+    });
+    count++;
+  }
+  return count;
 }

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
-import { embedPhotoRecord } from "@/lib/ai/embed-records";
+import { selectCaptionTargets } from "@/lib/ai/caption-select";
+import { fetchCaptionSources, saveCaptions } from "@/lib/db/photos";
 
 export const maxDuration = 60;
 
@@ -53,15 +54,10 @@ async function captions({
   }
   const context = narrativeContext(body);
 
-  const { data: photos } = await supabase
-    .from("photos")
-    .select("id, ai_description, place_name, caption")
-    .eq("post_id", postId);
-
-  const targets = (photos ?? [])
-    .filter((p) => p.ai_description || p.place_name)
-    .filter((p) => (onlyEmpty ? !p.caption : true))
-    .slice(0, 40);
+  const targets = selectCaptionTargets(
+    await fetchCaptionSources(supabase, postId),
+    { onlyEmpty },
+  );
 
   if (targets.length === 0) return { count: 0 };
 
@@ -105,21 +101,13 @@ async function captions({
     ],
   });
 
+  // Keep only captions for photos we actually asked about (the model can echo a
+  // stray id), then persist them.
   const valid = new Set(targets.map((p) => p.id));
-  let count = 0;
-  for (const item of data.items ?? []) {
-    if (!valid.has(item.id)) continue;
-    await supabase
-      .from("photos")
-      .update({ caption: item.caption?.trim() || null })
-      .eq("id", item.id);
-    // Refresh the embedding now that the caption is part of the photo's text.
-    await embedPhotoRecord(supabase, item.id, {
-      operation: "photo_embed",
-      postId,
-      userId: user.id,
-    });
-    count++;
-  }
+  const items = (data.items ?? []).filter((it) => valid.has(it.id));
+  const count = await saveCaptions(supabase, items, {
+    postId,
+    userId: user.id,
+  });
   return { count };
 }
