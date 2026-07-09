@@ -3,6 +3,7 @@ import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { aiModels, type ChatMessage } from "@/lib/ai/deepseek";
 import { enqueueLlmJob } from "@/lib/ai/jobs";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
+import { sectionPhotoLines } from "@/lib/ai/section-prompt";
 import {
   langInstruction,
   qaBlock,
@@ -65,20 +66,11 @@ async function sectionRoute({
   ]);
 
   const byId = new Map(dossier.photos.map((p) => [p.id, p]));
-  const photoLines = section.photo_ids
-    .map((id) => {
-      const p = byId.get(id);
-      if (!p) return null;
-      // Trim the (search-grade, multi-paragraph) description to a workable
-      // length so the call stays well under the time limit.
-      const desc = (p.ai_description ?? "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 480);
-      return `[photo:${id}] — ${p.place_name ?? ""} — ${desc}`;
-    })
-    .filter(Boolean)
-    .join("\n");
+  const photoLines = sectionPhotoLines(
+    section.photo_ids
+      .map((id) => byId.get(id))
+      .filter((p): p is (typeof dossier.photos)[number] => Boolean(p)),
+  );
 
   // Author-defined interactions assigned to this section — place their exact
   // [ask:<id>] tags. Plus, optionally, the single interaction the model invented.
@@ -151,12 +143,12 @@ async function sectionRoute({
     "trotzdem in dieser lockeren Du-Stimme.\n" +
     "- Beginne mit einer Markdown-Zwischenüberschrift (## …). Kein H1, kein Titel.\n" +
     "- Setze die angegebenen [photo:ID]-Tags jeweils in eine eigene Zeile, dort wo sie passen.\n" +
-    "- Zu JEDEM Bild wird automatisch eine eigene Bildunterschrift angezeigt. " +
-    "Beschreibe das Bild daher NICHT im Fließtext und schreibe keine " +
-    "bildunterschriften-artige Zeile dazu — der [photo:ID]-Tag steht für sich. " +
-    "Erzähle den Moment und die Stimmung, statt zu benennen, was auf dem Bild " +
-    "ohnehin zu sehen ist; die Fotobeschreibung ist nur dein Kontext, nicht Text " +
-    "zum Abschreiben.\n" +
+    "- Zu JEDEM Bild wird automatisch die angegebene Bildunterschrift gezeigt. " +
+    "ERGÄNZE sie — wiederhole und umschreibe sie NICHT und beschreibe das Bild " +
+    "nicht im Fließtext. Der [photo:ID]-Tag steht für sich; erzähle den Moment " +
+    "und die Stimmung, nicht das ohnehin Sichtbare. Der angegebene Ort ist der " +
+    "Kamera-Standort, nicht zwingend das Motiv — behaupte nicht, der Ort sei das " +
+    "Abgebildete, wenn die Beschreibung etwas anderes zeigt.\n" +
     "- Verwende nur die unten angegebenen Foto-IDs, erfinde keine.\n" +
     "- Dies ist EIN Abschnitt mitten in einem längeren Artikel, kein eigenständiger " +
     "Beitrag und kein Brief: keine Anrede, keine Grußformel und keine Unterschrift " +
