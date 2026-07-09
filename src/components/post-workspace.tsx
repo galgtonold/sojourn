@@ -207,7 +207,12 @@ export function PostWorkspace({
     setOpen((o) => ({ ...o, article: true }));
   }
 
-  const dirty = JSON.stringify(post) !== JSON.stringify(savedSnapshot);
+  // Only recompute the (deep) comparison when a side actually changes, not on
+  // every render.
+  const dirty = useMemo(
+    () => JSON.stringify(post) !== JSON.stringify(savedSnapshot),
+    [post, savedSnapshot],
+  );
   useBeforeUnload(dirty || notesDirty);
 
   const canPublish = Boolean(post.title.trim() && post.trip_id);

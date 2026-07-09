@@ -18,6 +18,7 @@ import { uploadImage, uploadVideo } from "@/lib/upload-client";
 import { mediaKind } from "@/lib/media-kind";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
+import { updatePhotoFields } from "@/lib/db/photos-client";
 import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
@@ -116,12 +117,21 @@ export function PhotoManager({
     const lng = lngS.trim() === "" ? null : Number(lngS);
     if (lat != null && !Number.isFinite(lat)) return;
     if (lng != null && !Number.isFinite(lng)) return;
+    const prev = { lat: photo.lat, lng: photo.lng };
     setPhotos((ps) =>
       ps.map((x) => (x.id === photo.id ? { ...x, lat, lng } : x)),
     );
-    const supabase = getBrowserSupabase();
-    await supabase?.from("photos").update({ lat, lng }).eq("id", photo.id);
-    revalidatePublicPost(slug);
+    try {
+      await updatePhotoFields(photo.id, { lat, lng });
+      revalidatePublicPost(slug);
+    } catch {
+      // Roll the optimistic pin back so the map doesn't show a location that
+      // never saved.
+      setPhotos((ps) =>
+        ps.map((x) => (x.id === photo.id ? { ...x, ...prev } : x)),
+      );
+      setError(t("admin.err.save"));
+    }
   }
 
   // Place photos that have no location by matching their capture time to a
@@ -337,13 +347,13 @@ export function PhotoManager({
   }
 
   async function saveCaption(photo: ManagedPhoto) {
-    const supabase = getBrowserSupabase();
-    await supabase
-      ?.from("photos")
-      .update({ caption: photo.caption })
-      .eq("id", photo.id);
-    setSavedId(photo.id);
-    setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
+    try {
+      await updatePhotoFields(photo.id, { caption: photo.caption });
+      setSavedId(photo.id);
+      setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
+    } catch {
+      setError(t("admin.err.save"));
+    }
   }
 
   return (
