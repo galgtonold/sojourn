@@ -461,7 +461,8 @@ const en = {
   "admin.ai.step.outline": "Outlining",
   "admin.ai.step.section": "Writing section {a}/{b}",
   "admin.ai.step.homogenize": "Polishing into one article",
-  "admin.ai.step.captions": "Captions",
+  "admin.ai.step.captionDraft": "Drafting captions",
+  "admin.ai.step.captions": "Polishing captions",
   "admin.ai.step.save": "Saving",
   "admin.ai.captionsOverwrite.title": "Existing captions",
   "admin.ai.captionsOverwrite.body":
@@ -1069,7 +1070,8 @@ const de: Dict = {
   "admin.ai.step.outline": "Gliederung erstellen",
   "admin.ai.step.section": "Abschnitt {a}/{b} schreiben",
   "admin.ai.step.homogenize": "Zu einem Artikel verschmelzen",
-  "admin.ai.step.captions": "Bildunterschriften",
+  "admin.ai.step.captionDraft": "Bildunterschriften entwerfen",
+  "admin.ai.step.captions": "Bildunterschriften verfeinern",
   "admin.ai.step.save": "Speichern",
   "admin.ai.captionsOverwrite.title": "Vorhandene Bildunterschriften",
   "admin.ai.captionsOverwrite.body":

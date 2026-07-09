@@ -406,8 +406,26 @@ export function AiDraftPanel({
         }
       }
 
+      // 1b. Caption DRAFT (best effort): caption every eligible photo now, so the
+      //     article is written knowing each image's caption and can complement it.
+      //     The author's overwrite/only-empty choice is applied here, once.
+      beginStep(t("admin.ai.step.captionDraft"), 0.1);
+      let draftedIds: string[] = [];
+      let draftFailed = false;
+      try {
+        const r = await postJson<{ ids: string[] }>(
+          "/api/admin/ai/captions",
+          { postId, lang, phase: "draft", onlyEmpty: captionsOnlyEmpty },
+          signal,
+        );
+        draftedIds = r.ids ?? [];
+      } catch (e) {
+        if (isAbort(e)) throw e;
+        draftFailed = true;
+      }
+
       // 2. Outline (retried — a usable plan is the backbone of the whole draft).
-      beginStep(t("admin.ai.step.outline"), 0.12);
+      beginStep(t("admin.ai.step.outline"), 0.16);
       const { outline } = await withRetry(() =>
         postJson<{ outline: Outline }>(
           "/api/admin/ai/outline",
@@ -434,7 +452,7 @@ export function AiDraftPanel({
       for (let i = 0; i < total; i++) {
         // Sections are the long stretch (each reasoner call can run minutes);
         // give them the bulk of the bar and a per-section checklist.
-        beginStep(t("admin.ai.step.section", { a: i + 1, b: total }), 0.2 + 0.55 * (i / total));
+        beginStep(t("admin.ai.step.section", { a: i + 1, b: total }), 0.24 + 0.5 * (i / total));
         setSections({ done: i, total });
         try {
           const section = outline.sections[i];
@@ -506,7 +524,7 @@ export function AiDraftPanel({
       const rawBody = parts.join("\n\n");
       let body = rawBody;
       if (parts.length >= 2) {
-        beginStep(t("admin.ai.step.homogenize"), 0.78);
+        beginStep(t("admin.ai.step.homogenize"), 0.8);
         try {
           const { masked, tokens } = maskProtectedTokens(rawBody);
           const { jobId } = await postJson<{ jobId: string }>(
@@ -524,20 +542,29 @@ export function AiDraftPanel({
         }
       }
 
-      // 5. Captions (best effort). Pass the assembled body so captions are
-      //    anchored in the article's voice, not standalone image descriptions.
-      //    `onlyEmpty` honours the author's choice about existing captions.
-      beginStep(t("admin.ai.step.captions"), 0.92);
-      let captionsFailed = false;
-      await postJson(
-        "/api/admin/ai/captions",
-        { postId, lang, body, onlyEmpty: captionsOnlyEmpty },
-        signal,
-      ).catch((e) => {
-        // Best effort — a caption failure never sinks the draft, but surface it
-        // as a warning rather than silently leaving captions empty.
-        if (!isAbort(e)) captionsFailed = true;
-      });
+      // 5. Caption POLISH (best effort): now the prose exists, refine each drafted
+      //    caption to the article's voice and drop anything the text already says.
+      //    Target exactly the drafted ids; if the draft failed, fall back to a
+      //    single full pass (no photoIds) so captions still get written.
+      beginStep(t("admin.ai.step.captions"), 0.9);
+      let captionsFailed = draftFailed;
+      const shouldPolish = draftFailed || draftedIds.length > 0;
+      if (shouldPolish) {
+        await postJson(
+          "/api/admin/ai/captions",
+          {
+            postId,
+            lang,
+            phase: "polish",
+            body,
+            onlyEmpty: captionsOnlyEmpty,
+            ...(draftFailed ? {} : { photoIds: draftedIds }),
+          },
+          signal,
+        ).catch((e) => {
+          if (!isAbort(e)) captionsFailed = true;
+        });
+      }
 
       // 6. Save the assembled draft (retried — never lose finished prose).
       beginStep(t("admin.ai.step.save"), 0.97);
