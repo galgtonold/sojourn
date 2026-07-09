@@ -13,10 +13,12 @@ export type CaptionSource = {
 // stays fast.
 export function selectCaptionTargets<T extends CaptionSource>(
   photos: T[],
-  opts: { onlyEmpty: boolean; limit?: number },
+  opts: { onlyEmpty: boolean; limit?: number; ids?: string[] },
 ): T[] {
+  const idSet = opts.ids ? new Set(opts.ids) : null;
   return photos
     .filter((p) => p.ai_description || p.place_name)
     .filter((p) => (opts.onlyEmpty ? !p.caption : true))
+    .filter((p) => (idSet ? idSet.has(p.id) : true))
     .slice(0, opts.limit ?? 40);
 }

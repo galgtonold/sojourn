@@ -45,4 +45,16 @@ describe("selectCaptionTargets", () => {
     expect(selectCaptionTargets(many, { onlyEmpty: false })).toHaveLength(40);
     expect(selectCaptionTargets(many, { onlyEmpty: false, limit: 5 })).toHaveLength(5);
   });
+
+  it("restricts to an explicit id set when given", () => {
+    const out = selectCaptionTargets(
+      [
+        photo("a", { place_name: "Oslo", caption: "draft a" }),
+        photo("b", { place_name: "Bergen", caption: "draft b" }),
+        photo("c", { place_name: "Tromsø" }),
+      ],
+      { onlyEmpty: false, ids: ["a", "c"] },
+    );
+    expect(out.map((p) => p.id)).toEqual(["a", "c"]);
+  });
 });
