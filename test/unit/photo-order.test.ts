@@ -3,6 +3,7 @@ import {
   orderByCaptureTime,
   orderByGallery,
   resolvePhotoOrder,
+  orderPhotosForNarrative,
 } from "@/lib/photo-order";
 
 const p = (
@@ -122,5 +123,26 @@ describe("resolvePhotoOrder", () => {
       order: ["b", "ghost", "a"],
     });
     expect(orderedIds).toEqual(["b", "a", "c"]); // ghost ignored, c appended
+  });
+});
+
+describe("orderPhotosForNarrative", () => {
+  const rows = [
+    { id: "late-drag-first", taken_at: "2024-05-01T10:00:00Z", sort_order: 0 },
+    { id: "early-drag-second", taken_at: "2024-05-01T08:00:00Z", sort_order: 1 },
+  ];
+
+  it("uses the manual gallery order when manual=true", () => {
+    expect(orderPhotosForNarrative(rows, true).map((r) => r.id)).toEqual([
+      "late-drag-first",
+      "early-drag-second",
+    ]);
+  });
+
+  it("uses capture time when manual=false", () => {
+    expect(orderPhotosForNarrative(rows, false).map((r) => r.id)).toEqual([
+      "early-drag-second",
+      "late-drag-first",
+    ]);
   });
 });

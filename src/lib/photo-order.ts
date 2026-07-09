@@ -72,3 +72,12 @@ export function resolvePhotoOrder<T extends OrderablePhoto>(
   }
   return { orderedIds: orderByCaptureTime(rows).map((r) => r.id), manual: false };
 }
+
+// The order the AI narrative walks photos in: the author's manual arrangement
+// (gallery order) when they've dragged photos into place, else capture time.
+export function orderPhotosForNarrative<T extends OrderablePhoto>(
+  photos: T[],
+  manual: boolean,
+): T[] {
+  return manual ? orderByGallery(photos) : orderByCaptureTime(photos);
+}
