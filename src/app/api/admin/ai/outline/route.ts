@@ -69,9 +69,13 @@ async function outline({
   const outline = await deepseekJson<Outline>({
     model: aiModels.fast,
     temperature: 0.6,
-    // Generous headroom: a truncated outline is the #1 cause of an unparseable
-    // response, and a half-written plan derails every section that follows.
-    maxTokens: 3000,
+    // A truncated outline is the #1 cause of an unparseable response, and a
+    // half-written plan derails every section that follows. A rich plan (many
+    // photos, several requested interactions) can exceed a few thousand tokens,
+    // so give it real headroom — the cap only ever acts as a stop, never a
+    // squeeze. (3000 was routinely hit exactly, truncating the JSON mid-plan and
+    // triggering a slow retry storm that could exhaust and fail the step.)
+    maxTokens: 8000,
     meta: { operation: "outline", postId, userId: user.id },
     messages: [
       {
