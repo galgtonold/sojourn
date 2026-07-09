@@ -62,7 +62,13 @@ async function captions({
   if (targets.length === 0) return { count: 0 };
 
   const list = targets
-    .map((p) => `${p.id} | ${p.place_name ?? ""} | ${p.ai_description ?? ""}`)
+    .map((p) => {
+      // The (search-grade, multi-paragraph) description is trimmed like the
+      // section route does — the gist is enough for a one-line caption, and the
+      // full text bloats the prompt and tempts the model to echo paragraphs.
+      const desc = (p.ai_description ?? "").replace(/\s+/g, " ").trim().slice(0, 400);
+      return `${p.id} | ${p.place_name ?? ""} | ${desc}`;
+    })
     .join("\n");
 
   const data = await deepseekJson<{
@@ -70,7 +76,11 @@ async function captions({
   }>({
     model: aiModels.fast,
     temperature: 0.5,
-    maxTokens: 2500,
+    // Real headroom so the items array for a large gallery (up to 40 photos)
+    // never truncates mid-JSON — a truncated response is unparseable and the
+    // caption step is best-effort, so it would fail silently, leaving every
+    // caption empty. (2500 was hit exactly on a 10-photo post.)
+    maxTokens: 8000,
     meta: { operation: "captions", postId, userId: user.id },
     messages: [
       {
