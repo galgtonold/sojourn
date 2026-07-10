@@ -13,6 +13,7 @@ create or replace function public.places_text(arr text[])
 returns text
 language sql
 immutable
+set search_path = ''
 as $$
   select coalesce(array_to_string(arr, ' '), '');
 $$;

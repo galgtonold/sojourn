@@ -88,3 +88,9 @@ begin
     perform public.recompute_post_place_index(r.id);
   end loop;
 end $$;
+
+-- These are internal maintenance functions (the trigger + backfill call them);
+-- they must NOT be callable from the public PostgREST RPC surface. Triggers fire
+-- regardless of EXECUTE grants, so revoking is safe.
+revoke execute on function public.recompute_post_place_index(uuid) from public, anon, authenticated;
+revoke execute on function public.photos_place_index_trg() from public, anon, authenticated;
