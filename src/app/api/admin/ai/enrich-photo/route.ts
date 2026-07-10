@@ -22,7 +22,7 @@ async function enrichPhoto({
   // RLS ensures the caller may only read/update photos within their scope.
   const { data: photo } = await supabase
     .from("photos")
-    .select("id, url, lat, lng, ai_description, place_name, enriched_at, post_id")
+    .select("id, url, lat, lng, ai_description, place_name, nearby_places, enriched_at, post_id")
     .eq("id", input.photoId)
     .maybeSingle();
   if (!photo) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -34,17 +34,17 @@ async function enrichPhoto({
     return { ok: true, skipped: true };
   }
 
-  const { ai_description, place_name } = await computeEnrichment(photo, {
-    operation: "enrich",
-    postId: photo.post_id,
-    userId: user.id,
-  });
+  const { ai_description, place_name, nearby_places } = await computeEnrichment(
+    photo,
+    { operation: "enrich", postId: photo.post_id, userId: user.id },
+  );
 
   await supabase
     .from("photos")
     .update({
       ai_description,
       place_name,
+      nearby_places,
       enriched_at: new Date().toISOString(),
     })
     .eq("id", photo.id);

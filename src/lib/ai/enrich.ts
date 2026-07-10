@@ -19,6 +19,7 @@ export type EnrichablePhoto = {
   lng: number | null;
   ai_description: string | null;
   place_name: string | null;
+  nearby_places: string[] | null;
   enriched_at: string | null;
 };
 
@@ -133,6 +134,7 @@ export async function computeEnrichment(
 ): Promise<{
   ai_description: string | null;
   place_name: string | null;
+  nearby_places: string[] | null;
 }> {
   const needsPlace =
     !photo.place_name && photo.lat != null && photo.lng != null;
@@ -140,14 +142,16 @@ export async function computeEnrichment(
     ? await reverseGeocode(photo.lat as number, photo.lng as number)
     : photo.place_name;
 
+  // Candidates power both the vision subject-binding AND the searchable
+  // nearby_places we persist. Compute once when missing (null = never looked;
+  // an empty array means "looked, none nearby" so we don't re-query forever).
+  const hasCoords = photo.lat != null && photo.lng != null;
+  const needCandidates = hasCoords && photo.nearby_places == null;
+  const candidates = needCandidates
+    ? await nearbyPlaces(photo.lat as number, photo.lng as number)
+    : (photo.nearby_places ?? []);
+
   const needsDescription = !photo.ai_description && Boolean(photo.url);
-  const candidates =
-    needsDescription && photo.lat != null && photo.lng != null
-      ? await nearbyPlaces(photo.lat as number, photo.lng as number)
-      : [];
-  // Hand the stored URL straight to the vision model (a WebP/JPEG it can fetch);
-  // we avoid the Next optimizer here because it can negotiate AVIF, which vision
-  // APIs reject.
   const description = needsDescription
     ? await describeImage(photo.url as string, place ?? null, candidates, meta)
     : photo.ai_description;
@@ -155,5 +159,6 @@ export async function computeEnrichment(
   return {
     ai_description: description ?? photo.ai_description,
     place_name: place ?? photo.place_name,
+    nearby_places: needCandidates ? candidates : photo.nearby_places,
   };
 }

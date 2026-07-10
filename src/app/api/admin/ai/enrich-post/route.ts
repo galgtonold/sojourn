@@ -19,7 +19,7 @@ async function enrichPost({
 }: AdminCtx<z.infer<typeof schema>>) {
   const { data: pending } = await supabase
     .from("photos")
-    .select("id, url, lat, lng, ai_description, place_name, enriched_at")
+    .select("id, url, lat, lng, ai_description, place_name, nearby_places, enriched_at")
     .eq("post_id", input.postId)
     .is("enriched_at", null);
 
