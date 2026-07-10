@@ -357,6 +357,10 @@ export function PhotoManager({
       // never saw a caption edit until a full refetch (e.g. an AI pass bumping
       // refreshKey).
       setPhotos((ps) => ps.map((x) => (x.id === photo.id ? { ...x, caption } : x)));
+      // Refresh the cached public page too, so an edited caption shows there
+      // without waiting for another revalidation trigger (every other gallery
+      // mutation already does this).
+      revalidatePublicPost(slug);
       setSavedId(photo.id);
       setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
     } catch {
