@@ -26,11 +26,12 @@ export function toVectorLiteral(v: number[]): string {
 export function postEmbeddingInput(p: {
   title?: string | null;
   location?: string | null;
+  place_index?: string | null;
   excerpt?: string | null;
   body?: string | null;
 }): string {
   return clip(
-    [p.title, p.location, p.excerpt, p.body]
+    [p.title, p.location, p.place_index, p.excerpt, p.body]
       .map((x) => (x ?? "").trim())
       .filter(Boolean)
       .join("\n\n"),
@@ -40,11 +41,12 @@ export function postEmbeddingInput(p: {
 export function photoEmbeddingInput(p: {
   caption?: string | null;
   place_name?: string | null;
+  nearby_places?: string[] | null;
   alt?: string | null;
   ai_description?: string | null;
 }): string {
   return clip(
-    [p.caption, p.place_name, p.alt, p.ai_description]
+    [p.caption, p.place_name, (p.nearby_places ?? []).join(" "), p.alt, p.ai_description]
       .map((x) => (x ?? "").trim())
       .filter(Boolean)
       .join("\n\n"),

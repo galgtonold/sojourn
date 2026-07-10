@@ -51,6 +51,40 @@ describe("toVectorLiteral", () => {
   });
 });
 
+describe("embedding inputs include place data", () => {
+  it("photo input places nearby candidates right after place_name", () => {
+    expect(
+      photoEmbeddingInput({
+        caption: "First light",
+        place_name: "Laguna de los Tres",
+        nearby_places: ["Cerro Torre", "Río Fitz Roy"],
+        ai_description: "A jagged spire.",
+      }),
+    ).toBe(
+      "First light\n\nLaguna de los Tres\n\nCerro Torre Río Fitz Roy\n\nA jagged spire.",
+    );
+  });
+
+  it("photo input omits nearby candidates when absent", () => {
+    expect(
+      photoEmbeddingInput({ caption: "First light", nearby_places: null }),
+    ).toBe("First light");
+  });
+
+  it("post input places the place index right after location", () => {
+    expect(
+      postEmbeddingInput({
+        title: "Dawn on Fitz Roy",
+        location: "El Chaltén",
+        place_index: "Laguna de los Tres Cerro Torre",
+        body: "Granite embers.",
+      }),
+    ).toBe(
+      "Dawn on Fitz Roy\n\nEl Chaltén\n\nLaguna de los Tres Cerro Torre\n\nGranite embers.",
+    );
+  });
+});
+
 describe("embeddings client without a provider", () => {
   it("is unconfigured in the test environment", () => {
     expect(isEmbeddingsConfigured).toBe(false);
