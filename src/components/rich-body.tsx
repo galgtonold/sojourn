@@ -18,11 +18,15 @@ export function RichBody({
   photos,
   interactions = [],
   showIssues = false,
+  preview = false,
 }: {
   body: string;
   photos: Photo[];
   interactions?: Interaction[];
   showIssues?: boolean;
+  // In the admin preview a vote must not persist (it would count in the
+  // published tally), so the flag rides down to each InteractiveBlock.
+  preview?: boolean;
 }) {
   const blocks = parseBody(body ?? "", photos, interactions, { showIssues });
 
@@ -47,7 +51,7 @@ export function RichBody({
         if (b.kind === "interaction") {
           return (
             <Reveal key={i}>
-              <InteractiveBlock interaction={b.interaction} />
+              <InteractiveBlock interaction={b.interaction} preview={preview} />
             </Reveal>
           );
         }

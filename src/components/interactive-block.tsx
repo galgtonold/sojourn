@@ -26,7 +26,15 @@ type State = {
   explanation?: string | null;
 };
 
-export function InteractiveBlock({ interaction }: { interaction: Interaction }) {
+export function InteractiveBlock({
+  interaction,
+  preview = false,
+}: {
+  interaction: Interaction;
+  // The admin preview renders the real article; a vote here must NOT be
+  // recorded, or it would carry over into the published tally.
+  preview?: boolean;
+}) {
   const { id, kind, question, options } = interaction;
   const [state, setState] = useState<State>({ voted: false });
   const [busy, setBusy] = useState(false);
@@ -66,6 +74,13 @@ export function InteractiveBlock({ interaction }: { interaction: Interaction }) 
         total: (s.total ?? 0) + 1,
       };
     });
+    // In the admin preview, stop here: the optimistic result (and, for a quiz,
+    // the correct answer already pre-fetched via GET) is enough to preview the
+    // interaction, and skipping the POST keeps draft votes out of the real tally.
+    if (preview) {
+      setBusy(false);
+      return;
+    }
     try {
       const res = await fetch("/api/interactions", {
         method: "POST",

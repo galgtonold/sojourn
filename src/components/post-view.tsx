@@ -221,6 +221,7 @@ export function PostView({
             photos={post.photos}
             interactions={interactions}
             showIssues={preview}
+            preview={preview}
           />
         </div>
       )}
