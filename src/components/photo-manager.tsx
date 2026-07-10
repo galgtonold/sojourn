@@ -347,8 +347,16 @@ export function PhotoManager({
   }
 
   async function saveCaption(photo: ManagedPhoto) {
+    const caption = photo.caption;
     try {
-      await updatePhotoFields(photo.id, { caption: photo.caption });
+      await updatePhotoFields(photo.id, { caption });
+      // Lift the edit into state immutably so the parent's `photos` — which feeds
+      // the article editor's [photo:] chip labels — re-renders with the new
+      // caption. The textarea is uncontrolled and mutates `photo` in place, which
+      // never changes the array identity, so onListChange (and thus the editor)
+      // never saw a caption edit until a full refetch (e.g. an AI pass bumping
+      // refreshKey).
+      setPhotos((ps) => ps.map((x) => (x.id === photo.id ? { ...x, caption } : x)));
       setSavedId(photo.id);
       setTimeout(() => setSavedId((id) => (id === photo.id ? null : id)), 1500);
     } catch {
