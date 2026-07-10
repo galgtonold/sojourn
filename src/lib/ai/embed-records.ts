@@ -32,7 +32,7 @@ export async function embedPhotoRecord(
   try {
     const { data: photo } = await supabase
       .from("photos")
-      .select("id, caption, alt, ai_description, place_name")
+      .select("id, caption, alt, ai_description, place_name, nearby_places")
       .eq("id", photoId)
       .maybeSingle();
     if (!photo) return;
@@ -56,7 +56,7 @@ export async function embedPostRecord(
   try {
     const { data: post } = await supabase
       .from("posts")
-      .select("id, title, excerpt, body, location")
+      .select("id, title, excerpt, body, location, place_index")
       .eq("id", postId)
       .maybeSingle();
     if (!post) return;

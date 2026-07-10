@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   // ── posts ──────────────────────────────────────────────────────────────────
   let postsQ = supabase
     .from("posts")
-    .select("id, title, excerpt, body, location");
+    .select("id, title, excerpt, body, location, place_index");
   if (postId) postsQ = postsQ.eq("id", postId);
   if (onlyEmpty) postsQ = postsQ.is("embedding", null);
   const { data: posts } = await postsQ.limit(limit);
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   // ── photos ───────────────────────────────────────────────────────────────—
   let photosQ = supabase
     .from("photos")
-    .select("id, caption, alt, ai_description, place_name");
+    .select("id, caption, alt, ai_description, place_name, nearby_places");
   if (postId) photosQ = photosQ.eq("post_id", postId);
   if (onlyEmpty) photosQ = photosQ.is("embedding", null);
   const { data: photos } = await photosQ.limit(limit);
