@@ -246,82 +246,90 @@ export function PhotoManager({
       let order =
         photos.reduce((m, p) => Math.max(m, p.sort_order ?? -1), -1) + 1;
       const added: ManagedPhoto[] = [];
+      const failed: string[] = [];
       for (const file of Array.from(files)) {
         const kind = mediaKind(file.type);
-        if (kind === null) {
-          setError(
-            file.type.startsWith("video/")
-              ? t("admin.err.videoFormat")
-              : t("admin.err.uploadFailed"),
-          );
+        if (kind === null || (kind === "video" && file.size > 52428800)) {
+          failed.push(file.name);
           continue;
         }
-        if (kind === "video" && file.size > 52428800) {
-          setError(t("admin.err.videoTooLarge"));
-          continue;
+        // Upload each file on its own: one bad file (unsupported, too large, a
+        // network blip, a storage error) must NOT abort the rest of a multi-file
+        // selection — the good ones still upload and we list which didn't.
+        try {
+          const res =
+            kind === "video"
+              ? await uploadVideo(file, postId)
+              : await uploadImage(file, postId);
+          const { data, error } = await supabase
+            .from("photos")
+            .insert({
+              post_id: postId,
+              url: res.url,
+              storage_path: res.path,
+              media_type: res.mediaType,
+              poster_url: res.posterUrl,
+              poster_path: res.posterPath,
+              lat: res.lat,
+              lng: res.lng,
+              taken_at: res.takenAt,
+              taken_at_offset_min: res.takenOffsetMin,
+              width: res.width,
+              height: res.height,
+              blurhash: res.blurhash,
+              sort_order: order++,
+            })
+            .select(PHOTO_COLUMNS)
+            .single();
+          if (error) throw new Error(error.message);
+          added.push(data as ManagedPhoto);
+        } catch (e) {
+          // Keep the real reason in the console for diagnosis; the user sees a
+          // plain list of the files that didn't make it.
+          console.error(`[upload] ${file.name} failed:`, e);
+          failed.push(file.name);
         }
-        const res =
-          kind === "video"
-            ? await uploadVideo(file, postId)
-            : await uploadImage(file, postId);
-        const { data, error } = await supabase
-          .from("photos")
-          .insert({
-            post_id: postId,
-            url: res.url,
-            storage_path: res.path,
-            media_type: res.mediaType,
-            poster_url: res.posterUrl,
-            poster_path: res.posterPath,
-            lat: res.lat,
-            lng: res.lng,
-            taken_at: res.takenAt,
-            taken_at_offset_min: res.takenOffsetMin,
-            width: res.width,
-            height: res.height,
-            blurhash: res.blurhash,
-            sort_order: order++,
-          })
-          .select(PHOTO_COLUMNS)
-          .single();
-        if (error) throw new Error(error.message);
-        added.push(data as ManagedPhoto);
       }
-      setPhotos((p) => [...p, ...added]);
-      revalidatePublicPost(slug);
-      // Enrich each new photo (vision description + place name) in the
-      // background — best effort, never blocks the upload.
-      for (const photo of added) {
-        if (photo.media_type === "video") continue;
-        fetch("/api/admin/ai/enrich-photo", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoId: photo.id }),
-        }).catch(() => {});
-      }
-      // Auto-place the new photos from a timestamped track (best-effort; the
-      // matcher only fills photos that arrived without GPS). Silent unless it
-      // actually places some.
-      try {
-        const { updated, total } = await geotagPostPhotos(postId);
-        if (updated.length) {
-          setPhotos((ps) =>
-            ps.map((x) => {
-              const u = updated.find((y) => y.id === x.id);
-              return u ? { ...x, lat: u.lat, lng: u.lng } : x;
-            }),
-          );
-          setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
+      if (added.length) {
+        setPhotos((p) => [...p, ...added]);
+        revalidatePublicPost(slug);
+        // Enrich each new photo (vision description + place name) in the
+        // background — best effort, never blocks the upload.
+        for (const photo of added) {
+          if (photo.media_type === "video") continue;
+          fetch("/api/admin/ai/enrich-photo", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ photoId: photo.id }),
+          }).catch(() => {});
         }
-      } catch {
-        /* auto-geotag is best-effort */
+        // Auto-place the new photos from a timestamped track (best-effort; the
+        // matcher only fills photos that arrived without GPS). Silent unless it
+        // actually places some.
+        try {
+          const { updated, total } = await geotagPostPhotos(postId);
+          if (updated.length) {
+            setPhotos((ps) =>
+              ps.map((x) => {
+                const u = updated.find((y) => y.id === x.id);
+                return u ? { ...x, lat: u.lat, lng: u.lng } : x;
+              }),
+            );
+            setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
+          }
+        } catch {
+          /* auto-geotag is best-effort */
+        }
+        // Keep the gallery chronological unless the author hand-arranged it — so
+        // a fresh upload (including a timestamp-less camera import, which sorts
+        // to the end) slots in by capture time instead of wherever it landed.
+        if (!manualRef.current) {
+          const ids = await requestReorder({ mode: "time" });
+          if (ids) applyOrder(ids);
+        }
       }
-      // Keep the gallery chronological unless the author hand-arranged it — so a
-      // fresh upload (including a timestamp-less camera import, which sorts to
-      // the end) slots in by capture time instead of wherever it landed.
-      if (!manualRef.current) {
-        const ids = await requestReorder({ mode: "time" });
-        if (ids) applyOrder(ids);
+      if (failed.length) {
+        setError(t("admin.gallery.uploadFailed", { list: failed.join(", ") }));
       }
     } catch {
       setError(t("admin.err.uploadFailed"));

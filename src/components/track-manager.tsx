@@ -47,46 +47,60 @@ export function TrackManager({
     setError(null);
     try {
       const added: ManagedTrack[] = [];
+      const failed: string[] = [];
       for (const file of Array.from(files)) {
-        const xml = await file.text();
-        // A recording paused for public transport comes in as one file but is
-        // really several legs; split it so each leg is its own track and the
-        // transit hop is excluded from every distance.
-        const legs = parseGpxSplit(xml);
-        const base = legs[0].name ?? file.name.replace(/\.gpx$/i, "");
-        for (let i = 0; i < legs.length; i++) {
-          const parsed = legs[i];
-          const name =
-            legs.length > 1 ? `${base} — ${t("admin.routes.part", { n: i + 1 })}` : base;
-          const { data, error } = await supabase
-            .from("tracks")
-            .insert({
-              post_id: postId,
-              trip_id: tripId,
-              name,
-              geojson: parsed.geojson,
-              distance_m: parsed.distanceM,
-              started_at: parsed.startedAt,
-              ended_at: parsed.endedAt,
-            })
-            .select("id, name, distance_m")
-            .single();
-          if (error) throw new Error(error.message);
-          added.push(data as ManagedTrack);
+        // Import each file on its own so one unreadable/empty GPX doesn't abort
+        // the rest of a multi-file selection.
+        try {
+          const xml = await file.text();
+          // A recording paused for public transport comes in as one file but is
+          // really several legs; split it so each leg is its own track and the
+          // transit hop is excluded from every distance.
+          const legs = parseGpxSplit(xml);
+          if (!legs.length) throw new Error("no track points");
+          const base = legs[0].name ?? file.name.replace(/\.gpx$/i, "");
+          for (let i = 0; i < legs.length; i++) {
+            const parsed = legs[i];
+            const name =
+              legs.length > 1 ? `${base} — ${t("admin.routes.part", { n: i + 1 })}` : base;
+            const { data, error } = await supabase
+              .from("tracks")
+              .insert({
+                post_id: postId,
+                trip_id: tripId,
+                name,
+                geojson: parsed.geojson,
+                distance_m: parsed.distanceM,
+                started_at: parsed.startedAt,
+                ended_at: parsed.endedAt,
+              })
+              .select("id, name, distance_m")
+              .single();
+            if (error) throw new Error(error.message);
+            added.push(data as ManagedTrack);
+          }
+        } catch (e) {
+          console.error(`[track] ${file.name} failed:`, e);
+          failed.push(file.name);
         }
       }
-      setTracks((t) => [...t, ...added]);
-      revalidatePublicPost(slug);
-      // A newly-uploaded track can place photos that were waiting for one.
-      // Best-effort; shows a note and refreshes the photo grid only if it hits.
-      try {
-        const { updated, total } = await geotagPostPhotos(postId);
-        if (updated.length) {
-          setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
-          onPhotosLocated?.();
+      if (added.length) {
+        setTracks((prev) => [...prev, ...added]);
+        revalidatePublicPost(slug);
+        // A newly-uploaded track can place photos that were waiting for one.
+        // Best-effort; shows a note and refreshes the photo grid only if it hits.
+        try {
+          const { updated, total } = await geotagPostPhotos(postId);
+          if (updated.length) {
+            setGeoMsg(t("admin.gallery.geo.done", { n: updated.length, total }));
+            onPhotosLocated?.();
+          }
+        } catch {
+          /* best-effort */
         }
-      } catch {
-        /* best-effort */
+      }
+      if (failed.length) {
+        setError(t("admin.routes.uploadFailed", { list: failed.join(", ") }));
       }
     } catch {
       setError(t("admin.err.gpx"));

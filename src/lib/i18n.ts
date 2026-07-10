@@ -550,6 +550,7 @@ const en = {
   "admin.gallery.reorderDone": "Done",
   "admin.gallery.sortByTime": "Sort by capture time",
   "admin.gallery.sortedByTime": "Sorted by capture time.",
+  "admin.gallery.uploadFailed": "Couldn’t upload: {list}",
   "gallery.playVideo": "Play video",
 
   "admin.location.title": "Set location",
@@ -567,6 +568,7 @@ const en = {
   "admin.routes.reading": "Reading…",
   "admin.routes.track": "Track",
   "admin.routes.part": "Part {n}",
+  "admin.routes.uploadFailed": "Couldn’t import: {list}",
   "admin.routes.rename": "Rename track",
   "admin.routes.namePlaceholder": "Track name",
   "admin.routes.save": "Save name",
@@ -1161,6 +1163,7 @@ const de: Dict = {
   "admin.gallery.reorderDone": "Fertig",
   "admin.gallery.sortByTime": "Nach Aufnahmezeit sortieren",
   "admin.gallery.sortedByTime": "Nach Aufnahmezeit sortiert.",
+  "admin.gallery.uploadFailed": "Nicht hochgeladen: {list}",
   "gallery.playVideo": "Video abspielen",
 
   "admin.location.title": "Standort wählen",
@@ -1178,6 +1181,7 @@ const de: Dict = {
   "admin.routes.reading": "Wird gelesen…",
   "admin.routes.track": "Track",
   "admin.routes.part": "Teil {n}",
+  "admin.routes.uploadFailed": "Nicht importiert: {list}",
   "admin.routes.rename": "Track umbenennen",
   "admin.routes.namePlaceholder": "Track-Name",
   "admin.routes.save": "Name speichern",
