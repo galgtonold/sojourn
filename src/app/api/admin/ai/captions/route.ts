@@ -4,6 +4,7 @@ import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
 import { selectCaptionTargets } from "@/lib/ai/caption-select";
 import { fetchCaptionSources, saveCaptions } from "@/lib/db/photos";
+import { localProse } from "@/lib/ai/caption-context";
 
 export const maxDuration = 60;
 
@@ -21,17 +22,6 @@ const schema = z.object({
   // skips a just-drafted caption nor touches a manual one the draft excluded.
   photoIds: z.array(z.string()).optional(),
 });
-
-// Strip photo/interaction tokens and directive fences so the model sees clean
-// prose, and cap the length to keep the prompt fast.
-function narrativeContext(body: string): string {
-  return body
-    .replace(/:::(?:poll|quiz)[\s\S]*?:::/g, "")
-    .replace(/\[(?:photo|ask):[^\]]+\]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 3000);
-}
 
 // Generates a concise caption for each of a post's photos from their cached
 // descriptions. The caption doubles as the image's alt text, so there's just
@@ -56,7 +46,6 @@ async function captions({
       .maybeSingle();
     body = post?.body ?? "";
   }
-  const context = narrativeContext(body);
 
   const { phase } = input;
   const sources = await fetchCaptionSources(supabase, postId);
@@ -67,43 +56,57 @@ async function captions({
 
   if (targets.length === 0) return phase === "draft" ? { count: 0, ids: [] } : { count: 0 };
 
-  const list = targets
-    .map((p) => {
-      // The (search-grade, multi-paragraph) description is trimmed like the
-      // section route does — the gist is enough for a one-line caption, and the
-      // full text bloats the prompt and tempts the model to echo paragraphs.
-      const desc = (p.ai_description ?? "").replace(/\s+/g, " ").trim().slice(0, 400);
-      return `${p.id} | ${p.place_name ?? ""} | ${desc}`;
-    })
+  const nearby = (p: (typeof targets)[number]) =>
+    (p.nearby_places ?? []).filter(Boolean).join(", ");
+  const desc = (p: (typeof targets)[number]) =>
+    (p.ai_description ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+
+  // Draft runs before the article exists — no "Text daneben" yet.
+  const draftList = targets
+    .map(
+      (p) =>
+        `${p.id} | Ort (Kamera-Standort): ${p.place_name ?? "—"} | ` +
+        `In der Nähe: ${nearby(p) || "—"} | Bild: ${desc(p)}`,
+    )
+    .join("\n");
+
+  // Polish carries the exact prose next to each photo, so the caption can add
+  // what that text doesn't already say.
+  const polishList = targets
+    .map(
+      (p) =>
+        `${p.id} | Ort (Kamera-Standort): ${p.place_name ?? "—"} | ` +
+        `In der Nähe: ${nearby(p) || "—"} | Bild: ${desc(p)} | ` +
+        `Text daneben: ${localProse(body, p.id) || "—"}`,
+    )
     .join("\n");
 
   const placeNote =
-    "Der jeweils genannte Ort ist der Kamera-Standort, nicht zwingend das Motiv — " +
+    "Der genannte Ort ist der Kamera-Standort, nicht zwingend das Motiv — " +
     "verlasse dich auf die Beschreibung, nicht auf den Ortsnamen.\n";
 
   const draftInstruction =
-    "Für jede Zeile (id | ort | beschreibung) erstelle eine kurze " +
-    "Bildunterschrift (caption, max ~12 Wörter), die das Bild für nicht-sehende " +
-    "Leser erkennbar macht und zum lockeren Ton des Blogs passt. Kein „Foto von …“. " +
+    "Erstelle für jede Zeile eine kurze Bildunterschrift (caption, max ~12 " +
+    "Wörter), die das Bild für nicht-sehende Leser erkennbar macht und zum " +
+    "lockeren Ton des Blogs passt. Nenne den genauen Ort / das Wahrzeichen aus " +
+    "„In der Nähe“, wenn es klar zum Bild passt. Kein „Foto von …“. " +
     placeNote +
     'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
-    list;
+    draftList;
 
   const polishInstruction =
-    (context
-      ? "Hier der fertige Artikel, zu dem die Fotos gehören. Verankere die " +
-        "Bildunterschriften in seiner Stimme und Erzählung und WIEDERHOLE NICHT, " +
-        "was der Text ohnehin schon sagt:\n\n" +
-        context +
-        "\n\n---\n\n"
-      : "") +
-    "Überarbeite für jede Zeile (id | ort | beschreibung) die Bildunterschrift " +
-    "(caption, max ~12 Wörter), sodass sie sich wie ein Teil des Artikels liest, " +
-    "seinen Ton trifft und das Bild zugleich erkennbar macht. Keine Wiederholung " +
-    'des Fließtexts, kein „Foto von …“. ' +
+    "Zu jedem Foto steht unten „Text daneben“ — das, was im Artikel direkt neben " +
+    "dem Bild steht. Schreibe für jede Zeile eine Bildunterschrift (caption, max " +
+    "~12 Wörter), die ETWAS HINZUFÜGT, das dieser Text daneben noch NICHT sagt: " +
+    "ein konkretes sichtbares Detail, den genauen Ort / das Wahrzeichen (aus „In " +
+    "der Nähe“, wenn es zum Bild passt), einen kleinen Kontext ODER einen kurzen, " +
+    "trockenen Gag bzw. eine pointierte Bemerkung. WIEDERHOLE NICHT den Text " +
+    "daneben. Bleib am Bild (die Unterschrift dient auch als Alternativtext), aber " +
+    "sie darf pointiert oder witzig sein statt bloß beschreibend. Kein „Foto von " +
+    "…“. " +
     placeNote +
     'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
-    list;
+    polishList;
 
   const data = await deepseekJson<{
     items: { id: string; caption: string }[];
