@@ -68,6 +68,7 @@ async function outline({
       'eigene neue Interaktion über "interaction" ergänzen — oder keine.'
     : "";
 
+  const continuity = continuityBlock(input.brief ?? "");
   const outline = await deepseekJson<Outline>({
     model: aiModels.fast,
     temperature: 0.6,
@@ -94,7 +95,7 @@ async function outline({
       {
         role: "user",
         content:
-          (continuityBlock(input.brief ?? "") ? continuityBlock(input.brief ?? "") + "\n\n" : "") +
+          (continuity ? continuity + "\n\n" : "") +
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
           "Erstelle einen chronologischen Gliederungsplan. " +
           "Verteile ALLE oben genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto " +
