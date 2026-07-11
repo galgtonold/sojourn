@@ -85,12 +85,20 @@ async function captions({
     "Der genannte Ort ist der Kamera-Standort, nicht zwingend das Motiv — " +
     "verlasse dich auf die Beschreibung, nicht auf den Ortsnamen.\n";
 
+  const truthNote =
+    "Die Bildunterschrift (auch eine Pointe oder ein Gag) darf NICHTS behaupten, " +
+    "das die Bildbeschreibung nicht hergibt — kein erfundener Besitz („unser …“), " +
+    "keine erfundene Identität, Funktion, Namen, Zahlen oder Fakten. Witzig gern, " +
+    "aber nur über Ton und echte, sichtbare Beobachtung; im Zweifel sachlich " +
+    "bleiben.\n";
+
   const draftInstruction =
     "Erstelle für jede Zeile eine kurze Bildunterschrift (caption, max ~12 " +
     "Wörter), die das Bild für nicht-sehende Leser erkennbar macht und zum " +
     "lockeren Ton des Blogs passt. Nenne den genauen Ort / das Wahrzeichen aus " +
     "„In der Nähe“, wenn es klar zum Bild passt. Kein „Foto von …“. " +
     placeNote +
+    truthNote +
     'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
     draftList;
 
@@ -105,6 +113,7 @@ async function captions({
     "sie darf pointiert oder witzig sein statt bloß beschreibend. Kein „Foto von " +
     "…“. " +
     placeNote +
+    truthNote +
     'Antworte als JSON: { "items": [ { "id": string, "caption": string } ] }\n\n' +
     polishList;
 
