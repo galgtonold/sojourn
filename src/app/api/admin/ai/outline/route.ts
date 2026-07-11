@@ -107,7 +107,15 @@ async function outline({
           "genau einmal). BEHALTE DABEI DIE VORGEGEBENE REIHENFOLGE DER FOTOS BEI " +
           "und weiche nur ab, wenn es der Erzählung klar dient. Erfinde KEINEN " +
           "Abschnitt nur, um ein einzelnes Foto unterzubringen — hänge es an den " +
-          "thematisch nächsten Abschnitt. Mehr als 5 Abschnitte nur, wenn " +
+          "thematisch nächsten Abschnitt. " +
+          "Ordne jedes Foto dem Abschnitt zu, dessen Moment es ZEIGT (nutze die " +
+          "Bildbeschreibung), nicht nach Position: ein Innenraum- oder Motiv-Foto " +
+          "gehört zu dem Abschnitt, der genau diesen Ort/Moment erzählt (ein " +
+          "Hotel-Innenraum zum Hotel-Abschnitt, nicht in einen späteren Rückblick). " +
+          "Lege KEINEN reinen Rückblick-/Zusammenfassungs-Abschnitt an, der den Tag " +
+          "noch einmal aufzählt; ein Abschnitt, der nur wegen einer Interaktion " +
+          "existiert, trägt KEIN Foto und wiederholt den Tag nicht. " +
+          "Mehr als 5 Abschnitte nur, wenn " +
           "ausdrücklich verlangte Interaktionen sie brauchen. Jeder Abschnitt deckt einen ANDEREN Moment " +
           "ab — derselbe Vorfall, dieselbe Begegnung oder dasselbe Motiv darf " +
           "NICHT in mehreren Abschnitten vorkommen. Bei dünnem Material lieber " +
