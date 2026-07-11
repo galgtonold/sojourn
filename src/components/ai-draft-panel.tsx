@@ -424,6 +424,23 @@ export function AiDraftPanel({
         draftFailed = true;
       }
 
+      // 1c. Trip continuity brief (best effort): distil this trip's earlier days
+      //     so the article remembers ongoing situations without the author
+      //     restating them. Threaded into the outline + every section prompt.
+      beginStep(t("admin.ai.step.brief"), 0.13);
+      let brief = "";
+      try {
+        const r = await postJson<{ brief: string }>(
+          "/api/admin/ai/trip-brief",
+          { postId },
+          signal,
+        );
+        brief = r.brief ?? "";
+      } catch (e) {
+        if (isAbort(e)) throw e;
+        /* best effort — proceed without a brief */
+      }
+
       // 2. Outline (retried — a usable plan is the backbone of the whole draft).
       beginStep(t("admin.ai.step.outline"), 0.16);
       const { outline } = await withRetry(() =>
@@ -434,6 +451,7 @@ export function AiDraftPanel({
             notes,
             answers: qa,
             lang,
+            brief,
           },
           signal,
         ),
@@ -471,6 +489,7 @@ export function AiDraftPanel({
             notes,
             answers: qa,
             lang,
+            brief,
           };
           // Enqueue the (slow) section generation, then poll the job for its
           // markdown — the work runs on the Edge Function, off this request.
