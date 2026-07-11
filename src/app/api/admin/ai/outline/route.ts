@@ -98,6 +98,11 @@ async function outline({
           (continuity ? continuity + "\n\n" : "") +
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
           "Erstelle einen chronologischen Gliederungsplan. " +
+          "Jeder eigenständige, erzählenswerte Vorgang aus den Notizen bekommt " +
+          "einen Platz im Plan — auch wenn KEIN Foto dazu existiert. Ordne solche " +
+          "foto-losen Episoden dem chronologisch passenden Abschnitt zu (im „beat“ " +
+          "benannt) oder gib ihnen einen eigenen kurzen Abschnitt. Lass nichts " +
+          "Belegtes aus, nur weil kein Bild dazugehört. " +
           "Verteile ALLE oben genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto " +
           "genau einmal). BEHALTE DABEI DIE VORGEGEBENE REIHENFOLGE DER FOTOS BEI " +
           "und weiche nur ab, wenn es der Erzählung klar dient. Erfinde KEINEN " +

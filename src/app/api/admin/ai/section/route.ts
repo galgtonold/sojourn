@@ -122,7 +122,11 @@ async function sectionRoute({
     "Zeitangaben („gegen sieben saßen wir im Zug“), keine erfundenen Panoramen " +
     "oder Fernblicke und nichts, was „unterwegs“ gesehen oder gehört wurde, " +
     "sofern es nicht im Material steht. Verbinde die belegten Szenen knapp und " +
-    "über die Stimmung, nicht über ausgedachte Ereignisse.\n" +
+    "über die Stimmung, nicht über ausgedachte Ereignisse. Ein in den Notizen " +
+    "oder Antworten BELEGTER Vorgang (z. B. eine Besorgung, ein Transfer, eine " +
+    "Rückgabe) gehört hingegen erzählt, auch wenn es kein Foto dazu gibt — " +
+    "verboten sind nur ERFUNDENE Zwischenstücke, nicht reale Ereignisse ohne " +
+    "Bild.\n" +
     "- Lieber kurz als erfunden: Ist das Material für einen Moment dünn, schreibe " +
     "KNAPPER und bleib bei der Stimmung — fülle die Lücke NICHT mit ausgedachten " +
     "Szenen. Lebendigkeit entsteht aus dem, was wirklich da ist, plus Stimmung, " +
