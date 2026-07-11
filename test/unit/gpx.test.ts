@@ -5,6 +5,8 @@ import {
   splitOnGaps,
   type GpxPoint,
   runToParsed,
+  mergeLegs,
+  type ParsedGpx,
 } from "@/lib/gpx";
 
 describe("formatDistance", () => {
@@ -172,5 +174,48 @@ describe("buildElevationSeries", () => {
         features: [],
       }),
     ).toBeNull();
+  });
+});
+
+describe("mergeLegs", () => {
+  const leg = (
+    coordinates: number[][],
+    startedAt: string | null,
+    endedAt: string | null,
+    name: string | null = "Tag",
+  ): ParsedGpx => ({
+    name,
+    geojson: {
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } },
+      ],
+    },
+    distanceM: 0,
+    pointCount: coordinates.length,
+    startedAt,
+    endedAt,
+  });
+
+  it("concatenates leg coordinates into one continuous line, bridging the gap", () => {
+    const merged = mergeLegs([
+      leg([[8, 47], [8.1, 47]], "2024-05-01T08:00:00.000Z", "2024-05-01T09:00:00.000Z"),
+      leg([[8.3, 47], [8.4, 47]], "2024-05-01T10:00:00.000Z", "2024-05-01T11:00:00.000Z"),
+    ]);
+    expect(merged.geojson.features).toHaveLength(1);
+    expect(merged.geojson.features[0].geometry.coordinates).toEqual([
+      [8, 47], [8.1, 47], [8.3, 47], [8.4, 47],
+    ]);
+    expect(merged.pointCount).toBe(4);
+    expect(merged.startedAt).toBe("2024-05-01T08:00:00.000Z");
+    expect(merged.endedAt).toBe("2024-05-01T11:00:00.000Z");
+    expect(merged.name).toBe("Tag");
+    expect(merged.distanceM).toBeGreaterThan(0); // recomputed over the merged line
+  });
+
+  it("yields null times when no leg carries a timestamp", () => {
+    const merged = mergeLegs([leg([[0, 0], [1, 1]], null, null)]);
+    expect(merged.startedAt).toBeNull();
+    expect(merged.endedAt).toBeNull();
   });
 });

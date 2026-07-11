@@ -133,6 +133,38 @@ export function parseGpxSplit(xml: string): ParsedGpx[] {
   return runs.map((run) => runToParsed(name, run));
 }
 
+// Collapse the split legs of one GPX back into a single continuous track: every
+// leg's coordinates concatenated into one LineString (bridging the gaps), the
+// distance recomputed over that line, and the widest time window. Used when the
+// author chooses "keep as one" on import. ISO timestamps compare lexicographically
+// (all runToParsed output is `…Z`), so string min/max is chronological.
+export function mergeLegs(legs: ParsedGpx[]): ParsedGpx {
+  const coords = legs.flatMap((l) =>
+    l.geojson.features.flatMap((f) => f.geometry.coordinates),
+  );
+  const starts = legs
+    .map((l) => l.startedAt)
+    .filter((s): s is string => s != null);
+  const ends = legs.map((l) => l.endedAt).filter((s): s is string => s != null);
+  return {
+    name: legs[0]?.name ?? null,
+    geojson: {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: coords },
+        },
+      ],
+    },
+    distanceM: lineLength(coords),
+    pointCount: coords.length,
+    startedAt: starts.length ? starts.reduce((a, b) => (a < b ? a : b)) : null,
+    endedAt: ends.length ? ends.reduce((a, b) => (a > b ? a : b)) : null,
+  };
+}
+
 export function formatDistance(m: number | null | undefined): string {
   if (!m) return "";
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
