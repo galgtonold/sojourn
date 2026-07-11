@@ -108,15 +108,15 @@ export async function buildDossier(
     }),
   );
 
-  // The other published entries of this trip, so the model stays consistent
-  // with what it already wrote and never reuses a quiz/poll question.
+  // The other entries of this trip (drafts included, so question-dedup covers
+  // days not yet published), for consistency + never reusing a quiz/poll
+  // question. The earlier days' narrative is carried by the continuity brief.
   const { data: siblings } = post?.trip_id
     ? await supabase
         .from("posts")
-        .select("title, excerpt, body, published_at, interactions(question)")
+        .select("title, excerpt, published_at, interactions(question)")
         .eq("trip_id", post.trip_id)
         .neq("id", postId)
-        .eq("published", true)
         .order("published_at", { ascending: true })
     : { data: null };
 
@@ -225,22 +225,16 @@ export async function buildDossier(
   if (sibs.length) {
     lines.push(
       "",
-      "Bereits veröffentlichte Beiträge dieser Reise — bleibe konsistent dazu " +
-        "(Ton, Fakten, wiederkehrende Personen/Motive) und WIEDERHOLE KEINE " +
-        "bereits genutzte Quiz-/Umfragefrage:",
+      "Andere Beiträge dieser Reise — bleibe konsistent (Ton, Fakten, " +
+        "wiederkehrende Personen/Motive) und WIEDERHOLE KEINE bereits genutzte " +
+        "Quiz-/Umfragefrage:",
     );
     for (const s of sibs) {
       const qs = (s.interactions ?? [])
         .map((it: { question?: string }) => it.question)
         .filter(Boolean);
-      const snippet = String(s.body ?? "")
-        .replace(/\[(photo|ask):[^\]]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 320);
       lines.push(
         `• „${s.title}“${s.excerpt ? ` — ${s.excerpt}` : ""}` +
-          (snippet ? `\n  Auszug: ${snippet}…` : "") +
           (qs.length
             ? `\n  Bereits genutzte Frage(n): ${qs
                 .map((q: string) => `„${q}“`)
