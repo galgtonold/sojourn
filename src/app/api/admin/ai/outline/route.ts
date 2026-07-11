@@ -124,6 +124,9 @@ async function outline({
           'Setze pro betroffenem Abschnitt "interaction": { "kind": ' +
           '"poll"|"quiz", "idea": kurze Beschreibung der Frage }. Sonst lass das ' +
           "Feld weg." +
+          " Plane jede Interaktion GENAU EINMAL: Wiederhole KEINE Interaktions-Idee " +
+          "in einem zweiten Abschnitt und erfinde keine, die eine bereits geplante " +
+          "oder vom Autor vordefinierte Interaktion thematisch wiederholt." +
           predefinedBlock +
           " Antworte ausschließlich als JSON:\n" +
           '{ "title": string, "excerpt": string, "location": string, ' +

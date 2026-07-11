@@ -548,6 +548,11 @@ export function AiDraftPanel({
       //    sentinel) falls back to the raw concatenation.
       const rawBody = parts.join("\n\n");
       let body = rawBody;
+      // True when homogenize ran but its result was rejected (a dropped/duplicated
+      // sentinel) or it errored — so the raw concatenation shipped and the seams
+      // weren't smoothed. Surfaced as a warning so a discarded polish is never
+      // silent.
+      let homogenizeFellBack = false;
       if (parts.length >= 2) {
         beginStep(t("admin.ai.step.homogenize"), 0.8);
         try {
@@ -560,10 +565,12 @@ export function AiDraftPanel({
           const out = stripWrappingCodeFence(await pollJob(jobId, signal));
           if (out && allMasksPresent(out, tokens)) {
             body = restoreProtectedTokens(out, tokens);
+          } else {
+            homogenizeFellBack = true; // mask check failed → kept raw concat
           }
         } catch (e) {
           if (isAbort(e)) throw e;
-          /* keep the raw concatenation */
+          homogenizeFellBack = true; // error → kept the raw concatenation
         }
       }
 
@@ -622,6 +629,7 @@ export function AiDraftPanel({
         warnings.push(t("admin.ai.warn.partial", { list: failed.join(", ") }));
       if (photoFlagged)
         warnings.push(t("admin.ai.warn.photos", { n: photoFlagged }));
+      if (homogenizeFellBack) warnings.push(t("admin.ai.warn.homogenize"));
       if (captionsFailed) warnings.push(t("admin.ai.warn.captions"));
       if (warnings.length) setWarn(warnings.join(" "));
       setPhase("done");

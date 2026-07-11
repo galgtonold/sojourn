@@ -485,6 +485,8 @@ const en = {
     "The AI couldn’t write any sections. Try again, or add a few notes first.",
   "admin.ai.warn.captions":
     "Draft saved, but the captions couldn’t be generated — regenerate the draft, or add them in the gallery.",
+  "admin.ai.warn.homogenize":
+    "Draft saved, but the final polish was skipped — please check the transitions between sections.",
   "admin.ai.warn.partial":
     "Draft saved, but section(s) {list} failed — regenerate, or write those in by hand.",
   "admin.ai.warn.photos":
@@ -1108,6 +1110,8 @@ const de: Dict = {
     "Die KI konnte keine Abschnitte schreiben. Erneut versuchen oder zuerst ein paar Notizen ergänzen.",
   "admin.ai.warn.captions":
     "Entwurf gespeichert, aber die Bildunterschriften konnten nicht erstellt werden — Entwurf neu generieren oder in der Galerie ergänzen.",
+  "admin.ai.warn.homogenize":
+    "Entwurf gespeichert, aber der Feinschliff wurde übersprungen — bitte die Übergänge zwischen den Abschnitten prüfen.",
   "admin.ai.warn.partial":
     "Entwurf gespeichert, aber Abschnitt(e) {list} sind fehlgeschlagen — neu generieren oder von Hand ergänzen.",
   "admin.ai.warn.photos":

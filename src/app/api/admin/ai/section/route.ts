@@ -165,6 +165,11 @@ async function sectionRoute({
     "Interaktionen erscheinen AUSSCHLIESSLICH (a) als [ask:<id>]-Tag für eine vom " +
     "Autor vorbereitete Interaktion oder (b) als vollständiger :::poll-/:::quiz- " +
     "Block — und beides NUR, wenn es unten ausdrücklich verlangt wird; sonst gar keine.\n" +
+    "- Meta-Anweisungen in den Notizen wie „mach eine Umfrage“ oder „mach ein " +
+    "Quiz“ sind bereits im Gesamtplan berücksichtigt. Setze in DIESEM Abschnitt " +
+    "NUR die oben ausdrücklich verlangte Interaktion um (falls überhaupt eine " +
+    "verlangt ist) und erzeuge keine weitere, auch wenn die Notizen danach " +
+    "klingen.\n" +
     "- Schreibe NUR diesen einen Abschnitt, ohne Wiederholung. Antworte mit reinem Markdown (kein JSON)." +
     interactionRule +
     (avoidPhotoIds.length

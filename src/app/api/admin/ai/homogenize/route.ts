@@ -39,12 +39,14 @@ async function homogenize({
     "\n\nAufgabe: Der folgende Beitrag wurde abschnittsweise geschrieben und " +
     "liest sich noch wie lose Einzelstücke. Überarbeite ihn zu EINEM " +
     "zusammenhängenden, durchgehend lesbaren Artikel.\n\nRegeln:\n" +
-    "- Behalte Inhalt, Fakten, Aussagen und die Reihenfolge bei; erfinde nichts " +
-    "dazu und lösche keine Inhalte (Ausnahmen: Wiederholungen und Text-Umfragen, " +
-    "siehe unten).\n" +
-    "- Sorge für flüssige Übergänge zwischen den Abschnitten und entferne " +
-    "Wiederholungen (mehrfach erklärte Hintergründe, doppelte Einleitungen oder " +
-    "Abschlüsse, derselbe Vorfall mehrfach erzählt).\n" +
+    "- Behalte Inhalt, Fakten, Aussagen, Reihenfolge, ALLE Zwischenüberschriften " +
+    "(## …) und ALLE [[KEEP-n]]-Platzhalter bei. Erfinde nichts dazu. Lösche " +
+    "keinen ganzen Abschnitt und keine erzählte Szene — nur auf Satzebene darfst " +
+    "du wörtliche Wiederholungen straffen (siehe unten).\n" +
+    "- Sorge für flüssige Übergänge zwischen den Abschnitten. Straffe reine " +
+    "Wiederholungen auf SATZEBENE (ein zweites Mal erklärter Hintergrund, doppelte " +
+    "Einleitung oder doppelter Abschluss) — entferne dabei aber NIE eine Passage, " +
+    "die einen [[KEEP-n]]-Platzhalter enthält, und lösche keinen ganzen Abschnitt.\n" +
     "- Lösche ersatzlos jede an die Leser gerichtete Umfrage/Quiz-/Ratefrage, die " +
     "als Fließtext oder Aufzählung (a)/b)/c) bzw. A)/B)/C)) im Text steht. Die " +
     "EINZIGEN interaktiven Elemente sind die [[KEEP-n]]-Platzhalter; schreibe " +
