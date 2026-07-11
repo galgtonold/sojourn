@@ -5,6 +5,7 @@ export type CaptionSource = {
   id: string;
   ai_description?: string | null;
   place_name?: string | null;
+  nearby_places?: string[] | null;
   caption?: string | null;
 };
 

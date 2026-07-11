@@ -48,7 +48,7 @@ export async function fetchCaptionSources(
 ): Promise<CaptionSource[]> {
   const { data, error } = await supabase
     .from("photos")
-    .select("id, ai_description, place_name, caption")
+    .select("id, ai_description, place_name, nearby_places, caption")
     .eq("post_id", postId);
   if (error) throw new Error(error.message);
   return (data ?? []) as CaptionSource[];
