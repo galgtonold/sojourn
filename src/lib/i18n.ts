@@ -577,6 +577,11 @@ const en = {
   "admin.routes.rename": "Rename track",
   "admin.routes.namePlaceholder": "Track name",
   "admin.routes.save": "Save name",
+  "admin.routes.split.title": "Split this track?",
+  "admin.routes.split.body":
+    "This file has {n} segments (likely transport pauses between them). Import them separately, or merge into one track?",
+  "admin.routes.split.split": "Split into {n}",
+  "admin.routes.split.keepOne": "Keep as one",
 
   "admin.ask.title": "Polls & quizzes",
   "admin.ask.subtitle":
@@ -1195,6 +1200,11 @@ const de: Dict = {
   "admin.routes.rename": "Track umbenennen",
   "admin.routes.namePlaceholder": "Track-Name",
   "admin.routes.save": "Name speichern",
+  "admin.routes.split.title": "Track aufteilen?",
+  "admin.routes.split.body":
+    "Diese Datei enthält {n} Abschnitte (wahrscheinlich mit Transport-Pausen dazwischen). Getrennt importieren oder zu einem Track zusammenfassen?",
+  "admin.routes.split.split": "In {n} Tracks aufteilen",
+  "admin.routes.split.keepOne": "Als einen Track",
 
   "admin.ask.title": "Umfragen & Quizze",
   "admin.ask.subtitle":

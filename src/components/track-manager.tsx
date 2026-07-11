@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Pencil, Route, Trash2, Upload } from "lucide-react";
-import { parseGpxSplit, formatDistance } from "@/lib/gpx";
+import { parseGpxSplit, mergeLegs, formatDistance } from "@/lib/gpx";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
 import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { useT } from "@/components/i18n";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export type ManagedTrack = {
   id: string;
@@ -39,6 +40,7 @@ export function TrackManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const t = useT();
+  const confirm = useConfirm();
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -58,11 +60,25 @@ export function TrackManager({
           // transit hop is excluded from every distance.
           const legs = parseGpxSplit(xml);
           if (!legs.length) throw new Error("no track points");
-          const base = legs[0].name ?? file.name.replace(/\.gpx$/i, "");
-          for (let i = 0; i < legs.length; i++) {
-            const parsed = legs[i];
+          // When a recording split into multiple legs (likely a transport pause),
+          // ask whether to keep them separate or merge into one continuous track.
+          const split =
+            legs.length > 1
+              ? await confirm({
+                  title: t("admin.routes.split.title"),
+                  message: t("admin.routes.split.body", { n: legs.length }),
+                  confirmLabel: t("admin.routes.split.split", { n: legs.length }),
+                  cancelLabel: t("admin.routes.split.keepOne"),
+                })
+              : true;
+          const toImport = split ? legs : [mergeLegs(legs)];
+          const base = toImport[0].name ?? file.name.replace(/\.gpx$/i, "");
+          for (let i = 0; i < toImport.length; i++) {
+            const parsed = toImport[i];
             const name =
-              legs.length > 1 ? `${base} — ${t("admin.routes.part", { n: i + 1 })}` : base;
+              toImport.length > 1
+                ? `${base} — ${t("admin.routes.part", { n: i + 1 })}`
+                : base;
             const { data, error } = await supabase
               .from("tracks")
               .insert({
