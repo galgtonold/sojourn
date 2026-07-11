@@ -9,9 +9,11 @@ import {
   Square,
   ListPlus,
   Check,
+  Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
+import { useDictation, appendTranscript } from "@/lib/use-dictation";
 import type { ManagedInteraction } from "@/components/interaction-manager";
 import {
   maskProtectedTokens,
@@ -176,6 +178,10 @@ export function AiDraftPanel({
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("de");
   const [notes, setNotes] = useState(initialNotes);
+  const dictation = useDictation({
+    lang: lang === "de" ? "de-DE" : "en-US",
+    onFinal: (text) => setNotes((n) => appendTranscript(n, text)),
+  });
   // Last value known to be persisted server-side. The notes textarea is plain
   // React state — the main Save never carried it — so without this it lived only
   // in the tab and vanished on reload. We autosave every edit to ai_notes.
@@ -668,15 +674,51 @@ export function AiDraftPanel({
         <span>{t("admin.ai.workflowHint")}</span>
       </p>
 
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        onBlur={() => void persistNotes(notes)}
-        rows={4}
-        disabled={busy}
-        placeholder={t("admin.ai.notes")}
-        className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
-      />
+      <div className="relative mt-4">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={() => void persistNotes(notes)}
+          rows={4}
+          disabled={busy}
+          placeholder={t("admin.ai.notes")}
+          className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 pr-12 text-sm outline-none focus:border-ember-400"
+        />
+        {dictation.supported && (
+          <button
+            type="button"
+            onClick={dictation.toggle}
+            disabled={busy}
+            aria-label={
+              dictation.listening
+                ? t("admin.ai.dictate.stop")
+                : t("admin.ai.dictate.start")
+            }
+            title={
+              dictation.listening
+                ? t("admin.ai.dictate.stop")
+                : t("admin.ai.dictate.start")
+            }
+            className={cn(
+              "absolute right-2 top-2 grid size-9 place-items-center rounded-full border transition disabled:opacity-40",
+              dictation.listening
+                ? "animate-pulse border-red-500/50 bg-red-500/20 text-red-300"
+                : "border-white/10 bg-ink-950/60 text-sand-100/70 hover:border-ember-400 hover:text-ember-400",
+            )}
+          >
+            <Mic className="size-4" />
+          </button>
+        )}
+      </div>
+      {dictation.listening && dictation.interim && (
+        <p className="mt-1 text-xs text-sand-100/50">
+          <span className="text-ember-300">{t("admin.ai.dictate.hearing")}:</span>{" "}
+          {dictation.interim}
+        </p>
+      )}
+      {dictation.denied && (
+        <p className="mt-1 text-xs text-red-400">{t("admin.ai.dictate.denied")}</p>
+      )}
 
       {phase === "answering" && questions.length > 0 && (
         <div className="mt-4 space-y-3">
