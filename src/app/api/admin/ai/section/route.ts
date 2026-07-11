@@ -5,6 +5,7 @@ import { enqueueLlmJob } from "@/lib/ai/jobs";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import { sectionPhotoLines } from "@/lib/ai/section-prompt";
 import {
+  continuityBlock,
   langInstruction,
   qaBlock,
   interactionInstruction,
@@ -46,6 +47,7 @@ const schema = z.object({
   lang: z.enum(["de", "en"]).default("de"),
   // Photo ids a prior attempt invented — fed back so the repair pass avoids them.
   avoidPhotoIds: z.array(z.string()).optional(),
+  brief: z.string().optional(),
 });
 
 export const POST = adminRoute(schema, sectionRoute, { requireAi: true });
@@ -167,7 +169,9 @@ async function sectionRoute({
         )}. Verwende ausschließlich die unten gelisteten Foto-IDs.`
       : "");
 
+  const continuity = continuityBlock(input.brief ?? "");
   const userPrompt =
+    (continuity ? continuity + "\n\n" : "") +
     `Beitragstitel: ${title}\n` +
     (planText ? `\nGesamtaufbau des Artikels:\n${planText}\n` : "") +
     `\nDein Abschnitt ${index + 1} von ${total}: ${section.heading}\n` +

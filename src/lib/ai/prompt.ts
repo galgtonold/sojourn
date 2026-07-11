@@ -107,3 +107,15 @@ export function qaBlock(
     filled.map((a) => `F: ${a.question}\nA: ${a.answer}`).join("\n\n")
   );
 }
+
+// The "story so far" continuity brief, wrapped for the outline / section prompt.
+// Empty in → empty out (day 1 and best-effort failures pass "").
+export function continuityBlock(brief: string): string {
+  const b = brief.trim();
+  if (!b) return "";
+  return (
+    "Bisher auf dieser Reise (Kontinuität — beziehe dich natürlich darauf, wo es " +
+    "passt; wiederhole es NICHT wie neu und erfinde keine Auflösung):\n" +
+    b
+  );
+}

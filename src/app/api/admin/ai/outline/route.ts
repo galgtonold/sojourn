@@ -4,7 +4,7 @@ import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier } from "@/lib/ai/dossier";
 import { assignLeftoverPhotos } from "@/lib/ai/outline-plan";
-import { langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
+import { continuityBlock, langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
 
 export const maxDuration = 60;
 
@@ -13,6 +13,7 @@ const schema = z.object({
   notes: z.string().optional(),
   answers: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
   lang: z.enum(["de", "en"]).default("de"),
+  brief: z.string().optional(),
 });
 
 export type OutlineSection = {
@@ -93,6 +94,7 @@ async function outline({
       {
         role: "user",
         content:
+          (continuityBlock(input.brief ?? "") ? continuityBlock(input.brief ?? "") + "\n\n" : "") +
           `Material:\n${dossier.text}${qaBlock(answers, lang as Lang)}\n\n` +
           "Erstelle einen chronologischen Gliederungsplan. " +
           "Verteile ALLE oben genannten Foto-IDs auf 2–5 Abschnitte (jedes Foto " +
