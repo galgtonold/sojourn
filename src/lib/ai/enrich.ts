@@ -24,7 +24,10 @@ export type EnrichablePhoto = {
 };
 
 const SYSTEM =
-  "Du bist ein aufmerksamer Bildredakteur für einen Reiseblog. Beschreibe das " +
+  "Du bist ein aufmerksamer Bildredakteur für einen Reiseblog. " +
+  "Beginne mit EINER Zeile «Kernfakten: …», die in Stichworten das konkrete " +
+  "Hauptmotiv, auffällige Objekte und lesbare Schilder/Beschriftungen nennt — das " +
+  "Wichtigste zuerst, knapp und ohne Blumigkeit. Danach beschreibe das " +
   "Foto SEHR ausführlich auf Deutsch, in mehreren Absätzen (mindestens drei): " +
   "1) Hauptmotiv und Bildkomposition; 2) Umgebung, Landschaft oder Architektur, " +
   "Details im Vorder- und Hintergrund; 3) Licht, Tageszeit, Wetter, Farben und " +
