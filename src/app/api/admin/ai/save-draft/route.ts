@@ -19,6 +19,11 @@ const schema = z.object({
   cover_photo_id: z.string().uuid().nullable().optional(),
   date: z.string().optional(),
   body: z.string().min(1),
+  // Snapshot inputs (best-effort): the outline plan and whether the homogenize
+  // pass fell back to the raw concatenation — persisted to post_ai_drafts so
+  // draft-vs-final is a plain diff and the fallback rate is measurable.
+  outline: z.any().optional(),
+  homogenizeFellBack: z.boolean().optional().default(false),
 });
 
 // Persists the assembled draft (the client builds the body from the sections).
@@ -98,6 +103,25 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
     .select("title, excerpt, body, location, lat, lng, cover_image, published_at")
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Snapshot the pristine machine draft so draft-vs-final is a plain diff (no
+  // ai_jobs archaeology) and the homogenize-fallback rate is measurable. Its own
+  // fail-closed table (never anon-readable). Best-effort — a snapshot failure
+  // must never fail the draft save (the post is the primary artifact).
+  try {
+    await supabase.from("post_ai_drafts").upsert(
+      {
+        post_id: p.postId,
+        draft_body: body,
+        outline: p.outline ?? null,
+        homogenize_fell_back: p.homogenizeFellBack ?? false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "post_id" },
+    );
+  } catch {
+    /* snapshot is secondary — never fail the draft save on it */
+  }
 
   // Return the post's current interactions too, so the editor re-seeds its list
   // and the freshly-materialised [ask:id] tags resolve immediately (no stale

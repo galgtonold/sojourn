@@ -617,6 +617,8 @@ export function AiDraftPanel({
             cover_photo_id: outline.cover_photo_id ?? null,
             date: outline.date ?? undefined,
             body,
+            outline,
+            homogenizeFellBack,
           },
           signal,
         ),
