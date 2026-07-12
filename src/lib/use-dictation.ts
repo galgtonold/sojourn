@@ -39,24 +39,31 @@ export function appendTranscript(existing: string, chunk: string): string {
   return existing + (/\s$/.test(existing) ? "" : " ") + c;
 }
 
-// The correct way to read a continuous SpeechRecognition event: `results` is
-// cumulative, and `resultIndex` is the browser's pointer to the first result
-// that is NEW or changed in THIS event. Iterating from there yields each
-// finalized chunk exactly once — no matter whether the results list persists or
-// resets across a restart — so nothing needs de-duping. Returns the newly
-// finalized text (to append) and the current interim text. Pure.
-export function collectFrom(
+// From the CUMULATIVE results of the current recognition session and the
+// finalized text we've already emitted, return the new finalized growth to
+// append plus the live interim.
+//
+// Why growth and not `resultIndex`: the results list re-sends every finalized
+// chunk on every event, and Chrome's `resultIndex` does NOT reliably advance
+// past finalized results — reading it re-appends the earlier chunks on each event
+// (the first words double while the last stay fine). So we track our own position
+// by the finalized text emitted so far and append only what extends it. Finals
+// only ever grow within a session, so this emits each chunk exactly once. Pure.
+export function growthFrom(
   results: { transcript: string; isFinal: boolean }[],
-  resultIndex: number,
-): { finals: string; interim: string } {
-  let finals = "";
+  emitted: string,
+): { delta: string; finalText: string; interim: string } {
+  let finalText = "";
   let interim = "";
-  for (let i = Math.max(0, resultIndex); i < results.length; i++) {
-    const r = results[i];
-    if (r.isFinal) finals += r.transcript;
+  for (const r of results) {
+    if (r.isFinal) finalText += r.transcript;
     else interim += r.transcript;
   }
-  return { finals, interim };
+  const delta =
+    finalText.length > emitted.length && finalText.startsWith(emitted)
+      ? finalText.slice(emitted.length)
+      : "";
+  return { delta, finalText, interim };
 }
 
 export type Dictation = {
@@ -84,6 +91,9 @@ export function useDictation(opts: {
   langRef.current = opts.lang;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
+  // The finalized text emitted so far in the current session — our own position
+  // in the accumulating results list (see growthFrom). Reset in start().
+  const emittedRef = useRef("");
 
   // Feature-detect after mount (not during render) so SSR and the first client
   // render agree — no hydration mismatch on the button's visibility.
@@ -101,6 +111,7 @@ export function useDictation(opts: {
     if (!Ctor) return;
     setDenied(false);
     wantRef.current = true;
+    emittedRef.current = "";
     const rec = new Ctor();
     rec.lang = langRef.current;
     rec.continuous = true;
@@ -113,36 +124,28 @@ export function useDictation(opts: {
           isFinal: e.results[i].isFinal,
         });
       }
-      // Append ONLY the results the browser flagged as new this event
-      // (from resultIndex) — so a finalized phrase is emitted exactly once.
-      const { finals, interim } = collectFrom(results, e.resultIndex);
-      if (finals.trim()) onFinalRef.current(finals);
+      const emitted = emittedRef.current;
+      const { delta, finalText, interim } = growthFrom(results, emitted);
+      // Advance our position when the finalized text grew (guard against a rare
+      // rewrite so we never lose ground and re-emit).
+      if (finalText.startsWith(emitted)) emittedRef.current = finalText;
+      if (delta.trim()) onFinalRef.current(delta);
       setInterim(interim);
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        wantRef.current = false;
         setDenied(true);
-        setListening(false);
-        setInterim("");
       }
-      // no-speech / aborted / network: let onend decide whether to restart.
+      // Other errors (no-speech, aborted, network) just end the session via onend.
     };
     rec.onend = () => {
+      // Do NOT auto-restart: restarting re-hears the buffered tail of the last
+      // utterance and doubles it. The session ends on a longer silence; the author
+      // taps the mic again to continue. (Short pauses stay in one session — Chrome
+      // waits several seconds before ending.)
+      wantRef.current = false;
+      setListening(false);
       setInterim("");
-      // Chrome ends a session after a silence; restart the SAME recognizer while
-      // still wanted so continuous dictation survives pauses. Reusing the
-      // recognizer keeps `resultIndex` meaningful across the restart, so no chunk
-      // is re-emitted.
-      if (wantRef.current) {
-        try {
-          rec.start();
-        } catch {
-          /* already (re)starting — ignore */
-        }
-      } else {
-        setListening(false);
-      }
     };
     recRef.current = rec;
     try {
