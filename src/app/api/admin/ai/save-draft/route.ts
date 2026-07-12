@@ -109,7 +109,10 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
   // fail-closed table (never anon-readable). Best-effort — a snapshot failure
   // must never fail the draft save (the post is the primary artifact).
   try {
-    await supabase.from("post_ai_drafts").upsert(
+    // supabase-js returns DB/RLS failures in `error` (it doesn't throw), so log
+    // that too — otherwise a snapshot that silently never writes would make the
+    // fallback metric under-count with no signal. Still best-effort: no rethrow.
+    const { error: snapErr } = await supabase.from("post_ai_drafts").upsert(
       {
         post_id: p.postId,
         draft_body: body,
@@ -119,8 +122,10 @@ async function saveDraft({ supabase, input }: AdminCtx<z.infer<typeof schema>>) 
       },
       { onConflict: "post_id" },
     );
-  } catch {
+    if (snapErr) console.error("post_ai_drafts snapshot failed:", snapErr.message);
+  } catch (e) {
     /* snapshot is secondary — never fail the draft save on it */
+    console.error("post_ai_drafts snapshot threw:", e);
   }
 
   // Return the post's current interactions too, so the editor re-seeds its list
