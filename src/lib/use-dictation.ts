@@ -31,6 +31,14 @@ function getCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+// TEMPORARY diagnostics for the dictation-doubling bug: logs the recognition
+// event stream to the console (filter DevTools by "[dict]"). Remove once fixed.
+const DICT_DEBUG = true;
+let __dictHooks = 0;
+function dlog(...args: unknown[]) {
+  if (DICT_DEBUG && typeof console !== "undefined") console.log("[dict]", ...args);
+}
+
 // Append a dictated chunk to the existing text with sane spacing.
 export function appendTranscript(existing: string, chunk: string): string {
   const c = chunk.trim();
@@ -83,6 +91,9 @@ export function useDictation(opts: {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [denied, setDenied] = useState(false);
+  // A stable id per hook INSTANCE — if the logs show two different ids emitting,
+  // the panel is mounting the hook twice (that would double the text).
+  const [hookId] = useState(() => ++__dictHooks);
 
   // Refs so the API callbacks always read the latest values without re-binding.
   const recRef = useRef<Recognition | null>(null);
@@ -99,6 +110,12 @@ export function useDictation(opts: {
   // render agree — no hydration mismatch on the button's visibility.
   useEffect(() => setSupported(getCtor() !== null), []);
 
+  // TEMP: log each hook instance's lifetime, to catch a double-mounted hook.
+  useEffect(() => {
+    dlog("hook MOUNT", hookId);
+    return () => dlog("hook UNMOUNT", hookId);
+  }, [hookId]);
+
   const stop = useCallback(() => {
     wantRef.current = false;
     setListening(false);
@@ -112,6 +129,7 @@ export function useDictation(opts: {
     setDenied(false);
     wantRef.current = true;
     emittedRef.current = "";
+    dlog("START", hookId, "existing rec?", !!recRef.current);
     const rec = new Ctor();
     rec.lang = langRef.current;
     rec.continuous = true;
@@ -126,19 +144,33 @@ export function useDictation(opts: {
       }
       const emitted = emittedRef.current;
       const { delta, finalText, interim } = growthFrom(results, emitted);
+      dlog(
+        "onresult h" + hookId,
+        "ri=" + e.resultIndex,
+        "n=" + results.length,
+        results.map((r, i) => i + (r.isFinal ? "F" : "i")).join(","),
+        "emittedLen=" + emitted.length,
+        "final=" + JSON.stringify(finalText),
+        "delta=" + JSON.stringify(delta),
+      );
       // Advance our position when the finalized text grew (guard against a rare
       // rewrite so we never lose ground and re-emit).
       if (finalText.startsWith(emitted)) emittedRef.current = finalText;
-      if (delta.trim()) onFinalRef.current(delta);
+      if (delta.trim()) {
+        dlog("EMIT h" + hookId, JSON.stringify(delta));
+        onFinalRef.current(delta);
+      }
       setInterim(interim);
     };
     rec.onerror = (e) => {
+      dlog("onerror h" + hookId, e.error);
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         setDenied(true);
       }
       // Other errors (no-speech, aborted, network) just end the session via onend.
     };
     rec.onend = () => {
+      dlog("onend h" + hookId);
       // Do NOT auto-restart: restarting re-hears the buffered tail of the last
       // utterance and doubles it. The session ends on a longer silence; the author
       // taps the mic again to continue. (Short pauses stay in one session — Chrome
@@ -151,10 +183,11 @@ export function useDictation(opts: {
     try {
       rec.start();
       setListening(true);
-    } catch {
+    } catch (err) {
+      dlog("start() threw h" + hookId, String(err));
       /* start() throws if already started — ignore */
     }
-  }, []);
+  }, [hookId]);
 
   const toggle = useCallback(() => {
     if (wantRef.current) stop();
