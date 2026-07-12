@@ -15,11 +15,14 @@ export function LocationPicker({
   lng,
   onChange,
   className,
+  tracks,
 }: {
   lat: string;
   lng: string;
   onChange: (lat: string, lng: string) => void;
   className?: string;
+  // Optional route geometry to draw for context; the map fits to it on load.
+  tracks?: { id: string; geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null }[];
 }) {
   const t = useT();
   const container = useRef<HTMLDivElement>(null);
@@ -61,6 +64,42 @@ export function LocationPicker({
 
     map.on("click", (e) => {
       onChangeRef.current(e.lngLat.lat.toFixed(6), e.lngLat.lng.toFixed(6));
+    });
+
+    // Draw the post's tracks for context and frame the map to fill with them
+    // (plus the current pin), so the author places the photo relative to the
+    // recorded route. Only the initial fit — later pin drags don't re-frame.
+    map.on("load", () => {
+      const list = (tracks ?? []).filter((tk) => tk.geojson);
+      if (!list.length) return; // no tracks → keep the constructor's framing
+      const bounds = new maplibregl.LngLatBounds();
+      let any = false;
+      list.forEach((tk, i) => {
+        const sourceId = `pick-track-${tk.id ?? i}`;
+        if (map.getSource(sourceId)) return;
+        map.addSource(sourceId, {
+          type: "geojson",
+          data: tk.geojson as GeoJSON.FeatureCollection,
+        });
+        map.addLayer({
+          id: sourceId,
+          type: "line",
+          source: sourceId,
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: { "line-color": "#f56a1f", "line-width": 3, "line-opacity": 0.85 },
+        });
+        for (const f of tk.geojson?.features ?? []) {
+          for (const c of f.geometry?.coordinates ?? []) {
+            bounds.extend([c[0], c[1]]);
+            any = true;
+          }
+        }
+      });
+      if (hasCoords) {
+        bounds.extend([nLng, nLat]);
+        any = true;
+      }
+      if (any) map.fitBounds(bounds, { padding: 40, maxZoom: 14, duration: 0 });
     });
 
     return () => {

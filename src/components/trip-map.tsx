@@ -163,6 +163,20 @@ export function TripMap({
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
         });
+        // Click a route → show its name (setText escapes for us).
+        const label = t.name ?? translate(readCookieLocale(), "map.route");
+        map.on("click", sourceId, (e) => {
+          new maplibregl.Popup({ offset: 8, closeButton: true, maxWidth: "240px" })
+            .setLngLat(e.lngLat)
+            .setText(label)
+            .addTo(map);
+        });
+        map.on("mouseenter", sourceId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", sourceId, () => {
+          map.getCanvas().style.cursor = "";
+        });
       });
 
       // Waypoint connector (only when we have no GPX and route is requested)

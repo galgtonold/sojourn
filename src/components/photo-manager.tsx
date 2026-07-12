@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { LocationDialog } from "@/components/location-dialog";
+import type { ManagedTrack } from "@/components/track-manager";
 
 export type ManagedPhoto = {
   id: string;
@@ -52,10 +53,14 @@ export function PhotoManager({
   initialManualOrder = false,
   onListChange,
   refreshKey = 0,
+  tracks = [],
 }: {
   postId: string;
   slug: string;
   initial: ManagedPhoto[];
+  // The post's tracks (with geometry), drawn on the per-photo location picker so
+  // the author can place a photo relative to the recorded route.
+  tracks?: ManagedTrack[];
   // Whether the author hand-arranged this post's photos. When false, a new
   // upload re-sorts the gallery by capture time; when true it just appends.
   initialManualOrder?: boolean;
@@ -641,6 +646,7 @@ export function PhotoManager({
         onClose={() => setLocPhoto(null)}
         onSave={(la, ln) => locPhoto && saveLocation(locPhoto, la, ln)}
         allowClear
+        tracks={tracks}
       />
     </div>
   );

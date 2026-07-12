@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
+import { translate } from "@/lib/i18n";
+import { readCookieLocale } from "@/components/i18n";
 import type { Block } from "@/lib/rich";
 import type { Track } from "@/lib/types";
 import {
@@ -98,6 +100,20 @@ export function StoryMap({
           source: id,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
+        });
+        // Click a route → show its name (setText escapes for us).
+        const label = t.name ?? translate(readCookieLocale(), "map.route");
+        map.on("click", id, (e) => {
+          new maplibregl.Popup({ offset: 8, closeButton: true, maxWidth: "240px" })
+            .setLngLat(e.lngLat)
+            .setText(label)
+            .addTo(map);
+        });
+        map.on("mouseenter", id, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", id, () => {
+          map.getCanvas().style.cursor = "";
         });
       });
 

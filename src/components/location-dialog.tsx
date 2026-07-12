@@ -18,6 +18,7 @@ export function LocationDialog({
   onClose,
   onSave,
   allowClear,
+  tracks,
 }: {
   open: boolean;
   title?: string;
@@ -26,6 +27,8 @@ export function LocationDialog({
   onClose: () => void;
   onSave: (lat: string, lng: string) => void;
   allowClear?: boolean;
+  // Optional route geometry to draw on the picker (the map fits to it).
+  tracks?: { id: string; geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null }[];
 }) {
   const t = useT();
   const [lat, setLat] = useState(initialLat);
@@ -89,6 +92,7 @@ export function LocationDialog({
           <LocationPicker
             lat={lat}
             lng={lng}
+            tracks={tracks}
             onChange={(la, ln) => {
               setLat(la);
               setLng(ln);

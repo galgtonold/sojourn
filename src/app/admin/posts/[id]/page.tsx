@@ -41,7 +41,7 @@ export default async function EditPostPage({
 
   const { data: tracks } = await supabase!
     .from("tracks")
-    .select("id, name, distance_m")
+    .select("id, name, distance_m, geojson")
     .eq("post_id", id)
     .order("created_at", { ascending: true });
 

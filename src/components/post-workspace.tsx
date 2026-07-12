@@ -250,11 +250,11 @@ export function PostWorkspace({
         <PostSection title={t("admin.editor.stage.trip")} icon={<MapIcon className="size-4" />} summary={trips.find((tr) => tr.id === post.trip_id)?.title} open={open.trip} onToggle={() => toggle("trip")} className={open.trip ? "lg:col-span-4" : undefined}>
           <TripStage value={post.trip_id} trips={trips} onChange={(id) => set("trip_id", id)} />
         </PostSection>
-        <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t(photos.length === 1 ? "admin.editor.status.photo" : "admin.editor.status.photos", { n: photos.length })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
-          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} initialManualOrder={initialPhotoManualOrder} onListChange={setPhotos} refreshKey={photoRefreshKey} />
-        </PostSection>
         <PostSection title={t("admin.editor.stage.track")} icon={<Route className="size-4" />} summary={trackCount ? t("admin.editor.status.track", { n: tracks.reduce((s, tr) => s + Math.round((tr.distance_m ?? 0) / 1000), 0) }) : t("admin.editor.status.trackNone")} open={open.track} onToggle={() => toggle("track")} className={open.track ? "lg:col-span-4" : undefined}>
           <TrackManager postId={postId} tripId={post.trip_id || null} slug={slug} initial={tracks} onCountChange={setTrackCount} onPhotosLocated={() => setPhotoRefreshKey((k) => k + 1)} />
+        </PostSection>
+        <PostSection title={t("admin.editor.stage.photos")} icon={<PhotoIcon className="size-4" />} summary={t(photos.length === 1 ? "admin.editor.status.photo" : "admin.editor.status.photos", { n: photos.length })} open={open.photos} onToggle={() => toggle("photos")} className={open.photos ? "lg:col-span-4" : undefined}>
+          <PhotoManager postId={postId} slug={slug} initial={initialPhotos} initialManualOrder={initialPhotoManualOrder} onListChange={setPhotos} refreshKey={photoRefreshKey} tracks={tracks} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.polls")} icon={<MessageCircle className="size-4" />} summary={t("admin.editor.status.polls", { n: interactions.length })} open={open.polls} onToggle={() => toggle("polls")} className={open.polls ? "lg:col-span-4" : undefined}>
           <InteractionManager postId={postId} slug={slug} list={interactions} onListChange={setInteractions} />
