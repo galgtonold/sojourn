@@ -64,8 +64,14 @@ function hydratePost(row: any): PostWithRelations {
   };
 }
 
+// Explicit public post columns (not `*`): anon's SELECT is column-scoped so it
+// can't read private author fields (ai_notes) — and `SELECT *` errors when a
+// role lacks a column, so the list must be spelled out. This also trims the
+// payload (no embedding / search_tsv / tsvector shipped to the client). Keep in
+// sync with the anon column grant in migration 0036.
 const POST_SELECT = `
-  *,
+  id, slug, title, excerpt, body, cover_image, cover_alt, trip_id, location, lat, lng,
+  published, published_at, view_count, created_at, updated_at, source_locale, i18n, translation_status,
   trip:trips(id, slug, title, summary, cover_image, start_date, end_date, source_locale, i18n),
   photos(*),
   locations(*),
