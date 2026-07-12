@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Code2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { revalidatePublicPost } from "@/lib/revalidate-client";
@@ -20,6 +20,8 @@ export function InteractionManager({
   slug,
   list,
   onListChange,
+  editRequest,
+  onEditHandled,
 }: {
   postId: string;
   slug: string;
@@ -27,6 +29,12 @@ export function InteractionManager({
   // insertable in the article's insert bar (no save/reload).
   list: ManagedInteraction[];
   onListChange: (next: ManagedInteraction[]) => void;
+  // Bumped (via a nonce) when a poll/quiz chip is clicked in the article editor:
+  // open that interaction in the builder for editing and scroll to it.
+  editRequest?: { id: string; nonce: number } | null;
+  // Called once the request is consumed, so it isn't re-applied if this section
+  // is collapsed and re-opened (which remounts this component).
+  onEditHandled?: () => void;
 }) {
   const [kind, setKind] = useState<"poll" | "quiz">("poll");
   const [question, setQuestion] = useState("");
@@ -58,6 +66,25 @@ export function InteractionManager({
     setExplanation(it.explanation ?? "");
     setError(null);
   }
+
+  // A click on a poll/quiz chip in the article editor requests that interaction
+  // be opened for editing: populate the builder and scroll it into view.
+  useEffect(() => {
+    if (!editRequest) return;
+    onEditHandled?.();
+    const it = list.find((x) => x.id === editRequest.id);
+    if (!it) return;
+    startEdit(it);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`interaction-${it.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById("interaction-question")
+        ?.focus({ preventScroll: true });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest?.nonce]);
 
   async function save() {
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
@@ -146,8 +173,9 @@ export function InteractionManager({
           {list.map((it) => (
             <li
               key={it.id}
+              id={`interaction-${it.id}`}
               className={cn(
-                "flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
+                "scroll-mt-24 flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
                 editingId === it.id && "bg-ember-500/10",
               )}
             >
@@ -204,6 +232,7 @@ export function InteractionManager({
         </div>
 
         <input
+          id="interaction-question"
           className={input}
           placeholder={t("admin.ask.question")}
           value={question}

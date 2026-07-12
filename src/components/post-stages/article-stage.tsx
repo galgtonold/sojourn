@@ -26,6 +26,7 @@ export function ArticleStage({
   onTitleChange,
   onBodyChange,
   onPhotoClick,
+  onInteractionClick,
 }: {
   title: string;
   body: string;
@@ -37,6 +38,8 @@ export function ArticleStage({
   onBodyChange: (v: string) => void;
   // Clicking a photo chip in the editor scrolls to the matching gallery image.
   onPhotoClick?: (photoId: string) => void;
+  // Clicking a poll/quiz chip opens that interaction for editing.
+  onInteractionClick?: (interactionId: string) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -91,6 +94,7 @@ export function ArticleStage({
           interactions={interactions}
           placeholder={t("admin.editor.body")}
           onPhotoClick={onPhotoClick}
+          onInteractionClick={onInteractionClick}
         />
       </div>
       {pendingCount > 0 && (

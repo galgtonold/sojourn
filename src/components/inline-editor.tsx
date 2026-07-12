@@ -32,7 +32,9 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   chip.contentEditable = "false";
   chip.dataset.token = seg.token;
   const broken = seg.chipKind === "broken";
-  const isPhoto = seg.chipKind === "photo";
+  // Photo and interaction ([ask:]) chips are clickable — they jump to the
+  // matching gallery image / poll to edit it. (`:::poll` blocks aren't a ref.)
+  const clickable = /^\[(photo|ask):/.test(seg.token);
   chip.className = [
     // Cap at 100% of the textbox (not 75vw — the editor sits in a padded card,
     // so a viewport-relative cap can exceed the box); the caption WRAPS onto more
@@ -40,7 +42,7 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
     // caption is readable. Photo chips are clickable (jump to the gallery image),
     // hence the pointer cursor + top-aligned items for a clean multi-line chip.
     "mx-0.5 inline-flex max-w-[min(22rem,100%)] select-none items-start gap-1 rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
-    isPhoto ? "cursor-pointer" : "",
+    clickable ? "cursor-pointer" : "",
     broken
       ? "bg-red-500/10 text-red-300 ring-red-500/40"
       : "bg-ember-500/15 text-sand-50 ring-ember-400/30",
@@ -122,9 +124,20 @@ export const InlineEditor = forwardRef<
     // Clicking a [photo:id] chip calls this with the photo id, so the parent can
     // scroll the matching gallery image into view for quick caption editing.
     onPhotoClick?: (photoId: string) => void;
+    // Clicking an [ask:id] chip calls this with the interaction id, so the parent
+    // can open that poll/quiz for editing.
+    onInteractionClick?: (interactionId: string) => void;
   }
 >(function InlineEditor(
-  { body, onChange, photos, interactions, placeholder, onPhotoClick },
+  {
+    body,
+    onChange,
+    photos,
+    interactions,
+    placeholder,
+    onPhotoClick,
+    onInteractionClick,
+  },
   ref,
 ) {
   const t = useT();
@@ -383,11 +396,17 @@ export const InlineEditor = forwardRef<
       emit(false);
       return;
     }
-    // Click a [photo:id] chip → jump to that image in the gallery to edit its
-    // caption. (Non-photo chips fall through to normal caret placement.)
-    const chip = target.closest<HTMLElement>("[data-token]");
-    const m = chip?.dataset.token?.match(/^\[photo:([^\]]+)\]$/);
-    if (m) onPhotoClick?.(m[1]);
+    // Click a [photo:id] / [ask:id] chip → jump to that image in the gallery, or
+    // that poll/quiz in the interaction builder, to edit it. (Other chips fall
+    // through to normal caret placement.)
+    const token = target.closest<HTMLElement>("[data-token]")?.dataset.token ?? "";
+    const photo = token.match(/^\[photo:([^\]]+)\]$/);
+    if (photo) {
+      onPhotoClick?.(photo[1]);
+      return;
+    }
+    const ask = token.match(/^\[ask:([^\]]+)\]$/);
+    if (ask) onInteractionClick?.(ask[1]);
   };
 
   const onCopyCut = (e: ClipboardEvent, cut: boolean) => {

@@ -133,6 +133,18 @@ export function PostWorkspace({
     requestAnimationFrame(reveal);
   }, []);
 
+  // Clicking a poll/quiz chip opens the Polls section and asks the interaction
+  // manager to put that interaction into edit mode (a nonce so re-clicking the
+  // same one re-triggers). The manager handles the scroll once it's mounted.
+  const [editInteraction, setEditInteraction] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
+  const revealInteraction = useCallback((id: string) => {
+    setOpen((o) => (o.polls ? o : { ...o, polls: true }));
+    setEditInteraction((prev) => ({ id, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
+
   // Save logic moved verbatim from the old PostEditor.
   async function save(navigate = false, overrides?: Partial<EditablePost>): Promise<boolean> {
     const current = { ...post, ...(overrides ?? {}) };
@@ -283,7 +295,7 @@ export function PostWorkspace({
           <PhotoManager postId={postId} slug={slug} initial={initialPhotos} initialManualOrder={initialPhotoManualOrder} onListChange={setPhotos} refreshKey={photoRefreshKey} tracks={tracks} />
         </PostSection>
         <PostSection title={t("admin.editor.stage.polls")} icon={<MessageCircle className="size-4" />} summary={t("admin.editor.status.polls", { n: interactions.length })} open={open.polls} onToggle={() => toggle("polls")} className={open.polls ? "lg:col-span-4" : undefined}>
-          <InteractionManager postId={postId} slug={slug} list={interactions} onListChange={setInteractions} />
+          <InteractionManager postId={postId} slug={slug} list={interactions} onListChange={setInteractions} editRequest={editInteraction} onEditHandled={() => setEditInteraction(null)} />
         </PostSection>
       </div>
 
@@ -315,6 +327,7 @@ export function PostWorkspace({
           onTitleChange={(v) => set("title", v)}
           onBodyChange={(v) => set("body", v)}
           onPhotoClick={revealPhotoInGallery}
+          onInteractionClick={revealInteraction}
         />
       </PostSection>
 
