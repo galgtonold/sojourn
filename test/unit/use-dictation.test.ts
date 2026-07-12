@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   appendTranscript,
   sessionTranscript,
-  newFinalDelta,
+  appendDelta,
 } from "@/lib/use-dictation";
 
 describe("appendTranscript", () => {
@@ -32,34 +32,36 @@ describe("sessionTranscript", () => {
   });
 });
 
-describe("newFinalDelta", () => {
-  it("returns only the growth beyond what's already committed", () => {
-    expect(newFinalDelta("Heute waren wir", "Heute ")).toBe("waren wir");
+describe("appendDelta", () => {
+  it("appends the whole thing when nothing is committed yet", () => {
+    expect(appendDelta("", "okay noch mal einen Test")).toBe(
+      "okay noch mal einen Test",
+    );
   });
-  it("returns the whole thing when nothing is committed yet", () => {
-    expect(newFinalDelta("Heute", "")).toBe("Heute");
+  it("appends only the growth within a session", () => {
+    expect(appendDelta("okay noch", "okay noch mal")).toBe(" mal");
   });
-  it("returns empty when the finalized text is re-delivered unchanged", () => {
-    expect(newFinalDelta("Heute waren wir", "Heute waren wir")).toBe("");
+  it("keeps text that doesn't overlap", () => {
+    expect(appendDelta("hallo", "welt")).toBe("welt");
   });
-  it("returns empty when nothing has grown", () => {
-    expect(newFinalDelta("Heute", "Heute waren wir")).toBe("");
+  it("preserves a legitimate repeated word (only the first overlaps)", () => {
+    expect(appendDelta("das", "das das")).toBe(" das");
   });
 
-  it("re-delivering the same session yields no new text (the doubling bug)", () => {
-    // One sentence, spoken once, finalized by the engine.
-    const results = [
-      { transcript: "mal schauen ob das jetzt besser klappt", isFinal: true as const },
-    ];
-    // First event: the whole sentence is new.
-    let committed = "";
-    const first = sessionTranscript(results);
-    const d1 = newFinalDelta(first.finalText, committed);
-    committed = first.finalText;
-    expect(d1).toBe("mal schauen ob das jetzt besser klappt");
-    // The engine re-delivers the identical cumulative results (or a restart
-    // replays them): the delta must be empty — no second copy appended.
-    const second = sessionTranscript(results);
-    expect(newFinalDelta(second.finalText, committed)).toBe("");
+  // The reported doubling: after a session finalizes a sentence, a restart
+  // re-recognizes trailing audio — or re-delivers the whole sentence. appendDelta
+  // must drop the overlap so nothing doubles.
+  it("drops re-captured trailing audio (…MikrofonMikrofon)", () => {
+    const committed = "okay noch mal einen Test mit dem Mikrofon";
+    expect(appendDelta(committed, "Mikrofon")).toBe("");
+  });
+  it("drops an overlapping re-capture and keeps only the new tail", () => {
+    expect(appendDelta("okay noch mal einen Test", "einen Test mit dem")).toBe(
+      " mit dem",
+    );
+  });
+  it("drops a whole re-delivered sentence after a restart (no second copy)", () => {
+    const sentence = "okay noch mal einen Test mit dem Mikrofon";
+    expect(appendDelta(sentence, sentence)).toBe("");
   });
 });

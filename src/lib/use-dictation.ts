@@ -55,14 +55,23 @@ export function sessionTranscript(
   return { finalText, interim };
 }
 
-// The newly-finalized text to append: the growth of a session's finalized
-// transcript beyond what was already committed. Empty when nothing is new — so a
-// re-delivered results list (or a session whose text we've already seen) never
-// double-appends. Pure, so the de-dup is tested without a browser.
-export function newFinalDelta(finalText: string, committed: string): string {
-  return finalText.length > committed.length && finalText.startsWith(committed)
-    ? finalText.slice(committed.length)
-    : "";
+// Append-time de-dup for continuous dictation. Given all the text emitted so far
+// (`committed`) and a recognition session's finalized text (`session`), return
+// only the part of `session` that isn't already at the TAIL of `committed`: it
+// finds the longest suffix of `committed` that is a prefix of `session` and
+// returns what follows. This absorbs every doubling mechanism at the text level —
+// a session re-delivering its own results, a restart re-recognizing trailing
+// audio (…MikrofonMikrofon), or two overlapping recognizers — because the
+// overlapping prefix is dropped and only genuinely new speech is returned. The
+// one accepted trade-off: re-speaking the exact same phrase back-to-back collapses
+// to one. Pure, so the de-dup is tested without a browser.
+export function appendDelta(committed: string, session: string): string {
+  if (!session) return "";
+  const max = Math.min(committed.length, session.length);
+  for (let k = max; k > 0; k--) {
+    if (committed.endsWith(session.slice(0, k))) return session.slice(k);
+  }
+  return session;
 }
 
 export type Dictation = {
@@ -90,10 +99,9 @@ export function useDictation(opts: {
   langRef.current = opts.lang;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
-  // The finalized transcript already appended for the CURRENT session. Reset when
-  // a session starts, so each session's growth is tracked from scratch. Combined
-  // with a fresh recognizer per session (see startSession), this is what stops
-  // the earlier doubling, where a restart re-emitted the whole previous sentence.
+  // All recognized text emitted so far in THIS listening period (across recognizer
+  // sessions). New session text is de-duped against its tail (see appendDelta), so
+  // re-emitted or re-captured audio never doubles. Reset only in start().
   const committedRef = useRef("");
 
   // Feature-detect after mount (not during render) so SSR and the first client
@@ -107,13 +115,11 @@ export function useDictation(opts: {
     recRef.current?.stop();
   }, []);
 
-  // Start ONE recognition session on a FRESH SpeechRecognition instance. Chrome
-  // ends a session after a silence; `onend` starts another fresh instance while
-  // still wanted, so continuous dictation survives pauses. Crucially it does NOT
-  // reuse the recognizer: a reused instance can keep its cumulative `results`
-  // list across start() calls, which — with the per-session counter reset — made
-  // every restart re-emit the already-spoken sentence (the doubling bug). A fresh
-  // instance always starts with an empty results list.
+  // Start ONE recognition session on a fresh SpeechRecognition instance. Chrome
+  // ends a session after a silence; `onend` starts another while still wanted, so
+  // continuous dictation survives pauses. De-dup lives in onresult (appendDelta
+  // against the running committed text), so a restart that re-captures trailing
+  // audio — or a session that re-delivers results — can never double the text.
   const startSession = useCallback(() => {
     const Ctor = getCtor();
     if (!Ctor) return;
@@ -121,7 +127,6 @@ export function useDictation(opts: {
     rec.lang = langRef.current;
     rec.continuous = true;
     rec.interimResults = true;
-    committedRef.current = ""; // fresh instance → fresh (empty) results list
     rec.onresult = (e) => {
       const results: { transcript: string; isFinal: boolean }[] = [];
       for (let i = 0; i < e.results.length; i++) {
@@ -131,9 +136,12 @@ export function useDictation(opts: {
         });
       }
       const { finalText, interim } = sessionTranscript(results);
-      const delta = newFinalDelta(finalText, committedRef.current);
-      committedRef.current = finalText;
-      if (delta.trim()) onFinalRef.current(delta);
+      // Append only what isn't already at the tail of everything dictated so far.
+      const delta = appendDelta(committedRef.current, finalText);
+      if (delta.trim()) {
+        committedRef.current += delta;
+        onFinalRef.current(delta);
+      }
       setInterim(interim);
     };
     rec.onerror = (e) => {
@@ -167,6 +175,7 @@ export function useDictation(opts: {
     if (!getCtor()) return;
     setDenied(false);
     wantRef.current = true;
+    committedRef.current = ""; // fresh dictation period
     startSession();
     setListening(true);
   }, [startSession]);
