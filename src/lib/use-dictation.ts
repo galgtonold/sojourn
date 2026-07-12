@@ -39,31 +39,30 @@ export function appendTranscript(existing: string, chunk: string): string {
   return existing + (/\s$/.test(existing) ? "" : " ") + c;
 }
 
-// From the cumulative SpeechRecognition results list, return the newly-finalized
-// chunks (only those at an index >= `alreadyEmitted`), the live interim text, and
-// the new high-water mark. `continuous` mode re-delivers the whole results list on
-// every event and `resultIndex` isn't reliable across engines, so tracking a
-// committed-count is what stops each final phrase being appended many times. Pure,
-// so the de-dup is tested without a browser.
-export function collectTranscript(
+// From the cumulative results of ONE recognition session, the full finalized
+// transcript and the live interim. Pure. `continuous` mode re-delivers the whole
+// results list on every event, so the hook appends only the GROWTH of the
+// finalized text (see newFinalDelta) — never the whole thing again.
+export function sessionTranscript(
   results: { transcript: string; isFinal: boolean }[],
-  alreadyEmitted: number,
-): { finals: string[]; interim: string; emitted: number } {
-  const finals: string[] = [];
+): { finalText: string; interim: string } {
+  let finalText = "";
   let interim = "";
-  let emitted = alreadyEmitted;
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (r.isFinal) {
-      if (i >= alreadyEmitted) {
-        finals.push(r.transcript);
-        emitted = i + 1;
-      }
-    } else {
-      interim += r.transcript;
-    }
+  for (const r of results) {
+    if (r.isFinal) finalText += r.transcript;
+    else interim += r.transcript;
   }
-  return { finals, interim, emitted };
+  return { finalText, interim };
+}
+
+// The newly-finalized text to append: the growth of a session's finalized
+// transcript beyond what was already committed. Empty when nothing is new — so a
+// re-delivered results list (or a session whose text we've already seen) never
+// double-appends. Pure, so the de-dup is tested without a browser.
+export function newFinalDelta(finalText: string, committed: string): string {
+  return finalText.length > committed.length && finalText.startsWith(committed)
+    ? finalText.slice(committed.length)
+    : "";
 }
 
 export type Dictation = {
@@ -91,9 +90,11 @@ export function useDictation(opts: {
   langRef.current = opts.lang;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
-  // How many results in the current session are already committed as final, so a
-  // re-delivered cumulative results list never re-emits them (reset per session).
-  const emittedRef = useRef(0);
+  // The finalized transcript already appended for the CURRENT session. Reset when
+  // a session starts, so each session's growth is tracked from scratch. Combined
+  // with a fresh recognizer per session (see startSession), this is what stops
+  // the earlier doubling, where a restart re-emitted the whole previous sentence.
+  const committedRef = useRef("");
 
   // Feature-detect after mount (not during render) so SSR and the first client
   // render agree — no hydration mismatch on the button's visibility.
@@ -106,24 +107,33 @@ export function useDictation(opts: {
     recRef.current?.stop();
   }, []);
 
-  const start = useCallback(() => {
+  // Start ONE recognition session on a FRESH SpeechRecognition instance. Chrome
+  // ends a session after a silence; `onend` starts another fresh instance while
+  // still wanted, so continuous dictation survives pauses. Crucially it does NOT
+  // reuse the recognizer: a reused instance can keep its cumulative `results`
+  // list across start() calls, which — with the per-session counter reset — made
+  // every restart re-emit the already-spoken sentence (the doubling bug). A fresh
+  // instance always starts with an empty results list.
+  const startSession = useCallback(() => {
     const Ctor = getCtor();
     if (!Ctor) return;
-    setDenied(false);
-    wantRef.current = true;
-    emittedRef.current = 0; // fresh session → fresh results list
     const rec = new Ctor();
     rec.lang = langRef.current;
     rec.continuous = true;
     rec.interimResults = true;
+    committedRef.current = ""; // fresh instance → fresh (empty) results list
     rec.onresult = (e) => {
       const results: { transcript: string; isFinal: boolean }[] = [];
       for (let i = 0; i < e.results.length; i++) {
-        results.push({ transcript: e.results[i][0].transcript, isFinal: e.results[i].isFinal });
+        results.push({
+          transcript: e.results[i][0].transcript,
+          isFinal: e.results[i].isFinal,
+        });
       }
-      const { finals, interim, emitted } = collectTranscript(results, emittedRef.current);
-      emittedRef.current = emitted;
-      for (const f of finals) onFinalRef.current(f);
+      const { finalText, interim } = sessionTranscript(results);
+      const delta = newFinalDelta(finalText, committedRef.current);
+      committedRef.current = finalText;
+      if (delta.trim()) onFinalRef.current(delta);
       setInterim(interim);
     };
     rec.onerror = (e) => {
@@ -137,15 +147,10 @@ export function useDictation(opts: {
     };
     rec.onend = () => {
       setInterim("");
-      // Chrome ends a session after a silence; restart while still wanted so
-      // continuous dictation survives pauses.
+      // Chrome ends a session after a silence; start a FRESH session while still
+      // wanted so continuous dictation survives pauses.
       if (wantRef.current) {
-        emittedRef.current = 0; // new session → results list restarts at 0
-        try {
-          rec.start();
-        } catch {
-          /* already (re)starting — ignore */
-        }
+        startSession();
       } else {
         setListening(false);
       }
@@ -153,11 +158,18 @@ export function useDictation(opts: {
     recRef.current = rec;
     try {
       rec.start();
-      setListening(true);
     } catch {
       /* start() throws if already started — ignore */
     }
   }, []);
+
+  const start = useCallback(() => {
+    if (!getCtor()) return;
+    setDenied(false);
+    wantRef.current = true;
+    startSession();
+    setListening(true);
+  }, [startSession]);
 
   const toggle = useCallback(() => {
     if (wantRef.current) stop();

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { appendTranscript, collectTranscript } from "@/lib/use-dictation";
+import {
+  appendTranscript,
+  sessionTranscript,
+  newFinalDelta,
+} from "@/lib/use-dictation";
 
 describe("appendTranscript", () => {
   it("joins with a single space", () => {
@@ -16,34 +20,46 @@ describe("appendTranscript", () => {
   });
 });
 
-describe("collectTranscript", () => {
-  it("emits new finals and returns the interim + high-water mark", () => {
-    const r = collectTranscript(
-      [
-        { transcript: "Heute", isFinal: true },
-        { transcript: "am Hafen", isFinal: false },
-      ],
-      0,
-    );
-    expect(r.finals).toEqual(["Heute"]);
+describe("sessionTranscript", () => {
+  it("concatenates the finalized parts and collects the interim separately", () => {
+    const r = sessionTranscript([
+      { transcript: "Heute ", isFinal: true },
+      { transcript: "waren wir", isFinal: true },
+      { transcript: "am Hafen", isFinal: false },
+    ]);
+    expect(r.finalText).toBe("Heute waren wir");
     expect(r.interim).toBe("am Hafen");
-    expect(r.emitted).toBe(1);
+  });
+});
+
+describe("newFinalDelta", () => {
+  it("returns only the growth beyond what's already committed", () => {
+    expect(newFinalDelta("Heute waren wir", "Heute ")).toBe("waren wir");
+  });
+  it("returns the whole thing when nothing is committed yet", () => {
+    expect(newFinalDelta("Heute", "")).toBe("Heute");
+  });
+  it("returns empty when the finalized text is re-delivered unchanged", () => {
+    expect(newFinalDelta("Heute waren wir", "Heute waren wir")).toBe("");
+  });
+  it("returns empty when nothing has grown", () => {
+    expect(newFinalDelta("Heute", "Heute waren wir")).toBe("");
   });
 
-  it("never re-emits a final already counted (the duplication bug)", () => {
+  it("re-delivering the same session yields no new text (the doubling bug)", () => {
+    // One sentence, spoken once, finalized by the engine.
     const results = [
-      { transcript: "Heute", isFinal: true },
-      { transcript: "waren wir", isFinal: true },
-      { transcript: "am", isFinal: false },
+      { transcript: "mal schauen ob das jetzt besser klappt", isFinal: true as const },
     ];
-    // First event commits both finals.
-    const first = collectTranscript(results, 0);
-    expect(first.finals).toEqual(["Heute", "waren wir"]);
-    expect(first.emitted).toBe(2);
-    // A later event re-delivers the SAME cumulative results — must not re-emit.
-    const second = collectTranscript(results, first.emitted);
-    expect(second.finals).toEqual([]);
-    expect(second.interim).toBe("am");
-    expect(second.emitted).toBe(2);
+    // First event: the whole sentence is new.
+    let committed = "";
+    const first = sessionTranscript(results);
+    const d1 = newFinalDelta(first.finalText, committed);
+    committed = first.finalText;
+    expect(d1).toBe("mal schauen ob das jetzt besser klappt");
+    // The engine re-delivers the identical cumulative results (or a restart
+    // replays them): the delta must be empty — no second copy appended.
+    const second = sessionTranscript(results);
+    expect(newFinalDelta(second.finalText, committed)).toBe("");
   });
 });
