@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  appendTranscript,
-  sessionTranscript,
-  appendDelta,
-} from "@/lib/use-dictation";
+import { appendTranscript, collectFrom } from "@/lib/use-dictation";
 
 describe("appendTranscript", () => {
   it("joins with a single space", () => {
@@ -20,48 +16,59 @@ describe("appendTranscript", () => {
   });
 });
 
-describe("sessionTranscript", () => {
-  it("concatenates the finalized parts and collects the interim separately", () => {
-    const r = sessionTranscript([
-      { transcript: "Heute ", isFinal: true },
-      { transcript: "waren wir", isFinal: true },
-      { transcript: "am Hafen", isFinal: false },
-    ]);
-    expect(r.finalText).toBe("Heute waren wir");
-    expect(r.interim).toBe("am Hafen");
-  });
-});
-
-describe("appendDelta", () => {
-  it("appends the whole thing when nothing is committed yet", () => {
-    expect(appendDelta("", "okay noch mal einen Test")).toBe(
-      "okay noch mal einen Test",
+describe("collectFrom", () => {
+  it("returns the new finals to append and the interim separately", () => {
+    const r = collectFrom(
+      [
+        { transcript: "okay ", isFinal: true },
+        { transcript: "noch mal", isFinal: false },
+      ],
+      0,
     );
-  });
-  it("appends only the growth within a session", () => {
-    expect(appendDelta("okay noch", "okay noch mal")).toBe(" mal");
-  });
-  it("keeps text that doesn't overlap", () => {
-    expect(appendDelta("hallo", "welt")).toBe("welt");
-  });
-  it("preserves a legitimate repeated word (only the first overlaps)", () => {
-    expect(appendDelta("das", "das das")).toBe(" das");
+    expect(r.finals).toBe("okay ");
+    expect(r.interim).toBe("noch mal");
   });
 
-  // The reported doubling: after a session finalizes a sentence, a restart
-  // re-recognizes trailing audio — or re-delivers the whole sentence. appendDelta
-  // must drop the overlap so nothing doubles.
-  it("drops re-captured trailing audio (…MikrofonMikrofon)", () => {
-    const committed = "okay noch mal einen Test mit dem Mikrofon";
-    expect(appendDelta(committed, "Mikrofon")).toBe("");
+  it("emits only the newly finalized chunk (from resultIndex), not earlier ones", () => {
+    const results = [
+      { transcript: "okay ", isFinal: true },
+      { transcript: "noch mal einen Test", isFinal: true },
+    ];
+    // resultIndex 1: index 0 was already reported in a prior event — only the
+    // second, new final is emitted now.
+    const r = collectFrom(results, 1);
+    expect(r.finals).toBe("noch mal einen Test");
+    expect(r.interim).toBe("");
   });
-  it("drops an overlapping re-capture and keeps only the new tail", () => {
-    expect(appendDelta("okay noch mal einen Test", "einen Test mit dem")).toBe(
-      " mit dem",
+
+  // The doubling regression: a later event re-includes an already-finalized
+  // result in `results`, but `resultIndex` points past it — so it is NOT
+  // re-appended. This is what trusting resultIndex (rather than a hand-rolled
+  // counter) guarantees.
+  it("does not re-emit a finalized result that a later event still carries", () => {
+    const results = [
+      { transcript: "okay noch mal einen Test mit dem Mikrofon", isFinal: true },
+      { transcript: "und", isFinal: false },
+    ];
+    const r = collectFrom(results, 1);
+    expect(r.finals).toBe("");
+    expect(r.interim).toBe("und");
+  });
+
+  it("collects several new finals in one event", () => {
+    const r = collectFrom(
+      [
+        { transcript: "a", isFinal: true },
+        { transcript: "b", isFinal: true },
+      ],
+      0,
     );
+    expect(r.finals).toBe("ab");
+    expect(r.interim).toBe("");
   });
-  it("drops a whole re-delivered sentence after a restart (no second copy)", () => {
-    const sentence = "okay noch mal einen Test mit dem Mikrofon";
-    expect(appendDelta(sentence, sentence)).toBe("");
+
+  it("clamps a negative/odd resultIndex to 0", () => {
+    const r = collectFrom([{ transcript: "hallo", isFinal: true }], -1);
+    expect(r.finals).toBe("hallo");
   });
 });

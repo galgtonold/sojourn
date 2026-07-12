@@ -39,39 +39,24 @@ export function appendTranscript(existing: string, chunk: string): string {
   return existing + (/\s$/.test(existing) ? "" : " ") + c;
 }
 
-// From the cumulative results of ONE recognition session, the full finalized
-// transcript and the live interim. Pure. `continuous` mode re-delivers the whole
-// results list on every event, so the hook appends only the GROWTH of the
-// finalized text (see newFinalDelta) — never the whole thing again.
-export function sessionTranscript(
+// The correct way to read a continuous SpeechRecognition event: `results` is
+// cumulative, and `resultIndex` is the browser's pointer to the first result
+// that is NEW or changed in THIS event. Iterating from there yields each
+// finalized chunk exactly once — no matter whether the results list persists or
+// resets across a restart — so nothing needs de-duping. Returns the newly
+// finalized text (to append) and the current interim text. Pure.
+export function collectFrom(
   results: { transcript: string; isFinal: boolean }[],
-): { finalText: string; interim: string } {
-  let finalText = "";
+  resultIndex: number,
+): { finals: string; interim: string } {
+  let finals = "";
   let interim = "";
-  for (const r of results) {
-    if (r.isFinal) finalText += r.transcript;
+  for (let i = Math.max(0, resultIndex); i < results.length; i++) {
+    const r = results[i];
+    if (r.isFinal) finals += r.transcript;
     else interim += r.transcript;
   }
-  return { finalText, interim };
-}
-
-// Append-time de-dup for continuous dictation. Given all the text emitted so far
-// (`committed`) and a recognition session's finalized text (`session`), return
-// only the part of `session` that isn't already at the TAIL of `committed`: it
-// finds the longest suffix of `committed` that is a prefix of `session` and
-// returns what follows. This absorbs every doubling mechanism at the text level —
-// a session re-delivering its own results, a restart re-recognizing trailing
-// audio (…MikrofonMikrofon), or two overlapping recognizers — because the
-// overlapping prefix is dropped and only genuinely new speech is returned. The
-// one accepted trade-off: re-speaking the exact same phrase back-to-back collapses
-// to one. Pure, so the de-dup is tested without a browser.
-export function appendDelta(committed: string, session: string): string {
-  if (!session) return "";
-  const max = Math.min(committed.length, session.length);
-  for (let k = max; k > 0; k--) {
-    if (committed.endsWith(session.slice(0, k))) return session.slice(k);
-  }
-  return session;
+  return { finals, interim };
 }
 
 export type Dictation = {
@@ -99,10 +84,6 @@ export function useDictation(opts: {
   langRef.current = opts.lang;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
-  // All recognized text emitted so far in THIS listening period (across recognizer
-  // sessions). New session text is de-duped against its tail (see appendDelta), so
-  // re-emitted or re-captured audio never doubles. Reset only in start().
-  const committedRef = useRef("");
 
   // Feature-detect after mount (not during render) so SSR and the first client
   // render agree — no hydration mismatch on the button's visibility.
@@ -115,14 +96,11 @@ export function useDictation(opts: {
     recRef.current?.stop();
   }, []);
 
-  // Start ONE recognition session on a fresh SpeechRecognition instance. Chrome
-  // ends a session after a silence; `onend` starts another while still wanted, so
-  // continuous dictation survives pauses. De-dup lives in onresult (appendDelta
-  // against the running committed text), so a restart that re-captures trailing
-  // audio — or a session that re-delivers results — can never double the text.
-  const startSession = useCallback(() => {
+  const start = useCallback(() => {
     const Ctor = getCtor();
     if (!Ctor) return;
+    setDenied(false);
+    wantRef.current = true;
     const rec = new Ctor();
     rec.lang = langRef.current;
     rec.continuous = true;
@@ -135,13 +113,10 @@ export function useDictation(opts: {
           isFinal: e.results[i].isFinal,
         });
       }
-      const { finalText, interim } = sessionTranscript(results);
-      // Append only what isn't already at the tail of everything dictated so far.
-      const delta = appendDelta(committedRef.current, finalText);
-      if (delta.trim()) {
-        committedRef.current += delta;
-        onFinalRef.current(delta);
-      }
+      // Append ONLY the results the browser flagged as new this event
+      // (from resultIndex) — so a finalized phrase is emitted exactly once.
+      const { finals, interim } = collectFrom(results, e.resultIndex);
+      if (finals.trim()) onFinalRef.current(finals);
       setInterim(interim);
     };
     rec.onerror = (e) => {
@@ -155,10 +130,16 @@ export function useDictation(opts: {
     };
     rec.onend = () => {
       setInterim("");
-      // Chrome ends a session after a silence; start a FRESH session while still
-      // wanted so continuous dictation survives pauses.
+      // Chrome ends a session after a silence; restart the SAME recognizer while
+      // still wanted so continuous dictation survives pauses. Reusing the
+      // recognizer keeps `resultIndex` meaningful across the restart, so no chunk
+      // is re-emitted.
       if (wantRef.current) {
-        startSession();
+        try {
+          rec.start();
+        } catch {
+          /* already (re)starting — ignore */
+        }
       } else {
         setListening(false);
       }
@@ -166,19 +147,11 @@ export function useDictation(opts: {
     recRef.current = rec;
     try {
       rec.start();
+      setListening(true);
     } catch {
       /* start() throws if already started — ignore */
     }
   }, []);
-
-  const start = useCallback(() => {
-    if (!getCtor()) return;
-    setDenied(false);
-    wantRef.current = true;
-    committedRef.current = ""; // fresh dictation period
-    startSession();
-    setListening(true);
-  }, [startSession]);
 
   const toggle = useCallback(() => {
     if (wantRef.current) stop();
