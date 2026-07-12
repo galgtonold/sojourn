@@ -460,7 +460,13 @@ export function PhotoManager({
         <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {photos.map((photo) => (
-          <div key={photo.id} className="space-y-1.5">
+          // id + scroll margin so a click on the photo's chip in the article
+          // editor can scroll this card into view (and briefly ring it).
+          <div
+            key={photo.id}
+            id={`gallery-photo-${photo.id}`}
+            className="scroll-mt-24 space-y-1.5 rounded-xl transition-shadow"
+          >
             <div className="group relative aspect-square overflow-hidden rounded-2xl bg-ink-800">
               {photo.media_type === "video" ? (
                 <>

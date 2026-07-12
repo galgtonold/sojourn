@@ -25,6 +25,7 @@ export function ArticleStage({
   interactionIds,
   onTitleChange,
   onBodyChange,
+  onPhotoClick,
 }: {
   title: string;
   body: string;
@@ -34,6 +35,8 @@ export function ArticleStage({
   interactionIds: string[];
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
+  // Clicking a photo chip in the editor scrolls to the matching gallery image.
+  onPhotoClick?: (photoId: string) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -87,6 +90,7 @@ export function ArticleStage({
           photos={photos}
           interactions={interactions}
           placeholder={t("admin.editor.body")}
+          onPhotoClick={onPhotoClick}
         />
       </div>
       {pendingCount > 0 && (

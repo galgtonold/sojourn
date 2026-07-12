@@ -32,11 +32,15 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   chip.contentEditable = "false";
   chip.dataset.token = seg.token;
   const broken = seg.chipKind === "broken";
+  const isPhoto = seg.chipKind === "photo";
   chip.className = [
     // Cap at 100% of the textbox (not 75vw — the editor sits in a padded card,
-    // so a viewport-relative cap can exceed the box) and clip, so a long caption
-    // can never push the chip past the textbox edge on mobile.
-    "mx-0.5 inline-flex max-w-[min(22rem,100%)] select-none items-center gap-1 overflow-hidden rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
+    // so a viewport-relative cap can exceed the box); the caption WRAPS onto more
+    // lines (see the label below) instead of being truncated, so the whole
+    // caption is readable. Photo chips are clickable (jump to the gallery image),
+    // hence the pointer cursor + top-aligned items for a clean multi-line chip.
+    "mx-0.5 inline-flex max-w-[min(22rem,100%)] select-none items-start gap-1 rounded-md px-1.5 py-0.5 align-middle text-xs ring-1",
+    isPhoto ? "cursor-pointer" : "",
     broken
       ? "bg-red-500/10 text-red-300 ring-red-500/40"
       : "bg-ember-500/15 text-sand-50 ring-ember-400/30",
@@ -46,7 +50,7 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
     const img = document.createElement("img");
     img.src = optimizedSrc(seg.thumb, 48, 48);
     img.alt = "";
-    img.className = "size-4 shrink-0 rounded object-cover";
+    img.className = "mt-px size-4 shrink-0 rounded object-cover";
     chip.appendChild(img);
   } else {
     const icon = document.createElement("span");
@@ -56,9 +60,10 @@ function makeChip(seg: ChipSeg, removeLabel: string): HTMLElement {
   }
 
   const label = document.createElement("span");
-  // min-w-0 lets the flex child actually shrink so `truncate` ellipsises a long
-  // caption instead of forcing the chip wider than its max-width.
-  label.className = "min-w-0 truncate";
+  // Wrap the caption onto multiple lines instead of truncating with an ellipsis,
+  // so the full caption is readable in the editor. min-w-0 lets the flex child
+  // wrap within the chip's max-width.
+  label.className = "min-w-0 whitespace-normal break-words leading-snug";
   label.textContent = seg.label || (seg.chipKind === "photo" ? "" : seg.token);
   chip.appendChild(label);
 
@@ -114,8 +119,14 @@ export const InlineEditor = forwardRef<
     photos: Photo[];
     interactions: EditorInteraction[];
     placeholder?: string;
+    // Clicking a [photo:id] chip calls this with the photo id, so the parent can
+    // scroll the matching gallery image into view for quick caption editing.
+    onPhotoClick?: (photoId: string) => void;
   }
->(function InlineEditor({ body, onChange, photos, interactions, placeholder }, ref) {
+>(function InlineEditor(
+  { body, onChange, photos, interactions, placeholder, onPhotoClick },
+  ref,
+) {
   const t = useT();
   const elRef = useRef<HTMLDivElement>(null);
   // Sentinel (no real body equals it) so the first effect run always builds.
@@ -364,12 +375,19 @@ export const InlineEditor = forwardRef<
   };
 
   const onClickEditor = (e: MouseEvent) => {
-    const rm = (e.target as HTMLElement).closest("[data-remove]");
+    const target = e.target as HTMLElement;
+    const rm = target.closest("[data-remove]");
     if (rm) {
       e.preventDefault();
       rm.closest("[data-token]")?.remove();
       emit(false);
+      return;
     }
+    // Click a [photo:id] chip → jump to that image in the gallery to edit its
+    // caption. (Non-photo chips fall through to normal caret placement.)
+    const chip = target.closest<HTMLElement>("[data-token]");
+    const m = chip?.dataset.token?.match(/^\[photo:([^\]]+)\]$/);
+    if (m) onPhotoClick?.(m[1]);
   };
 
   const onCopyCut = (e: ClipboardEvent, cut: boolean) => {

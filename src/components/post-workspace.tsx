@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -106,6 +106,32 @@ export function PostWorkspace({
   function set<K extends keyof EditablePost>(key: K, value: EditablePost[K]) {
     setPost((p) => ({ ...p, [key]: value }));
   }
+
+  // Clicking a photo chip in the article editor scrolls its gallery card into
+  // view (opening the collapsed Photos section first), briefly rings it and
+  // focuses the caption field — so a caption is quick to find and edit.
+  const revealPhotoInGallery = useCallback((photoId: string) => {
+    setOpen((o) => (o.photos ? o : { ...o, photos: true }));
+    let tries = 0;
+    const reveal = () => {
+      const card = document.getElementById(`gallery-photo-${photoId}`);
+      if (!card) {
+        // The Photos section mounts a frame or two after it's opened.
+        if (tries++ < 12) requestAnimationFrame(reveal);
+        return;
+      }
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Inline box-shadow (not a Tailwind ring class — JIT wouldn't emit a class
+      // only added at runtime); the card's `transition-shadow` fades it. #f56a1f
+      // is ember-400. Cleared after a moment.
+      card.style.boxShadow = "0 0 0 2px #f56a1f";
+      window.setTimeout(() => {
+        card.style.boxShadow = "";
+      }, 1600);
+      card.querySelector("textarea")?.focus({ preventScroll: true });
+    };
+    requestAnimationFrame(reveal);
+  }, []);
 
   // Save logic moved verbatim from the old PostEditor.
   async function save(navigate = false, overrides?: Partial<EditablePost>): Promise<boolean> {
@@ -288,6 +314,7 @@ export function PostWorkspace({
           interactionIds={interactionIds}
           onTitleChange={(v) => set("title", v)}
           onBodyChange={(v) => set("body", v)}
+          onPhotoClick={revealPhotoInGallery}
         />
       </PostSection>
 
