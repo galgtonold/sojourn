@@ -108,6 +108,11 @@ export function PhotoManager({
     };
   }, [refreshKey, postId]);
   const [busy, setBusy] = useState(false);
+  // Live count while a multi-file upload runs, so the author sees how far it got
+  // (paired with each photo appearing in the grid the moment it lands).
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
@@ -242,9 +247,11 @@ export function PhotoManager({
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
+    const list = Array.from(files);
     const supabase = getBrowserSupabase();
     setBusy(true);
     setError(null);
+    setProgress({ done: 0, total: list.length });
     try {
       // Collision-free: start past the current highest sort_order (not the
       // count, which duplicated/skipped values when a slow upload landed late).
@@ -252,10 +259,11 @@ export function PhotoManager({
         photos.reduce((m, p) => Math.max(m, p.sort_order ?? -1), -1) + 1;
       const added: ManagedPhoto[] = [];
       const failed: string[] = [];
-      for (const file of Array.from(files)) {
+      for (const file of list) {
         const kind = mediaKind(file.type);
         if (kind === null || (kind === "video" && file.size > 52428800)) {
           failed.push(file.name);
+          setProgress((pr) => (pr ? { ...pr, done: pr.done + 1 } : pr));
           continue;
         }
         // Upload each file on its own: one bad file (unsupported, too large, a
@@ -287,16 +295,21 @@ export function PhotoManager({
             .select(PHOTO_COLUMNS)
             .single();
           if (error) throw new Error(error.message);
-          added.push(data as ManagedPhoto);
+          const photo = data as ManagedPhoto;
+          added.push(photo);
+          // Reveal each photo the moment it lands, so a big batch fills the grid
+          // progressively instead of appearing all at once at the end.
+          setPhotos((p) => [...p, photo]);
         } catch (e) {
           // Keep the real reason in the console for diagnosis; the user sees a
           // plain list of the files that didn't make it.
           console.error(`[upload] ${file.name} failed:`, e);
           failed.push(file.name);
+        } finally {
+          setProgress((pr) => (pr ? { ...pr, done: pr.done + 1 } : pr));
         }
       }
       if (added.length) {
-        setPhotos((p) => [...p, ...added]);
         revalidatePublicPost(slug);
         // Enrich each new photo (vision description + place name) in the
         // background — best effort, never blocks the upload.
@@ -340,6 +353,7 @@ export function PhotoManager({
       setError(t("admin.err.uploadFailed"));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   }
 
@@ -583,7 +597,25 @@ export function PhotoManager({
           ) : (
             <ImagePlus className="size-5" />
           )}
-          {busy ? t("admin.upload.uploading") : t("admin.gallery.addMedia")}
+          {!busy ? (
+            t("admin.gallery.addMedia")
+          ) : progress ? (
+            <span className="flex w-full flex-col items-center gap-1.5 px-3">
+              <span className="tabular-nums">
+                {progress.done} / {progress.total}
+              </span>
+              <span className="h-1 w-full max-w-20 overflow-hidden rounded-full bg-white/15">
+                <span
+                  className="block h-full rounded-full bg-ember-500 transition-all duration-300"
+                  style={{
+                    width: `${Math.round((progress.done / Math.max(1, progress.total)) * 100)}%`,
+                  }}
+                />
+              </span>
+            </span>
+          ) : (
+            t("admin.upload.uploading")
+          )}
         </button>
       </div>
 
