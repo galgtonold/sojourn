@@ -47,6 +47,10 @@ type PhotonProps = {
 
 // "Visitable" named feature one would name a spot by (parks, attractions,
 // landmarks, notable nature), as opposed to roads, addresses, admin areas.
+// Town squares and places of worship count too: they're exactly how you'd name
+// a photo taken in a town centre ("Stortorget", "Kungsbacka kyrka"), and
+// without them a centre-of-town geotag falls through to Nominatim, which can
+// snap it to an obscure locality (see reverseGeocode / pickNominatimPlace).
 function isVisitable(p: PhotonProps): boolean {
   const v = p.osm_value ?? "";
   return Boolean(
@@ -54,6 +58,8 @@ function isVisitable(p: PhotonProps): boolean {
       (p.osm_key === "tourism" ||
         (p.osm_key === "leisure" && NOTABLE_LEISURE.includes(v)) ||
         p.osm_key === "historic" ||
+        (p.osm_key === "amenity" && v === "place_of_worship") ||
+        (p.osm_key === "place" && v === "square") ||
         (p.osm_key === "boundary" &&
           (v === "national_park" || v === "protected_area")) ||
         (p.osm_key === "natural" && NOTABLE_NATURAL.includes(v))),
@@ -70,8 +76,9 @@ function landmarkRank(p: PhotonProps): number {
   if (p.osm_key === "leisure" && NOTABLE_LEISURE.includes(v)) return 1;
   if (p.osm_key === "boundary") return 2;
   if (p.osm_key === "historic") return 3;
+  if (p.osm_key === "amenity" && v === "place_of_worship") return 3;
   if (p.osm_key === "natural") return 4;
-  return 5; // tourism=artwork/viewpoint/picnic_site, …
+  return 5; // place=square, tourism=artwork/viewpoint/picnic_site, …
 }
 
 export type PhotonFeature = {
@@ -147,6 +154,59 @@ export async function nearbyPlaces(
   }
 }
 
+type NominatimAddress = {
+  tourism?: string;
+  attraction?: string;
+  natural?: string;
+  peak?: string;
+  hamlet?: string;
+  village?: string;
+  town?: string;
+  city?: string;
+  municipality?: string;
+  county?: string;
+  state?: string;
+  region?: string;
+  country?: string;
+  // Nominatim returns a variable set of address keys (farm, suburb, locality,
+  // road, …); allow the rest without enumerating every one.
+  [key: string]: string | undefined;
+};
+
+export type NominatimReverse = {
+  name?: string;
+  display_name?: string;
+  address?: NominatimAddress;
+};
+
+// Pure: the most recognizable "<place>, <region>, <country>" label from a
+// Nominatim reverse result. Leads with notable features (tourism/natural/peak)
+// then the SETTLEMENT (hamlet→village→town→city); the snapped object's own
+// `name` is only a last resort. That ordering matters: at neighbourhood zoom
+// Nominatim can snap a town-centre point to an obscure farm/locality and expose
+// it as `name` (e.g. "Yttrekolla", ~1.5 km from Kungsbacka's main square) — it
+// must never outrank the actual town in the address hierarchy.
+export function pickNominatimPlace(d: NominatimReverse): string | null {
+  const a = d.address ?? {};
+  const place =
+    a.tourism ||
+    a.attraction ||
+    a.natural ||
+    a.peak ||
+    a.hamlet ||
+    a.village ||
+    a.town ||
+    a.city ||
+    a.municipality ||
+    a.county ||
+    d.name ||
+    null;
+  const label = [place, a.state || a.region || null, a.country || null]
+    .filter(Boolean)
+    .join(", ");
+  return label || d.display_name || null;
+}
+
 // Nominatim reverse → coarse place + region + country (fallback only).
 async function nominatimReverse(lat: number, lng: number): Promise<string | null> {
   try {
@@ -158,25 +218,7 @@ async function nominatimReverse(lat: number, lng: number): Promise<string | null
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
-    const d = await res.json();
-    const a = d.address ?? {};
-    const place =
-      d.name ||
-      a.tourism ||
-      a.attraction ||
-      a.natural ||
-      a.peak ||
-      a.hamlet ||
-      a.village ||
-      a.town ||
-      a.city ||
-      a.municipality ||
-      a.county ||
-      null;
-    const label = [place, a.state || a.region || null, a.country || null]
-      .filter(Boolean)
-      .join(", ");
-    return label || d.display_name || null;
+    return pickNominatimPlace((await res.json()) as NominatimReverse);
   } catch {
     return null;
   }
