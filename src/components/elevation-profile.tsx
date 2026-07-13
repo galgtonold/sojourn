@@ -8,6 +8,7 @@ import type { Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { T } from "@/components/i18n";
 import { ElevationChart } from "@/components/elevation-chart";
+import { CondensedElevation } from "@/components/condensed-elevation";
 
 /** Renders a distance-vs-elevation chart per track that carries elevation. */
 export function ElevationProfile({
@@ -31,34 +32,42 @@ export function ElevationProfile({
         <h2 className="mb-5 font-display text-2xl font-semibold">
           <T k="post.elevation" />
         </h2>
-        <div className="space-y-6">
-        {series.map(({ t, s }) => (
-          <div
-            key={t.id}
-            className="rounded-3xl bg-ink-900 p-5 ring-1 ring-white/5"
-          >
-            <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-sand-100/70">
-              <span className="font-medium text-sand-50">
-                {t.name || <T k="post.routeFallback" />}
-              </span>
-              <span>{formatDistance(s.distanceM)}</span>
-              <span className="flex items-center gap-1.5">
-                <TrendingUp className="size-4 text-ember-400" />
-                {Math.round(s.ascent)} m
-              </span>
-              <span className="flex items-center gap-1.5">
-                <TrendingDown className="size-4 text-sage-400" />
-                {Math.round(s.descent)} m
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Mountain className="size-4 text-sand-100/50" />
-                {Math.round(s.max)} m
-              </span>
+        {series.length > 3 ? (
+          // Many tracks in one day: a scannable day-total + one tappable row per
+          // track (chart expands on demand) instead of a tall stack of charts.
+          <CondensedElevation
+            items={series.map(({ t, s }) => ({ id: t.id, name: t.name, series: s }))}
+          />
+        ) : (
+          <div className="space-y-6">
+          {series.map(({ t, s }) => (
+            <div
+              key={t.id}
+              className="rounded-3xl bg-ink-900 p-5 ring-1 ring-white/5"
+            >
+              <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-sand-100/70">
+                <span className="font-medium text-sand-50">
+                  {t.name || <T k="post.routeFallback" />}
+                </span>
+                <span>{formatDistance(s.distanceM)}</span>
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp className="size-4 text-ember-400" />
+                  {Math.round(s.ascent)} m
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <TrendingDown className="size-4 text-sage-400" />
+                  {Math.round(s.descent)} m
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Mountain className="size-4 text-sand-100/50" />
+                  {Math.round(s.max)} m
+                </span>
+              </div>
+              <ElevationChart series={s} />
             </div>
-            <ElevationChart series={s} />
+          ))}
           </div>
-        ))}
-        </div>
+        )}
       </div>
     </section>
   );
