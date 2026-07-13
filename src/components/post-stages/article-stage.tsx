@@ -79,12 +79,16 @@ export function ArticleStage({
             <HelpCircle className="size-3.5" /> {t("admin.editor.helpLabel")}
           </button>
         </div>
+        {/* Pinned to the top of the viewport while composing, so the insert
+            strip stays reachable without scrolling back up the article. `top-20`
+            clears the fixed admin nav (~64px); z-30 keeps it under that nav. */}
         <InsertPalette
           photos={photos}
           interactions={interactions}
           body={body}
           onInsertPhoto={(id) => editorRef.current?.insertToken(`[photo:${id}]`)}
           onInsertInteraction={(id) => editorRef.current?.insertToken(`[ask:${id}]`)}
+          className="sticky top-20 z-30 bg-ink-900/95 shadow-lg shadow-ink-950/40 backdrop-blur"
         />
         <InlineEditor
           ref={editorRef}

@@ -12,6 +12,7 @@ export function PostSection({
   open,
   onToggle,
   accent = false,
+  overflowVisible = false,
   className,
   children,
 }: {
@@ -21,13 +22,18 @@ export function PostSection({
   open: boolean;
   onToggle: () => void;
   accent?: boolean;
+  // Drop the corner-clipping `overflow-hidden` so a `position: sticky` child (an
+  // in-section pinned toolbar) can stick to the viewport instead of being trapped
+  // in this box. Safe only when the content is inset from the rounded corners.
+  overflowVisible?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border",
+        "rounded-2xl border",
+        overflowVisible ? undefined : "overflow-hidden",
         accent ? "border-ember-500/40 bg-ember-500/5" : "border-white/10 bg-ink-900/40",
         className,
       )}

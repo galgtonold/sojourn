@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Check, ImagePlus, ListChecks, MessageCircleQuestion } from "lucide-react";
 import type { Photo } from "@/lib/types";
 import type { EditorInteraction } from "@/lib/story-editor";
-import { optimizedSrc } from "@/lib/utils";
+import { cn, optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { referencedPhotoIds } from "@/lib/rich";
 import { useT } from "@/components/i18n";
@@ -17,12 +17,14 @@ export function InsertPalette({
   body,
   onInsertPhoto,
   onInsertInteraction,
+  className,
 }: {
   photos: Photo[];
   interactions: EditorInteraction[];
   body: string;
   onInsertPhoto: (id: string) => void;
   onInsertInteraction: (id: string) => void;
+  className?: string;
 }) {
   const t = useT();
   const usedPhotos = useMemo(() => referencedPhotoIds(body, photos), [body, photos]);
@@ -34,7 +36,7 @@ export function InsertPalette({
   if (photos.length === 0 && interactions.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-ink-800/40 p-3">
+    <div className={cn("rounded-xl border border-white/10 bg-ink-800/40 p-3", className)}>
       <p className="mb-2 flex items-center gap-1.5 text-xs text-sand-100/60">
         <ImagePlus className="size-3.5 text-ember-400" />
         {t("admin.editor.insertBar")}

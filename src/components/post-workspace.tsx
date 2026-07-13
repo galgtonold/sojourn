@@ -316,7 +316,7 @@ export function PostWorkspace({
           />
         </PostSection>
       )}
-      <PostSection title={t("admin.editor.stage.article")} icon={<FileText className="size-4" />} summary={post.body.trim() ? t("admin.editor.status.draft", { n: readMin }) : t("admin.editor.status.empty")} open={open.article} onToggle={() => toggle("article")}>
+      <PostSection title={t("admin.editor.stage.article")} icon={<FileText className="size-4" />} summary={post.body.trim() ? t("admin.editor.status.draft", { n: readMin }) : t("admin.editor.status.empty")} open={open.article} onToggle={() => toggle("article")} overflowVisible>
         <ArticleStage
           title={post.title}
           body={post.body}
