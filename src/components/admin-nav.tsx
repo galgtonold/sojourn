@@ -14,6 +14,7 @@ const ITEMS: Item[] = [
   { href: "/admin", label: "admin.dashboard", exact: true },
   { href: "/admin/posts", label: "admin.nav.stories" },
   { href: "/admin/comments", label: "admin.nav.comments" },
+  { href: "/admin/interactions", label: "admin.nav.interactions" },
   { href: "/admin/members", label: "admin.members.link", owner: true },
   { href: "/admin/ai-usage", label: "admin.usage.link", owner: true },
   { href: "/admin/settings", label: "admin.settings.link", owner: true },
