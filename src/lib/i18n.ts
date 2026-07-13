@@ -471,6 +471,8 @@ const en = {
   "admin.ai.stop": "Stop",
   "admin.ai.answersHint":
     "Answer a few questions, then add them to your context or generate:",
+  "admin.ai.questions.gaps": "Fill the gaps",
+  "admin.ai.questions.sparks": "For inspiration",
   "admin.ai.generate": "Generate draft",
   "admin.ai.skip": "Skip & generate",
   "admin.ai.generating": "Writing…",
@@ -1110,6 +1112,8 @@ const de: Dict = {
   "admin.ai.stop": "Stopp",
   "admin.ai.answersHint":
     "Beantworte ein paar Fragen, dann in den Kontext übernehmen oder erstellen:",
+  "admin.ai.questions.gaps": "Lücken füllen",
+  "admin.ai.questions.sparks": "Zum Weiterdenken",
   "admin.ai.generate": "Entwurf erstellen",
   "admin.ai.skip": "Überspringen & erstellen",
   "admin.ai.generating": "Schreibe…",

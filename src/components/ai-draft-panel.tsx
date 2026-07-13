@@ -221,7 +221,10 @@ export function AiDraftPanel({
     },
     [postId, onNotesDirty],
   );
-  const [questions, setQuestions] = useState<string[]>([]);
+  // A clarifying question the model asks before writing: a "gap" (a concrete fact
+  // the article needs) or a "spark" (open-ended colour that can expand the piece).
+  type SuggestedQuestion = { text: string; kind: "gap" | "spark" };
+  const [questions, setQuestions] = useState<SuggestedQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [phase, setPhase] = useState<
     "idle" | "asking" | "answering" | "running" | "done"
@@ -309,7 +312,7 @@ export function AiDraftPanel({
   // generate.
   async function addToContext() {
     const filled = questions
-      .map((q, i) => ({ q, a: (answers[i] ?? "").trim() }))
+      .map((q, i) => ({ q: q.text, a: (answers[i] ?? "").trim() }))
       .filter((x) => x.a);
     if (filled.length) {
       const block = filled.map((x) => `F: ${x.q}\nA: ${x.a}`).join("\n\n");
@@ -350,7 +353,7 @@ export function AiDraftPanel({
         }
       }
       beginStep(t("admin.ai.step.questions"));
-      const { questions } = await postJson<{ questions: string[] }>(
+      const { questions } = await postJson<{ questions: SuggestedQuestion[] }>(
         "/api/admin/ai/questions",
         { postId, notes, lang },
         ac.signal,
@@ -402,7 +405,7 @@ export function AiDraftPanel({
     } catch {
       /* fall back to the saved draft */
     }
-    const qa = questions.map((q, i) => ({ question: q, answer: answers[i] ?? "" }));
+    const qa = questions.map((q, i) => ({ question: q.text, answer: answers[i] ?? "" }));
     try {
       // 1. Enrich photos in batches until none remain (best effort — captions
       //    can be filled later, so a hiccup here shouldn't block the draft).
@@ -739,20 +742,38 @@ export function AiDraftPanel({
       )}
 
       {phase === "answering" && questions.length > 0 && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-4">
           <p className="text-sm text-sand-100/60">{t("admin.ai.answersHint")}</p>
-          {questions.map((q, i) => (
-            <div key={i}>
-              <label className="text-sm text-sand-100/80">{q}</label>
-              <input
-                value={answers[i] ?? ""}
-                onChange={(e) =>
-                  setAnswers((a) => ({ ...a, [i]: e.target.value }))
-                }
-                className="mt-1 w-full rounded-lg border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
-              />
-            </div>
-          ))}
+          {(["gap", "spark"] as const).map((kind) => {
+            // Keep each question's original index so answers[i] stays aligned.
+            const items = questions
+              .map((q, i) => ({ q, i }))
+              .filter(({ q }) => q.kind === kind);
+            if (items.length === 0) return null;
+            return (
+              <div key={kind} className="space-y-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-sand-100/45">
+                  {t(
+                    kind === "gap"
+                      ? "admin.ai.questions.gaps"
+                      : "admin.ai.questions.sparks",
+                  )}
+                </p>
+                {items.map(({ q, i }) => (
+                  <div key={i}>
+                    <label className="text-sm text-sand-100/80">{q.text}</label>
+                    <input
+                      value={answers[i] ?? ""}
+                      onChange={(e) =>
+                        setAnswers((a) => ({ ...a, [i]: e.target.value }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-ink-800 px-3 py-2 text-sm outline-none focus:border-ember-400"
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
 

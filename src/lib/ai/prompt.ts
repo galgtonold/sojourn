@@ -119,3 +119,85 @@ export function continuityBlock(brief: string): string {
     b
   );
 }
+
+// A clarifying question the model asks the author before writing. Two kinds:
+// - "gap": a concrete fact the planned post will need but the material lacks.
+// - "spark": an open-ended prompt for colour that could take the post somewhere
+//   new (mood, an anecdote, a motivation, the moments between the photos).
+export type SuggestedQuestion = { text: string; kind: "gap" | "spark" };
+
+// The questions prompt: the model first (silently) sketches what a vivid post
+// from this material would cover, then asks in the two kinds above — so the
+// questions are anchored to what the article actually wants to say, while the
+// sparks keep room to surface an angle the author hadn't considered. Weather and
+// exact location are excluded (auto-filled from weather/GPS data).
+export function questionsPrompt(
+  dossierText: string,
+  styleGuide: string,
+  lang: Lang,
+): string {
+  if (lang === "en") {
+    return (
+      "Write ALL of your questions in ENGLISH. The author's style guide below may " +
+      "be in German — match its tone and personality, but the questions themselves " +
+      "MUST be written in English.\n\n" +
+      `Here is the material for a planned post:\n\n${dossierText}\n\n` +
+      `The author's writing style (the style the post will be written in):\n${styleGuide}\n\n` +
+      "First, silently sketch what a vivid, personal post in exactly this style " +
+      "would want to cover from this material. Then ask 4–6 short, concrete " +
+      "questions of TWO kinds:\n" +
+      '- "gap": a fact the planned post will need but the material does NOT reveal ' +
+      "(e.g. who came along, what happened in a moment no photo shows, the " +
+      "motivation). Aim for 3–4 of these.\n" +
+      '- "spark": an open-ended prompt for colour that could take the post somewhere ' +
+      "new — a feeling, an anecdote, the mood, a motivation, the moments in between. " +
+      "Aim for 1–2 of these, and always include at least one.\n" +
+      "Use the photo descriptions and ask specifically about what is NOT visible in " +
+      "the photos — backgrounds, feelings, the moments in between — not the obviously " +
+      "visible. Do NOT ask about the weather or the exact location: both are filled " +
+      "in automatically from weather and route/GPS data.\n" +
+      'Reply ONLY as JSON: {"questions": [{"text": "…", "kind": "gap"|"spark"}, …]}.'
+    );
+  }
+  return (
+    `Hier ist das Material für einen geplanten Beitrag:\n\n${dossierText}\n\n` +
+    `So schreibt der Autor (Stil des späteren Beitrags):\n${styleGuide}\n\n` +
+    "Skizziere zunächst still, was ein lebendiger, persönlicher Beitrag in genau " +
+    "diesem Stil aus diesem Material erzählen würde. Stelle dann 4–6 kurze, " +
+    "konkrete Fragen in ZWEI Arten:\n" +
+    '- "gap": eine Tatsache, die der geplante Beitrag braucht, die aber aus dem ' +
+    "Material NICHT hervorgeht (z. B. Begleitung, was in einem Moment ohne Foto " +
+    "geschah, der Beweggrund). Ziel: 3–4 davon.\n" +
+    '- "spark": eine offene Frage nach Farbe, die den Beitrag irgendwohin Neues ' +
+    "tragen könnte — ein Gefühl, eine Anekdote, die Stimmung, ein Motiv, die " +
+    "Momente dazwischen. Ziel: 1–2 davon, mindestens eine.\n" +
+    "Nutze die Fotobeschreibungen und frage gezielt nach dem, was man auf den " +
+    "Fotos NICHT sieht — Hintergründe, Gefühle, Momente dazwischen —, nicht nach " +
+    "offensichtlich Sichtbarem. Frage NICHT nach dem Wetter und NICHT nach dem " +
+    "genauen Ort: beide werden automatisch aus Wetter- und Routen-/GPS-Daten " +
+    "ergänzt.\n" +
+    'Antworte ausschließlich als JSON: {"questions": [{"text": "…", "kind": "gap"|"spark"}, …]}.'
+  );
+}
+
+// Coerce the model's questions payload into typed suggestions: keep only
+// non-empty texts, default an unknown/missing kind to "gap", cap at 6.
+export function normalizeQuestions(raw: unknown): SuggestedQuestion[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: SuggestedQuestion[] = [];
+  for (const item of arr) {
+    let text = "";
+    let kind: "gap" | "spark" = "gap";
+    if (typeof item === "string") {
+      text = item;
+    } else if (item && typeof item === "object") {
+      const o = item as { text?: unknown; kind?: unknown };
+      if (typeof o.text === "string") text = o.text;
+      if (o.kind === "spark") kind = "spark";
+    }
+    text = text.trim();
+    if (text) out.push({ text, kind });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
