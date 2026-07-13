@@ -213,6 +213,64 @@ describe("buildDossier", () => {
     expect(d.date).toBe("2026-05-20"); // from the track's start time
   });
 
+  it("annotates a photo with the track leg and km it was taken on", async () => {
+    const ms = (s: string) => Date.parse(s);
+    const supabase = client({
+      posts: [{ id: "p1", title: "T", location: "X", ai_notes: null }],
+      photos: [
+        {
+          id: "ph1",
+          post_id: "p1",
+          taken_at: "2026-07-11T10:03:00Z", // mid-hike
+          lat: 57.49,
+          lng: 12.103,
+          place_name: "Särö",
+          ai_description: "x",
+          sort_order: 0,
+        },
+      ],
+      tracks: [
+        {
+          post_id: "p1",
+          name: "Wanderung",
+          distance_m: 500,
+          started_at: "2026-07-11T10:00:00Z",
+          geojson: {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                properties: {
+                  times: [
+                    ms("2026-07-11T10:00:00Z"),
+                    ms("2026-07-11T10:02:00Z"),
+                    ms("2026-07-11T10:04:00Z"),
+                    ms("2026-07-11T10:06:00Z"),
+                    ms("2026-07-11T10:08:00Z"),
+                  ],
+                },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [12.1, 57.49],
+                    [12.102, 57.49],
+                    [12.104, 57.49],
+                    [12.106, 57.49],
+                    [12.108, 57.49],
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const d = await buildDossier(supabase, "p1");
+    expect(d.text).toContain("der Route »Wanderung«");
+    expect(d.text).toContain("km 0.2 von 0.5");
+    expect(d.text).toContain("ordne solche Fotos der richtigen Etappe zu");
+  });
+
   it("works with no trip, tracks or notes", async () => {
     const supabase = client({
       posts: [{ id: "p1", title: "T", location: null, ai_notes: null }],

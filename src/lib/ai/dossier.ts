@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { reverseGeocode, reverseGeocodeArea } from "@/lib/ai/geocode";
 import { dailyWeather } from "@/lib/ai/weather";
 import { orderPhotosForNarrative } from "@/lib/photo-order";
+import { matchPhotosToTracks } from "@/lib/photo-track-match";
 
 export type DossierPhoto = {
   id: string;
@@ -244,22 +245,45 @@ export async function buildDossier(
     }
   }
 
+  // Attribute each photo to the recorded track leg it was taken on (by capture
+  // time, falling back to proximity), so the model can place a photo on the right
+  // route instead of guessing. Pure/offline — no extra queries.
+  const trackMatches = matchPhotosToTracks(
+    photos.map((p) => ({ id: p.id, takenAt: p.taken_at, lat: p.lat, lng: p.lng })),
+    (tracks ?? []).map((tr) => ({
+      name: tr.name,
+      geojson: tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null,
+      distanceM: tr.distance_m,
+    })),
+  );
+
   lines.push(
     "",
     manualOrder
       ? "Fotos in der vom Autor gewählten Reihenfolge (mit echten IDs). Der Ort ist der Kamera-Standort, nicht zwingend das Motiv:"
       : "Fotos in zeitlicher Reihenfolge (mit echten IDs). Der Ort ist der Kamera-Standort, nicht zwingend das Motiv:",
   );
+  if (trackMatches.some(Boolean))
+    lines.push(
+      "Wo bekannt, steht bei einem Foto, auf welcher Route und ungefähr bei " +
+        "welchem Kilometer es entstand — ordne solche Fotos der richtigen Etappe zu.",
+    );
   photos.forEach((p, i) => {
     // The full description can be many paragraphs (it powers search); the
     // outline only needs a gist, so trim it to keep the prompt fast.
     const desc = p.ai_description
       ? p.ai_description.replace(/\s+/g, " ").trim().slice(0, 280)
       : "(keine Beschreibung)";
+    const m = trackMatches[i];
+    const trackPart = m
+      ? `${m.via === "time" ? "während" : "auf"} der Route »${m.trackName ?? "Route"}« ` +
+        `(ca. km ${m.atKm.toFixed(1)} von ${m.totalKm.toFixed(1)})`
+      : null;
     const parts = [
       `${i + 1}. [photo:${p.id}]`,
       fmtTime(p.taken_at),
       p.place_name ?? (p.lat != null ? `${p.lat.toFixed(4)},${p.lng}` : null),
+      trackPart,
       desc,
     ].filter(Boolean);
     lines.push(parts.join(" — "));
