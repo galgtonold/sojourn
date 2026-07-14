@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -32,6 +32,46 @@ export function Gallery({ photos }: { photos: Photo[] }) {
       ),
     [photos.length],
   );
+
+  // Swipe-to-navigate on touch. Track the start point; on release, a mostly-
+  // horizontal drag past the threshold pages next/prev. `swiped` suppresses the
+  // synthetic click that follows the gesture so a swipe doesn't also close the
+  // viewer. A touch that starts on the <video> is left to its native controls.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    swiped.current = false;
+    if ((e.target as HTMLElement).closest("video")) {
+      touchStart.current = null;
+      return;
+    }
+    const p = e.touches[0];
+    touchStart.current = { x: p.clientX, y: p.clientY };
+  }, []);
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStart.current;
+      touchStart.current = null;
+      if (!start || photos.length < 2) return;
+      const p = e.changedTouches[0];
+      const dx = p.clientX - start.x;
+      const dy = p.clientY - start.y;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swiped.current = true;
+        if (dx < 0) next();
+        else prev();
+      }
+    },
+    [next, prev, photos.length],
+  );
+  // Backdrop tap closes — unless the tap is the tail of a swipe we just handled.
+  const onBackdrop = useCallback(() => {
+    if (swiped.current) {
+      swiped.current = false;
+      return;
+    }
+    close();
+  }, [close]);
 
   useEffect(() => {
     if (open === null) return;
@@ -111,7 +151,9 @@ export function Gallery({ photos }: { photos: Photo[] }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={close}
+            onClick={onBackdrop}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
           >
             <button
               onClick={close}
