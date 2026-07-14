@@ -4,6 +4,7 @@ import {
   allMasksPresent,
   restoreProtectedTokens,
   stripWrappingCodeFence,
+  homogenizeWithMasking,
 } from "@/lib/ai/token-mask";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -76,6 +77,72 @@ describe("maskProtectedTokens", () => {
     expect(tokens).toEqual([]);
     expect(allMasksPresent(masked, tokens)).toBe(true);
     expect(restoreProtectedTokens(masked, tokens)).toBe(body);
+  });
+});
+
+describe("homogenizeWithMasking", () => {
+  const body = `Eins [photo:${A}]\n\nZwei [photo:${B}]`;
+
+  it("restores the protected tokens when the rewrite keeps every sentinel", async () => {
+    const res = await homogenizeWithMasking(body, async (masked) =>
+      masked.replace("Eins", "Zuerst").replace("Zwei", "Danach"),
+    );
+    expect(res.fellBack).toBe(false);
+    expect(res.body).toBe(`Zuerst [photo:${A}]\n\nDanach [photo:${B}]`);
+  });
+
+  it("strips a wrapping code fence from the model output before checking", async () => {
+    const res = await homogenizeWithMasking(
+      body,
+      async (masked) => "```markdown\n" + masked + "\n```",
+    );
+    expect(res.fellBack).toBe(false);
+    expect(res.body).toBe(body);
+  });
+
+  it("falls back to the raw body when a sentinel is dropped", async () => {
+    const res = await homogenizeWithMasking(body, async (masked) =>
+      masked.replace("[[KEEP-1]]", ""),
+    );
+    expect(res.fellBack).toBe(true);
+    expect(res.body).toBe(body);
+  });
+
+  it("falls back when the model returns an empty result", async () => {
+    const res = await homogenizeWithMasking(body, async () => "");
+    expect(res.fellBack).toBe(true);
+    expect(res.body).toBe(body);
+  });
+
+  it("falls back on a model error", async () => {
+    const res = await homogenizeWithMasking(body, async () => {
+      throw new Error("boom");
+    });
+    expect(res.fellBack).toBe(true);
+    expect(res.body).toBe(body);
+  });
+
+  it("rethrows when rethrowIf matches (e.g. an abort)", async () => {
+    const abort = new DOMException("aborted", "AbortError");
+    await expect(
+      homogenizeWithMasking(
+        body,
+        async () => {
+          throw abort;
+        },
+        { rethrowIf: (e) => e instanceof DOMException && e.name === "AbortError" },
+      ),
+    ).rejects.toBe(abort);
+  });
+
+  it("skips the model call entirely for an empty body", async () => {
+    let called = false;
+    const res = await homogenizeWithMasking("", async () => {
+      called = true;
+      return "x";
+    });
+    expect(called).toBe(false);
+    expect(res).toEqual({ body: "", fellBack: false });
   });
 });
 

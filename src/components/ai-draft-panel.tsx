@@ -15,12 +15,7 @@ import { cn } from "@/lib/utils";
 import { invalidPhotoRefs } from "@/lib/photo-refs";
 import { useDictation, appendTranscript } from "@/lib/use-dictation";
 import type { ManagedInteraction } from "@/components/interaction-manager";
-import {
-  maskProtectedTokens,
-  allMasksPresent,
-  restoreProtectedTokens,
-  stripWrappingCodeFence,
-} from "@/lib/ai/token-mask";
+import { homogenizeWithMasking } from "@/lib/ai/token-mask";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -562,27 +557,25 @@ export function AiDraftPanel({
       // True when homogenize ran but its result was rejected (a dropped/duplicated
       // sentinel) or it errored — so the raw concatenation shipped and the seams
       // weren't smoothed. Surfaced as a warning so a discarded polish is never
-      // silent.
+      // silent. The mask → call → verify → restore-or-fallback safety property
+      // lives in homogenizeWithMasking; here we only supply the model call.
       let homogenizeFellBack = false;
       if (parts.length >= 2) {
         beginStep(t("admin.ai.step.homogenize"), 0.8);
-        try {
-          const { masked, tokens } = maskProtectedTokens(rawBody);
-          const { jobId } = await postJson<{ jobId: string }>(
-            "/api/admin/ai/homogenize",
-            { postId, lang, body: masked },
-            signal,
-          );
-          const out = stripWrappingCodeFence(await pollJob(jobId, signal));
-          if (out && allMasksPresent(out, tokens)) {
-            body = restoreProtectedTokens(out, tokens);
-          } else {
-            homogenizeFellBack = true; // mask check failed → kept raw concat
-          }
-        } catch (e) {
-          if (isAbort(e)) throw e;
-          homogenizeFellBack = true; // error → kept the raw concatenation
-        }
+        const res = await homogenizeWithMasking(
+          rawBody,
+          async (masked) => {
+            const { jobId } = await postJson<{ jobId: string }>(
+              "/api/admin/ai/homogenize",
+              { postId, lang, body: masked },
+              signal,
+            );
+            return pollJob(jobId, signal);
+          },
+          { rethrowIf: isAbort },
+        );
+        body = res.body;
+        homogenizeFellBack = res.fellBack;
       }
 
       // 5. Caption POLISH (best effort): now the prose exists, refine each drafted

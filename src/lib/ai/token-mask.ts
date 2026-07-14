@@ -79,3 +79,35 @@ export function restoreProtectedTokens(masked: string, tokens: string[]): string
   }
   return out;
 }
+
+/**
+ * The safe homogenize composition: mask the protected spans, hand the masked
+ * text to `homogenize`, and accept the rewrite ONLY if every sentinel survived.
+ * A dropped/duplicated sentinel, an empty result, or a thrown error all fall
+ * back to the raw body, so a full-body rewrite can never corrupt a photo/quiz
+ * token or lose one — the load-bearing safety property of this module. Returns
+ * the final body and whether the polish was discarded (`fellBack`).
+ *
+ * The model call is injected so the composition is testable without a network.
+ * `rethrowIf` lets the caller pass an abort straight through instead of treating
+ * it as a fallback (the whole run should stop, not silently keep the raw concat).
+ */
+export async function homogenizeWithMasking(
+  rawBody: string,
+  homogenize: (masked: string) => Promise<string>,
+  opts?: { rethrowIf?: (e: unknown) => boolean },
+): Promise<{ body: string; fellBack: boolean }> {
+  if (!rawBody) return { body: rawBody, fellBack: false };
+  const { masked, tokens } = maskProtectedTokens(rawBody);
+  let out: string;
+  try {
+    out = stripWrappingCodeFence(await homogenize(masked));
+  } catch (e) {
+    if (opts?.rethrowIf?.(e)) throw e;
+    return { body: rawBody, fellBack: true };
+  }
+  if (out && allMasksPresent(out, tokens)) {
+    return { body: restoreProtectedTokens(out, tokens), fellBack: false };
+  }
+  return { body: rawBody, fellBack: true };
+}
