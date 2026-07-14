@@ -13,27 +13,20 @@ import {
   normalizeLocale,
   translate,
   type DictKey,
-  type LangPair,
   type Locale,
 } from "@/lib/i18n";
+import {
+  EMPTY_BRAND_VALUES,
+  type BrandValues,
+} from "@/lib/branding-fields";
 import { cn, formatDate } from "@/lib/utils";
 import { env } from "@/lib/env";
 
 type Vars = Record<string, string | number>;
 
 /** Editable, per-language branding copy. Empty in a language → localized default. */
-export type Brand = {
-  tagline: LangPair;
-  heroLead: LangPair;
-  heroAccent: LangPair;
-  kicker: LangPair;
-};
-const EMPTY_BRAND: Brand = {
-  tagline: { de: "", en: "" },
-  heroLead: { de: "", en: "" },
-  heroAccent: { de: "", en: "" },
-  kicker: { de: "", en: "" },
-};
+export type Brand = BrandValues;
+const EMPTY_BRAND: Brand = EMPTY_BRAND_VALUES;
 
 type Ctx = {
   locale: Locale;

@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { ownerRoute } from "@/lib/api/owner-route";
 import { BRANDING_TAG } from "@/lib/branding";
+import { BRANDING_COLUMNS } from "@/lib/branding-fields";
 
 // Partial: the writing-style form sends `writing_style`; the branding form sends
 // `site_name` / `tagline` / …. Update only what's present.
@@ -20,29 +21,17 @@ const schema = z.object({
   kicker_en: brand,
 });
 
-const BRAND_KEYS = [
-  "site_name",
-  "tagline_de",
-  "tagline_en",
-  "hero_lead_de",
-  "hero_lead_en",
-  "hero_accent_de",
-  "hero_accent_en",
-  "kicker_de",
-  "kicker_en",
-] as const;
-
 // Owner-only: persist the blog-wide writing-style guide + branding. RLS has no
 // client write policy, so the update goes through the service role.
 export const PUT = ownerRoute(schema, async ({ admin, input }) => {
   const update: Record<string, string> = {};
   if (input.writing_style !== undefined) update.writing_style = input.writing_style;
-  for (const k of BRAND_KEYS) {
+  for (const k of BRANDING_COLUMNS) {
     if (input[k] !== undefined) update[k] = input[k]!.trim();
   }
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "invalid" }, { status: 400 });
-  const brandingChanged = BRAND_KEYS.some((k) => k in update);
+  const brandingChanged = BRANDING_COLUMNS.some((k) => k in update);
 
   const { error } = await admin.from("site_settings").update(update).eq("id", 1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

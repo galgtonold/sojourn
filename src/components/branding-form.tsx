@@ -3,15 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { useT } from "@/components/i18n";
-import { LOCALES, LOCALE_LABELS, type LangPair, type Locale } from "@/lib/i18n";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n";
+import { flattenBranding, type BrandValues } from "@/lib/branding-fields";
 import { cn } from "@/lib/utils";
-
-type BrandValues = {
-  tagline: LangPair;
-  heroLead: LangPair;
-  heroAccent: LangPair;
-  kicker: LangPair;
-};
 
 /**
  * Edits the site's name (single) and its per-language copy: the home hero intro
@@ -57,17 +51,7 @@ export function BrandingForm({
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          site_name: name,
-          tagline_de: vals.tagline.de,
-          tagline_en: vals.tagline.en,
-          hero_lead_de: vals.heroLead.de,
-          hero_lead_en: vals.heroLead.en,
-          hero_accent_de: vals.heroAccent.de,
-          hero_accent_en: vals.heroAccent.en,
-          kicker_de: vals.kicker.de,
-          kicker_en: vals.kicker.en,
-        }),
+        body: JSON.stringify(flattenBranding(name, vals)),
       });
       if (!res.ok) throw new Error("failed");
       setSaved(true);
