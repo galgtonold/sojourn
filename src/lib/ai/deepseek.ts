@@ -95,20 +95,41 @@ async function singleCompletion(
   return { content: data?.choices?.[0]?.message?.content ?? "", finishReason };
 }
 
-export async function deepseekChat(opts: ChatOpts): Promise<string> {
-  if (!isAiConfigured) throw new Error("AI is not configured");
+export type Completion = { content: string; finishReason: string | null };
 
-  // JSON-mode responses occasionally come back truncated / not valid JSON.
-  // Rather than fail the whole generation on a transient blip, retry a couple
-  // of times before giving up.
-  const json = Boolean(opts.json);
-  const attempts = json ? 3 : 1;
+const REPAIR_SYSTEM =
+  "You repair malformed JSON. Output ONLY one valid, complete, minified JSON " +
+  "object — no prose, no markdown, no code fences.";
+
+/**
+ * The JSON retry + repair decision loop — transport-injected so the retry-vs-
+ * repair-vs-give-up decisions (and *which* failure to record) are testable
+ * without a network. Runs up to `attempts` completions, retrying ONLY a 5xx with
+ * attempts remaining (a client error is recorded via `onFail` then rethrown);
+ * returns as soon as an output parses. If none do, it runs ONE targeted repair
+ * pass (temperature 0, a repair prompt) and, failing that, records the reason
+ * (`length` → truncated at the cap; otherwise malformed) and returns the raw
+ * text for the caller's parse to throw on. `complete`'s `overrides.repair` marks
+ * the repair round so the caller can meter it separately.
+ */
+export async function runJsonWithRepair(opts: {
+  messages: ChatMessage[];
+  attempts: number;
+  maxTokens: number;
+  isParseable: (raw: string) => boolean;
+  complete: (
+    messages: ChatMessage[],
+    overrides: { temperature?: number; maxTokens?: number; repair?: boolean },
+  ) => Promise<Completion>;
+  onFail: (f: { error: string; finishReason?: string | null }) => Promise<void>;
+}): Promise<string> {
+  const { messages, attempts, maxTokens, isParseable, complete, onFail } = opts;
   let last = "";
   let lastFinish: string | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const r = await singleCompletion(opts, opts.messages);
+      const r = await complete(messages, {});
       last = r.content;
       lastFinish = r.finishReason;
     } catch (e) {
@@ -117,43 +138,22 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
       if (attempt < attempts && status >= 500) continue;
       // About to give up on this call — persist why (a thrown error records no
       // usage row, so this is the only trace).
-      if (opts.meta) {
-        await recordAiFailure({
-          operation: opts.meta.operation,
-          model: opts.model,
-          postId: opts.meta.postId,
-          userId: opts.meta.userId,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
+      await onFail({ error: e instanceof Error ? e.message : String(e) });
       throw e;
     }
-    if (!json || isParseableJson(last)) return last;
+    if (isParseable(last)) return last;
     // Otherwise loop and try again for a clean JSON object.
   }
 
   // Still not valid JSON after the retries. Run one targeted repair pass: hand
   // the broken text back and ask only for corrected JSON. With fresh tokens at
-  // temperature 0 this reliably fixes the common failures (code fences,
-  // trailing prose, a truncated tail) that a blind reroll tends to reproduce.
-  if (json && last.trim()) {
+  // temperature 0 this reliably fixes the common failures (code fences, trailing
+  // prose, a truncated tail) that a blind reroll tends to reproduce.
+  if (last.trim()) {
     try {
-      const repaired = await singleCompletion(
-        {
-          ...opts,
-          temperature: 0,
-          maxTokens: Math.max(opts.maxTokens ?? 0, 2048),
-          meta: opts.meta
-            ? { ...opts.meta, operation: `${opts.meta.operation}:repair` }
-            : undefined,
-        },
+      const repaired = await complete(
         [
-          {
-            role: "system",
-            content:
-              "You repair malformed JSON. Output ONLY one valid, complete, " +
-              "minified JSON object — no prose, no markdown, no code fences.",
-          },
+          { role: "system", content: REPAIR_SYSTEM },
           {
             role: "user",
             content:
@@ -162,8 +162,9 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
               last,
           },
         ],
+        { temperature: 0, maxTokens: Math.max(maxTokens, 2048), repair: true },
       );
-      if (isParseableJson(repaired.content)) return repaired.content;
+      if (isParseable(repaired.content)) return repaired.content;
       last = repaired.content;
       lastFinish = repaired.finishReason;
     } catch {
@@ -174,21 +175,70 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
   // Give up: the JSON never parsed. Record why (truncated at the cap vs.
   // malformed) so it's diagnosable, then return the raw text — the caller's
   // parse throws, which the UI turns into a friendly message.
-  if (json && opts.meta) {
+  await onFail({
+    finishReason: lastFinish,
+    error:
+      lastFinish === "length"
+        ? `output truncated at the ${maxTokens}-token cap`
+        : "unparseable model JSON after retries + repair",
+  });
+  return last;
+}
+
+export async function deepseekChat(opts: ChatOpts): Promise<string> {
+  if (!isAiConfigured) throw new Error("AI is not configured");
+  const json = Boolean(opts.json);
+
+  // Injected transport: one round trip, applying the repair overrides and a
+  // ":repair" operation suffix so the repair round is metered separately.
+  const complete = (
+    messages: ChatMessage[],
+    overrides: { temperature?: number; maxTokens?: number; repair?: boolean },
+  ): Promise<Completion> =>
+    singleCompletion(
+      {
+        ...opts,
+        temperature: overrides.temperature ?? opts.temperature,
+        maxTokens: overrides.maxTokens ?? opts.maxTokens,
+        meta:
+          opts.meta && overrides.repair
+            ? { ...opts.meta, operation: `${opts.meta.operation}:repair` }
+            : opts.meta,
+      },
+      messages,
+    );
+
+  const onFail = async (f: { error: string; finishReason?: string | null }) => {
+    if (!opts.meta) return;
     await recordAiFailure({
       operation: opts.meta.operation,
       model: opts.model,
       postId: opts.meta.postId,
       userId: opts.meta.userId,
-      finishReason: lastFinish,
-      error:
-        lastFinish === "length"
-          ? `output truncated at the ${opts.maxTokens ?? 4096}-token cap`
-          : "unparseable model JSON after retries + repair",
+      finishReason: f.finishReason,
+      error: f.error,
     });
+  };
+
+  // JSON-mode responses occasionally come back truncated / not valid JSON, so
+  // they get the retry + repair loop; a plain-text call is a single round trip.
+  if (!json) {
+    try {
+      return (await complete(opts.messages, {})).content;
+    } catch (e) {
+      await onFail({ error: e instanceof Error ? e.message : String(e) });
+      throw e;
+    }
   }
 
-  return last;
+  return runJsonWithRepair({
+    messages: opts.messages,
+    attempts: 3,
+    maxTokens: opts.maxTokens ?? 4096,
+    isParseable: isParseableJson,
+    complete,
+    onFail,
+  });
 }
 
 // A JSON-mode call whose parsed object you want. Sets JSON mode, runs the same
