@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Code2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { revalidatePublicPost } from "@/lib/revalidate-client";
+import { buildInteractionPayload, type DraftError } from "@/lib/interaction-draft";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 
@@ -87,24 +88,27 @@ export function InteractionManager({
   }, [editRequest?.nonce]);
 
   async function save() {
-    const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
-    if (!question.trim()) return setError(t("admin.ask.errQuestion"));
-    if (cleanOptions.length < 2) return setError(t("admin.ask.errOptions"));
-    if (kind === "quiz" && correctIndex >= cleanOptions.length)
-      return setError(t("admin.ask.errCorrect"));
+    const result = buildInteractionPayload({
+      kind,
+      question,
+      options,
+      correctIndex,
+      explanation,
+    });
+    if (!result.ok) {
+      const message: Record<DraftError, string> = {
+        question: t("admin.ask.errQuestion"),
+        options: t("admin.ask.errOptions"),
+        correct: t("admin.ask.errCorrect"),
+      };
+      return setError(message[result.error]);
+    }
+    const payload = result.payload;
 
     const supabase = getBrowserSupabase();
     if (!supabase) return setError(t("admin.account.errGeneric"));
     setBusy(true);
     setError(null);
-
-    const payload = {
-      kind,
-      question: question.trim(),
-      options: cleanOptions,
-      correct_index: kind === "quiz" ? correctIndex : null,
-      explanation: kind === "quiz" ? explanation.trim() || null : null,
-    };
 
     if (editingId) {
       const { data, error } = await supabase
