@@ -291,10 +291,25 @@ async function embedQuery(q: string): Promise<number[] | null> {
 
 // Re-fetch full rows by id and restore the fusion ranking the RPC returned (a
 // PostgREST `in(...)` filter does not preserve order).
-function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
+export function orderByIds<T extends { id: string }>(
+  rows: T[],
+  ids: string[],
+): T[] {
   const rank = new Map(ids.map((id, i) => [id, i] as const));
   return [...rows].sort(
     (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),
+  );
+}
+
+// Whether an RPC error means the hybrid-search function simply isn't there (an
+// older deployment without the migration) — in which case falling back to plain
+// full-text is expected and quiet. Any OTHER error is a real failure worth a log.
+export function isMissingFunction(e: unknown): boolean {
+  const err = e as { code?: string; message?: string } | null;
+  return (
+    err?.code === "42883" || // Postgres undefined_function
+    err?.code === "PGRST202" || // PostgREST: function not in the schema cache
+    /could not find the function|does not exist/i.test(err?.message ?? "")
   );
 }
 
@@ -407,49 +422,85 @@ const PHOTO_MAX_DISTANCE = 0.8;
 const POST_MATCH_COUNT = 12;
 const PHOTO_MATCH_COUNT = 12;
 
+type PublicSupabase = ReturnType<typeof getPublicSupabase>;
+
+// The shape both hybrid searches share: embed the query → rank ids via the
+// hybrid RPC → refetch the display rows for those ids → restore the RPC's order.
+// `refetch` returns null on a DB error (→ []); `fallback` runs when the RPC path
+// throws — quietly when the function is merely absent (see isMissingFunction),
+// with a log otherwise, so a real failure is never silently "no results". Search
+// never throws to the caller.
+async function hybridSearch<T extends { id: string }>(opts: {
+  q: string;
+  embedding: number[] | null | undefined;
+  rpc: "search_posts_hybrid" | "search_photos_hybrid";
+  matchCount: number;
+  maxDistance: number;
+  refetch: (supabase: PublicSupabase, ids: string[]) => Promise<T[] | null>;
+  fallback: (supabase: PublicSupabase) => Promise<T[]>;
+}): Promise<T[]> {
+  const supabase = getPublicSupabase();
+  try {
+    const emb =
+      opts.embedding !== undefined ? opts.embedding : await embedQuery(opts.q);
+    const { data: ranked, error } = await supabase.rpc(opts.rpc, {
+      query_text: opts.q,
+      query_embedding: emb ? toVectorLiteral(emb) : null,
+      match_count: opts.matchCount,
+      max_distance: opts.maxDistance,
+      ts_query: buildExpandedTsQuery(opts.q),
+    });
+    if (error) throw error;
+    const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
+    if (ids.length === 0) return [];
+    const rows = await opts.refetch(supabase, ids);
+    if (!rows) return [];
+    return orderByIds(rows, ids);
+  } catch (e) {
+    if (!isMissingFunction(e))
+      console.error(
+        `[search] ${opts.rpc} failed:`,
+        e instanceof Error ? e.message : e,
+      );
+    try {
+      return await opts.fallback(supabase);
+    } catch {
+      return [];
+    }
+  }
+}
+
 export async function searchPosts(
   query: string,
   embedding?: number[] | null,
 ): Promise<PostSummary[]> {
   const q = query.trim();
   if (!q) return [];
-
-  const supabase = getPublicSupabase();
-  try {
-    const emb = embedding !== undefined ? embedding : await embedQuery(q);
-    const { data: ranked, error } = await supabase.rpc("search_posts_hybrid", {
-      query_text: q,
-      query_embedding: emb ? toVectorLiteral(emb) : null,
-      match_count: POST_MATCH_COUNT,
-      max_distance: POST_MAX_DISTANCE,
-      ts_query: buildExpandedTsQuery(q),
-    });
-    if (error) throw error;
-    const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
-    if (ids.length === 0) return [];
-
-    const { data, error: fetchErr } = await supabase
-      .from("posts")
-      .select(SUMMARY_SELECT)
-      .eq("published", true)
-      .in("id", ids);
-    if (fetchErr || !data) return [];
-    return orderByIds(data as PostSummary[], ids);
-  } catch {
+  return hybridSearch<PostSummary>({
+    q,
+    embedding,
+    rpc: "search_posts_hybrid",
+    matchCount: POST_MATCH_COUNT,
+    maxDistance: POST_MAX_DISTANCE,
+    refetch: async (supabase, ids) => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(SUMMARY_SELECT)
+        .eq("published", true)
+        .in("id", ids);
+      return error ? null : (data as PostSummary[] | null);
+    },
     // RPC/migration not present (older deployments): plain full-text search.
-    try {
+    fallback: async (supabase) => {
       const { data, error } = await supabase
         .from("posts")
         .select(SUMMARY_SELECT)
         .eq("published", true)
         .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
         .limit(50);
-      if (error || !data) return [];
-      return data as PostSummary[];
-    } catch {
-      return [];
-    }
-  }
+      return error || !data ? [] : (data as PostSummary[]);
+    },
+  });
 }
 
 // Columns a photo search card needs, plus its parent post for linking. The
@@ -486,31 +537,23 @@ export async function searchPhotos(
 ): Promise<PhotoSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
-
-  const supabase = getPublicSupabase();
-  try {
-    const emb = embedding !== undefined ? embedding : await embedQuery(q);
-    const { data: ranked, error } = await supabase.rpc("search_photos_hybrid", {
-      query_text: q,
-      query_embedding: emb ? toVectorLiteral(emb) : null,
-      match_count: PHOTO_MATCH_COUNT,
-      max_distance: PHOTO_MAX_DISTANCE,
-      ts_query: buildExpandedTsQuery(q),
-    });
-    if (error) throw error;
-    const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
-    if (ids.length === 0) return [];
-
-    const { data, error: fetchErr } = await supabase
-      .from("photos")
-      .select(PHOTO_SEARCH_SELECT)
-      .eq("media_type", "image")
-      .in("id", ids);
-    if (fetchErr || !data) return [];
-    return orderByIds(data.map(hydratePhotoResult), ids);
-  } catch {
-    return [];
-  }
+  return hybridSearch<PhotoSearchResult>({
+    q,
+    embedding,
+    rpc: "search_photos_hybrid",
+    matchCount: PHOTO_MATCH_COUNT,
+    maxDistance: PHOTO_MAX_DISTANCE,
+    refetch: async (supabase, ids) => {
+      const { data, error } = await supabase
+        .from("photos")
+        .select(PHOTO_SEARCH_SELECT)
+        .eq("media_type", "image")
+        .in("id", ids);
+      return error || !data ? null : data.map(hydratePhotoResult);
+    },
+    // No older-deployment full-text fallback for photos — just no results.
+    fallback: async () => [],
+  });
 }
 
 // Combined hybrid search over stories AND photos. Embeds the query ONCE and
