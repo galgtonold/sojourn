@@ -4,6 +4,8 @@ import {
   orderByGallery,
   resolvePhotoOrder,
   orderPhotosForNarrative,
+  nextSortOrder,
+  reconcilePhotoOrder,
 } from "@/lib/photo-order";
 
 const p = (
@@ -144,5 +146,60 @@ describe("orderPhotosForNarrative", () => {
       "early-drag-second",
       "late-drag-first",
     ]);
+  });
+});
+
+describe("nextSortOrder", () => {
+  it("returns one past the highest sort_order", () => {
+    expect(nextSortOrder([{ sort_order: 0 }, { sort_order: 4 }, { sort_order: 2 }])).toBe(5);
+  });
+
+  it("returns 0 for an empty gallery", () => {
+    expect(nextSortOrder([])).toBe(0);
+  });
+
+  it("treats a null/missing sort_order as -1 so the first append lands at 0", () => {
+    expect(nextSortOrder([{ sort_order: null }, {}])).toBe(0);
+  });
+
+  it("does not use the count (which would collide when a slot is skipped)", () => {
+    // 2 photos but the max is 9 → next is 10, not 2.
+    expect(nextSortOrder([{ sort_order: 3 }, { sort_order: 9 }])).toBe(10);
+  });
+});
+
+describe("reconcilePhotoOrder", () => {
+  const ph = (id: string) => ({ id, url: `u/${id}` });
+
+  it("reorders local state to the server's id order", () => {
+    const local = [ph("a"), ph("b"), ph("c")];
+    expect(reconcilePhotoOrder(local, ["c", "a", "b"]).map((p) => p.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+  });
+
+  it("appends photos the server didn't mention, in their existing order", () => {
+    const local = [ph("a"), ph("b"), ph("c")];
+    // Server only spoke about c and a; b is kept, appended after them.
+    expect(reconcilePhotoOrder(local, ["c", "a"]).map((p) => p.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+  });
+
+  it("ignores ids the server returned that aren't in local state", () => {
+    const local = [ph("a"), ph("b")];
+    expect(reconcilePhotoOrder(local, ["ghost", "b", "a"]).map((p) => p.id)).toEqual([
+      "b",
+      "a",
+    ]);
+  });
+
+  it("preserves the full photo object, not just the id", () => {
+    const local = [ph("a"), ph("b")];
+    expect(reconcilePhotoOrder(local, ["b", "a"])[0]).toEqual({ id: "b", url: "u/b" });
   });
 });

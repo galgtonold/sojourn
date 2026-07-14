@@ -15,7 +15,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { uploadImage, uploadVideo } from "@/lib/upload-client";
-import { mediaKind } from "@/lib/media-kind";
+import { validateUploadFile, uploadResultToRow } from "@/lib/photo-upload";
+import { nextSortOrder, reconcilePhotoOrder } from "@/lib/photo-order";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { geotagPostPhotos } from "@/lib/geotag-photos";
 import { updatePhotoFields } from "@/lib/db/photos-client";
@@ -205,15 +206,7 @@ export function PhotoManager({
 
   // Reorder local state to match an id order coming back from the server.
   function applyOrder(ids: string[]) {
-    setPhotos((ps) => {
-      const byId = new Map(ps.map((p) => [p.id, p]));
-      const next = ids
-        .map((id) => byId.get(id))
-        .filter((p): p is ManagedPhoto => Boolean(p));
-      // Safety: keep any photo the server didn't mention.
-      for (const p of ps) if (!ids.includes(p.id)) next.push(p);
-      return next;
-    });
+    setPhotos((ps) => reconcilePhotoOrder(ps, ids));
   }
 
   // (Re)apply chronological order by capture time; clears the manual flag.
@@ -255,13 +248,12 @@ export function PhotoManager({
     try {
       // Collision-free: start past the current highest sort_order (not the
       // count, which duplicated/skipped values when a slow upload landed late).
-      let order =
-        photos.reduce((m, p) => Math.max(m, p.sort_order ?? -1), -1) + 1;
+      let order = nextSortOrder(photos);
       const added: ManagedPhoto[] = [];
       const failed: string[] = [];
       for (const file of list) {
-        const kind = mediaKind(file.type);
-        if (kind === null || (kind === "video" && file.size > 52428800)) {
+        const check = validateUploadFile(file);
+        if (!check.ok) {
           failed.push(file.name);
           setProgress((pr) => (pr ? { ...pr, done: pr.done + 1 } : pr));
           continue;
@@ -271,27 +263,12 @@ export function PhotoManager({
         // selection — the good ones still upload and we list which didn't.
         try {
           const res =
-            kind === "video"
+            check.kind === "video"
               ? await uploadVideo(file, postId)
               : await uploadImage(file, postId);
           const { data, error } = await supabase
             .from("photos")
-            .insert({
-              post_id: postId,
-              url: res.url,
-              storage_path: res.path,
-              media_type: res.mediaType,
-              poster_url: res.posterUrl,
-              poster_path: res.posterPath,
-              lat: res.lat,
-              lng: res.lng,
-              taken_at: res.takenAt,
-              taken_at_offset_min: res.takenOffsetMin,
-              width: res.width,
-              height: res.height,
-              blurhash: res.blurhash,
-              sort_order: order++,
-            })
+            .insert(uploadResultToRow(res, postId, order++))
             .select(PHOTO_COLUMNS)
             .single();
           if (error) throw new Error(error.message);

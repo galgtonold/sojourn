@@ -81,3 +81,24 @@ export function orderPhotosForNarrative<T extends OrderablePhoto>(
 ): T[] {
   return manual ? orderByGallery(photos) : orderByCaptureTime(photos);
 }
+
+// The next collision-free `sort_order` for an append: one past the current
+// highest — never the count, which duplicated/skipped values when a slow upload
+// landed after a later one.
+export function nextSortOrder(photos: { sort_order?: number | null }[]): number {
+  return photos.reduce((m, p) => Math.max(m, p.sort_order ?? -1), -1) + 1;
+}
+
+// Reorder `local` in-memory state to the server's authoritative id order,
+// KEEPING any photo the server didn't mention (appended in their existing
+// order). The client-side mirror of applying resolvePhotoOrder's result.
+export function reconcilePhotoOrder<T extends { id: string }>(
+  local: T[],
+  ids: string[],
+): T[] {
+  const byId = new Map(local.map((p) => [p.id, p]));
+  const next = ids.map((id) => byId.get(id)).filter((p): p is T => Boolean(p));
+  const mentioned = new Set(ids);
+  for (const p of local) if (!mentioned.has(p.id)) next.push(p);
+  return next;
+}
