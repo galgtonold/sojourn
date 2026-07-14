@@ -1,3 +1,4 @@
+import { orderJourneyStops, type OrderTrack } from "@/lib/journey-connector";
 import { describe, expect, it } from "vitest";
 import {
   buildConnectorSegments,
@@ -105,5 +106,67 @@ describe("buildConnectorSegments", () => {
       [[1, 1], [1.5, 1.5]],
       [[1.5, 1.5], [2, 2]],
     ]);
+  });
+});
+
+describe("orderJourneyStops", () => {
+  type TStop = {
+    lng: number;
+    lat: number;
+    order?: number;
+    takenAt?: string;
+    id?: string;
+  };
+  const at = (lng: number, lat: number, extra: Partial<TStop> = {}): TStop => ({
+    lng,
+    lat,
+    ...extra,
+  });
+
+  it("uses the explicit author order when every stop has one (even if timed)", () => {
+    const stops = [
+      at(0, 0, { order: 2, takenAt: "2026-07-01T00:00:00Z" }),
+      at(0, 0, { order: 1, takenAt: "2026-07-05T00:00:00Z" }),
+    ];
+    expect(orderJourneyStops(stops, []).map((s) => s.order)).toEqual([1, 2]);
+  });
+
+  it("falls to chronological order when none has an order but all are timed", () => {
+    const stops = [
+      at(0, 0, { takenAt: "2026-07-05T00:00:00Z", id: "b" }),
+      at(0, 0, { takenAt: "2026-07-01T00:00:00Z", id: "a" }),
+    ];
+    expect(orderJourneyStops(stops, []).map((s) => s.id)).toEqual(["a", "b"]);
+  });
+
+  it("falls to nearest-track-vertex order when neither order nor time is present", () => {
+    const track: OrderTrack = {
+      geojson: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: [[0, 0], [1, 0], [2, 0]] },
+          },
+        ],
+      },
+    };
+    const stops = [at(2, 0, { id: "far" }), at(0, 0, { id: "near" })];
+    expect(orderJourneyStops(stops, [track]).map((s) => s.id)).toEqual([
+      "near",
+      "far",
+    ]);
+  });
+
+  it("returns the input order when there is nothing to sort against", () => {
+    const stops = [at(0, 0, { id: "x" }), at(1, 1, { id: "y" })];
+    expect(orderJourneyStops(stops, []).map((s) => s.id)).toEqual(["x", "y"]);
+  });
+
+  it("does not mutate the input", () => {
+    const stops = [at(0, 0, { order: 2 }), at(0, 0, { order: 1 })];
+    orderJourneyStops(stops, []);
+    expect(stops.map((s) => s.order)).toEqual([2, 1]);
   });
 });

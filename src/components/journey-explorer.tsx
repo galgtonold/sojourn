@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { ArrowLeft, Camera, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
-import { buildConnectorSegments } from "@/lib/journey-connector";
+import { buildConnectorSegments, orderJourneyStops } from "@/lib/journey-connector";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { BlurImg } from "@/components/blur-img";
 import { initialView } from "@/components/trip-map";
@@ -41,17 +41,6 @@ export type JourneyStop = {
   postTitle?: string | null;
   postTitleI18n?: Partial<Record<Locale, PostTranslation>>;
 };
-
-function haversine(a: number[], b: number[]): number {
-  const R = 6371000;
-  const r = (d: number) => (d * Math.PI) / 180;
-  const dLat = r(b[1] - a[1]);
-  const dLon = r(b[0] - a[0]);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(r(a[1])) * Math.cos(r(b[1])) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
 
 export function JourneyExplorer({
   title: rawTitle,
@@ -90,47 +79,9 @@ export function JourneyExplorer({
     [rawStops, locale],
   );
 
-  // Order the stops along the route so "next" walks the journey in sequence.
-  const ordered = useMemo(() => {
-    // Prefer the explicit order the page assigned — the gallery order the author
-    // chose (posts oldest→newest, photos in their arranged sort_order). This is
-    // authoritative; the timestamp/spatial heuristics below only cover older
-    // payloads that predate it.
-    if (stops.length > 0 && stops.every((s) => s.order != null)) {
-      return [...stops].sort(
-        (a, b) => (a.order as number) - (b.order as number),
-      );
-    }
-    // Chronological order (by photo time) is the most intuitive way to walk a
-    // multi-day journey — use it whenever every stop carries a timestamp.
-    if (
-      stops.length > 0 &&
-      stops.every((s) => s.takenAt && Number.isFinite(Date.parse(s.takenAt)))
-    ) {
-      return [...stops].sort(
-        (a, b) =>
-          Date.parse(a.takenAt as string) - Date.parse(b.takenAt as string),
-      );
-    }
-    const coords: number[][] = [];
-    for (const t of tracks)
-      for (const f of t.geojson?.features ?? [])
-        for (const c of f.geometry?.coordinates ?? []) coords.push(c);
-    if (coords.length === 0) return stops;
-    const key = (s: JourneyStop) => {
-      let best = Infinity;
-      let bestI = 0;
-      for (let i = 0; i < coords.length; i++) {
-        const d = haversine([s.lng, s.lat], coords[i]);
-        if (d < best) {
-          best = d;
-          bestI = i;
-        }
-      }
-      return bestI;
-    };
-    return [...stops].sort((a, b) => key(a) - key(b));
-  }, [stops, tracks]);
+  // Order the stops along the route so "next" walks the journey in sequence:
+  // author order → chronological → nearest-track-vertex (see orderJourneyStops).
+  const ordered = useMemo(() => orderJourneyStops(stops, tracks), [stops, tracks]);
 
   // The dashed connector bridges the gaps between the recorded GPX tracks — it
   // never retraces a track. On the trip map photos are pins, not waypoints, so
