@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
+import {
+  buildDossier,
+  buildStyleGuide,
+  renderDossier,
+  type DossierData,
+} from "@/lib/ai/dossier";
 import { makeFakeSupabase } from "../helpers/fake-supabase";
 
 // buildDossier/buildStyleGuide take a SupabaseClient directly — pass the fake.
@@ -283,6 +288,68 @@ describe("buildDossier", () => {
     expect(d.text).toContain("[photo:ph1]");
     expect(d.text).not.toContain("Routen (GPX):");
     expect(d.text).not.toContain("Notizen des Autors:");
+  });
+});
+
+describe("renderDossier (pure — no I/O)", () => {
+  const base: DossierData = {
+    postId: "p1",
+    post: { title: "T", location: "Kungsbacka", lat: null, lng: null, ai_notes: "Es regnete." },
+    trip: { title: "Schwedenreise" },
+    photos: [
+      {
+        id: "ph1",
+        url: null,
+        lat: 57.5,
+        lng: 12.0,
+        taken_at: "2026-07-11T10:00:00Z",
+        place_name: "Särö",
+        ai_description: "Ein Foto vom Strand",
+        caption: null,
+        enriched_at: null,
+      },
+    ],
+    manualOrder: false,
+    interactions: [{ id: "ix1", kind: "poll", question: "Lieblingsstrand?", options: ["A", "B"] }],
+    siblings: [{ title: "Tag 1", excerpt: "Ankunft", questions: ["Schon mal da?"] }],
+    trackInfo: [
+      {
+        name: "Wanderung",
+        distance_m: 5000,
+        geojson: null,
+        started_at: "2026-07-11T09:00:00Z",
+        startPlace: "Särö",
+        endPlace: "Särö",
+      },
+    ],
+    gpxStartCoord: null,
+    gpxArea: null,
+    weather: [
+      { date: "2026-07-11", label: "leichter Regen", tMin: 11, tMax: 19, precipMm: 4.2 },
+    ] as DossierData["weather"],
+  };
+
+  it("assembles trip, location, photos, tracks, weather, interactions and notes", () => {
+    const d = renderDossier(base);
+    expect(d.text).toContain("Reise: Schwedenreise");
+    expect(d.text).toContain("Ort (grob): Kungsbacka"); // typed location wins
+    expect(d.text).toContain("[photo:ph1]");
+    expect(d.text).toContain("Routen (GPX):");
+    expect(d.text).toContain("Start/Ziel: Särö (Rundtour)");
+    expect(d.text).toContain("Wetter an diesen Tagen");
+    expect(d.text).toContain("leichter Regen");
+    expect(d.text).toContain("[ask:ix1]");
+    expect(d.text).toContain("Bereits genutzte Frage(n): „Schon mal da?“");
+    expect(d.text).toContain("Notizen des Autors:");
+    expect(d.text).toContain("Es regnete.");
+    expect(d.date).toBe("2026-07-11");
+    expect(d.geo?.place).toBe("Kungsbacka");
+  });
+
+  it("falls back to the geotagged photo place when no location is typed", () => {
+    const d = renderDossier({ ...base, post: { ...base.post!, location: null } });
+    expect(d.text).toContain("Ort (grob): Särö");
+    expect(d.geo?.place).toBe("Särö");
   });
 });
 

@@ -1,5 +1,10 @@
 // Server-only: assembles everything we know about a post into a "dossier" the
 // model can narrate from, plus a style guide distilled from past posts.
+//
+// Split into two halves so the prompt formatting is testable without the I/O
+// world: gatherDossierData does ALL the I/O (five reads, reverse-geocoding —
+// including the write-back that caches a photo's place_name — and the weather
+// call), and the pure renderDossier assembles the German prompt from that data.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reverseGeocode, reverseGeocodeArea } from "@/lib/ai/geocode";
@@ -41,6 +46,55 @@ export type Dossier = {
   text: string;
 };
 
+type TripFields = {
+  title?: string;
+  summary?: string;
+  ai_context?: string;
+  start_date?: string;
+  end_date?: string;
+};
+
+type PostFields = {
+  title?: string | null;
+  location?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  ai_notes?: string | null;
+};
+
+type SiblingSummary = {
+  title: string;
+  excerpt: string | null;
+  questions: string[];
+};
+
+// A track with its reverse-geocoded start/end (I/O already done) alongside the
+// raw fields render still needs (geojson for the photo↔leg match, started_at for
+// the entry date).
+type TrackInfo = {
+  name: string | null;
+  distance_m: number | null;
+  geojson: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
+  started_at: string | null;
+  startPlace: string | null;
+  endPlace: string | null;
+};
+
+// Everything gathered from I/O, ready for the pure renderer.
+export type DossierData = {
+  postId: string;
+  post: PostFields | null;
+  trip: TripFields | undefined;
+  photos: DossierPhoto[];
+  manualOrder: boolean;
+  interactions: DossierInteraction[];
+  siblings: SiblingSummary[];
+  trackInfo: TrackInfo[];
+  gpxStartCoord: GeoJSON.Position | null;
+  gpxArea: string | null;
+  weather: Awaited<ReturnType<typeof dailyWeather>> | null;
+};
+
 // First and last coordinate of a track's GeoJSON, as [lng, lat]. A track may
 // hold several segments — start of the first, end of the last.
 function trackEndpoints(
@@ -69,10 +123,31 @@ function fmtTime(iso: string | null): string {
   });
 }
 
-export async function buildDossier(
+// Mean of the geotagged photos' coordinates, or null when none are geotagged.
+// Shared by the weather point and the geo fallback so it's computed once.
+function photoCentroid(
+  photos: DossierPhoto[],
+): { lat: number; lng: number } | null {
+  const pts = photos.filter((p) => p.lat != null && p.lng != null);
+  if (!pts.length) return null;
+  return {
+    lat: pts.reduce((s, p) => s + (p.lat as number), 0) / pts.length,
+    lng: pts.reduce((s, p) => s + (p.lng as number), 0) / pts.length,
+  };
+}
+
+const uniqueDates = (isos: (string | null)[]): string[] => [
+  ...new Set(
+    isos.filter((s): s is string => Boolean(s)).map((s) => s.slice(0, 10)),
+  ),
+];
+
+/** All the I/O behind a dossier: the reads, the reverse-geocoding (incl. the
+ *  write-back that caches a hand-pinned photo's place_name), and the weather. */
+export async function gatherDossierData(
   supabase: SupabaseClient,
   postId: string,
-): Promise<Dossier> {
+): Promise<DossierData> {
   const { data: post } = await supabase
     .from("posts")
     .select("id, title, location, lat, lng, ai_notes, photos_manual_order, trip_id, trips(title, summary, ai_context, start_date, end_date)")
@@ -112,7 +187,7 @@ export async function buildDossier(
   // The other entries of this trip (drafts included, so question-dedup covers
   // days not yet published), for consistency + never reusing a quiz/poll
   // question. The earlier days' narrative is carried by the continuity brief.
-  const { data: siblings } = post?.trip_id
+  const { data: siblingRows } = post?.trip_id
     ? await supabase
         .from("posts")
         .select("title, excerpt, published_at, interactions(question)")
@@ -120,40 +195,44 @@ export async function buildDossier(
         .neq("id", postId)
         .order("published_at", { ascending: true })
     : { data: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const siblings: SiblingSummary[] = ((siblingRows ?? []) as any[]).map((s) => ({
+    title: s.title,
+    excerpt: s.excerpt ?? null,
+    questions: (s.interactions ?? [])
+      .map((it: { question?: string }) => it.question)
+      .filter((q: unknown): q is string => Boolean(q)),
+  }));
 
-  const manualOrder = Boolean((post as { photos_manual_order?: boolean } | null)?.photos_manual_order);
-  const photos: DossierPhoto[] = orderPhotosForNarrative(photoRows ?? [], manualOrder).map(
-    (p) => ({
-      id: p.id,
-      url: p.url,
-      lat: p.lat,
-      lng: p.lng,
-      taken_at: p.taken_at,
-      place_name: p.place_name,
-      ai_description: p.ai_description,
-      caption: p.caption,
-      enriched_at: p.enriched_at,
-    }),
+  const manualOrder = Boolean(
+    (post as { photos_manual_order?: boolean } | null)?.photos_manual_order,
   );
+  const photos: DossierPhoto[] = orderPhotosForNarrative(
+    photoRows ?? [],
+    manualOrder,
+  ).map((p) => ({
+    id: p.id,
+    url: p.url,
+    lat: p.lat,
+    lng: p.lng,
+    taken_at: p.taken_at,
+    place_name: p.place_name,
+    ai_description: p.ai_description,
+    caption: p.caption,
+    enriched_at: p.enriched_at,
+  }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const trip = (Array.isArray((post as any)?.trips)
     ? (post as any).trips[0]
-    : (post as any)?.trips) as
-    | {
-        title?: string;
-        summary?: string;
-        ai_context?: string;
-        start_date?: string;
-        end_date?: string;
-      }
-    | undefined;
+    : (post as any)?.trips) as TripFields | undefined;
 
   // Manually pinned geotags store only coordinates, so a hand-tagged photo has
   // lat/lng but no place_name — to the model that reads as bare numbers.
-  // Reverse-geocode those once and cache the result, so each photo line shows a
-  // real place and the geotags can stand in as the post's location when none was
-  // typed. Best effort: a geocoder hiccup just leaves the coordinates.
+  // Reverse-geocode those once and CACHE the result back to the row, so each
+  // photo line shows a real place and the geotags can stand in as the post's
+  // location when none was typed. Best effort: a geocoder hiccup just leaves the
+  // coordinates. (This is the dossier's one write — kept here, in the I/O half.)
   for (const p of photos) {
     if (p.lat == null || p.lng == null || p.place_name) continue;
     const name = await reverseGeocode(p.lat, p.lng);
@@ -166,17 +245,13 @@ export async function buildDossier(
   // Resolve where each GPX route actually starts and ends. A route is hard data
   // (the model can't argue with it), so its start grounds the location and stops
   // the outline inventing a place. Best effort — a geocoder hiccup just omits it.
-  const trackInfo: {
-    name: string | null;
-    distance_m: number | null;
-    startPlace: string | null;
-    endPlace: string | null;
-  }[] = [];
+  const trackInfo: TrackInfo[] = [];
   let gpxStartCoord: GeoJSON.Position | null = null;
   for (const tr of tracks ?? []) {
-    const ep = trackEndpoints(
-      tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null,
-    );
+    const geojson =
+      (tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null) ??
+      null;
+    const ep = trackEndpoints(geojson);
     let startPlace: string | null = null;
     let endPlace: string | null = null;
     if (ep) {
@@ -189,11 +264,78 @@ export async function buildDossier(
     trackInfo.push({
       name: tr.name,
       distance_m: tr.distance_m,
+      geojson,
+      started_at: (tr.started_at as string | null) ?? null,
       startPlace,
       endPlace,
     });
   }
-  const gpxStart = trackInfo.find((t) => t.startPlace)?.startPlace ?? null;
+
+  // Weather for the day(s) the photos were taken, at one representative point
+  // (the outing is localized): photo centroid → GPX start → the post's pin.
+  const centroid = photoCentroid(photos);
+  let wLat: number | null = null;
+  let wLng: number | null = null;
+  if (centroid) {
+    wLat = centroid.lat;
+    wLng = centroid.lng;
+  } else if (gpxStartCoord) {
+    wLat = gpxStartCoord[1];
+    wLng = gpxStartCoord[0];
+  } else if (post?.lat != null && post?.lng != null) {
+    wLat = post.lat as number;
+    wLng = post.lng as number;
+  }
+  const photoDates = uniqueDates(photos.map((p) => p.taken_at)).sort();
+  const weather =
+    wLat != null && wLng != null && photoDates.length
+      ? await dailyWeather(wLat, wLng, photoDates[0], photoDates[photoDates.length - 1])
+      : null;
+
+  // The post's location for the geo block: a town-level name from the GPX start
+  // (the author's typed location still wins in render).
+  const gpxArea = gpxStartCoord
+    ? await reverseGeocodeArea(gpxStartCoord[1], gpxStartCoord[0])
+    : null;
+
+  return {
+    postId,
+    post: post
+      ? {
+          title: post.title,
+          location: post.location,
+          lat: post.lat,
+          lng: post.lng,
+          ai_notes: post.ai_notes,
+        }
+      : null,
+    trip,
+    photos,
+    manualOrder,
+    interactions,
+    siblings,
+    trackInfo,
+    gpxStartCoord,
+    gpxArea,
+    weather,
+  };
+}
+
+/** Pure: assemble the German prompt text + geo + date from gathered data. */
+export function renderDossier(data: DossierData): Dossier {
+  const {
+    postId,
+    post,
+    trip,
+    photos,
+    manualOrder,
+    interactions,
+    siblings,
+    trackInfo,
+    gpxStartCoord,
+    gpxArea,
+    weather,
+  } = data;
 
   const lines: string[] = [];
   if (trip?.title) lines.push(`Reise: ${trip.title}`);
@@ -204,6 +346,7 @@ export async function buildDossier(
   if (trip?.summary) lines.push(`Reise-Kontext: ${trip.summary}`);
   if (trip?.ai_context)
     lines.push(`Reise-Hintergrund (Autor, intern): ${trip.ai_context}`);
+
   // The author's location field wins — it can carry a curated name (e.g. "Bruno
   // Weber Park") that reverse-geocoding a GPS point never yields. Fall back to
   // where the geotagged photos actually were only when the field is empty.
@@ -214,6 +357,7 @@ export async function buildDossier(
         .map((p) => p.place_name as string),
     ),
   ];
+  const gpxStart = trackInfo.find((t) => t.startPlace)?.startPlace ?? null;
   const locationHint = post?.location?.trim()
     ? post.location.trim()
     : geoPlaces.length
@@ -221,24 +365,19 @@ export async function buildDossier(
       : gpxStart;
   if (locationHint) lines.push(`Ort (grob): ${locationHint}`);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sibs = (siblings ?? []) as any[];
-  if (sibs.length) {
+  if (siblings.length) {
     lines.push(
       "",
       "Andere Beiträge dieser Reise — bleibe konsistent (Ton, Fakten, " +
         "wiederkehrende Personen/Motive) und WIEDERHOLE KEINE bereits genutzte " +
         "Quiz-/Umfragefrage:",
     );
-    for (const s of sibs) {
-      const qs = (s.interactions ?? [])
-        .map((it: { question?: string }) => it.question)
-        .filter(Boolean);
+    for (const s of siblings) {
       lines.push(
         `• „${s.title}“${s.excerpt ? ` — ${s.excerpt}` : ""}` +
-          (qs.length
-            ? `\n  Bereits genutzte Frage(n): ${qs
-                .map((q: string) => `„${q}“`)
+          (s.questions.length
+            ? `\n  Bereits genutzte Frage(n): ${s.questions
+                .map((q) => `„${q}“`)
                 .join("; ")}`
             : ""),
       );
@@ -250,10 +389,10 @@ export async function buildDossier(
   // route instead of guessing. Pure/offline — no extra queries.
   const trackMatches = matchPhotosToTracks(
     photos.map((p) => ({ id: p.id, takenAt: p.taken_at, lat: p.lat, lng: p.lng })),
-    (tracks ?? []).map((tr) => ({
-      name: tr.name,
-      geojson: tr.geojson as GeoJSON.FeatureCollection<GeoJSON.LineString> | null,
-      distanceM: tr.distance_m,
+    trackInfo.map((t) => ({
+      name: t.name,
+      geojson: t.geojson,
+      distanceM: t.distance_m,
     })),
   );
 
@@ -303,54 +442,18 @@ export async function buildDossier(
     }
   }
 
-  // Weather for the day(s) the photos were taken, at one representative point
-  // (the outing is localized). Falls back to the GPX start, then the post's pin.
-  const coordPhotos = photos.filter((p) => p.lat != null && p.lng != null);
-  let wLat: number | null = null;
-  let wLng: number | null = null;
-  if (coordPhotos.length) {
-    wLat =
-      coordPhotos.reduce((s, p) => s + (p.lat as number), 0) / coordPhotos.length;
-    wLng =
-      coordPhotos.reduce((s, p) => s + (p.lng as number), 0) / coordPhotos.length;
-  } else if (gpxStartCoord) {
-    wLat = gpxStartCoord[1];
-    wLng = gpxStartCoord[0];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } else if ((post as any)?.lat != null && (post as any)?.lng != null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    wLat = (post as any).lat;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    wLng = (post as any).lng;
-  }
-  const photoDates = [
-    ...new Set(
-      photos
-        .map((p) => p.taken_at)
-        .filter((s): s is string => Boolean(s))
-        .map((s) => s.slice(0, 10)),
-    ),
-  ].sort();
-  if (wLat != null && wLng != null && photoDates.length) {
-    const weather = await dailyWeather(
-      wLat,
-      wLng,
-      photoDates[0],
-      photoDates[photoDates.length - 1],
-    );
-    if (weather && weather.length) {
-      lines.push("", "Wetter an diesen Tagen (laut Wetterdaten):");
-      for (const w of weather) {
-        const temp =
-          w.tMin != null && w.tMax != null
-            ? `, ${Math.round(w.tMin)}–${Math.round(w.tMax)} °C`
-            : "";
-        const rain =
-          w.precipMm != null && w.precipMm >= 0.5
-            ? `, ${w.precipMm.toFixed(1)} mm Niederschlag`
-            : "";
-        lines.push(`- ${w.date}: ${w.label}${temp}${rain}`);
-      }
+  if (weather && weather.length) {
+    lines.push("", "Wetter an diesen Tagen (laut Wetterdaten):");
+    for (const w of weather) {
+      const temp =
+        w.tMin != null && w.tMax != null
+          ? `, ${Math.round(w.tMin)}–${Math.round(w.tMax)} °C`
+          : "";
+      const rain =
+        w.precipMm != null && w.precipMm >= 0.5
+          ? `, ${w.precipMm.toFixed(1)} mm Niederschlag`
+          : "";
+      lines.push(`- ${w.date}: ${w.label}${temp}${rain}`);
     }
   }
 
@@ -375,27 +478,20 @@ export async function buildDossier(
   // The post's geo: coordinates straight from the GPX start (ground truth for a
   // ride) → photo centroid → the post's own pin; and a town-level place name
   // (the author's typed location wins, else the GPX area, else a photo place).
-  const gpxArea = gpxStartCoord
-    ? await reverseGeocodeArea(gpxStartCoord[1], gpxStartCoord[0])
-    : null;
   let geoLat: number | null = null;
   let geoLng: number | null = null;
   if (gpxStartCoord) {
     geoLat = gpxStartCoord[1];
     geoLng = gpxStartCoord[0];
-  } else if (coordPhotos.length) {
-    geoLat =
-      coordPhotos.reduce((s, p) => s + (p.lat as number), 0) /
-      coordPhotos.length;
-    geoLng =
-      coordPhotos.reduce((s, p) => s + (p.lng as number), 0) /
-      coordPhotos.length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } else if ((post as any)?.lat != null && (post as any)?.lng != null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    geoLat = (post as any).lat;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    geoLng = (post as any).lng;
+  } else {
+    const c = photoCentroid(photos);
+    if (c) {
+      geoLat = c.lat;
+      geoLng = c.lng;
+    } else if (post?.lat != null && post?.lng != null) {
+      geoLat = post.lat as number;
+      geoLng = post.lng as number;
+    }
   }
   const geoPlace = post?.location?.trim() || gpxArea || geoPlaces[0] || null;
   const geo =
@@ -404,13 +500,18 @@ export async function buildDossier(
       : null;
 
   // The entry date: earliest of the GPX start and the photo timestamps.
-  const trackDates = (tracks ?? [])
-    .map((t) => t.started_at as string | null)
-    .filter((s): s is string => Boolean(s))
-    .map((s) => s.slice(0, 10));
+  const photoDates = uniqueDates(photos.map((p) => p.taken_at));
+  const trackDates = uniqueDates(trackInfo.map((t) => t.started_at));
   const date = [...photoDates, ...trackDates].sort()[0] ?? null;
 
   return { postId, photos, interactions, geo, date, text: lines.join("\n") };
+}
+
+export async function buildDossier(
+  supabase: SupabaseClient,
+  postId: string,
+): Promise<Dossier> {
+  return renderDossier(await gatherDossierData(supabase, postId));
 }
 
 /**
