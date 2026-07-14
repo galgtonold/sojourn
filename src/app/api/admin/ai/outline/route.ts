@@ -3,7 +3,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier } from "@/lib/ai/dossier";
-import { assignLeftoverPhotos } from "@/lib/ai/outline-plan";
+import { reconcileOutline, type Outline } from "@/lib/ai/outline-plan";
 import { continuityBlock, langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
 
 export const maxDuration = 60;
@@ -15,26 +15,6 @@ const schema = z.object({
   lang: z.enum(["de", "en"]).default("de"),
   brief: z.string().optional(),
 });
-
-export type OutlineSection = {
-  heading: string;
-  beat: string;
-  photo_ids: string[];
-  interaction?: { kind: "poll" | "quiz"; idea: string } | null;
-  // Ids of the author's pre-defined interactions placed in this section.
-  interaction_refs?: string[];
-};
-
-export type Outline = {
-  title: string;
-  excerpt: string;
-  location: string | null;
-  lat: number | null;
-  lng: number | null;
-  cover_photo_id: string | null;
-  date?: string | null;
-  sections: OutlineSection[];
-};
 
 export const POST = adminRoute(schema, outline, { requireAi: true });
 
@@ -153,69 +133,15 @@ async function outline({
       },
     ],
   });
-  // Keep only real photo ids, a bounded number of *invented* interactions (one
-  // per section — normally the model uses at most one, but when the author asks
-  // for several, e.g. "a quiz with 5 questions", it spreads them across
-  // sections), and each author-defined interaction assigned to exactly one
-  // section.
-  const valid = new Set(dossier.photos.map((p) => p.id));
-  const predefined = new Set(dossier.interactions.map((i) => i.id));
-  const assigned = new Set<string>();
-  const MAX_INVENTED = 6;
-  let invented = 0;
-  outline.sections = (outline.sections ?? []).map((s) => {
-    const refs = (Array.isArray(s.interaction_refs) ? s.interaction_refs : [])
-      .filter((id) => predefined.has(id) && !assigned.has(id));
-    refs.forEach((id) => assigned.add(id));
-    const ix =
-      s.interaction &&
-      (s.interaction.kind === "poll" || s.interaction.kind === "quiz") &&
-      s.interaction.idea?.trim() &&
-      invented < MAX_INVENTED
-        ? ((invented += 1), s.interaction)
-        : null;
-    return {
-      ...s,
-      photo_ids: (s.photo_ids ?? []).filter((id) => valid.has(id)),
-      interaction: ix,
-      interaction_refs: refs,
-    };
-  });
-  // Guarantee at least one section so the pipeline can proceed.
-  if (outline.sections.length === 0) {
-    outline.sections = [
-      {
-        heading: outline.title || "",
-        beat: "",
-        photo_ids: dossier.photos.map((p) => p.id),
-        interaction_refs: [],
-      },
-    ];
-  }
-  // Every photo must land somewhere: a stray the model dropped joins its
-  // nearest section by order, so nothing is lost and no junk section is spawned.
-  outline.sections = assignLeftoverPhotos(
-    outline.sections,
-    dossier.photos.map((p) => p.id),
-  );
-  // Any author interaction the model didn't place gets distributed round-robin,
-  // so every one is guaranteed a home (the section writer emits its [ask:] tag).
-  const leftover = [...predefined].filter((id) => !assigned.has(id));
-  leftover.forEach((id, i) => {
-    const sec = outline.sections[i % outline.sections.length];
-    sec.interaction_refs = [...(sec.interaction_refs ?? []), id];
-  });
-
-  // The post's location and coordinates come from real data (GPX start / photos)
-  // when we have it — not the model's guess, which lands on the wrong place. The
-  // date defaults to the GPX/photo day. The author can still override any of
-  // these in the editor afterwards.
-  if (dossier.geo) {
-    if (dossier.geo.place) outline.location = dossier.geo.place;
-    if (dossier.geo.lat != null) outline.lat = dossier.geo.lat;
-    if (dossier.geo.lng != null) outline.lng = dossier.geo.lng;
-  }
-  outline.date = dossier.date;
-
-  return { outline };
+  // Reconcile the model's plan against real data — valid photo ids, the
+  // one-place-per author interaction guarantee, the invented-interaction cap,
+  // every photo placed, and real location/coords/date (not the model's guess).
+  return {
+    outline: reconcileOutline(outline, {
+      photoIds: dossier.photos.map((p) => p.id),
+      interactionIds: dossier.interactions.map((i) => i.id),
+      geo: dossier.geo,
+      date: dossier.date,
+    }),
+  };
 }
