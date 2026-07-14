@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { collectSubtree, groupByPost, childrenOf } from "@/lib/comment-tree";
 import { useT, useI18n } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -47,17 +48,7 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
     if (!(await confirm({ message: t("admin.cmod.deleteConfirm"), danger: true, confirmLabel: t("common.delete") }))) return;
     setError(null);
     // Remove the comment and any descendants locally (DB cascades the delete).
-    const toRemove = new Set([row.id]);
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const r of rows) {
-        if (r.parent_id && toRemove.has(r.parent_id) && !toRemove.has(r.id)) {
-          toRemove.add(r.id);
-          grew = true;
-        }
-      }
-    }
+    const toRemove = collectSubtree(rows, row.id);
     const removed = rows.filter((r) => toRemove.has(r.id));
     setRows((rs) => rs.filter((r) => !toRemove.has(r.id)));
     try {
@@ -72,27 +63,9 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
     }
   }
 
-  // Group by post, then build a comment tree within each post.
-  const groups = useMemo(() => {
-    const byPost = new Map<
-      string,
-      { title: string; slug: string; rows: ModerationRow[] }
-    >();
-    for (const r of rows) {
-      const g = byPost.get(r.post_slug) ?? {
-        title: r.post_title,
-        slug: r.post_slug,
-        rows: [],
-      };
-      g.rows.push(r);
-      byPost.set(r.post_slug, g);
-    }
-    // Most recently active posts first.
-    return [...byPost.values()].sort(
-      (a, b) =>
-        latest(b.rows).localeCompare(latest(a.rows)),
-    );
-  }, [rows]);
+  // Group by post (most recently active first); the Tree builds the thread
+  // within each post.
+  const groups = useMemo(() => groupByPost(rows), [rows]);
 
   if (rows.length === 0) {
     return <p className="text-sand-100/50">{t("admin.cmod.none")}</p>;
@@ -133,10 +106,6 @@ export function CommentModeration({ initial }: { initial: ModerationRow[] }) {
   );
 }
 
-function latest(rows: ModerationRow[]): string {
-  return rows.reduce((m, r) => (r.created_at > m ? r.created_at : m), "");
-}
-
 function Tree({
   rows,
   depth,
@@ -151,17 +120,7 @@ function Tree({
   onDelete: (r: ModerationRow) => void;
 }) {
   const { t, locale } = useI18n();
-  const ids = new Set(rows.map((r) => r.id));
-  const children = rows
-    .filter((r) => {
-      const effective = r.parent_id && ids.has(r.parent_id) ? r.parent_id : null;
-      return effective === parentId;
-    })
-    .sort((a, b) =>
-      depth === 0
-        ? b.created_at.localeCompare(a.created_at) // newest threads first
-        : a.created_at.localeCompare(b.created_at), // replies oldest first
-    );
+  const children = childrenOf(rows, parentId, depth);
 
   if (children.length === 0) return null;
 
