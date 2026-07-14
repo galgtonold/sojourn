@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAdminSupabase } from "@/lib/supabase/admin";
-import { requireOwner } from "@/lib/api/admin-auth";
+import { ownerRoute } from "@/lib/api/owner-route";
 import { mintInviteLink } from "@/lib/member-invite";
 
 const schema = z.object({
@@ -9,25 +8,9 @@ const schema = z.object({
   tripIds: z.array(z.string().uuid()).default([]),
 });
 
-export async function POST(req: Request) {
-  const gate = await requireOwner();
-  if (!gate.ok) {
-    return NextResponse.json({ error: "forbidden" }, { status: gate.status });
-  }
-  const admin = getAdminSupabase();
-  if (!admin) {
-    return NextResponse.json(
-      { error: "Service role key not configured" },
-      { status: 503 },
-    );
-  }
-
-  const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "invalid" }, { status: 400 });
-  }
-  const email = parsed.data.email.toLowerCase();
-  const { tripIds } = parsed.data;
+export const POST = ownerRoute(schema, async ({ admin, input }) => {
+  const email = input.email.toLowerCase();
+  const { tripIds } = input;
 
   let userId: string | null = null;
   let status: "invited" | "granted" = "invited";
@@ -101,4 +84,4 @@ export async function POST(req: Request) {
     link,
     member: { id: userId, email, tripIds },
   });
-}
+});
