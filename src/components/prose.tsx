@@ -10,6 +10,7 @@ export function Figure({
   blurhash,
   mediaType,
   poster,
+  photoId,
 }: {
   src: string;
   caption?: string | null;
@@ -18,6 +19,10 @@ export function Figure({
   blurhash?: string | null;
   mediaType?: "image" | "video";
   poster?: string | null;
+  // The post photo's id, when this figure is a [photo:id] reference — lets a
+  // click open the shared article viewer at this photo. Absent for generic
+  // markdown images, which open as a single image.
+  photoId?: string;
 }) {
   return (
     <figure id={id} className="my-8 scroll-mt-24">
@@ -36,6 +41,7 @@ export function Figure({
           alt={alt ?? caption ?? ""}
           blurhash={blurhash}
           className="w-full rounded-3xl"
+          photoId={photoId}
         />
       )}
       {caption && (

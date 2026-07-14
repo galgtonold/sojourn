@@ -14,6 +14,7 @@ import type { PostNavLink } from "@/lib/content";
 import { cn, formatDate, readingTime } from "@/lib/utils";
 import { localizePostDeep, localizeInteraction } from "@/lib/i18n-content";
 import { Gallery } from "@/components/gallery";
+import { PhotoViewerProvider } from "@/components/photo-viewer";
 import { RichBody } from "@/components/rich-body";
 import { parseBody, referencedPhotoIds } from "@/lib/rich";
 import { Reactions } from "@/components/reactions";
@@ -105,6 +106,7 @@ export function PostView({
   const heroCol = useStory ? "lg:max-w-4xl" : "";
 
   return (
+    <PhotoViewerProvider photos={post.photos}>
     <article>
       {preview && (
         <div className="fixed inset-x-0 top-0 z-[100] grid h-9 place-items-center bg-ember-600 px-4 text-center text-sm font-medium text-ink-950">
@@ -327,5 +329,6 @@ export function PostView({
         </nav>
       )}
     </article>
+    </PhotoViewerProvider>
   );
 }

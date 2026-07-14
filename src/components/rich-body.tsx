@@ -38,6 +38,7 @@ export function RichBody({
             <Reveal key={i}>
               <Figure
                 id={`photo-${b.photo.id}`}
+                photoId={b.photo.id}
                 src={b.photo.url ?? ""}
                 alt={b.photo.caption ?? undefined}
                 caption={b.photo.caption}
