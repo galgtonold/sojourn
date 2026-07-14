@@ -8,6 +8,7 @@
 import exifr from "exifr";
 import { encode } from "blurhash";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { parseExifDateTime } from "@/lib/exif-datetime";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB hard cap on the original
 const MAX_VIDEO_BYTES = 52428800; // 50 MB
@@ -52,18 +53,16 @@ async function readExif(
   }
   try {
     // Read raw (un-revived) strings so capture time is independent of the
-    // browser's timezone: DateTimeOriginal has no zone, so we label the exact
-    // wall-clock as UTC and keep the real offset separately.
+    // browser's timezone; the parse (label-as-UTC + offset) lives in
+    // parseExifDateTime so it's testable.
     const meta = await exifr.parse(file, {
       pick: ["DateTimeOriginal", "OffsetTimeOriginal"],
       reviveValues: false,
     });
-    const raw = typeof meta?.DateTimeOriginal === "string" ? meta.DateTimeOriginal : "";
-    const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(raw);
-    if (m) takenAt = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
-    const off = typeof meta?.OffsetTimeOriginal === "string" ? meta.OffsetTimeOriginal.trim() : "";
-    const om = /^([+-])(\d{2}):(\d{2})$/.exec(off);
-    if (om) takenOffsetMin = (om[1] === "-" ? -1 : 1) * (Number(om[2]) * 60 + Number(om[3]));
+    ({ takenAt, takenOffsetMin } = parseExifDateTime(
+      meta?.DateTimeOriginal,
+      meta?.OffsetTimeOriginal,
+    ));
   } catch {
     /* no date */
   }
