@@ -17,6 +17,8 @@
 // On save these blocks are materialised into the `interactions` table and
 // rewritten to [ask:<id>] tags (see lib/ai/materialize.ts).
 
+import { matchRefTags, refResolves } from "@/lib/references";
+
 export type InteractionKind = "poll" | "quiz";
 
 export type InteractionSpec = {
@@ -110,9 +112,6 @@ export function parseDirectives(body: string): ParsedDirective[] {
   return out;
 }
 
-// Inline reference tags: [photo:<id-or-index>] and [ask:<id-or-index>].
-const TAG_RE = /\[(photo|ask):([^\]\s]+)\]/g;
-
 export type BodyIssue =
   | { type: "unknown-photo"; ref: string }
   | { type: "unknown-ask"; ref: string }
@@ -125,24 +124,15 @@ export type BodyContext = {
   interactionCount: number;
 };
 
-function resolves(ref: string, ids: string[], count: number): boolean {
-  if (ids.includes(ref)) return true;
-  const n = Number(ref);
-  return Number.isInteger(n) && n >= 1 && n <= count;
-}
-
 // Collects everything wrong with a body: dangling photo/poll references and
 // malformed inline poll/quiz blocks. Well-formed :::blocks are *not* issues —
 // they materialise on save.
 export function validateBody(body: string, ctx: BodyContext): BodyIssue[] {
   const issues: BodyIssue[] = [];
-  const re = new RegExp(TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    const [, type, ref] = m;
-    if (type === "photo" && !resolves(ref, ctx.photoIds, ctx.photoCount))
+  for (const { type, ref } of matchRefTags(body)) {
+    if (type === "photo" && !refResolves(ref, ctx.photoIds, ctx.photoCount))
       issues.push({ type: "unknown-photo", ref });
-    if (type === "ask" && !resolves(ref, ctx.interactionIds, ctx.interactionCount))
+    if (type === "ask" && !refResolves(ref, ctx.interactionIds, ctx.interactionCount))
       issues.push({ type: "unknown-ask", ref });
   }
   for (const d of parseDirectives(body)) {

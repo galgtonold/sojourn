@@ -4,7 +4,7 @@
 // string-offset operation. Mirrors the style of src/lib/rich.ts and reuses its
 // resolution helpers, so editor and public renderer never diverge.
 import type { Photo } from "@/lib/types";
-import { resolvePhoto } from "@/lib/rich";
+import { matchRefTags, resolveRef } from "@/lib/references";
 import {
   parseDirectives,
   type ParsedDirective,
@@ -27,20 +27,6 @@ export type EditorBlock =
   | { kind: "pending"; spec: ParsedDirective; start: number; end: number }
   | { kind: "broken"; refType: "photo" | "ask"; ref: string; start: number; end: number };
 
-const TAG_RE = /\[(photo|ask):([^\]\s]+)\]/g;
-
-function resolveInteraction(
-  ref: string,
-  interactions: EditorInteraction[],
-): EditorInteraction | null {
-  const byId = interactions.find((it) => it.id === ref);
-  if (byId) return byId;
-  const n = Number(ref);
-  if (Number.isInteger(n) && n >= 1 && n <= interactions.length)
-    return interactions[n - 1];
-  return null;
-}
-
 type Marker = { start: number; end: number; block: EditorBlock };
 
 /**
@@ -57,14 +43,9 @@ export function editorBlocks(
 ): EditorBlock[] {
   const markers: Marker[] = [];
 
-  const re = new RegExp(TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    const [, type, ref] = m;
-    const start = m.index;
-    const end = m.index + m[0].length;
+  for (const { type, ref, start, end } of matchRefTags(body)) {
     if (type === "photo") {
-      const p = resolvePhoto(ref, photos);
+      const p = resolveRef(ref, photos);
       markers.push({
         start,
         end,
@@ -73,7 +54,7 @@ export function editorBlocks(
           : { kind: "broken", refType: "photo", ref, start, end },
       });
     } else {
-      const it = resolveInteraction(ref, interactions);
+      const it = resolveRef(ref, interactions);
       markers.push({
         start,
         end,

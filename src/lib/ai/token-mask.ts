@@ -4,9 +4,7 @@
 // the model, then restore them verbatim afterward. If the rewrite drops or
 // duplicates a sentinel we can detect it and fall back to the original body.
 import { parseDirectives } from "@/lib/interactions-parse";
-
-// [photo:<id>] and [ask:<id>] inline reference tags.
-const TAG_RE = /\[(?:photo|ask):[^\]\s]+\]/g;
+import { matchRefTags } from "@/lib/references";
 
 export type Masked = { masked: string; tokens: string[] };
 
@@ -27,10 +25,8 @@ export function maskProtectedTokens(body: string): Masked {
   for (const d of parseDirectives(body)) {
     spans.push({ start: d.start, end: d.end, text: d.raw });
   }
-  const re = new RegExp(TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    spans.push({ start: m.index, end: m.index + m[0].length, text: m[0] });
+  for (const t of matchRefTags(body)) {
+    spans.push({ start: t.start, end: t.end, text: body.slice(t.start, t.end) });
   }
   spans.sort((a, b) => a.start - b.start);
 

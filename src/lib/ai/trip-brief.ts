@@ -6,8 +6,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAiConfigured } from "@/lib/env";
 import { aiModels, deepseekChat } from "@/lib/ai/deepseek";
+import { stripRefTags } from "@/lib/references";
 
-const TOKENS = /\[(?:photo|ask):[^\]]+\]/g;
 const FENCES = /:::(?:poll|quiz)[\s\S]*?:::/g;
 
 // A day counts as "prior" when it has a parseable date before this post's. When
@@ -30,7 +30,7 @@ export function selectPriorDays<T extends { published_at: string | null }>(
 // A day's body as clean prose: media/interaction tokens and :::poll/:::quiz
 // fences removed, whitespace collapsed.
 export function stripBody(body: string): string {
-  return body.replace(FENCES, "").replace(TOKENS, "").replace(/\s+/g, " ").trim();
+  return stripRefTags(body.replace(FENCES, "")).replace(/\s+/g, " ").trim();
 }
 
 // The summarizer's input: trip context, then one section per prior day (each

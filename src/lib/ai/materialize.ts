@@ -4,6 +4,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseDirectives } from "@/lib/interactions-parse";
+import { matchRefTags } from "@/lib/references";
 
 export async function materializeInteractions(
   supabase: SupabaseClient,
@@ -67,8 +68,6 @@ export function stripIncompleteDirectives(body: string): string {
     .trimEnd();
 }
 
-const ASK_TAG_RE = /\[ask:([^\]\s]+)\]/g;
-
 // Deletes a post's AI-generated interactions that the (already materialised)
 // body no longer references — e.g. a quiz from a previous draft that a
 // regenerate replaced. Author-defined interactions (source='author') are NEVER
@@ -87,10 +86,10 @@ export async function pruneUnreferencedInteractions(
   const rows = (data ?? []) as { id: string; source?: string }[];
   if (rows.length === 0) return { deleted: 0 };
 
+  // Refs may be an id or a 1-based index (matching references.resolveRef), so a
+  // row is referenced when the body names its id OR its 1-based position.
   const refs = new Set<string>();
-  const re = new RegExp(ASK_TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) refs.add(m[1]);
+  for (const t of matchRefTags(body)) if (t.type === "ask") refs.add(t.ref);
 
   const stale = rows
     .filter(

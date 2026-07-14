@@ -3,9 +3,14 @@ import {
   parseDirectives,
   type ParsedDirective,
 } from "@/lib/interactions-parse";
+import { matchRefTags, resolveRef, referencedPhotoIds } from "@/lib/references";
 
-// Inline tags: [photo:<id-or-index>] and [ask:<id-or-index>]
-const TAG_RE = /\[(photo|ask):([^\]\s]+)\]/g;
+// The reference-tag grammar and resolution rule now live in @/lib/references.
+// Re-exported here so existing importers of resolvePhoto/referencedPhotoIds keep
+// working; resolvePhoto is just resolveRef specialized to photos.
+export { referencedPhotoIds };
+export const resolvePhoto = (ref: string, photos: Photo[]): Photo | null =>
+  resolveRef(ref, photos);
 
 export type Block =
   | { kind: "md"; text: string }
@@ -14,26 +19,6 @@ export type Block =
   // Surfaced only when showIssues is on (editor preview), never to the public:
   | { kind: "pending"; spec: ParsedDirective }
   | { kind: "broken"; refType: "photo" | "ask"; ref: string };
-
-export function resolvePhoto(ref: string, photos: Photo[]): Photo | null {
-  const byId = photos.find((p) => p.id === ref);
-  if (byId) return byId;
-  const n = Number(ref);
-  if (Number.isInteger(n) && n >= 1 && n <= photos.length) return photos[n - 1];
-  return null;
-}
-
-function resolveInteraction(
-  ref: string,
-  interactions: Interaction[],
-): Interaction | null {
-  const byId = interactions.find((it) => it.id === ref);
-  if (byId) return byId;
-  const n = Number(ref);
-  if (Number.isInteger(n) && n >= 1 && n <= interactions.length)
-    return interactions[n - 1];
-  return null;
-}
 
 type Marker = { start: number; end: number; block: Block | null };
 
@@ -50,24 +35,21 @@ export function parseBody(
   const markers: Marker[] = [];
 
   // Inline tag references.
-  const re = new RegExp(TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    const [, type, ref] = m;
+  for (const t of matchRefTags(body)) {
     const resolved =
-      type === "photo"
-        ? resolvePhoto(ref, photos)
-        : resolveInteraction(ref, interactions);
+      t.type === "photo"
+        ? resolveRef(t.ref, photos)
+        : resolveRef(t.ref, interactions);
     let block: Block | null = null;
     if (resolved) {
       block =
-        type === "photo"
+        t.type === "photo"
           ? { kind: "photo", photo: resolved as Photo }
           : { kind: "interaction", interaction: resolved as Interaction };
     } else if (showIssues) {
-      block = { kind: "broken", refType: type as "photo" | "ask", ref };
+      block = { kind: "broken", refType: t.type, ref: t.ref };
     }
-    markers.push({ start: m.index, end: m.index + m[0].length, block });
+    markers.push({ start: t.start, end: t.end, block });
   }
 
   // Inline :::poll / :::quiz authoring blocks (litter that materialises on save).
@@ -93,20 +75,4 @@ export function parseBody(
   const rest = body.slice(last);
   if (rest.trim()) blocks.push({ kind: "md", text: rest });
   return blocks;
-}
-
-// The set of photo ids placed inline, so the trailing gallery can skip them.
-export function referencedPhotoIds(
-  body: string,
-  photos: Photo[],
-): Set<string> {
-  const ids = new Set<string>();
-  const re = new RegExp(TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    if (m[1] !== "photo") continue;
-    const p = resolvePhoto(m[2], photos);
-    if (p) ids.add(p.id);
-  }
-  return ids;
 }

@@ -4,16 +4,14 @@
 //
 // A bare integer ref (e.g. [photo:2]) is a 1-based index that resolves against
 // the post's gallery elsewhere, so we don't treat those as invented here.
-const PHOTO_TAG_RE = /\[photo:([^\]\s]+)\]/g;
+import { matchRefTags, isIndexRef } from "@/lib/references";
 
 export function invalidPhotoRefs(body: string, allowedIds: string[]): string[] {
   const allowed = new Set(allowedIds);
   const bad = new Set<string>();
-  const re = new RegExp(PHOTO_TAG_RE);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) {
-    const ref = m[1];
-    if (allowed.has(ref) || /^\d+$/.test(ref)) continue;
+  for (const { type, ref } of matchRefTags(body)) {
+    if (type !== "photo") continue;
+    if (allowed.has(ref) || isIndexRef(ref)) continue;
     bad.add(ref);
   }
   return [...bad];

@@ -5,6 +5,7 @@
 // whole narrative. Pure (no server-only deps), so it's unit-testable.
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
 import type { PostTranslation } from "@/lib/types";
+import { stripRefTags } from "@/lib/references";
 
 export type PostChunk = {
   locale: Locale;
@@ -18,8 +19,7 @@ const MAX_CHUNK = 900; // chars; comfortably short relative to the model's windo
 // Strip markdown noise that adds nothing to (or hurts) the embedding: inline
 // media/poll tags, images, link URLs (keep the text), and formatting punctuation.
 function clean(md: string): string {
-  return md
-    .replace(/\[(?:photo|ask):[^\]]+\]/g, " ")
+  return stripRefTags(md, " ")
     .replace(/:::[\s\S]*?:::/g, " ")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")

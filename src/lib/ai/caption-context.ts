@@ -3,13 +3,12 @@
 // it. Bounded and cut at adjacent media tags so it never pulls another photo's
 // surroundings. Returns "" when the photo isn't placed inline.
 
-const TOKENS = /\[(?:photo|ask):[^\]]+\]/g;
+import { stripRefTags } from "@/lib/references";
+
 const FENCES = /:::(?:poll|quiz)[\s\S]*?:::/g;
 
 function clean(s: string): string {
-  return s
-    .replace(FENCES, "")
-    .replace(TOKENS, "")
+  return stripRefTags(s.replace(FENCES, ""))
     .replace(/^#+\s*/gm, "")
     .replace(/\s+/g, " ")
     .trim();
