@@ -12,31 +12,25 @@ import {
   Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { invalidPhotoRefs } from "@/lib/photo-refs";
 import { useDictation, appendTranscript } from "@/lib/use-dictation";
 import type { ManagedInteraction } from "@/components/interaction-manager";
-import { homogenizeWithMasking } from "@/lib/ai/token-mask";
+import type { DictKey } from "@/lib/i18n";
+import { runDraft, type DraftStepKey } from "@/lib/ai/run-draft";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
 type Lang = "de" | "en";
-type Section = {
-  heading: string;
-  beat: string;
-  photo_ids: string[];
-  interaction?: { kind: "poll" | "quiz"; idea: string } | null;
-  // Ids of the author's pre-defined interactions placed in this section.
-  interaction_refs?: string[];
-};
-type Outline = {
-  title: string;
-  excerpt: string;
-  location: string | null;
-  lat: number | null;
-  lng: number | null;
-  cover_photo_id: string | null;
-  date?: string | null;
-  sections: Section[];
+
+// Draft step key → localized label. Keeps run-draft.ts free of i18n.
+const STEP_LABELS: Record<DraftStepKey, DictKey> = {
+  enrich: "admin.ai.step.enrich",
+  captionDraft: "admin.ai.step.captionDraft",
+  brief: "admin.ai.step.brief",
+  outline: "admin.ai.step.outline",
+  section: "admin.ai.step.section",
+  homogenize: "admin.ai.step.homogenize",
+  captions: "admin.ai.step.captions",
+  save: "admin.ai.step.save",
 };
 
 // The fields save-draft persisted, handed back so the editor can re-seed itself
@@ -402,247 +396,46 @@ export function AiDraftPanel({
     }
     const qa = questions.map((q, i) => ({ question: q.text, answer: answers[i] ?? "" }));
     try {
-      // 1. Enrich photos in batches until none remain (best effort — captions
-      //    can be filled later, so a hiccup here shouldn't block the draft).
-      beginStep(t("admin.ai.step.enrich"), 0.03);
-      for (let guard = 0; guard < 50; guard++) {
-        try {
-          const { remaining } = await postJson<{ remaining: number }>(
-            "/api/admin/ai/enrich-post",
-            { postId },
-            signal,
-          );
-          if (remaining <= 0) break;
-        } catch {
-          break;
-        }
-      }
-
-      // 1b. Caption DRAFT (best effort): caption every eligible photo now, so the
-      //     article is written knowing each image's caption and can complement it.
-      //     The author's overwrite/only-empty choice is applied here, once.
-      beginStep(t("admin.ai.step.captionDraft"), 0.1);
-      let draftedIds: string[] = [];
-      let draftFailed = false;
-      try {
-        const r = await postJson<{ ids: string[] }>(
-          "/api/admin/ai/captions",
-          { postId, lang, phase: "draft", onlyEmpty: captionsOnlyEmpty },
+      // The whole sequence — enrich → caption draft → brief → outline → sections
+      // → homogenize → caption polish → save — lives in runDraft. Here we inject
+      // the effects (fetch/poll/retry), report progress, and turn the structured
+      // result into UI (warnings copy, re-seeding the editor).
+      const result = await runDraft(
+        {
+          postJson,
+          pollJob,
+          withRetry,
+          isAbort,
           signal,
-        );
-        draftedIds = r.ids ?? [];
-      } catch (e) {
-        if (isAbort(e)) throw e;
-        draftFailed = true;
-      }
-
-      // 1c. Trip continuity brief (best effort): distil this trip's earlier days
-      //     so the article remembers ongoing situations without the author
-      //     restating them. Threaded into the outline + every section prompt.
-      beginStep(t("admin.ai.step.brief"), 0.13);
-      let brief = "";
-      try {
-        const r = await postJson<{ brief: string }>(
-          "/api/admin/ai/trip-brief",
-          { postId },
-          signal,
-        );
-        brief = r.brief ?? "";
-      } catch (e) {
-        if (isAbort(e)) throw e;
-        /* best effort — proceed without a brief */
-      }
-
-      // 2. Outline (retried — a usable plan is the backbone of the whole draft).
-      beginStep(t("admin.ai.step.outline"), 0.16);
-      const { outline } = await withRetry(() =>
-        postJson<{ outline: Outline }>(
-          "/api/admin/ai/outline",
-          {
-            postId,
-            notes,
-            answers: qa,
-            lang,
-            brief,
+          onStep: (key, progress, vars) =>
+            beginStep(t(STEP_LABELS[key], vars), progress),
+          onSections: setSections,
+          onNotesPersisted: () => {
+            // The outline route persisted these notes; sync so autosave stays quiet.
+            savedNotesRef.current = notes;
+            onNotesDirty?.(false);
           },
-          signal,
-        ),
+        },
+        { postId, lang, notes, qa, captionsOnlyEmpty },
       );
-      // Outline persisted these notes to ai_notes; sync so autosave stays quiet.
-      savedNotesRef.current = notes;
-      onNotesDirty?.(false);
-
-      // 3. Write each section (retried independently). A section that keeps
-      //    failing is skipped rather than sinking the run, so the draft still
-      //    captures everything that did write — progress is never thrown away.
-      const parts: string[] = [];
-      const failed: number[] = [];
-      let photoFlagged = 0;
-      const total = outline.sections.length;
-      for (let i = 0; i < total; i++) {
-        // Sections are the long stretch (each reasoner call can run minutes);
-        // give them the bulk of the bar and a per-section checklist.
-        beginStep(t("admin.ai.step.section", { a: i + 1, b: total }), 0.24 + 0.5 * (i / total));
-        setSections({ done: i, total });
-        try {
-          const section = outline.sections[i];
-          const allowed = section.photo_ids ?? [];
-          const req = {
-            postId,
-            index: i,
-            total,
-            title: outline.title,
-            section,
-            // The whole plan, so each section stays out of the others' material.
-            outline: outline.sections.map((s) => ({
-              heading: s.heading,
-              beat: s.beat,
-            })),
-            notes,
-            answers: qa,
-            lang,
-            brief,
-          };
-          // Enqueue the (slow) section generation, then poll the job for its
-          // markdown — the work runs on the Edge Function, off this request.
-          const { jobId } = await withRetry(() =>
-            postJson<{ jobId: string }>("/api/admin/ai/section", req, signal),
-          );
-          let markdown = await pollJob(jobId, signal);
-
-          // If the model invented photo ids, feed them back for one repair pass
-          // before giving up — the section route forbids them explicitly.
-          let invalid = invalidPhotoRefs(markdown, allowed);
-          if (invalid.length) {
-            try {
-              const { jobId: repairId } = await withRetry(() =>
-                postJson<{ jobId: string }>(
-                  "/api/admin/ai/section",
-                  {
-                    ...req,
-                    avoidPhotoIds: invalid,
-                  },
-                  signal,
-                ),
-              );
-              const repaired = await pollJob(repairId, signal);
-              if (repaired) {
-                markdown = repaired;
-                invalid = invalidPhotoRefs(markdown, allowed);
-              }
-            } catch {
-              /* keep the first attempt; it's flagged below either way */
-            }
-          }
-          // Still invented after the retry — leave it in (the editor lints each
-          // dangling ref) but warn so the author knows to check.
-          if (invalid.length) photoFlagged += 1;
-          if (markdown) parts.push(markdown);
-        } catch (e) {
-          if (isAbort(e)) throw e; // a stop ends the whole run, not just a section
-          failed.push(i + 1);
-        }
-      }
-
-      if (parts.length === 0) throw new Error(t("admin.ai.err.noSections"));
-      setSections({ done: total, total }); // all sections written
-
-      // 4. Homogenize: stitch the independently-written sections into one
-      //    coherent article (smooth transitions, drop repetition and stray
-      //    sign-offs). Best effort — photo/interaction tokens are masked so the
-      //    rewrite can't corrupt a UUID or quiz, and any failure (or a dropped
-      //    sentinel) falls back to the raw concatenation.
-      const rawBody = parts.join("\n\n");
-      let body = rawBody;
-      // True when homogenize ran but its result was rejected (a dropped/duplicated
-      // sentinel) or it errored — so the raw concatenation shipped and the seams
-      // weren't smoothed. Surfaced as a warning so a discarded polish is never
-      // silent. The mask → call → verify → restore-or-fallback safety property
-      // lives in homogenizeWithMasking; here we only supply the model call.
-      let homogenizeFellBack = false;
-      if (parts.length >= 2) {
-        beginStep(t("admin.ai.step.homogenize"), 0.8);
-        const res = await homogenizeWithMasking(
-          rawBody,
-          async (masked) => {
-            const { jobId } = await postJson<{ jobId: string }>(
-              "/api/admin/ai/homogenize",
-              { postId, lang, body: masked },
-              signal,
-            );
-            return pollJob(jobId, signal);
-          },
-          { rethrowIf: isAbort },
-        );
-        body = res.body;
-        homogenizeFellBack = res.fellBack;
-      }
-
-      // 5. Caption POLISH (best effort): now the prose exists, refine each drafted
-      //    caption to the article's voice and drop anything the text already says.
-      //    Target exactly the drafted ids; if the draft failed, fall back to a
-      //    single full pass (no photoIds) so captions still get written.
-      beginStep(t("admin.ai.step.captions"), 0.9);
-      let captionsFailed = draftFailed;
-      const shouldPolish = draftFailed || draftedIds.length > 0;
-      if (shouldPolish) {
-        await postJson(
-          "/api/admin/ai/captions",
-          {
-            postId,
-            lang,
-            phase: "polish",
-            body,
-            onlyEmpty: captionsOnlyEmpty,
-            ...(draftFailed ? {} : { photoIds: draftedIds }),
-          },
-          signal,
-        ).catch((e) => {
-          if (!isAbort(e)) captionsFailed = true;
-        });
-      }
-
-      // 6. Save the assembled draft (retried — never lose finished prose).
-      beginStep(t("admin.ai.step.save"), 0.97);
-      const saveRes = await withRetry(() =>
-        postJson<{
-          ok: boolean;
-          post: Omit<DraftSaved, "interactions"> | null;
-          interactions: ManagedInteraction[];
-        }>(
-          "/api/admin/ai/save-draft",
-          {
-            postId,
-            title: outline.title,
-            excerpt: outline.excerpt,
-            location: outline.location ?? undefined,
-            lat: outline.lat ?? null,
-            lng: outline.lng ?? null,
-            cover_photo_id: outline.cover_photo_id ?? null,
-            date: outline.date ?? undefined,
-            body,
-            outline,
-            homogenizeFellBack,
-          },
-          signal,
-        ),
-      );
-      const saved = saveRes.post;
 
       setStep(null);
+      const w = result.warnings;
       const warnings: string[] = [];
-      if (failed.length)
-        warnings.push(t("admin.ai.warn.partial", { list: failed.join(", ") }));
-      if (photoFlagged)
-        warnings.push(t("admin.ai.warn.photos", { n: photoFlagged }));
-      if (homogenizeFellBack) warnings.push(t("admin.ai.warn.homogenize"));
-      if (captionsFailed) warnings.push(t("admin.ai.warn.captions"));
+      if (w.failedSections.length)
+        warnings.push(
+          t("admin.ai.warn.partial", { list: w.failedSections.join(", ") }),
+        );
+      if (w.photoFlagged)
+        warnings.push(t("admin.ai.warn.photos", { n: w.photoFlagged }));
+      if (w.homogenizeFellBack) warnings.push(t("admin.ai.warn.homogenize"));
+      if (w.captionsFailed) warnings.push(t("admin.ai.warn.captions"));
       if (warnings.length) setWarn(warnings.join(" "));
       setPhase("done");
       // Re-seed the editor synchronously with what was actually saved, so a
       // publish click right after generation can't PUT the stale empty draft.
-      if (saved)
-        onDraftSaved?.({ ...saved, interactions: saveRes.interactions ?? [] });
+      if (result.saved)
+        onDraftSaved?.({ ...result.saved, interactions: result.interactions });
       // The enrich + captions steps wrote photo captions/descriptions; pull them
       // into the gallery so the labels appear without a manual reload.
       onPhotosUpdated?.();
