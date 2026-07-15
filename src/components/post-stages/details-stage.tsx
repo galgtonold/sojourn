@@ -54,6 +54,10 @@ export function DetailsStage({
 }) {
   const t = useT();
   const [locOpen, setLocOpen] = useState(false);
+  // Mount on first open and stay mounted: the dialog's map is expensive to
+  // rebuild. The dynamic() import above still defers the MapLibre chunk until
+  // that first open.
+  const [locEverOpened, setLocEverOpened] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const coverId = coverFromPhotos(cover_image, photos);
 
@@ -122,7 +126,10 @@ export function DetailsStage({
         </label>
         <button
           type="button"
-          onClick={() => setLocOpen(true)}
+          onClick={() => {
+            setLocEverOpened(true);
+            setLocOpen(true);
+          }}
           className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-left text-sm transition hover:border-ember-400"
         >
           <MapPin className="size-4 shrink-0 text-ember-400" />
@@ -151,7 +158,7 @@ export function DetailsStage({
         />
       </div>
 
-      {locOpen && (
+      {locEverOpened && (
         <LocationDialog
           open={locOpen}
           initialLat={lat}

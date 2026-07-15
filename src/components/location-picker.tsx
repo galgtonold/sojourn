@@ -11,12 +11,16 @@ import { useT } from "@/components/i18n";
  * also reflects coordinates typed in or auto-filled from a photo's EXIF.
  */
 export function LocationPicker({
+  open,
   lat,
   lng,
   onChange,
   className,
   tracks,
 }: {
+  // Whether the picker is currently visible. It stays mounted while hidden, so
+  // this is what tells the map to resize and re-frame on each open.
+  open: boolean;
   lat: string;
   lng: string;
   onChange: (lat: string, lng: string) => void;
@@ -125,6 +129,30 @@ export function LocationPicker({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Framing must not live in map.on("load") — that fires once per instance, so a
+  // reused map would never move to the next photo. Run it whenever the dialog
+  // becomes visible instead.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !open) return;
+    map.resize();
+    if (hasCoords) {
+      // The photo has a location: go to it.
+      map.jumpTo({ center: [nLng, nLat], zoom: 9 });
+      return;
+    }
+    // No location: deliberately KEEP the current view rather than resetting to
+    // the world. Tagging a trip's photos in sequence, staying in the region is
+    // the point. (Changed behaviour — the old constructor reset to [10,30]/z1.3.)
+    //
+    // Coordinates are read on the open transition only, not tracked as deps: they
+    // also change when the user clicks the map, drags the pin or types into the
+    // lat/lng inputs, and re-framing on those would yank the camera to zoom 9
+    // under the cursor. The dialog syncs the draft during render, so they are
+    // already this photo's by the time this runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Reflect the current coordinates as a draggable pin.
   useEffect(() => {

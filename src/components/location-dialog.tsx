@@ -9,6 +9,11 @@ import { useFocusTrap } from "@/lib/use-focus-trap";
  * A modal wrapper around the map LocationPicker, shared by the post editor and
  * the photo gallery. Edits a draft so Cancel discards; Save reports the final
  * coordinates (empty strings when cleared).
+ *
+ * Stays MOUNTED once opened and hides with CSS rather than unmounting: the map
+ * inside costs a WebGL context + style parse + tile decode to build, and the
+ * gallery opens this once per photo. Callers latch it mounted on first open, so
+ * the ~200KB MapLibre chunk is still not fetched until then.
  */
 export function LocationDialog({
   open,
@@ -36,12 +41,22 @@ export function LocationDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
 
-  useEffect(() => {
+  // Sync the draft to the incoming coordinates during render, not in an effect:
+  // the picker below frames its map on the commit where `open` flips, and child
+  // effects run before the parent's — an effect here would land a commit late,
+  // leaving the map framed on the previous photo.
+  const [synced, setSynced] = useState({ open, initialLat, initialLng });
+  if (
+    synced.open !== open ||
+    synced.initialLat !== initialLat ||
+    synced.initialLng !== initialLng
+  ) {
+    setSynced({ open, initialLat, initialLng });
     if (open) {
       setLat(initialLat);
       setLng(initialLng);
     }
-  }, [open, initialLat, initialLng]);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -52,16 +67,15 @@ export function LocationDialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const input =
     "w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400";
 
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm"
+      className={`fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm ${open ? "" : "hidden"}`}
       role="dialog"
       aria-modal="true"
+      aria-hidden={!open}
       aria-label={title ?? t("admin.location.title")}
       onClick={onClose}
     >
@@ -90,6 +104,7 @@ export function LocationDialog({
             {t("admin.editor.pickLocation")}
           </p>
           <LocationPicker
+            open={open}
             lat={lat}
             lng={lng}
             tracks={tracks}

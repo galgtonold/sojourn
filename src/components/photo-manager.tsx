@@ -139,6 +139,10 @@ export function PhotoManager({
   const [savedId, setSavedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [locPhoto, setLocPhoto] = useState<ManagedPhoto | null>(null);
+  // Mount on first open and stay mounted: the dialog's map is expensive to
+  // rebuild and this opens once per photo. The dynamic() import above still
+  // defers the MapLibre chunk until that first open.
+  const [locEverOpened, setLocEverOpened] = useState(false);
   const t = useT();
   const confirm = useConfirm();
 
@@ -556,7 +560,10 @@ export function PhotoManager({
               </button>
               <button
                 type="button"
-                onClick={() => setLocPhoto(photo)}
+                onClick={() => {
+                  setLocEverOpened(true);
+                  setLocPhoto(photo);
+                }}
                 className="inline-flex items-center gap-1 text-[10px] text-sand-100/60 transition hover:text-ember-400 hover:underline"
               >
                 <MapPin className="size-3" />
@@ -672,7 +679,7 @@ export function PhotoManager({
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      {!!locPhoto && (
+      {locEverOpened && (
         <LocationDialog
           open={!!locPhoto}
           title={t("admin.location.photoTitle")}
