@@ -8,13 +8,13 @@ import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
+// No geometry here: this list only ever shows a name and a distance, and the
+// picker that draws the lines loads its own. Adding `geojson` back would put it
+// in the editor page's payload again.
 export type ManagedTrack = {
   id: string;
   name: string | null;
   distance_m: number | null;
-  // The line geometry, so a location picker / map can draw the track. Optional:
-  // older callers that only need id/name/distance don't have to load it.
-  geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
 };
 
 export function TrackManager({
@@ -93,7 +93,7 @@ export function TrackManager({
                 started_at: parsed.startedAt,
                 ended_at: parsed.endedAt,
               })
-              .select("id, name, distance_m, geojson")
+              .select("id, name, distance_m")
               .single();
             if (error) throw new Error(error.message);
             added.push(data as ManagedTrack);

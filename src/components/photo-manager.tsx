@@ -25,7 +25,6 @@ import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
-import type { ManagedTrack } from "@/components/track-manager";
 
 // MapLibre (~200KB) rides in behind LocationDialog, and most editing sessions
 // never open the picker — so it must not be in the editor's first load. Same
@@ -73,14 +72,10 @@ export function PhotoManager({
   initialManualOrder = false,
   onListChange,
   refreshKey = 0,
-  tracks = [],
 }: {
   postId: string;
   slug: string;
   initial: ManagedPhoto[];
-  // The post's tracks (with geometry), drawn on the per-photo location picker so
-  // the author can place a photo relative to the recorded route.
-  tracks?: ManagedTrack[];
   // Whether the author hand-arranged this post's photos. When false, a new
   // upload re-sorts the gallery by capture time; when true it just appends.
   initialManualOrder?: boolean;
@@ -688,7 +683,9 @@ export function PhotoManager({
           onClose={() => setLocPhoto(null)}
           onSave={(la, ln) => locPhoto && saveLocation(locPhoto, la, ln)}
           allowClear
-          tracks={tracks}
+          // The picker draws this post's routes so the author can place a photo
+          // relative to where they walked; it loads the geometry itself on open.
+          postId={postId}
         />
       )}
     </div>

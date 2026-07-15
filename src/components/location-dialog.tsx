@@ -23,7 +23,7 @@ export function LocationDialog({
   onClose,
   onSave,
   allowClear,
-  tracks,
+  postId,
 }: {
   open: boolean;
   title?: string;
@@ -32,8 +32,9 @@ export function LocationDialog({
   onClose: () => void;
   onSave: (lat: string, lng: string) => void;
   allowClear?: boolean;
-  // Optional route geometry to draw on the picker (the map fits to it).
-  tracks?: { id: string; geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null }[];
+  // The post whose routes the picker should draw (it fits the map to them, and
+  // loads the geometry itself on open). Omit for a picker with no routes.
+  postId?: string;
 }) {
   const t = useT();
   const [lat, setLat] = useState(initialLat);
@@ -107,7 +108,7 @@ export function LocationDialog({
             open={open}
             lat={lat}
             lng={lng}
-            tracks={tracks}
+            postId={postId}
             onChange={(la, ln) => {
               setLat(la);
               setLng(ln);

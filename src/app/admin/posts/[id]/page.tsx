@@ -50,9 +50,14 @@ export default async function EditPostPage({
       .eq("post_id", id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
+    // No geojson: TrackManager only lists name/distance, and the only thing that
+    // draws the geometry is the location picker — which is dynamically imported
+    // and fetches its own tracks when it opens. Shipping it here put ~83KB of
+    // GPX JSON in the RSC payload of every editor load, for a dialog most
+    // sessions never open. Grows with real tracks, not with row count.
     supabase!
       .from("tracks")
-      .select("id, name, distance_m, geojson")
+      .select("id, name, distance_m")
       .eq("post_id", id)
       .order("created_at", { ascending: true }),
     supabase!

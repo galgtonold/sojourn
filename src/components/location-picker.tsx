@@ -3,7 +3,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
+
+type PickerTrack = {
+  id: string;
+  geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
+};
 
 /**
  * A small map for picking a post's location: click anywhere (or drag the pin) to
@@ -16,7 +22,7 @@ export function LocationPicker({
   lng,
   onChange,
   className,
-  tracks,
+  postId,
 }: {
   // Whether the picker is currently visible. It stays mounted while hidden, so
   // this is what tells the map to resize and re-frame on each open.
@@ -25,8 +31,9 @@ export function LocationPicker({
   lng: string;
   onChange: (lat: string, lng: string) => void;
   className?: string;
-  // Optional route geometry to draw for context; the map frames to it on every open.
-  tracks?: { id: string; geojson?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null }[];
+  // The post whose route geometry to draw for context; the map frames to it on
+  // every open. Omit to get a bare map with no routes.
+  postId?: string;
 }) {
   const t = useT();
   const container = useRef<HTMLDivElement>(null);
@@ -41,14 +48,46 @@ export function LocationPicker({
   // layer before tiles arrive — a light flash on the dark dialog on every open.
   const [ready, setReady] = useState(false);
 
+  // The geometry is only needed once the picker is actually visible, and it is
+  // large (~83KB of GPX JSON on a long post). Fetching it here rather than
+  // taking it as a prop keeps it out of the editor page's RSC payload, which
+  // every load pays for even though most sessions never open this dialog.
+  const [tracks, setTracks] = useState<PickerTrack[]>([]);
+  // Latched rather than keyed off `tracks.length`, so a post with no tracks —
+  // where the gallery opens this once per photo — doesn't re-query on every open
+  // to be told "none" again.
+  const fetchedRef = useRef(false);
+  useEffect(() => {
+    if (!open || !postId || fetchedRef.current) return;
+    fetchedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = getBrowserSupabase();
+        const { data } = await supabase
+          .from("tracks")
+          .select("id, geojson")
+          .eq("post_id", postId)
+          .order("created_at", { ascending: true });
+        if (!cancelled && data?.length) setTracks(data as PickerTrack[]);
+      } catch {
+        // No routes drawn is a degraded map, not a broken one — the pin, the
+        // click-to-place and the lat/lng inputs all still work.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, postId]);
+
   const nLat = Number(lat);
   const nLng = Number(lng);
   const hasCoords =
     lat !== "" && lng !== "" && Number.isFinite(nLat) && Number.isFinite(nLng);
 
   // The map is built once and outlives many opens, so `frame` below can't close
-  // over props — it would keep the first open's values forever. Mirror them into
-  // refs during render instead, the same way `onChange` is handled above.
+  // over the current values — it would keep the first open's forever. Mirror them
+  // into refs during render instead, the same way `onChange` is handled above.
   const tracksRef = useRef(tracks);
   tracksRef.current = tracks;
   const coordsRef = useRef({ hasCoords, nLat, nLng });
@@ -195,6 +234,17 @@ export function LocationPicker({
     // the time this runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // The geometry now arrives asynchronously, so it can land after `load` has
+  // already framed a map with no routes on it. Draw and re-frame when it does.
+  // Not a duplicate of the two calls above: whichever of the three runs last
+  // wins, and `frame` → `drawTracks` is idempotent (`getSource` short-circuits
+  // the re-adds, and framing is a jump to the same computed bounds).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || !tracks.length) return;
+    frame(map);
+  }, [tracks, frame]);
 
   // Reflect the current coordinates as a draggable pin.
   useEffect(() => {
