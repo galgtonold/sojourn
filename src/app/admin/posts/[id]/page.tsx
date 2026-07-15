@@ -20,43 +20,56 @@ export default async function EditPostPage({
   const { id } = await params;
 
   const supabase = await getServerSupabase();
-  const { data, error } = await supabase!
-    .from("posts")
-    .select(
-      "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, photos_manual_order, updated_at, translation_status, source_locale",
-    )
-    .eq("id", id)
-    .maybeSingle();
+
+  // One wave, not seven serial round trips. photos/tracks/interactions/trips
+  // depend only on `id` — not on each other, and not on the post row — and
+  // viewer/AI config depend on nothing. The notFound() branch below still gates
+  // rendering; on a missing post the other queries are wasted, but they cost
+  // nothing extra because they ran concurrently, and a 404 here is rare.
+  const [
+    { data, error },
+    { data: photos },
+    { data: tracks },
+    { data: interactions },
+    { data: allTrips },
+    viewer,
+    { isAiConfigured },
+  ] = await Promise.all([
+    supabase!
+      .from("posts")
+      .select(
+        "id, title, slug, location, excerpt, body, cover_image, cover_alt, trip_id, lat, lng, published, published_at, ai_notes, photos_manual_order, updated_at, translation_status, source_locale",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    supabase!
+      .from("photos")
+      .select(
+        "id, url, storage_path, caption, alt, lat, lng, place_name, width, height, blurhash, sort_order",
+      )
+      .eq("post_id", id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    supabase!
+      .from("tracks")
+      .select("id, name, distance_m, geojson")
+      .eq("post_id", id)
+      .order("created_at", { ascending: true }),
+    supabase!
+      .from("interactions")
+      .select("id, kind, question, options, correct_index, explanation")
+      .eq("post_id", id)
+      .order("sort_order", { ascending: true }),
+    supabase!
+      .from("trips")
+      .select("id, title")
+      .order("start_date", { ascending: false }),
+    getViewer(),
+    getAiConfig(),
+  ]);
 
   if (error || !data) notFound();
 
-  const { data: photos } = await supabase!
-    .from("photos")
-    .select(
-      "id, url, storage_path, caption, alt, lat, lng, place_name, width, height, blurhash, sort_order",
-    )
-    .eq("post_id", id)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const { data: tracks } = await supabase!
-    .from("tracks")
-    .select("id, name, distance_m, geojson")
-    .eq("post_id", id)
-    .order("created_at", { ascending: true });
-
-  const { data: interactions } = await supabase!
-    .from("interactions")
-    .select("id, kind, question, options, correct_index, explanation")
-    .eq("post_id", id)
-    .order("sort_order", { ascending: true });
-
-  const viewer = await getViewer();
-  const { isAiConfigured } = await getAiConfig();
-  const { data: allTrips } = await supabase!
-    .from("trips")
-    .select("id, title")
-    .order("start_date", { ascending: false });
   const trips = viewer.isOwner
     ? (allTrips ?? [])
     : (allTrips ?? []).filter((t) => viewer.tripIds.includes(t.id));
