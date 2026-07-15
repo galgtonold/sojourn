@@ -59,25 +59,33 @@ export function LocationPicker({
   const fetchedRef = useRef(false);
   useEffect(() => {
     if (!open || !postId || fetchedRef.current) return;
+    // Latched, no `cancelled` guard: LocationDialog keeps this component mounted
+    // and hidden via CSS (`locEverOpened` in photo-manager.tsx), so it only ever
+    // unmounts on navigation — this effect's cleanup instead runs on every
+    // open/close flip. A cancel flag set there would discard the in-flight
+    // result while leaving the latch set, permanently starving `tracks` with no
+    // retry path. React 18+ also dropped the setState-after-unmount warning, so
+    // there's nothing left for the guard to protect against.
     fetchedRef.current = true;
-    let cancelled = false;
     (async () => {
       try {
         const supabase = getBrowserSupabase();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("tracks")
           .select("id, geojson")
           .eq("post_id", postId)
           .order("created_at", { ascending: true });
-        if (!cancelled && data?.length) setTracks(data as PickerTrack[]);
-      } catch {
+        // PostgREST failures (RLS denial, network) resolve rather than throw,
+        // so a dropped `error` here would look identical to "no tracks" —
+        // surface it the same way track-manager.tsx does for this table.
+        if (error) throw new Error(error.message);
+        if (data?.length) setTracks(data as PickerTrack[]);
+      } catch (e) {
         // No routes drawn is a degraded map, not a broken one — the pin, the
         // click-to-place and the lat/lng inputs all still work.
+        console.error("[picker] track geometry failed:", e);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [open, postId]);
 
   const nLat = Number(lat);
@@ -240,6 +248,14 @@ export function LocationPicker({
   // Not a duplicate of the two calls above: whichever of the three runs last
   // wins, and `frame` → `drawTracks` is idempotent (`getSource` short-circuits
   // the re-adds, and framing is a jump to the same computed bounds).
+  //
+  // Deliberately doesn't check `open`: geometry can land while the dialog is
+  // hidden (fetch outlives a close), so `frame` may call `fitBounds` on a
+  // display:none map. That's only safe because the ResizeObserver above
+  // ignores the 0×0 entry the hidden container reports — `map.transform` keeps
+  // its last non-zero size, so `fitBounds` computes against a real viewport
+  // instead of MapLibre's negative-padding path for a zero-size one. If that
+  // guard ever changes, this call needs an `open` check added alongside it.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current || !tracks.length) return;
