@@ -1,8 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { deepseekChat } from "@/lib/ai/deepseek";
 
-// The setup file ensures DEEPSEEK_API_KEY is set ("test-key"), so isAiConfigured
-// is true. We mock global fetch to exercise request shaping + response handling.
+// getAiConfig is a Next `unstable_cache`, which needs a request-scoped
+// incremental cache a unit test can't supply — so mock it to the pure resolver.
+// The key still comes from the env the setup file sets (DEEPSEEK_API_KEY =
+// "test-key"), so isAiConfigured is true exactly as before; the model IDs are
+// pinned here so the alias -> ID mapping is visible in the assertions below.
+vi.mock("@/lib/ai-config", async () => {
+  const { readAiEnv, resolveAiConfig } = await import("@/lib/ai-config-fields");
+  return {
+    AI_CONFIG_TAG: "ai-config",
+    getAiConfig: async () =>
+      resolveAiConfig(
+        { deepseekModelFast: "deepseek-chat", deepseekModelReasoner: "deepseek-reasoner" },
+        readAiEnv(),
+      ),
+  };
+});
+
+// We mock global fetch to exercise request shaping + response handling.
 function mockFetch(impl: (url: string, init: RequestInit) => unknown) {
   const fn = vi.fn(async (url: string, init: RequestInit) => impl(url, init));
   vi.stubGlobal("fetch", fn);
@@ -20,7 +36,7 @@ describe("deepseekChat", () => {
     }));
 
     const out = await deepseekChat({
-      model: "deepseek-chat",
+      model: "fast",
       messages: [{ role: "user", content: "hi" }],
     });
 
@@ -41,7 +57,7 @@ describe("deepseekChat", () => {
       json: async () => ({ choices: [{ message: { content: "{}" } }] }),
     }));
     await deepseekChat({
-      model: "m",
+      model: "fast",
       messages: [{ role: "user", content: "x" }],
       json: true,
     });
@@ -56,14 +72,14 @@ describe("deepseekChat", () => {
       text: async () => "rate limited",
     }));
     await expect(
-      deepseekChat({ model: "m", messages: [{ role: "user", content: "x" }] }),
+      deepseekChat({ model: "fast", messages: [{ role: "user", content: "x" }] }),
     ).rejects.toThrow(/429/);
   });
 
   it("returns empty string when the model yields no content", async () => {
     mockFetch(() => ({ ok: true, json: async () => ({ choices: [] }) }));
     expect(
-      await deepseekChat({ model: "m", messages: [{ role: "user", content: "x" }] }),
+      await deepseekChat({ model: "fast", messages: [{ role: "user", content: "x" }] }),
     ).toBe("");
   });
 
@@ -83,10 +99,23 @@ describe("deepseekChat", () => {
     // No service role configured in tests, so recordUsage is a no-op — the call
     // must still succeed and return the content.
     const out = await deepseekChat({
-      model: "m",
+      model: "fast",
       messages: [{ role: "user", content: "x" }],
       meta: { operation: "section", postId: "p", userId: "u" },
     });
     expect(out).toBe("ok");
+  });
+
+  it("sends the configured model ID for the alias, not the alias itself", async () => {
+    const fetchFn = mockFetch(() => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "ok" } }] }),
+    }));
+    await deepseekChat({
+      model: "reasoner",
+      messages: [{ role: "user", content: "x" }],
+    });
+    const body = JSON.parse(fetchFn.mock.calls[0][1].body as string);
+    expect(body.model).toBe("deepseek-reasoner");
   });
 });

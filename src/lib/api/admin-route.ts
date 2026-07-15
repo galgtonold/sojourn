@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import type { z } from "zod";
 import type { User } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isAiConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 
 export type ServerSupabase = NonNullable<
   Awaited<ReturnType<typeof getServerSupabase>>
@@ -43,7 +43,7 @@ export function adminRoute<S extends z.ZodTypeAny>(
     if (!supabase) {
       return NextResponse.json({ error: "not configured" }, { status: 503 });
     }
-    if (options.requireAi && !isAiConfigured) {
+    if (options.requireAi && !(await getAiConfig()).isAiConfigured) {
       return NextResponse.json(
         { error: "AI is not configured" },
         { status: 503 },

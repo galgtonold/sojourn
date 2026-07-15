@@ -10,7 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isAiConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { getTrips } from "@/lib/content";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
@@ -91,6 +91,7 @@ async function loadStats(viewer: Viewer) {
 
 export default async function AdminDashboard() {
   const viewer = await getViewer();
+  const { isAiConfigured } = await getAiConfig();
   const locale = await getReaderLocale();
   const stats = await loadStats(viewer);
   const allTrips = await getTrips();

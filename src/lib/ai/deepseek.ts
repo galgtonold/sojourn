@@ -1,6 +1,6 @@
 // Server-only DeepSeek client (OpenAI-compatible Chat Completions API).
 import "server-only";
-import { env, isAiConfigured } from "@/lib/env";
+import { getAiConfig, type AiConfig } from "@/lib/ai-config";
 import { recordUsage, recordAiFailure } from "@/lib/ai/usage";
 
 export type UsageMeta = {
@@ -9,11 +9,21 @@ export type UsageMeta = {
   userId?: string | null;
 };
 
-export const aiModels = {
-  fast: env.deepseekModelFast,
-  reasoner: env.deepseekModelReasoner,
-  vision: env.deepseekModelVision,
-};
+// Callers name a ROLE, not a model ID. The ID is configurable at runtime (env or
+// /admin/settings), so resolving it here — where we're already async — keeps
+// every call site synchronous and stops routes from knowing model names.
+export type ModelAlias = "fast" | "reasoner" | "vision";
+
+/** Alias → the configured model ID. Exported for the `ai_jobs` enqueue path,
+ *  which must persist a real ID: the Edge Function worker sends the stored
+ *  `model` straight to the provider and can't resolve an alias itself. */
+export function resolveModel(cfg: AiConfig, alias: ModelAlias): string {
+  return alias === "reasoner"
+    ? cfg.deepseekModelReasoner
+    : alias === "vision"
+      ? cfg.deepseekModelVision
+      : cfg.deepseekModelFast;
+}
 
 // OpenAI-style multimodal content parts.
 export type ContentPart =
@@ -26,7 +36,7 @@ export type ChatMessage = {
 };
 
 type ChatOpts = {
-  model: string;
+  model: ModelAlias;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
@@ -41,15 +51,17 @@ type ChatOpts = {
 async function singleCompletion(
   opts: ChatOpts,
   messages: ChatMessage[],
+  cfg: AiConfig,
+  model: string,
 ): Promise<{ content: string; finishReason: string | null }> {
-  const res = await fetch(`${env.deepseekBaseUrl}/chat/completions`, {
+  const res = await fetch(`${cfg.deepseekBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${env.deepseekApiKey}`,
+      authorization: `Bearer ${cfg.deepseekApiKey}`,
     },
     body: JSON.stringify({
-      model: opts.model,
+      model,
       messages,
       temperature: opts.temperature ?? 0.7,
       max_tokens: opts.maxTokens ?? 4096,
@@ -78,7 +90,7 @@ async function singleCompletion(
     // untracked while longer ones (sections) recorded.
     await recordUsage({
       operation: opts.meta.operation,
-      model: opts.model,
+      model,
       postId: opts.meta.postId,
       userId: opts.meta.userId,
       finishReason,
@@ -186,7 +198,9 @@ export async function runJsonWithRepair(opts: {
 }
 
 export async function deepseekChat(opts: ChatOpts): Promise<string> {
-  if (!isAiConfigured) throw new Error("AI is not configured");
+  const cfg = await getAiConfig();
+  if (!cfg.isAiConfigured) throw new Error("AI is not configured");
+  const model = resolveModel(cfg, opts.model);
   const json = Boolean(opts.json);
 
   // Injected transport: one round trip, applying the repair overrides and a
@@ -206,13 +220,15 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
             : opts.meta,
       },
       messages,
+      cfg,
+      model,
     );
 
   const onFail = async (f: { error: string; finishReason?: string | null }) => {
     if (!opts.meta) return;
     await recordAiFailure({
       operation: opts.meta.operation,
-      model: opts.model,
+      model,
       postId: opts.meta.postId,
       userId: opts.meta.userId,
       finishReason: f.finishReason,

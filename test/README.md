@@ -37,7 +37,9 @@ list in `vitest.config.ts`).
 The pipeline depends on exactly two external things, both mocked per test file:
 
 - **DeepSeek** — one chokepoint, `deepseekChat` in `src/lib/ai/deepseek.ts`.
-  Replaced via `vi.mock` while keeping `parseJsonLoose`/`aiModels` real.
+  Replaced via `vi.mock` while keeping `parseJsonLoose` real. Files that reach
+  the provider config also mock `@/lib/ai-config`: `getAiConfig` is a Next
+  `unstable_cache` and needs a request-scoped cache no unit test can supply.
 - **Supabase** — `getServerSupabase` in `src/lib/supabase/server.ts`, replaced
   with the in-memory fake. The materializer, dossier builder and validation all
   run for real against it.

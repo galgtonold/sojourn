@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
+import { deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import { questionsPrompt, normalizeQuestions, type Lang } from "@/lib/ai/prompt";
 
@@ -38,7 +38,7 @@ async function questions({
   ]);
 
   const data = await deepseekJson<{ questions: unknown }>({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0.6,
     maxTokens: 1200,
     meta: { operation: "questions", postId: input.postId, userId: user.id },

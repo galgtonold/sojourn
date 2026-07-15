@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
+import { deepseekJson } from "@/lib/ai/deepseek";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
 import { selectCaptionTargets } from "@/lib/ai/caption-select";
 import { fetchCaptionSources, saveCaptions } from "@/lib/db/photos";
@@ -120,7 +120,7 @@ async function captions({
   const data = await deepseekJson<{
     items: { id: string; caption: string }[];
   }>({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0.5,
     // Real headroom so the items array for a large gallery (up to 40 photos)
     // never truncates mid-JSON — a truncated response is unparseable and the

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isAiConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { getViewer } from "@/lib/auth";
 import { PostWorkspace, type EditablePost } from "@/components/post-workspace";
 import type { ManagedInteraction } from "@/components/interaction-manager";
@@ -52,6 +52,7 @@ export default async function EditPostPage({
     .order("sort_order", { ascending: true });
 
   const viewer = await getViewer();
+  const { isAiConfigured } = await getAiConfig();
   const { data: allTrips } = await supabase!
     .from("trips")
     .select("id, title")

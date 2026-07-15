@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, deepseekChat, type ChatMessage } from "@/lib/ai/deepseek";
+import { deepseekChat, type ChatMessage } from "@/lib/ai/deepseek";
 import { getViewer } from "@/lib/auth";
 
 export const maxDuration = 60;
@@ -49,7 +49,7 @@ async function proposeStyle({ supabase, user }: AdminCtx<z.infer<typeof schema>>
   // no deep reasoning, so the fast model (like outline/captions) is the right
   // fit and returns the text directly.
   const style = await deepseekChat({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0.5,
     maxTokens: 800,
     messages,

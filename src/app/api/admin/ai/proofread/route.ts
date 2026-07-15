@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import {
-  aiModels,
   deepseekChat,
   parseJsonLoose,
   type ChatMessage,
@@ -57,7 +56,7 @@ async function proofread({ user, input }: AdminCtx<z.infer<typeof schema>>) {
   ];
 
   const raw = await deepseekChat({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0,
     maxTokens: 8000,
     json: true,

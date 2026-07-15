@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
-import { isAiConfigured, env } from "@/lib/env";
+import { env } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { WritingStyleForm } from "@/components/writing-style-form";
 import { BrandingForm } from "@/components/branding-form";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const viewer = await getViewer();
+  const { isAiConfigured } = await getAiConfig();
   if (!viewer.isOwner) redirect("/admin");
 
   const supabase = await getServerSupabase();

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { isAiConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { computeEnrichment } from "@/lib/ai/enrich";
 
 export const maxDuration = 60;
@@ -24,7 +24,7 @@ async function enrichPost({
     .is("enriched_at", null);
 
   const all = pending ?? [];
-  if (!isAiConfigured || all.length === 0) {
+  if (!(await getAiConfig()).isAiConfigured || all.length === 0) {
     return { remaining: 0, processed: 0 };
   }
 

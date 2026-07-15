@@ -4,8 +4,8 @@
 // prior days, no trip, AI isn't configured, or the call fails.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isAiConfigured } from "@/lib/env";
-import { aiModels, deepseekChat } from "@/lib/ai/deepseek";
+import { getAiConfig } from "@/lib/ai-config";
+import { deepseekChat } from "@/lib/ai/deepseek";
 import { stripRefTags } from "@/lib/references";
 
 const FENCES = /:::(?:poll|quiz)[\s\S]*?:::/g;
@@ -65,7 +65,8 @@ export async function buildTripBrief(
   postId: string,
   meta?: { userId?: string | null },
 ): Promise<string> {
-  if (!isAiConfigured) return "";
+  const cfg = await getAiConfig();
+  if (!cfg.isAiConfigured) return "";
   const { data: post } = await supabase
     .from("posts")
     .select("published_at, trip_id, trips(summary, ai_context)")
@@ -91,7 +92,7 @@ export async function buildTripBrief(
 
   try {
     const brief = await deepseekChat({
-      model: aiModels.fast,
+      model: "fast",
       temperature: 0.3,
       maxTokens: 1500,
       meta: { operation: "trip_brief", postId, userId: meta?.userId },

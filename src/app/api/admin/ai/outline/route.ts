@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, deepseekJson } from "@/lib/ai/deepseek";
+import { deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier } from "@/lib/ai/dossier";
 import { reconcileOutline, type Outline } from "@/lib/ai/outline-plan";
 import { continuityBlock, langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
@@ -50,7 +50,7 @@ async function outline({
 
   const continuity = continuityBlock(input.brief ?? "");
   const outline = await deepseekJson<Outline>({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0.6,
     // A truncated outline is the #1 cause of an unparseable response, and a
     // half-written plan derails every section that follows. A rich plan (many

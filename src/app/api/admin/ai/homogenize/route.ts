@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, type ChatMessage } from "@/lib/ai/deepseek";
+import { type ChatMessage } from "@/lib/ai/deepseek";
 import { enqueueLlmJob } from "@/lib/ai/jobs";
 import { buildStyleGuide } from "@/lib/ai/dossier";
 import { langInstruction, type Lang } from "@/lib/ai/prompt";
@@ -71,7 +71,7 @@ async function homogenize({
   ];
 
   const { jobId } = await enqueueLlmJob(
-    { model: aiModels.fast, temperature: 0.4, maxTokens: 32000, messages },
+    { model: "fast", temperature: 0.4, maxTokens: 32000, messages },
     { operation: "homogenize", postId, userId: user.id },
   );
   return { jobId };

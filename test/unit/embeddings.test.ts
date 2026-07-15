@@ -1,6 +1,15 @@
 // Pure-function coverage for the embeddings helpers (no network). The provider
 // client (embedText/embedBatch) is exercised for its no-config short-circuit.
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { resolveAiConfig } from "@/lib/ai-config-fields";
+
+// getAiConfig is a Next `unstable_cache`, which needs a request-scoped
+// incremental cache that a unit test has no way to provide. Mock it to the
+// pure resolver with nothing configured — the state this file exercises.
+vi.mock("@/lib/ai-config", () => ({
+  AI_CONFIG_TAG: "ai-config",
+  getAiConfig: async () => resolveAiConfig({}, {}),
+}));
 import {
   postEmbeddingInput,
   photoEmbeddingInput,
@@ -8,7 +17,6 @@ import {
   embedText,
   embedBatch,
 } from "@/lib/ai/embeddings";
-import { isEmbeddingsConfigured } from "@/lib/env";
 
 describe("embedding input builders", () => {
   it("orders post fields and drops blanks", () => {
@@ -86,8 +94,8 @@ describe("embedding inputs include place data", () => {
 });
 
 describe("embeddings client without a provider", () => {
-  it("is unconfigured in the test environment", () => {
-    expect(isEmbeddingsConfigured).toBe(false);
+  it("resolves to unconfigured when no provider key is set anywhere", () => {
+    expect(resolveAiConfig({}, {}).isEmbeddingsConfigured).toBe(false);
   });
 
   it("no-ops gracefully (no network) when unconfigured", async () => {

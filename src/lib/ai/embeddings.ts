@@ -3,7 +3,8 @@
 // separate, configurable provider — point EMBEDDING_BASE_URL at a local
 // OpenAI-compatible server (Ollama / TEI / llama.cpp) to run it keylessly.
 import "server-only";
-import { env, isEmbeddingsConfigured } from "@/lib/env";
+import { env } from "@/lib/env"; // still needed for embeddingDim + aiPriceEmbedding
+import { getAiConfig, type AiConfig } from "@/lib/ai-config";
 import { recordUsage } from "@/lib/ai/usage";
 import type { UsageMeta } from "@/lib/ai/deepseek";
 
@@ -58,15 +59,18 @@ type EmbeddingResponse = {
   usage?: { prompt_tokens?: number; total_tokens?: number };
 };
 
-async function callEmbeddings(input: string[]): Promise<EmbeddingResponse> {
-  const res = await fetch(`${env.embeddingBaseUrl}/embeddings`, {
+async function callEmbeddings(
+  input: string[],
+  cfg: AiConfig,
+): Promise<EmbeddingResponse> {
+  const res = await fetch(`${cfg.embeddingBaseUrl}/embeddings`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${env.embeddingApiKey}`,
+      authorization: `Bearer ${cfg.embeddingApiKey}`,
     },
     body: JSON.stringify({
-      model: env.embeddingModel,
+      model: cfg.embeddingModel,
       input,
       // OpenAI honours an explicit output size; servers that don't simply ignore it.
       ...(env.embeddingDim ? { dimensions: env.embeddingDim } : {}),
@@ -79,11 +83,11 @@ async function callEmbeddings(input: string[]): Promise<EmbeddingResponse> {
   return (await res.json()) as EmbeddingResponse;
 }
 
-function meter(json: EmbeddingResponse, meta?: UsageMeta) {
+function meter(json: EmbeddingResponse, cfg: AiConfig, meta?: UsageMeta) {
   const tokens = json.usage?.total_tokens ?? json.usage?.prompt_tokens ?? 0;
   void recordUsage({
     operation: meta?.operation ?? "embed",
-    model: env.embeddingModel,
+    model: cfg.embeddingModel,
     postId: meta?.postId,
     userId: meta?.userId,
     usage: {
@@ -102,11 +106,12 @@ export async function embedText(
   text: string,
   meta?: UsageMeta,
 ): Promise<number[] | null> {
-  if (!isEmbeddingsConfigured) return null;
+  const cfg = await getAiConfig();
+  if (!cfg.isEmbeddingsConfigured) return null;
   const clean = text.trim();
   if (!clean) return null;
-  const json = await callEmbeddings([clip(clean)]);
-  meter(json, meta);
+  const json = await callEmbeddings([clip(clean)], cfg);
+  meter(json, cfg, meta);
   return json.data[0]?.embedding ?? null;
 }
 
@@ -117,7 +122,8 @@ export async function embedBatch(
   meta?: UsageMeta,
 ): Promise<(number[] | null)[]> {
   const out: (number[] | null)[] = texts.map(() => null);
-  if (!isEmbeddingsConfigured) return out;
+  const cfg = await getAiConfig();
+  if (!cfg.isEmbeddingsConfigured) return out;
 
   // Send only non-blank inputs, remembering where each belongs.
   const positions: number[] = [];
@@ -131,8 +137,8 @@ export async function embedBatch(
   });
   if (payload.length === 0) return out;
 
-  const json = await callEmbeddings(payload);
-  meter(json, meta);
+  const json = await callEmbeddings(payload, cfg);
+  meter(json, cfg, meta);
   json.data.forEach((d, i) => {
     out[positions[i]] = d.embedding;
   });

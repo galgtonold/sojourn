@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isEmbeddingsConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import {
   embedBatch,
   postEmbeddingInput,
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const supabase = await getServerSupabase();
   if (!supabase)
     return NextResponse.json({ error: "not configured" }, { status: 503 });
-  if (!isEmbeddingsConfigured)
+  if (!(await getAiConfig()).isEmbeddingsConfigured)
     return NextResponse.json(
       { error: "Embeddings are not configured" },
       { status: 503 },

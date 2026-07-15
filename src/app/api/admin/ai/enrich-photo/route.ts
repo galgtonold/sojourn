@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { isAiConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { computeEnrichment } from "@/lib/ai/enrich";
 import { embedPhotoRecord } from "@/lib/ai/embed-records";
 
@@ -30,7 +30,7 @@ async function enrichPhoto({
   if (photo.enriched_at && !input.force) {
     return { ok: true, skipped: true };
   }
-  if (!isAiConfigured) {
+  if (!(await getAiConfig()).isAiConfigured) {
     return { ok: true, skipped: true };
   }
 

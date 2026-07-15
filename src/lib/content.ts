@@ -9,7 +9,7 @@ import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { isEmbeddingsConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyLineStrings } from "@/lib/gpx";
 import { orderByGallery } from "@/lib/photo-order";
@@ -281,7 +281,8 @@ export async function getTrips(): Promise<Trip[]> {
 // embeddings provider is configured or the call fails — callers then fall back
 // to pure full-text ranking, which the RPCs handle when query_embedding is null.
 async function embedQuery(q: string): Promise<number[] | null> {
-  if (!isEmbeddingsConfigured) return null;
+  const cfg = await getAiConfig();
+  if (!cfg.isEmbeddingsConfigured) return null;
   try {
     return await embedText(q, { operation: "search_embed" });
   } catch {

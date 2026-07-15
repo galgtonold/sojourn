@@ -35,22 +35,33 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   getAdminSupabase: () => sb.client,
 }));
-// Photo descriptions now go through a (separate) OpenAI-compatible vision
-// provider via fetch, so enable it and point it at a stub-able endpoint.
 vi.mock("@/lib/env", async (orig) => {
   const actual = await orig<typeof import("@/lib/env")>();
   return {
     ...actual,
-    isVisionConfigured: true,
     // No Edge secret in tests → enqueueLlmJob runs the synchronous fallback,
     // which calls the faked deepseekChat and fills the ai_jobs row in-route.
     isEdgeJobConfigured: false,
-    env: {
-      ...actual.env,
-      visionApiKey: "test-key",
-      visionBaseUrl: "http://vision.test/v1",
-      visionModel: "test-vision",
-    },
+  };
+});
+// Photo descriptions go through a (separate) OpenAI-compatible vision provider
+// via fetch, so enable it and point it at a stub-able endpoint. Mocked rather
+// than mutating env: getAiConfig is an unstable_cache, which needs a
+// request-scoped incremental cache no unit test can supply.
+vi.mock("@/lib/ai-config", async () => {
+  const { resolveAiConfig } = await import("@/lib/ai-config-fields");
+  return {
+    AI_CONFIG_TAG: "ai-config",
+    getAiConfig: async () =>
+      resolveAiConfig(
+        {
+          deepseekApiKey: "test-key",
+          visionApiKey: "test-key",
+          visionBaseUrl: "http://vision.test/v1",
+          visionModel: "test-vision",
+        },
+        {},
+      ),
   };
 });
 

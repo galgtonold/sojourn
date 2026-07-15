@@ -7,7 +7,7 @@
 // stage of the pipeline triggers them (e.g. a photo embedded after its AI
 // description lands, then again once captions/alt text are written).
 import "server-only";
-import { isEmbeddingsConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import {
   embedText,
   photoEmbeddingInput,
@@ -28,7 +28,8 @@ export async function embedPhotoRecord(
   photoId: string,
   meta?: UsageMeta,
 ): Promise<void> {
-  if (!isEmbeddingsConfigured) return;
+  const cfg = await getAiConfig();
+  if (!cfg.isEmbeddingsConfigured) return;
   try {
     const { data: photo } = await supabase
       .from("photos")
@@ -52,7 +53,8 @@ export async function embedPostRecord(
   postId: string,
   meta?: UsageMeta,
 ): Promise<void> {
-  if (!isEmbeddingsConfigured) return;
+  const cfg = await getAiConfig();
+  if (!cfg.isEmbeddingsConfigured) return;
   try {
     const { data: post } = await supabase
       .from("posts")

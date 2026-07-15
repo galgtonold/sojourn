@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, type ChatMessage } from "@/lib/ai/deepseek";
+import { type ChatMessage } from "@/lib/ai/deepseek";
 import { enqueueLlmJob } from "@/lib/ai/jobs";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import { sectionPhotoLines } from "@/lib/ai/section-prompt";
@@ -199,7 +199,7 @@ async function sectionRoute({
     // answer, so any tight cap risks truncating the prose — mid-sentence, or
     // mid-poll (leaving a bare ":::poll"). A section's actual prose is short, so
     // set the cap absurdly high: it only ever acts as a stop, never a squeeze.
-    { model: aiModels.reasoner, temperature: 0.5, maxTokens: 32000, messages },
+    { model: "reasoner", temperature: 0.5, maxTokens: 32000, messages },
     { operation: "section", postId, userId: user.id },
   );
   return { jobId };

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   AI_DEFAULTS,
   AI_FIELD_GROUPS,
@@ -217,14 +217,14 @@ describe("registry", () => {
   });
 });
 
-describe("env-only parity with src/lib/env.ts", () => {
+describe("env-only resolution (production parity)", () => {
   // Nothing currently pins this value, yet it feeds both embeddingBaseUrl and
   // visionBaseUrl (via the cascade) on the live, env-only production site.
   it("AI_DEFAULTS.embeddingBaseUrl matches the live default", () => {
     expect(AI_DEFAULTS.embeddingBaseUrl).toBe("https://api.openai.com/v1");
   });
 
-  it("resolveAiConfig({}, readAiEnv(env)) matches src/lib/env.ts field for field — the live site is env-only, so this parity must never break", async () => {
+  it("resolveAiConfig({}, readAiEnv(env)) resolves an env-only deploy to the values that shipped — the live site is env-only, so this must never drift", () => {
     const fixture = {
       DEEPSEEK_API_KEY: "sk-deepseek",
       DEEPSEEK_BASE_URL: "https://deepseek.example",
@@ -239,37 +239,30 @@ describe("env-only parity with src/lib/env.ts", () => {
       VISION_MODEL: "fixture-vision-model",
       OPENAI_API_KEY: "sk-openai",
     };
-    const keys = Object.keys(fixture) as (keyof typeof fixture)[];
-    const prev: Record<string, string | undefined> = {};
-    for (const k of keys) prev[k] = process.env[k];
 
-    try {
-      for (const k of keys) process.env[k] = fixture[k];
-      vi.resetModules();
-      const live = await import("@/lib/env");
-
-      const cfg = resolveAiConfig({}, readAiEnv(fixture as unknown as NodeJS.ProcessEnv));
-
-      expect(cfg.deepseekApiKey).toBe(live.env.deepseekApiKey);
-      expect(cfg.deepseekBaseUrl).toBe(live.env.deepseekBaseUrl);
-      expect(cfg.deepseekModelFast).toBe(live.env.deepseekModelFast);
-      expect(cfg.deepseekModelReasoner).toBe(live.env.deepseekModelReasoner);
-      expect(cfg.deepseekModelVision).toBe(live.env.deepseekModelVision);
-      expect(cfg.embeddingApiKey).toBe(live.env.embeddingApiKey);
-      expect(cfg.embeddingBaseUrl).toBe(live.env.embeddingBaseUrl);
-      expect(cfg.embeddingModel).toBe(live.env.embeddingModel);
-      expect(cfg.visionApiKey).toBe(live.env.visionApiKey);
-      expect(cfg.visionBaseUrl).toBe(live.env.visionBaseUrl);
-      expect(cfg.visionModel).toBe(live.env.visionModel);
-      expect(cfg.isAiConfigured).toBe(live.isAiConfigured);
-      expect(cfg.isEmbeddingsConfigured).toBe(live.isEmbeddingsConfigured);
-      expect(cfg.isVisionConfigured).toBe(live.isVisionConfigured);
-    } finally {
-      for (const k of keys) {
-        if (prev[k] === undefined) delete process.env[k];
-        else process.env[k] = prev[k];
-      }
-      vi.resetModules();
-    }
+    // This table was captured from src/lib/env.ts's AI block — the code that
+    // served production — immediately before that block was deleted, and it is
+    // hardcoded because there is no longer a second implementation to compare
+    // against. It freezes the behaviour that actually shipped, so a later edit
+    // to the defaults or the cascades can't quietly change what an env-only
+    // deploy resolves to. Changing a value here is asserting a prod change.
+    expect(
+      resolveAiConfig({}, readAiEnv(fixture as unknown as NodeJS.ProcessEnv)),
+    ).toEqual({
+      deepseekApiKey: "sk-deepseek",
+      deepseekBaseUrl: "https://deepseek.example",
+      deepseekModelFast: "fixture-fast",
+      deepseekModelReasoner: "fixture-reasoner",
+      deepseekModelVision: "fixture-vision",
+      embeddingApiKey: "sk-embed",
+      embeddingBaseUrl: "https://embed.example",
+      embeddingModel: "fixture-embed-model",
+      visionApiKey: "sk-vision",
+      visionBaseUrl: "https://vision.example",
+      visionModel: "fixture-vision-model",
+      isAiConfigured: true,
+      isEmbeddingsConfigured: true,
+      isVisionConfigured: true,
+    });
   });
 });

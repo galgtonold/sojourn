@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
-import { aiModels, deepseekChat, deepseekJson } from "@/lib/ai/deepseek";
+import { deepseekChat, deepseekJson } from "@/lib/ai/deepseek";
 
 export const maxDuration = 60;
 
@@ -52,7 +52,7 @@ async function tripContext({
 
   if (input.mode === "questions") {
     const data = await deepseekJson<{ questions: string[] }>({
-      model: aiModels.fast,
+      model: "fast",
       temperature: 0.6,
       maxTokens: 600,
       meta: { operation: "trip-context-questions", userId: user.id },
@@ -85,7 +85,7 @@ async function tripContext({
     .join("\n\n");
 
   const context = await deepseekChat({
-    model: aiModels.fast,
+    model: "fast",
     temperature: 0.5,
     maxTokens: 900,
     meta: { operation: "trip-context-refine", userId: user.id },

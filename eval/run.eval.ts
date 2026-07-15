@@ -22,29 +22,35 @@ const { fake } = vi.hoisted(() => ({ fake: process.env.EVAL_FAKE === "1" }));
 vi.mock("@/lib/supabase/server", () => ({ getServerSupabase: async () => sb.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => sb.client }));
 vi.mock("@/lib/env", async (orig) => {
-  // Real runs: load .env.local BEFORE the real env module evaluates, so its
-  // derived flags (isAiConfigured, …) see the operator's provider keys. (Fake
-  // runs don't need real creds — the fake backend intercepts fetch.)
-  if (!fake) await import("./harness/load-env");
   const actual = await orig<typeof import("@/lib/env")>();
+  // Force the synchronous job fallback rather than the Edge Function.
+  return { ...actual, isEdgeJobConfigured: false };
+});
+// The AI provider config: mocked because getAiConfig is an unstable_cache, which
+// needs a request-scoped incremental cache the harness has no way to supply.
+vi.mock("@/lib/ai-config", async () => {
+  // Real runs: load .env.local BEFORE anything reads process.env, so the
+  // operator's provider keys flow through readAiEnv. (Fake runs need no real
+  // creds — the fake backend intercepts fetch.)
+  if (!fake) await import("./harness/load-env");
+  const { readAiEnv, resolveAiConfig } = await import("@/lib/ai-config-fields");
   return {
-    ...actual,
-    // Always: make the vision path run and force the synchronous job fallback.
-    isVisionConfigured: true,
-    isEdgeJobConfigured: false,
-    // Fake mode only: override AI credentials (the fake backend intercepts fetch,
-    // so the values are never actually sent). Real mode: let actual creds through
-    // so a cache miss reaches the real provider.
-    ...(fake ? { isAiConfigured: true } : {}),
-    env: {
-      ...actual.env,
-      ...(fake ? {
-        deepseekApiKey: "fake-key",
-        visionApiKey: "k",
-        visionBaseUrl: "https://vision.test/v1",
-        visionModel: "v",
-      } : {}),
-    },
+    AI_CONFIG_TAG: "ai-config",
+    getAiConfig: async () =>
+      fake
+        ? // Fake mode: the fake backend intercepts fetch, so these are never sent.
+          resolveAiConfig(
+            {
+              deepseekApiKey: "fake-key",
+              visionApiKey: "k",
+              visionBaseUrl: "https://vision.test/v1",
+              visionModel: "v",
+            },
+            {},
+          )
+        : // Real mode: the operator's own env, so a cache miss reaches the
+          // real provider.
+          resolveAiConfig({}, readAiEnv()),
   };
 });
 

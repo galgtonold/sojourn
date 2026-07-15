@@ -7,14 +7,17 @@
 import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { env, isEdgeJobConfigured } from "@/lib/env";
+import { getAiConfig } from "@/lib/ai-config";
 import {
   deepseekChat,
+  resolveModel,
   type ChatMessage,
+  type ModelAlias,
   type UsageMeta,
 } from "@/lib/ai/deepseek";
 
 export type LlmRequest = {
-  model: string;
+  model: ModelAlias;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
@@ -28,11 +31,15 @@ export async function enqueueLlmJob(
   const admin = getAdminSupabase();
   if (!admin) throw new Error("ai_jobs requires the service role key");
 
+  // Store the resolved ID, not the alias: the Edge Function worker posts
+  // `ai_jobs.model` verbatim to the provider.
+  const model = resolveModel(await getAiConfig(), req.model);
+
   const { data: job, error } = await admin
     .from("ai_jobs")
     .insert({
       status: "pending",
-      model: req.model,
+      model,
       input: {
         messages: req.messages,
         temperature: req.temperature,

@@ -3,11 +3,12 @@
 // row so each photo is processed once.
 //
 // DeepSeek's API has no image input, so the description goes through a separate
-// OpenAI-compatible vision endpoint (see `env.vision*`). The description is
-// intentionally long — it feeds both semantic/full-text search and the article
-// generator, so richer is better.
+// OpenAI-compatible vision endpoint (the `vision*` fields of @/lib/ai-config).
+// The description is intentionally long — it feeds both semantic/full-text
+// search and the article generator, so richer is better.
 import "server-only";
-import { env, isVisionConfigured } from "@/lib/env";
+import { env } from "@/lib/env"; // still needed for siteUrl
+import { getAiConfig, type AiConfig } from "@/lib/ai-config";
 import { recordUsage } from "@/lib/ai/usage";
 import type { UsageMeta } from "@/lib/ai/deepseek";
 import { reverseGeocode, nearbyPlaces } from "@/lib/ai/geocode";
@@ -62,16 +63,17 @@ export function visionUserText(place: string | null, candidates: string[]): stri
 async function visionChat(
   imageUrl: string,
   userText: string,
+  cfg: AiConfig,
   meta?: UsageMeta,
 ): Promise<string> {
-  const res = await fetch(`${env.visionBaseUrl}/chat/completions`, {
+  const res = await fetch(`${cfg.visionBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${env.visionApiKey}`,
+      authorization: `Bearer ${cfg.visionApiKey}`,
     },
     body: JSON.stringify({
-      model: env.visionModel,
+      model: cfg.visionModel,
       temperature: 0.4,
       max_tokens: 900,
       messages: [
@@ -94,7 +96,7 @@ async function visionChat(
   const u = data?.usage ?? {};
   await recordUsage({
     operation: meta?.operation ?? "enrich",
-    model: env.visionModel,
+    model: cfg.visionModel,
     postId: meta?.postId,
     userId: meta?.userId,
     usage: {
@@ -115,13 +117,19 @@ export async function describeImage(
   candidates: string[],
   meta?: UsageMeta,
 ): Promise<string | null> {
-  if (!isVisionConfigured) return null;
+  const cfg = await getAiConfig();
+  if (!cfg.isVisionConfigured) return null;
   const abs =
     imageUrl.startsWith("http") || imageUrl.startsWith("data:")
       ? imageUrl
       : `${env.siteUrl}${imageUrl}`;
   try {
-    const text = await visionChat(abs, visionUserText(place, candidates), meta);
+    const text = await visionChat(
+      abs,
+      visionUserText(place, candidates),
+      cfg,
+      meta,
+    );
     return text.trim() || null;
   } catch {
     return null;
