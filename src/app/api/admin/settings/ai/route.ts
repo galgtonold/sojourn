@@ -30,13 +30,16 @@ export async function GET(): Promise<Response> {
   if (!gate.ok) {
     return NextResponse.json({ error: "forbidden" }, { status: gate.status });
   }
-  if (!getAdminSupabase()) {
+  const supabase = getAdminSupabase();
+  if (!supabase) {
     return NextResponse.json(
       { error: "Service role key not configured" },
       { status: 503 },
     );
   }
-  const db = await readAiSecrets();
+  // Reuse the client the 503 gate just built rather than have readAiSecrets
+  // construct a second one.
+  const db = await readAiSecrets(supabase);
   const raw = readAiEnv();
   const cfg = resolveAiConfig(db, raw);
   const sources = resolveAiSources(db, raw);
@@ -63,7 +66,7 @@ export const PUT = ownerRoute(putSchema, async ({ admin, self, input }) => {
   const rows = Object.entries(input.values)
     .map(([key, value]) => ({
       key: key as AiFieldKey,
-      value: (value ?? "").trim(),
+      value: value.trim(),
       updated_by: self,
     }))
     .filter((r) => r.value !== "");
@@ -73,6 +76,9 @@ export const PUT = ownerRoute(putSchema, async ({ admin, self, input }) => {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const { error } = await admin.from("app_secrets").upsert(rows, { onConflict: "key" });
+  // Safe to echo despite `rows` carrying secrets: Postgres puts offending row
+  // VALUES in a diagnostic's DETAIL/HINT, never in MESSAGE, and PostgREST maps
+  // those to separate `details`/`hint` fields we don't forward.
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   revalidateTag(AI_CONFIG_TAG);
   return { ok: true };

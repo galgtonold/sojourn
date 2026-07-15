@@ -13,28 +13,47 @@ import {
   AI_FIELD_KEYS,
   readAiEnv,
   resolveAiConfig,
-  resolveAiSources,
   type AiConfig,
   type AiDbValues,
   type AiFieldKey,
-  type AiSource,
 } from "@/lib/ai-config-fields";
 
 export const AI_CONFIG_TAG = "ai-config";
 export type { AiConfig };
 
-/** The stored overrides, or {} when the service role isn't configured. */
-export async function readAiSecrets(): Promise<AiDbValues> {
-  const supabase = getAdminSupabase();
+/** The stored overrides, or {} when the service role isn't configured.
+ *
+ *  A failed read yields {} — i.e. "nothing stored" — which resolution then
+ *  treats as env-only. That's a deliberate soft landing (an AI call must not
+ *  500 on a DB blip), but it is NOT authoritative emptiness, so the warn below
+ *  is the only trace that a self-hoster's UI-set keys vanished for a request.
+ *  The Deno mirror (supabase/functions/_shared/config.ts) can distinguish the
+ *  two because it owns its cache and can keep serving a known-good value; here
+ *  unstable_cache offers no "compute but don't store" escape hatch, so the
+ *  60s revalidate below is what bounds a cached failure instead. */
+export async function readAiSecrets(
+  // Callers that already hold a client (the settings GET builds one for its 503
+  // gate) can pass it: getAdminSupabase() isn't memoized, so letting this
+  // construct its own would mean two clients per request.
+  client?: ReturnType<typeof getAdminSupabase>,
+): Promise<AiDbValues> {
+  const supabase = client ?? getAdminSupabase();
   if (!supabase) return {};
-  const { data } = await supabase
+  // PostgREST errors RESOLVE rather than throw, so an unchecked `data` read
+  // makes a failure indistinguishable from an empty table.
+  const { data, error } = await supabase
     .from("app_secrets")
     .select("key, value")
     .in("key", [...AI_FIELD_KEYS]);
-  const known = new Set<string>(AI_FIELD_KEYS);
+  if (error) {
+    // Message only — a row's value is a secret and must never reach a log.
+    console.warn(`app_secrets read failed: ${error.message}`);
+    return {};
+  }
   const out: AiDbValues = {};
+  // No key filter: `.in("key", AI_FIELD_KEYS)` already constrains the rows.
   for (const row of (data ?? []) as { key: string; value: string }[]) {
-    if (known.has(row.key)) out[row.key as AiFieldKey] = row.value;
+    out[row.key as AiFieldKey] = row.value;
   }
   return out;
 }
@@ -42,10 +61,12 @@ export async function readAiSecrets(): Promise<AiDbValues> {
 export const getAiConfig = unstable_cache(
   async (): Promise<AiConfig> => resolveAiConfig(await readAiSecrets(), readAiEnv()),
   ["ai-config"],
-  { tags: [AI_CONFIG_TAG] },
+  // The cached value folds in an env read, and the cache key carries no build
+  // ID, so Vercel's Data Cache survives a deploy. Only a settings PUT/DELETE
+  // busts the tag — which an env-only deploy never calls. Without a time bound,
+  // rotating DEEPSEEK_API_KEY in Vercel and redeploying would keep serving the
+  // old key until a manual purge. 60s mirrors the Edge side's TTL_MS
+  // (supabase/functions/_shared/config.ts), the staleness bound this design
+  // already accepts; the tag bust still makes UI saves instant.
+  { tags: [AI_CONFIG_TAG], revalidate: 60 },
 );
-
-/** Per-field provenance for the settings page. Uncached — one page reads it. */
-export async function getAiSources(): Promise<Record<AiFieldKey, AiSource>> {
-  return resolveAiSources(await readAiSecrets(), readAiEnv());
-}

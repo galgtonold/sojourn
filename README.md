@@ -213,7 +213,7 @@ sojourn/
 | `NEXT_PUBLIC_MAP_STYLE_URL` | public | MapLibre style URL (defaults to OpenFreeMap, keyless). |
 | `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL` / `EMBEDDING_MODEL` | server | OpenAI-compatible embeddings endpoint for semantic search. Optional — or set in `/admin/settings`. |
 | `EMBEDDING_DIM` | server | Embedding vector size. **Env-only** — must match the DB `vector()` column (`supabase/migrations/0010_hybrid_search.sql`); changing it via a UI control would silently corrupt search. |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL_FAST` / `DEEPSEEK_MODEL_REASONER` / `DEEPSEEK_MODEL_VISION` | server | AI drafting provider. Optional — or set in `/admin/settings`. Without an API key the AI features are off. |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL_FAST` / `DEEPSEEK_MODEL_REASONER` | server | AI drafting provider. Optional — or set in `/admin/settings`. Without an API key the AI features are off. |
 | `VISION_API_KEY` / `VISION_BASE_URL` / `VISION_MODEL` | server | Photo-description provider (DeepSeek has no image input). Optional — or set in `/admin/settings`; falls back to the embeddings provider when unset. |
 
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are **required** — the app fails fast without them. Everything else is optional; add each to progressively enable admin/server actions, push, and the AI features. The DeepSeek/embeddings/vision values (except `EMBEDDING_DIM`) can also be set from `/admin/settings` instead of the environment — see "How configuration works" above.

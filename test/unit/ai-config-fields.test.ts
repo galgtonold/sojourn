@@ -28,7 +28,6 @@ describe("resolveAiConfig precedence", () => {
     expect(resolveAiConfig({}, {}).deepseekBaseUrl).toBe("https://api.deepseek.com");
     expect(resolveAiConfig({}, {}).deepseekModelFast).toBe("deepseek-v4-flash");
     expect(resolveAiConfig({}, {}).deepseekModelReasoner).toBe("deepseek-v4-pro");
-    expect(resolveAiConfig({}, {}).deepseekModelVision).toBe("deepseek-v4-flash");
     expect(resolveAiConfig({}, {}).embeddingModel).toBe("text-embedding-3-small");
     expect(resolveAiConfig({}, {}).visionModel).toBe("gpt-4o-mini");
   });
@@ -178,13 +177,12 @@ describe("registry", () => {
     expect(raw.visionApiKey).toBeUndefined();
   });
 
-  it("readAiEnv maps all twelve env vars to their own field — a typo'd var name would silently revert prod to a default", () => {
+  it("readAiEnv maps all eleven env vars to their own field — a typo'd var name would silently revert prod to a default", () => {
     const raw = readAiEnv({
       DEEPSEEK_API_KEY: "v-deepseek-api-key",
       DEEPSEEK_BASE_URL: "v-deepseek-base-url",
       DEEPSEEK_MODEL_FAST: "v-deepseek-model-fast",
       DEEPSEEK_MODEL_REASONER: "v-deepseek-model-reasoner",
-      DEEPSEEK_MODEL_VISION: "v-deepseek-model-vision",
       EMBEDDING_API_KEY: "v-embedding-api-key",
       EMBEDDING_BASE_URL: "v-embedding-base-url",
       EMBEDDING_MODEL: "v-embedding-model",
@@ -199,7 +197,6 @@ describe("registry", () => {
       deepseekBaseUrl: "v-deepseek-base-url",
       deepseekModelFast: "v-deepseek-model-fast",
       deepseekModelReasoner: "v-deepseek-model-reasoner",
-      deepseekModelVision: "v-deepseek-model-vision",
       embeddingApiKey: "v-embedding-api-key",
       embeddingBaseUrl: "v-embedding-base-url",
       embeddingModel: "v-embedding-model",
@@ -230,7 +227,6 @@ describe("env-only resolution (production parity)", () => {
       DEEPSEEK_BASE_URL: "https://deepseek.example",
       DEEPSEEK_MODEL_FAST: "fixture-fast",
       DEEPSEEK_MODEL_REASONER: "fixture-reasoner",
-      DEEPSEEK_MODEL_VISION: "fixture-vision",
       EMBEDDING_API_KEY: "sk-embed",
       EMBEDDING_BASE_URL: "https://embed.example",
       EMBEDDING_MODEL: "fixture-embed-model",
@@ -253,7 +249,6 @@ describe("env-only resolution (production parity)", () => {
       deepseekBaseUrl: "https://deepseek.example",
       deepseekModelFast: "fixture-fast",
       deepseekModelReasoner: "fixture-reasoner",
-      deepseekModelVision: "fixture-vision",
       embeddingApiKey: "sk-embed",
       embeddingBaseUrl: "https://embed.example",
       embeddingModel: "fixture-embed-model",

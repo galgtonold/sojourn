@@ -1,7 +1,9 @@
 // Server-only embeddings client (OpenAI-compatible /embeddings API). Powers the
 // semantic half of hybrid search. DeepSeek has no embeddings endpoint, hence a
-// separate, configurable provider — point EMBEDDING_BASE_URL at a local
-// OpenAI-compatible server (Ollama / TEI / llama.cpp) to run it keylessly.
+// separate, configurable provider — point the embeddings base URL (in
+// /admin/settings, or EMBEDDING_BASE_URL) at a local OpenAI-compatible server
+// (Ollama / TEI / llama.cpp) to run it keylessly. Resolution is getAiConfig's:
+// DB → env → default.
 import "server-only";
 import { env } from "@/lib/env"; // still needed for embeddingDim + aiPriceEmbedding
 import { getAiConfig, type AiConfig } from "@/lib/ai-config";

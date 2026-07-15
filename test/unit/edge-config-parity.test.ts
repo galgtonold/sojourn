@@ -10,7 +10,15 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AI_DEFAULTS } from "@/lib/ai-config-fields";
+import { AI_DEFAULTS, readAiEnv } from "@/lib/ai-config-fields";
+
+// field key -> the env var name readAiEnv actually reads for it. Recovered by
+// running the real function over a Proxy that echoes each property it touches,
+// so the names come from the source rather than a hardcoded copy that could
+// drift past a rename — the exact failure this file exists to catch.
+const ENV_NAMES = readAiEnv(
+  new Proxy({}, { get: (_t, prop) => String(prop) }) as NodeJS.ProcessEnv,
+) as Record<string, string>;
 
 const CONFIG_PATH = join(
   process.cwd(),
@@ -28,11 +36,26 @@ describe("edge config parity with src/lib/ai-config-fields.ts", () => {
     expect(src).toContain(`"${key}"`);
   });
 
-  it("defaults its base URL to the same value as AI_DEFAULTS.deepseekBaseUrl", () => {
-    expect(src).toContain(AI_DEFAULTS.deepseekBaseUrl);
+  // Anchored on the edge's `const X = "…"` declaration, not a bare substring:
+  // toContain(AI_DEFAULTS.deepseekModelFast) passes whenever the app default is
+  // a PREFIX of the edge's value, so shortening it to "deepseek-v4" would
+  // false-pass against an edge still pinned to "deepseek-v4-flash".
+  it.each([
+    ["DEFAULT_BASE_URL", AI_DEFAULTS.deepseekBaseUrl],
+    ["DEFAULT_FAST_MODEL", AI_DEFAULTS.deepseekModelFast],
+  ])("declares %s as exactly the matching AI_DEFAULTS value", (name, value) => {
+    expect(src).toContain(`const ${name} = "${value}";`);
   });
 
-  it("defaults its fast model to the same value as AI_DEFAULTS.deepseekModelFast", () => {
-    expect(src).toContain(AI_DEFAULTS.deepseekModelFast);
+  // The other half of the contract: the two sides must read the same env vars.
+  // A rename in readAiEnv() with the edge left behind means an operator's env
+  // reaches the app but not llm-call/translate — the same split brain, sourced
+  // from env instead of app_secrets.
+  it.each([
+    "deepseekApiKey",
+    "deepseekBaseUrl",
+    "deepseekModelFast",
+  ] as const)("reads the same env var as readAiEnv does for %s", (key) => {
+    expect(src).toContain(`env("${ENV_NAMES[key]}")`);
   });
 });

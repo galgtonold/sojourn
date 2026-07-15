@@ -12,17 +12,15 @@ export type UsageMeta = {
 // Callers name a ROLE, not a model ID. The ID is configurable at runtime (env or
 // /admin/settings), so resolving it here — where we're already async — keeps
 // every call site synchronous and stops routes from knowing model names.
-export type ModelAlias = "fast" | "reasoner" | "vision";
+// No "vision" alias: DeepSeek's API takes no image input. Photo descriptions go
+// through the separate vision provider (@/lib/ai/enrich, visionApiKey/…).
+export type ModelAlias = "fast" | "reasoner";
 
 /** Alias → the configured model ID. Exported for the `ai_jobs` enqueue path,
  *  which must persist a real ID: the Edge Function worker sends the stored
  *  `model` straight to the provider and can't resolve an alias itself. */
 export function resolveModel(cfg: AiConfig, alias: ModelAlias): string {
-  return alias === "reasoner"
-    ? cfg.deepseekModelReasoner
-    : alias === "vision"
-      ? cfg.deepseekModelVision
-      : cfg.deepseekModelFast;
+  return alias === "reasoner" ? cfg.deepseekModelReasoner : cfg.deepseekModelFast;
 }
 
 // OpenAI-style multimodal content parts.

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plug, Save } from "lucide-react";
 import { useT } from "@/components/i18n";
 import {
-  AI_DEFAULTS,
   AI_FIELD_GROUPS,
   isSecretField,
   type AiFieldKey,
@@ -237,9 +236,10 @@ export function AiProvidersForm({
                       autoComplete="off"
                       value={shown(k)}
                       onChange={(e) => setField(k, e.target.value)}
-                      placeholder={
-                        isSecretField(k) ? fields[k].masked : AI_DEFAULTS[k]
-                      }
+                      // Only a secret needs one: its input is always blank, so
+                      // the mask is the sole "something is stored" signal. A
+                      // non-secret's value is always populated by shown().
+                      placeholder={isSecretField(k) ? fields[k].masked : undefined}
                       className={cn(input, "mt-1.5")}
                     />
                     {isSecretField(k) &&
