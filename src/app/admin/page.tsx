@@ -205,6 +205,17 @@ export default async function AdminDashboard() {
           </Link>
         )}
 
+        {/* Owner needs to know AI is off and where to fix it — silently hiding
+            the block (prior behavior) left no way to discover or diagnose it. */}
+        {viewer.isOwner && !isAiConfigured && (
+          <Link
+            href="/admin/settings"
+            className="block rounded-2xl border border-white/10 px-4 py-3 text-sm text-sand-100/60 transition hover:border-ember-400 hover:text-sand-100"
+          >
+            <T k="admin.settings.aiOff" />
+          </Link>
+        )}
+
         {viewer.isOwner && (
           <Link href="/admin/settings" className={navCard}>
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/5 text-sand-100/70">
