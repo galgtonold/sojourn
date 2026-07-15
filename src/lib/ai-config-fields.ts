@@ -159,17 +159,21 @@ export function resolveAiSources(
     ]),
   ) as Record<AiFieldKey, AiSource>;
 
-  const cfg = resolveAiConfig(db, raw);
-  for (const k of ["embeddingApiKey", "visionApiKey", "visionBaseUrl"] as const) {
-    if (out[k] === "unset" && cfg[k]) out[k] = "inherited";
-  }
+  // "inherited" = this field is blank but a cascade supplies a value. Test the
+  // cascade SOURCE, not the resolved value: embeddingBaseUrl always resolves
+  // (it has a built-in default), so checking cfg.visionBaseUrl would mark
+  // vision "inherited" even with nothing configured anywhere.
+  const has = (k: AiFieldKey) => Boolean(clean(db[k]) || clean(raw[k]));
+  if (out.embeddingApiKey === "unset" && clean(raw.openaiApiKey)) out.embeddingApiKey = "inherited";
+  if (out.visionApiKey === "unset" && (has("embeddingApiKey") || clean(raw.openaiApiKey))) out.visionApiKey = "inherited";
+  if (out.visionBaseUrl === "unset" && has("embeddingBaseUrl")) out.visionBaseUrl = "inherited";
   return out;
 }
 
 /** A hint that identifies a stored secret without revealing it: the last four
  *  characters only. Anything shorter reveals nothing at all. */
-export function maskSecret(v: string): string {
-  const s = v.trim();
+export function maskSecret(v: string | null | undefined): string {
+  const s = v?.trim() ?? "";
   if (!s) return "";
   return s.length <= 4 ? "…" : `…${s.slice(-4)}`;
 }

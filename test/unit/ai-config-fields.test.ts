@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   AI_DEFAULTS,
+  AI_FIELD_GROUPS,
   AI_FIELD_KEYS,
   isSecretField,
   maskSecret,
@@ -67,6 +68,16 @@ describe("resolveAiConfig cascades", () => {
     const cfg = resolveAiConfig({ embeddingBaseUrl: "https://ollama.local/v1" }, {});
     expect(cfg.visionBaseUrl).toBe("https://ollama.local/v1");
   });
+
+  it("vision base URL falls back to an env-supplied embeddings base URL too — the cascade isn't DB-only", () => {
+    const cfg = resolveAiConfig({}, { embeddingBaseUrl: "x" });
+    expect(cfg.visionBaseUrl).toBe("x");
+  });
+
+  it("an env VISION_API_KEY beats an env EMBEDDING_API_KEY — the cascade isn't DB-only", () => {
+    const cfg = resolveAiConfig({}, { visionApiKey: "sk-vision-env", embeddingApiKey: "sk-embed-env" });
+    expect(cfg.visionApiKey).toBe("sk-vision-env");
+  });
 });
 
 describe("capability flags", () => {
@@ -104,10 +115,19 @@ describe("resolveAiSources", () => {
     expect(s.deepseekApiKey).toBe("db");
   });
 
-  it("marks a cascade-supplied value as inherited", () => {
+  it("marks a cascade-supplied api key as inherited", () => {
     const s = resolveAiSources({ embeddingApiKey: "sk-e" }, {});
     expect(s.visionApiKey).toBe("inherited");
+  });
+
+  it("marks a cascade-supplied base URL as inherited", () => {
+    const s = resolveAiSources({ embeddingBaseUrl: "https://ollama.local/v1" }, {});
     expect(s.visionBaseUrl).toBe("inherited");
+  });
+
+  it("does not mark visionBaseUrl inherited when nothing is configured anywhere — embeddingBaseUrl's built-in default must not leak through as a false 'inherited'", () => {
+    const s = resolveAiSources({}, {});
+    expect(s.visionBaseUrl).toBe("unset");
   });
 
   it("does not mark a field inherited when it has its own value", () => {
@@ -156,5 +176,100 @@ describe("registry", () => {
     expect(raw.openaiApiKey).toBe("sk-o");
     // Not pre-resolved: the cascade is resolveAiConfig's job.
     expect(raw.visionApiKey).toBeUndefined();
+  });
+
+  it("readAiEnv maps all twelve env vars to their own field — a typo'd var name would silently revert prod to a default", () => {
+    const raw = readAiEnv({
+      DEEPSEEK_API_KEY: "v-deepseek-api-key",
+      DEEPSEEK_BASE_URL: "v-deepseek-base-url",
+      DEEPSEEK_MODEL_FAST: "v-deepseek-model-fast",
+      DEEPSEEK_MODEL_REASONER: "v-deepseek-model-reasoner",
+      DEEPSEEK_MODEL_VISION: "v-deepseek-model-vision",
+      EMBEDDING_API_KEY: "v-embedding-api-key",
+      EMBEDDING_BASE_URL: "v-embedding-base-url",
+      EMBEDDING_MODEL: "v-embedding-model",
+      VISION_API_KEY: "v-vision-api-key",
+      VISION_BASE_URL: "v-vision-base-url",
+      VISION_MODEL: "v-vision-model",
+      OPENAI_API_KEY: "v-openai-api-key",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(raw).toEqual({
+      deepseekApiKey: "v-deepseek-api-key",
+      deepseekBaseUrl: "v-deepseek-base-url",
+      deepseekModelFast: "v-deepseek-model-fast",
+      deepseekModelReasoner: "v-deepseek-model-reasoner",
+      deepseekModelVision: "v-deepseek-model-vision",
+      embeddingApiKey: "v-embedding-api-key",
+      embeddingBaseUrl: "v-embedding-base-url",
+      embeddingModel: "v-embedding-model",
+      visionApiKey: "v-vision-api-key",
+      visionBaseUrl: "v-vision-base-url",
+      visionModel: "v-vision-model",
+      openaiApiKey: "v-openai-api-key",
+    });
+  });
+
+  it("AI_FIELD_GROUPS covers exactly AI_FIELD_KEYS — a key added to one but not the other would silently drop from the settings UI", () => {
+    const grouped = AI_FIELD_GROUPS.flatMap((g) => g.keys).slice().sort();
+    const all = [...AI_FIELD_KEYS].sort();
+    expect(grouped).toEqual(all);
+  });
+});
+
+describe("env-only parity with src/lib/env.ts", () => {
+  // Nothing currently pins this value, yet it feeds both embeddingBaseUrl and
+  // visionBaseUrl (via the cascade) on the live, env-only production site.
+  it("AI_DEFAULTS.embeddingBaseUrl matches the live default", () => {
+    expect(AI_DEFAULTS.embeddingBaseUrl).toBe("https://api.openai.com/v1");
+  });
+
+  it("resolveAiConfig({}, readAiEnv(env)) matches src/lib/env.ts field for field — the live site is env-only, so this parity must never break", async () => {
+    const fixture = {
+      DEEPSEEK_API_KEY: "sk-deepseek",
+      DEEPSEEK_BASE_URL: "https://deepseek.example",
+      DEEPSEEK_MODEL_FAST: "fixture-fast",
+      DEEPSEEK_MODEL_REASONER: "fixture-reasoner",
+      DEEPSEEK_MODEL_VISION: "fixture-vision",
+      EMBEDDING_API_KEY: "sk-embed",
+      EMBEDDING_BASE_URL: "https://embed.example",
+      EMBEDDING_MODEL: "fixture-embed-model",
+      VISION_API_KEY: "sk-vision",
+      VISION_BASE_URL: "https://vision.example",
+      VISION_MODEL: "fixture-vision-model",
+      OPENAI_API_KEY: "sk-openai",
+    };
+    const keys = Object.keys(fixture) as (keyof typeof fixture)[];
+    const prev: Record<string, string | undefined> = {};
+    for (const k of keys) prev[k] = process.env[k];
+
+    try {
+      for (const k of keys) process.env[k] = fixture[k];
+      vi.resetModules();
+      const live = await import("@/lib/env");
+
+      const cfg = resolveAiConfig({}, readAiEnv(fixture as unknown as NodeJS.ProcessEnv));
+
+      expect(cfg.deepseekApiKey).toBe(live.env.deepseekApiKey);
+      expect(cfg.deepseekBaseUrl).toBe(live.env.deepseekBaseUrl);
+      expect(cfg.deepseekModelFast).toBe(live.env.deepseekModelFast);
+      expect(cfg.deepseekModelReasoner).toBe(live.env.deepseekModelReasoner);
+      expect(cfg.deepseekModelVision).toBe(live.env.deepseekModelVision);
+      expect(cfg.embeddingApiKey).toBe(live.env.embeddingApiKey);
+      expect(cfg.embeddingBaseUrl).toBe(live.env.embeddingBaseUrl);
+      expect(cfg.embeddingModel).toBe(live.env.embeddingModel);
+      expect(cfg.visionApiKey).toBe(live.env.visionApiKey);
+      expect(cfg.visionBaseUrl).toBe(live.env.visionBaseUrl);
+      expect(cfg.visionModel).toBe(live.env.visionModel);
+      expect(cfg.isAiConfigured).toBe(live.isAiConfigured);
+      expect(cfg.isEmbeddingsConfigured).toBe(live.isEmbeddingsConfigured);
+      expect(cfg.isVisionConfigured).toBe(live.isVisionConfigured);
+    } finally {
+      for (const k of keys) {
+        if (prev[k] === undefined) delete process.env[k];
+        else process.env[k] = prev[k];
+      }
+      vi.resetModules();
+    }
   });
 });
