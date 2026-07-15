@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { headers } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { VIEWER_HEADER, verifyViewer } from "@/lib/auth-forward";
@@ -17,9 +18,18 @@ async function forwardedUserId(): Promise<string | null> {
       env.supabaseServiceRoleKey,
       Date.now(),
     );
-  } catch {
-    // headers() throws outside a request scope (unit tests, and any future
-    // non-request caller). Degrade to the full path.
+  } catch (err) {
+    // headers() is also how Next signals control flow it needs to propagate
+    // (DynamicServerError, a PPR postpone) — those are not "no request scope",
+    // they're the framework unwinding the render, and swallowing them here
+    // would corrupt that unwind. Today this call is only ever reached after
+    // getServerSupabase() has already called cookies(), which throws those
+    // same signals first — so in practice this catch only ever sees the
+    // genuine "outside a request scope" Error. unstable_rethrow makes that
+    // true by construction rather than by call-order accident, so a future
+    // reorder (or a caller of forwardedUserId that skips getServerSupabase)
+    // can't silently swallow a framework signal instead of degrading safely.
+    unstable_rethrow(err);
     return null;
   }
 }

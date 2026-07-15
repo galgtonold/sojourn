@@ -35,11 +35,26 @@ export async function middleware(request: NextRequest) {
   // must be reachable before a session cookie exists.
   const isWelcome = pathname.startsWith("/admin/welcome");
 
+  // Both branches below return early, before the main response (and its cookie
+  // replay) further down is ever built. getUser() above is what populates
+  // pendingCookies (on a token refresh), so replay it onto these redirects too
+  // — otherwise a rotated refresh token is buffered and then discarded here.
+  // That bites hardest for isLogin && user: the follow-up request would
+  // re-present the OLD refresh token, surviving only on Supabase's
+  // reuse-detection grace window.
   if (pathname.startsWith("/admin") && !isLogin && !isWelcome && !user) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    const redirect = NextResponse.redirect(new URL("/admin/login", request.url));
+    for (const { name, value, options } of pendingCookies) {
+      redirect.cookies.set({ name, value, ...options });
+    }
+    return redirect;
   }
   if (isLogin && user) {
-    return NextResponse.redirect(new URL("/admin", request.url));
+    const redirect = NextResponse.redirect(new URL("/admin", request.url));
+    for (const { name, value, options } of pendingCookies) {
+      redirect.cookies.set({ name, value, ...options });
+    }
+    return redirect;
   }
 
   // Strip any inbound copy before setting our own: the value must only ever be
