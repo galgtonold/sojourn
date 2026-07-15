@@ -89,12 +89,31 @@ describe("POST /api/admin/settings/ai/test", () => {
     expect(body.detail).not.toContain(SECRET_KEY);
   });
 
-  it("reports 'no key' without calling the provider when the group isn't configured", async () => {
+  // Finding 2: a provider is an input the app doesn't control, and some
+  // OpenAI-compatible APIs echo the submitted key back in a 401 body — the
+  // "detail never contains the key" property has to hold against that text
+  // too, not just against strings this route authors itself.
+  it("redacts the configured key when a provider echoes it back in the error body", async () => {
+    getAiConfigMock.mockResolvedValue(baseCfg);
+    mockFetch(() => ({
+      ok: false,
+      status: 401,
+      text: async () => `Invalid API key: ${SECRET_KEY} is not recognized`,
+    }));
+    const res = await POST(req({ group: "deepseek" }), ctx());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.detail).not.toContain(SECRET_KEY);
+    expect(body.detail).toContain("[redacted]");
+  });
+
+  it("reports reason 'no-key' without calling the provider when the group isn't configured", async () => {
     getAiConfigMock.mockResolvedValue({ ...baseCfg, isEmbeddingsConfigured: false });
     const fetchFn = mockFetch(() => ({ ok: true }));
     const res = await POST(req({ group: "embedding" }), ctx());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: false, detail: "no key" });
+    expect(await res.json()).toEqual({ ok: false, reason: "no-key", detail: "" });
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
@@ -109,6 +128,6 @@ describe("POST /api/admin/settings/ai/test", () => {
     const res = await POST(req({ group: "vision" }), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ ok: false, detail: "fetch failed: ECONNREFUSED" });
+    expect(body).toEqual({ ok: false, reason: "failed", detail: "fetch failed: ECONNREFUSED" });
   });
 });
