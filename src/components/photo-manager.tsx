@@ -30,9 +30,20 @@ import type { ManagedTrack } from "@/components/track-manager";
 // MapLibre (~200KB) rides in behind LocationDialog, and most editing sessions
 // never open the picker — so it must not be in the editor's first load. Same
 // split the public post-view already does for the same map. Client-only anyway.
+// The call site below only mounts this element while the picker is open, so
+// the chunk fetch itself is deferred until then too — not just the parse cost.
 const LocationDialog = dynamic(
   () => import("@/components/location-dialog").then((m) => m.LocationDialog),
-  { ssr: false },
+  {
+    ssr: false,
+    // Chunk fetch takes a beat on a slow connection; without this a click on
+    // "set location" shows nothing until it lands.
+    loading: () => (
+      <div className="fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 backdrop-blur-sm">
+        <Loader2 className="size-6 animate-spin text-ember-400" />
+      </div>
+    ),
+  },
 );
 
 export type ManagedPhoto = {
@@ -661,16 +672,18 @@ export function PhotoManager({
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <LocationDialog
-        open={!!locPhoto}
-        title={t("admin.location.photoTitle")}
-        initialLat={locPhoto?.lat != null ? String(locPhoto.lat) : ""}
-        initialLng={locPhoto?.lng != null ? String(locPhoto.lng) : ""}
-        onClose={() => setLocPhoto(null)}
-        onSave={(la, ln) => locPhoto && saveLocation(locPhoto, la, ln)}
-        allowClear
-        tracks={tracks}
-      />
+      {!!locPhoto && (
+        <LocationDialog
+          open={!!locPhoto}
+          title={t("admin.location.photoTitle")}
+          initialLat={locPhoto?.lat != null ? String(locPhoto.lat) : ""}
+          initialLng={locPhoto?.lng != null ? String(locPhoto.lng) : ""}
+          onClose={() => setLocPhoto(null)}
+          onSave={(la, ln) => locPhoto && saveLocation(locPhoto, la, ln)}
+          allowClear
+          tracks={tracks}
+        />
+      )}
     </div>
   );
 }

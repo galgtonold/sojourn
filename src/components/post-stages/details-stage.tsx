@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc, cn } from "@/lib/utils";
 import { coverFromPhotos } from "@/lib/post-editor-layout";
@@ -9,10 +9,21 @@ import dynamic from "next/dynamic";
 import { useT } from "@/components/i18n";
 
 // The second static path into MapLibre — photo-manager has the other one.
-// Splitting only one leaves the chunk in the editor's first load.
+// Splitting only one leaves the chunk in the editor's first load. The call
+// site below only mounts this element while the picker is open, so the chunk
+// fetch itself is deferred until then too — not just the parse cost.
 const LocationDialog = dynamic(
   () => import("@/components/location-dialog").then((m) => m.LocationDialog),
-  { ssr: false },
+  {
+    ssr: false,
+    // Chunk fetch takes a beat on a slow connection; without this a click on
+    // "set location" shows nothing until it lands.
+    loading: () => (
+      <div className="fixed inset-0 z-[100] grid place-items-center bg-ink-950/70 backdrop-blur-sm">
+        <Loader2 className="size-6 animate-spin text-ember-400" />
+      </div>
+    ),
+  },
 );
 
 const input =
@@ -140,14 +151,16 @@ export function DetailsStage({
         />
       </div>
 
-      <LocationDialog
-        open={locOpen}
-        initialLat={lat}
-        initialLng={lng}
-        onClose={() => setLocOpen(false)}
-        onSave={(la, ln) => onLatLng(la, ln)}
-        allowClear
-      />
+      {locOpen && (
+        <LocationDialog
+          open={locOpen}
+          initialLat={lat}
+          initialLng={lng}
+          onClose={() => setLocOpen(false)}
+          onSave={(la, ln) => onLatLng(la, ln)}
+          allowClear
+        />
+      )}
     </div>
   );
 }
