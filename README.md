@@ -36,14 +36,26 @@ Sojourn needs one thing to run: **Supabase** (Postgres + Auth + Storage). Point 
 
 Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`) is **required** — the Supabase client wrappers throw a clear error if it's missing, so a misconfigured deploy fails fast instead of silently serving nothing.
 
-Every other integration is **optional** and gated at runtime by a capability flag in `src/lib/env.ts`, so the app degrades gracefully feature-by-feature:
+Every other integration is **optional** and gated at runtime by a capability flag, so the app degrades gracefully feature-by-feature:
 
-- `isServiceRoleConfigured` — admin/server actions + inline polls/quizzes (bypass RLS).
-- `isPushConfigured` — VAPID keys present for web push.
-- `isAiConfigured` / `isEmbeddingsConfigured` / `isVisionConfigured` — AI drafting, semantic search, photo descriptions.
-- `isEdgeTranslateConfigured` / `isEdgeJobConfigured` — background translation + slow LLM offload.
+- `isServiceRoleConfigured` — admin/server actions + inline polls/quizzes (bypass RLS). (`src/lib/env.ts`)
+- `isPushConfigured` — VAPID keys present for web push. (`src/lib/env.ts`)
+- `isAiConfigured` / `isEmbeddingsConfigured` / `isVisionConfigured` — AI drafting, semantic search, photo descriptions. (`src/lib/ai-config.ts` — `getAiConfig()`, resolved from `src/lib/ai-config-fields.ts`)
+- `isEdgeTranslateConfigured` / `isEdgeJobConfigured` — background translation + slow LLM offload. (`src/lib/env.ts`)
 
 As you add the relevant env vars, each subsystem switches on automatically — no code changes, no feature flags to flip. (Semantic search, for example, transparently falls back to full-text when no embeddings provider is set.)
+
+**AI provider config can be set in the UI.** The DeepSeek, embeddings and vision
+keys, base URLs and model IDs are editable at `/admin/settings` (owner only). A
+value set there is stored in the `app_secrets` table and **overrides** the
+matching environment variable; clearing it falls back to the environment, then
+to a built-in default (see `src/lib/ai-config-fields.ts` for the exact
+precedence and defaults). This means a self-hosted deploy can be configured
+without a redeploy, and the same key reaches both the app and the Supabase Edge
+Functions (`supabase/functions/_shared/config.ts`). `app_secrets` has RLS
+enabled with no policies and grants revoked from `anon`/`authenticated`, so only
+the service role can read it. `EMBEDDING_DIM` and the `AI_PRICE_*` cost-meter
+rates are the exceptions — they stay env-only (see `.env.example`).
 
 ## Quick start
 
@@ -199,8 +211,12 @@ sojourn/
 | `NEXT_PUBLIC_SITE_URL` | public | Canonical site URL. |
 | `NEXT_PUBLIC_SITE_NAME` | public | Display name of the site. |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | public | MapLibre style URL (defaults to OpenFreeMap, keyless). |
+| `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL` / `EMBEDDING_MODEL` | server | OpenAI-compatible embeddings endpoint for semantic search. Optional — or set in `/admin/settings`. |
+| `EMBEDDING_DIM` | server | Embedding vector size. **Env-only** — must match the DB `vector()` column (`supabase/migrations/0010_hybrid_search.sql`); changing it via a UI control would silently corrupt search. |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL_FAST` / `DEEPSEEK_MODEL_REASONER` / `DEEPSEEK_MODEL_VISION` | server | AI drafting provider. Optional — or set in `/admin/settings`. Without an API key the AI features are off. |
+| `VISION_API_KEY` / `VISION_BASE_URL` / `VISION_MODEL` | server | Photo-description provider (DeepSeek has no image input). Optional — or set in `/admin/settings`; falls back to the embeddings provider when unset. |
 
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are **required** — the app fails fast without them. Everything else is optional; add each to progressively enable admin/server actions, push, and the AI features.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are **required** — the app fails fast without them. Everything else is optional; add each to progressively enable admin/server actions, push, and the AI features. The DeepSeek/embeddings/vision values (except `EMBEDDING_DIM`) can also be set from `/admin/settings` instead of the environment — see "How configuration works" above.
 
 ## Roadmap
 
