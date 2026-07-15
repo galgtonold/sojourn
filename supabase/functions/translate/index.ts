@@ -10,8 +10,10 @@
 // and photo) in one JSON call. `i18n` holds only the non-source locale.
 //
 // Auth: shared secret (x-edge-secret) → deploy with verify_jwt = false.
-// Secrets: EDGE_SHARED_SECRET, DEEPSEEK_API_KEY, (optional DEEPSEEK_BASE_URL,
-// DEEPSEEK_MODEL_FAST). SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are injected.
+// Secrets: EDGE_SHARED_SECRET. SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are
+// injected. The DeepSeek config is resolved by ../_shared/config.ts (app_secrets
+// over env), so DEEPSEEK_* env vars here are only a fallback for when
+// /admin/settings has nothing stored.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { chatCompletion } from "../_shared/deepseek.ts";
 

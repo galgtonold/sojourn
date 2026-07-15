@@ -6,6 +6,11 @@
 // at once (a burst of section generations, or two posts publishing together)
 // used to throw immediately and fail silently. Other 4xx are deterministic and
 // surface at once.
+//
+// The provider config (key, base URL, fast model) comes from ./config.ts —
+// app_secrets over the function's own env — so a key set in /admin/settings
+// reaches these functions too, not just the app.
+import { getEdgeAiConfig } from "./config.ts";
 
 export type ChatOptions = {
   messages: unknown;
@@ -18,14 +23,12 @@ export type ChatOptions = {
 const RETRYABLE_STATUS = (s: number) => s >= 500 || s === 429 || s === 408;
 const MAX_ATTEMPTS = 4;
 
-const apiBase = () =>
-  Deno.env.get("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
-const fastModel = () =>
-  Deno.env.get("DEEPSEEK_MODEL_FAST") ?? "deepseek-v4-flash";
-
 export async function chatCompletion(opts: ChatOptions): Promise<string> {
+  // Resolved once per call, outside the retry loop below: a retry must not
+  // re-read config mid-flight and swap credentials between attempts.
+  const cfg = await getEdgeAiConfig();
   const payload = JSON.stringify({
-    model: opts.model ?? fastModel(),
+    model: opts.model ?? cfg.fastModel,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.7,
     max_tokens: opts.maxTokens ?? 4096,
@@ -36,11 +39,11 @@ export async function chatCompletion(opts: ChatOptions): Promise<string> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     let retryable = true;
     try {
-      const res = await fetch(`${apiBase()}/chat/completions`, {
+      const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
+          authorization: `Bearer ${cfg.apiKey}`,
         },
         body: payload,
       });

@@ -4,8 +4,10 @@
 // Vercel function — and writes the result back to the row. Returns 202 at once.
 //
 // Auth is a shared secret (x-edge-secret), so deploy with verify_jwt = false.
-// Secrets needed: EDGE_SHARED_SECRET, DEEPSEEK_API_KEY, (optional DEEPSEEK_BASE_URL).
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
+// Secrets needed: EDGE_SHARED_SECRET. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+// are injected by the platform. The DeepSeek config is resolved by
+// ../_shared/config.ts (app_secrets over env), so DEEPSEEK_* env vars here are
+// only a fallback for when /admin/settings has nothing stored.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { chatCompletion } from "../_shared/deepseek.ts";
 
