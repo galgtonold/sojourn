@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Reorder } from "framer-motion";
 import {
   ArrowDownUp,
@@ -24,7 +25,6 @@ import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
-import dynamic from "next/dynamic";
 import type { ManagedTrack } from "@/components/track-manager";
 
 // MapLibre (~200KB) rides in behind LocationDialog, and most editing sessions

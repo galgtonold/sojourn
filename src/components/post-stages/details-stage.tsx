@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Loader2, MapPin } from "lucide-react";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc, cn } from "@/lib/utils";
 import { coverFromPhotos } from "@/lib/post-editor-layout";
 import { ImageUploader } from "@/components/image-uploader";
-import dynamic from "next/dynamic";
 import { useT } from "@/components/i18n";
 
 // The second static path into MapLibre — photo-manager has the other one.

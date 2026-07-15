@@ -27,11 +27,11 @@ export default async function SettingsPage() {
   const viewer = await getViewer();
   if (!viewer.isOwner) redirect("/admin");
 
-  // Resolved here rather than via the cached getAiConfig() so one DB read backs
-  // both the config and the per-field provenance, and so the section reflects a
-  // just-saved value instead of whatever the cache still holds.
   const supabase = await getServerSupabase();
   const [aiDb, { data }] = await Promise.all([
+    // Resolved here rather than via the cached getAiConfig() so one DB read backs
+    // both the config and the per-field provenance, and so the section reflects a
+    // just-saved value instead of whatever the cache still holds.
     readAiSecrets(),
     supabase!
       .from("site_settings")

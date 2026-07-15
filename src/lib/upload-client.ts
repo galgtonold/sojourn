@@ -5,7 +5,6 @@
 // Before upload we downscale + re-encode to WebP so we never store giant
 // originals (smaller storage, faster optimizer source). Falls back to the
 // untouched file if the browser can't process it (e.g. HEIC).
-import exifr from "exifr";
 import { encode } from "blurhash";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { parseExifDateTime } from "@/lib/exif-datetime";
@@ -42,6 +41,9 @@ async function readExif(
   let lng: number | null = null;
   let takenAt: string | null = null;
   let takenOffsetMin: number | null = null;
+  // exifr is only needed once files are chosen, so it must not sit in the
+  // editor's first load — load it here, not at module scope.
+  const exifr = (await import("exifr")).default;
   try {
     const gps = await exifr.gps(file);
     if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
