@@ -109,10 +109,17 @@ export function AiProvidersForm({
     }
   }
 
-  /** Re-read presence + source after a write; the server owns both. */
+  /** Re-read presence + source after a write; the server owns both. A failed
+   *  GET must not fail silently: nothing else re-derives `fields`, so leaving
+   *  it untouched would show stale badges/Clear with no sign anything's wrong
+   *  (router.refresh() can't rescue it — useState(initial) ignores new props). */
   async function refresh() {
     const res = await fetch("/api/admin/settings/ai");
-    if (res.ok) setFields((await res.json()).fields);
+    if (res.ok) {
+      setFields((await res.json()).fields);
+    } else {
+      setError(t("admin.err.aiRefresh"));
+    }
   }
 
   async function test(group: AiGroup) {
@@ -133,10 +140,19 @@ export function AiProvidersForm({
     }
   }
 
+  // Every member of TestSlot's `reason` union must have its own `case` below;
+  // `default` funnels into this instead of a message, so a reason the switch
+  // doesn't handle is a compile error (r narrows to `never` only once every
+  // other case is covered), not a silently generic render.
+  function assertNever(x: never): never {
+    throw new Error(`Unhandled test reason: ${JSON.stringify(x)}`);
+  }
+
   // The route deliberately reports machine-readable reasons and leaves the copy
   // to us. "rejected" is the one case whose detail is provider prose (already
-  // redacted server-side) and stands on its own; "no-key" carries no detail at
-  // all, so wrapping it in a failure sentence would invent a failure.
+  // redacted server-side) — it needs its own localized frame, since the
+  // connection succeeded and the provider answered; "no-key" carries no detail
+  // at all, so wrapping it in a failure sentence would invent a failure.
   function testMessage(r: TestSlot): string {
     if (r.ok) return t("admin.settings.aiTestOk", { detail: r.detail });
     switch (r.reason) {
@@ -145,9 +161,11 @@ export function AiProvidersForm({
       case "failed":
         return t("admin.settings.aiTestFail", { detail: r.detail });
       case "rejected":
-        return r.detail;
-      default:
+        return t("admin.settings.aiTestRejected", { detail: r.detail });
+      case "unreachable":
         return t("admin.err.ai");
+      default:
+        return assertNever(r);
     }
   }
 
@@ -160,8 +178,15 @@ export function AiProvidersForm({
         "rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wider",
         s === "db" && "bg-ember-500/15 text-ember-300",
         s === "env" && "bg-white/10 text-sand-100/60",
-        s === "inherited" && "bg-white/5 text-sand-100/50",
-        s === "unset" && "bg-white/5 text-sand-100/40",
+        // "inherited" and "unset" used to differ only by text opacity (/50 vs
+        // /40) on the same bg-white/5 fill — the exact distinction this badge
+        // exists to carry. Give inherited a tinted fill + border (it IS a
+        // working value, just sourced from a sibling field) and unset a
+        // dashed outline with no fill (there's nothing here to show).
+        s === "inherited" &&
+          "border border-sage-400/25 bg-sage-400/10 text-sage-300",
+        s === "unset" &&
+          "border border-dashed border-white/15 text-sand-100/35",
       )}
     >
       {t(`admin.settings.aiSource.${s}`)}
@@ -172,58 +197,70 @@ export function AiProvidersForm({
     <div className="space-y-8">
       {AI_FIELD_GROUPS.map(({ group, keys }) => {
         const result = tested[group];
+        // The route tests the SAVED config, not what's on screen. If any field
+        // in this group has an unsaved keystroke, a verdict right now would be
+        // about the OLD value — misleading in a section whose whole point is
+        // "does this key work?". Disable Test and say why instead of guessing
+        // whether the edit actually changed anything.
+        const hasUnsavedEdits = keys.some((k) => k in edits);
         return (
           <div key={group} className="rounded-2xl border border-white/10 p-5">
             <h3 className="font-display text-lg font-semibold">
               {t(`admin.settings.aiGroup.${group}`)}
             </h3>
             <div className="mt-4 space-y-4">
-              {keys.map((k) => (
-                <label key={k} className="block">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-sand-100/70">
-                      {t(`admin.settings.aiField.${k}`)}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {badge(fields[k].source)}
-                      {fields[k].source === "db" && (
-                        <button
-                          type="button"
-                          onClick={() => clear(k)}
-                          disabled={busy}
-                          className="text-xs text-sand-100/50 underline hover:text-ember-400 disabled:opacity-50"
-                        >
-                          {t("admin.settings.aiClear")}
-                        </button>
+              {keys.map((k) => {
+                const id = `ai-field-${k}`;
+                return (
+                  <div key={k}>
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor={id} className="text-sm text-sand-100/70">
+                        {t(`admin.settings.aiField.${k}`)}
+                      </label>
+                      <span className="flex items-center gap-2">
+                        {badge(fields[k].source)}
+                        {fields[k].source === "db" && (
+                          <button
+                            type="button"
+                            onClick={() => clear(k)}
+                            disabled={busy}
+                            className="text-xs text-sand-100/50 underline hover:text-ember-400 disabled:opacity-50"
+                          >
+                            {t("admin.settings.aiClear")}
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                    <input
+                      id={id}
+                      type={isSecretField(k) ? "password" : "text"}
+                      autoComplete="off"
+                      value={shown(k)}
+                      onChange={(e) => setField(k, e.target.value)}
+                      placeholder={
+                        isSecretField(k) ? fields[k].masked : AI_DEFAULTS[k]
+                      }
+                      className={cn(input, "mt-1.5")}
+                    />
+                    {isSecretField(k) &&
+                      fields[k].masked &&
+                      fields[k].source === "db" && (
+                        <span className="mt-1 block text-xs text-sand-100/50">
+                          {t("admin.settings.aiSecretSet", {
+                            masked: fields[k].masked,
+                          })}
+                        </span>
                       )}
-                    </span>
-                  </span>
-                  <input
-                    type={isSecretField(k) ? "password" : "text"}
-                    autoComplete="off"
-                    value={shown(k)}
-                    onChange={(e) => setField(k, e.target.value)}
-                    placeholder={
-                      isSecretField(k) ? fields[k].masked : AI_DEFAULTS[k]
-                    }
-                    className={cn(input, "mt-1.5")}
-                  />
-                  {isSecretField(k) && fields[k].masked && (
-                    <span className="mt-1 block text-xs text-sand-100/50">
-                      {t("admin.settings.aiSecretSet", {
-                        masked: fields[k].masked,
-                      })}
-                    </span>
-                  )}
-                </label>
-              ))}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-4 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => test(group)}
-                disabled={testing !== null}
+                disabled={testing !== null || hasUnsavedEdits}
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs transition hover:border-ember-400 disabled:opacity-50"
               >
                 {testing === group ? (
@@ -233,15 +270,21 @@ export function AiProvidersForm({
                 )}{" "}
                 {t("admin.settings.aiTest")}
               </button>
-              {result && (
-                <span
-                  className={cn(
-                    "text-xs",
-                    result.ok ? "text-sage-400" : "text-red-400",
-                  )}
-                >
-                  {testMessage(result)}
+              {hasUnsavedEdits ? (
+                <span className="text-xs text-sand-100/50">
+                  {t("admin.settings.aiTestUnsaved")}
                 </span>
+              ) : (
+                result && (
+                  <span
+                    className={cn(
+                      "text-xs",
+                      result.ok ? "text-sage-400" : "text-red-400",
+                    )}
+                  >
+                    {testMessage(result)}
+                  </span>
+                )
               )}
             </div>
           </div>

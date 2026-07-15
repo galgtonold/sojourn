@@ -309,8 +309,10 @@ const en = {
   "admin.settings.aiSecretSet":
     "A key is stored ({masked}). Type a new one to replace it.",
   "admin.settings.aiTest": "Test connection",
+  "admin.settings.aiTestUnsaved": "Save your changes to test this connection.",
   "admin.settings.aiTestOk": "Works — {detail}",
   "admin.settings.aiTestFail": "Connection failed — {detail}",
+  "admin.settings.aiTestRejected": "Rejected — {detail}",
   "admin.settings.aiTestNoKey": "Not configured",
   "admin.settings.aiOff": "AI is off. Add a drafting key to turn the AI features on.",
   "admin.recentComments": "Recent comments",
@@ -340,6 +342,8 @@ const en = {
   "admin.err.gpx": "Couldn’t read that GPX file.",
   "admin.err.save": "Couldn’t save. Please try again.",
   "admin.err.ai": "The AI request failed. Please try again.",
+  "admin.err.aiRefresh":
+    "Couldn’t refresh — reload the page to see the latest state.",
   "admin.err.videoFormat": "That video format isn’t supported — please use MP4.",
   "admin.err.videoTooLarge": "Video is larger than 50 MB.",
 
@@ -970,8 +974,11 @@ const de: Dict = {
   "admin.settings.aiSecretSet":
     "Ein Schlüssel ist gespeichert ({masked}). Neuen eingeben, um ihn zu ersetzen.",
   "admin.settings.aiTest": "Verbindung testen",
+  "admin.settings.aiTestUnsaved":
+    "Speichere deine Änderungen, um diese Verbindung zu testen.",
   "admin.settings.aiTestOk": "Funktioniert — {detail}",
   "admin.settings.aiTestFail": "Verbindung fehlgeschlagen — {detail}",
+  "admin.settings.aiTestRejected": "Abgelehnt — {detail}",
   "admin.settings.aiTestNoKey": "Nicht konfiguriert",
   "admin.settings.aiOff":
     "KI ist aus. Füge einen Schlüssel für Textentwürfe hinzu, um die KI-Funktionen zu aktivieren.",
@@ -1004,6 +1011,8 @@ const de: Dict = {
   "admin.err.gpx": "GPX-Datei konnte nicht gelesen werden.",
   "admin.err.save": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
   "admin.err.ai": "Die KI-Anfrage ist fehlgeschlagen. Bitte erneut versuchen.",
+  "admin.err.aiRefresh":
+    "Aktualisierung fehlgeschlagen — lade die Seite neu, um den aktuellen Stand zu sehen.",
   "admin.err.videoFormat": "Dieses Videoformat wird nicht unterstützt — bitte MP4 verwenden.",
   "admin.err.videoTooLarge": "Video ist größer als 50 MB.",
 
