@@ -179,10 +179,16 @@ export function LocationPicker({
       new maplibregl.NavigationControl({ showCompass: false }),
       "top-right",
     );
-    // Ignore the 0×0 entry the dialog's `display:none` fires on every close:
-    // resizing the transform to zero is a MapLibre path with a history of NaN /
-    // Invalid LngLat edge cases, and nothing needs it. The reveal effect below
-    // resizes explicitly, and both calls are idempotent.
+    // MapLibre attaches its own ResizeObserver to this same container
+    // (`trackResize` defaults to true and we never override it), so it already
+    // calls `resize()` itself — throttled ~50ms — on every size change,
+    // including the 0×0 one this dialog's `display:none` fires on close. This
+    // observer of ours only skips a redundant duplicate `resize()` on that
+    // same transition: `_containerDimensions()` falls back to 400×300 when the
+    // container reports 0 (`clientWidth || 400`, `clientHeight || 300`), so
+    // neither RO ever actually resizes the transform to zero. Kept for the
+    // (tiny) saved work, not because it prevents anything unsafe — MapLibre's
+    // own RO would do the same resize a moment later regardless.
     const ro = new ResizeObserver(([e]) => {
       if (e.contentRect.width && e.contentRect.height) map.resize();
     });
@@ -199,7 +205,15 @@ export function LocationPicker({
       frame(map);
     });
 
-    // Reveal once the first frame is fully rendered (tiles + framing settled).
+    // Reveal once the first frame renders (tiles in). This is NOT the same as
+    // "framing settled" any more: track geometry now comes from an async fetch
+    // (the effect below), so on a post's first open, if `idle` fires before
+    // that fetch resolves, the map fades in framed on the pin alone and then
+    // visibly jumps to include the route a moment later. Left unfixed:
+    // gating `ready` on "tracks landed or failed" would close that race, but
+    // risks stranding the overlay behind a fetch that never settles, to avoid
+    // a jump that's already brief, self-corrects, and (per the 2s net below)
+    // never blocks the reveal itself.
     // Registered on the map rather than nested inside `load` so that no early
     // return added in there can strand the picker on the 2s net.
     map.once("idle", () => setReady(true));
@@ -251,11 +265,12 @@ export function LocationPicker({
   //
   // Deliberately doesn't check `open`: geometry can land while the dialog is
   // hidden (fetch outlives a close), so `frame` may call `fitBounds` on a
-  // display:none map. That's only safe because the ResizeObserver above
-  // ignores the 0×0 entry the hidden container reports — `map.transform` keeps
-  // its last non-zero size, so `fitBounds` computes against a real viewport
-  // instead of MapLibre's negative-padding path for a zero-size one. If that
-  // guard ever changes, this call needs an `open` check added alongside it.
+  // display:none map. That's safe, but not through anything we do: MapLibre's
+  // `_containerDimensions()` falls back to 400×300 for a hidden (0×0)
+  // container, so `fitBounds` always computes against a real viewport, never
+  // a zero-size one. And if this does land while hidden, the `[open]` layout
+  // effect below resizes and re-frames again on the next reveal anyway, so a
+  // stale-viewport fit would self-correct before the user ever saw it.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current || !tracks.length) return;
