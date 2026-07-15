@@ -36,7 +36,6 @@ async function loadStats(viewer: Viewer) {
     .from("posts")
     .select("*", { count: "exact", head: true });
   if (scope) postCountQuery = postCountQuery.in("trip_id", scope);
-  const { count: postCount } = await postCountQuery;
 
   // Comments: all for the owner, otherwise only on the member's posts.
   let recentComments: {
@@ -46,8 +45,12 @@ async function loadStats(viewer: Viewer) {
     created_at: string;
   }[] = [];
   let commentCount = 0;
+  let postCount = 0;
   if (owner) {
-    const [c, { count }] = await Promise.all([
+    // postCount doesn't depend on the comment queries (or vice versa) — only
+    // the member branch below has a real postIds -> comments dependency.
+    const [{ count: pc }, c, { count }] = await Promise.all([
+      postCountQuery,
       supabase
         .from("comments")
         .select("id, author_name, body, created_at")
@@ -55,9 +58,12 @@ async function loadStats(viewer: Viewer) {
         .limit(6),
       supabase.from("comments").select("*", { count: "exact", head: true }),
     ]);
+    postCount = pc ?? 0;
     recentComments = c.data ?? [];
     commentCount = count ?? 0;
   } else {
+    const { count: pc } = await postCountQuery;
+    postCount = pc ?? 0;
     const { data: myPosts } = await supabase
       .from("posts")
       .select("id")
@@ -83,7 +89,7 @@ async function loadStats(viewer: Viewer) {
 
   return {
     email: viewer.email,
-    postCount: postCount ?? 0,
+    postCount,
     commentCount,
     recentComments,
   };

@@ -11,8 +11,9 @@ export const metadata = { title: defaultTitle("meta.adminPosts") };
 export const dynamic = "force-dynamic";
 
 export default async function PostsAdminPage() {
-  const viewer = await getViewer();
-  const allTrips = await getTrips();
+  // getTrips() uses the public client and takes no arguments — it doesn't
+  // depend on the viewer, so both can fire in the same wave.
+  const [viewer, allTrips] = await Promise.all([getViewer(), getTrips()]);
   const tripById: Record<string, string> = Object.fromEntries(
     allTrips.map((t) => [t.id, t.title]),
   );

@@ -13,13 +13,15 @@ export default async function PreviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const post = await getPostForPreview(id);
-  if (!post) notFound();
 
-  const [comments, interactions] = await Promise.all([
-    getComments(post.id),
-    getInteractions(post.id),
+  // The route param IS the post id (getPostForPreview keys off .eq("id", id)),
+  // so comments/interactions don't actually depend on the post row — one wave.
+  const [post, comments, interactions] = await Promise.all([
+    getPostForPreview(id),
+    getComments(id),
+    getInteractions(id),
   ]);
+  if (!post) notFound();
   return (
     <>
       <DocumentTitle k="meta.preview" />

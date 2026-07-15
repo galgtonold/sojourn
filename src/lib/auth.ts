@@ -31,22 +31,16 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   } = await supabase.auth.getUser();
   if (!user) return EMPTY;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
+  // profiles and trip_members both key off user.id and not each other. The
+  // trip_members read is wasted for owners (who can edit everything), but it
+  // costs no wall-clock next to the profiles read it now runs beside.
+  const [{ data: profile }, { data: memberRows }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase.from("trip_members").select("trip_id").eq("user_id", user.id),
+  ]);
 
   const isOwner = profile?.role === "owner";
-
-  let tripIds: string[] = [];
-  if (!isOwner) {
-    const { data } = await supabase
-      .from("trip_members")
-      .select("trip_id")
-      .eq("user_id", user.id);
-    tripIds = (data ?? []).map((r) => r.trip_id as string);
-  }
+  const tripIds = isOwner ? [] : (memberRows ?? []).map((r) => r.trip_id as string);
 
   return {
     userId: user.id,

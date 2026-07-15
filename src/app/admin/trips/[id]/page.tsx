@@ -17,15 +17,19 @@ export default async function EditTripPage({
 }) {
   const { id } = await params;
 
-  const viewer = await getViewer();
-  if (!viewer.isOwner && !viewer.tripIds.includes(id)) redirect("/admin");
-
   const supabase = await getServerSupabase();
-  const { data, error } = await supabase!
-    .from("trips")
-    .select("id, title, slug, summary, ai_context, cover_image, start_date, end_date")
-    .eq("id", id)
-    .maybeSingle();
+
+  // The trip query depends only on `id`, not on the viewer — the viewer is
+  // only needed for the redirect guard below, so both can fire in one wave.
+  const [viewer, { data, error }] = await Promise.all([
+    getViewer(),
+    supabase!
+      .from("trips")
+      .select("id, title, slug, summary, ai_context, cover_image, start_date, end_date")
+      .eq("id", id)
+      .maybeSingle(),
+  ]);
+  if (!viewer.isOwner && !viewer.tripIds.includes(id)) redirect("/admin");
 
   if (error || !data) notFound();
 
