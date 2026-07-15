@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export type Viewer = {
@@ -15,8 +16,13 @@ const EMPTY: Viewer = {
   tripIds: [],
 };
 
-/** Resolves the signed-in admin user, their role and (for members) granted trips. */
-export async function getViewer(): Promise<Viewer> {
+/** Resolves the signed-in admin user, their role and (for members) granted trips.
+ *
+ *  Memoized per request: the admin layout needs `isOwner` to filter its nav and
+ *  every page needs the viewer too, so this was making the same Auth round trip
+ *  and `profiles` read twice per load. `cache` dedupes within one request and
+ *  never persists across requests, which is what we want for per-user data. */
+export const getViewer = cache(async (): Promise<Viewer> => {
   const supabase = await getServerSupabase();
   if (!supabase) return EMPTY;
 
@@ -48,4 +54,4 @@ export async function getViewer(): Promise<Viewer> {
     isOwner,
     tripIds,
   };
-}
+});
