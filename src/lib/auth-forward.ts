@@ -41,14 +41,36 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+const VIEWER_KEY_LABEL = "sojourn:viewer-forward:v1";
+
+// The service-role key is a general-purpose secret (it also bypasses RLS
+// elsewhere). Using it verbatim as the HMAC key here would mean this module's
+// signing key IS the service-role key — rotating one rotates the other, and a
+// digest produced here is indistinguishable from a digest some future feature
+// might produce by HMACing the same raw secret for an unrelated purpose.
+// HMACing the service-role key with a fixed, purpose-specific label first
+// derives a key that is bound to viewer-forwarding only: still deterministic
+// (sign and verify compute the same thing from the same secret), but no longer
+// the raw secret itself.
+async function deriveSigningKey(key: string): Promise<string> {
+  return hmacHex(VIEWER_KEY_LABEL, key);
+}
+
 export async function signViewer(
   userId: string,
   key: string,
   nowMs: number,
-): Promise<string> {
+): Promise<string | null> {
+  // The service role is genuinely optional (see env.ts / isServiceRoleConfigured):
+  // a deploy without it must not throw here. crypto.subtle.importKey rejects a
+  // zero-length key, so without this guard every /admin/* request in middleware
+  // would 500 (including /admin/login) on such a deploy. Fail safe: return null
+  // and let the caller fall back to full session verification.
+  if (!key) return null;
   const expiry = nowMs + VIEWER_TTL_MS;
   const payload = `${userId}.${expiry}`;
-  return `${payload}.${await hmacHex(payload, key)}`;
+  const signingKey = await deriveSigningKey(key);
+  return `${payload}.${await hmacHex(payload, signingKey)}`;
 }
 
 /**
@@ -61,15 +83,40 @@ export async function verifyViewer(
   key: string,
   nowMs: number,
 ): Promise<string | null> {
-  if (!value || !key) return null;
-  const parts = value.split(".");
-  if (parts.length !== 3) return null;
-  const [userId, expiryRaw, sig] = parts;
-  if (!userId || !expiryRaw || !sig) return null;
+  try {
+    if (!value || !key) return null;
+    const parts = value.split(".");
+    if (parts.length !== 3) return null;
+    const [userId, expiryRaw, sig] = parts;
+    // Nothing signViewer produces can have an empty part (userId is a UUID,
+    // expiryRaw is nowMs + TTL, sig is a 64-char hex digest) — but garbage like
+    // "uid.100." or ".100.sig" still splits into exactly 3 parts, so this is the
+    // only thing standing between that input and a returned "" (falsy, but NOT
+    // null — breaking the "null means unverified" contract for any caller doing
+    // `=== null`).
+    if (!userId || !expiryRaw || !sig) return null;
 
-  const expiry = Number(expiryRaw);
-  if (!Number.isFinite(expiry) || nowMs >= expiry) return null;
+    const expiry = Number(expiryRaw);
+    if (!Number.isFinite(expiry) || nowMs >= expiry) return null;
 
-  const expected = await hmacHex(`${userId}.${expiryRaw}`, key);
-  return safeEqual(expected, sig) ? userId : null;
+    const signingKey = await deriveSigningKey(key);
+    // Authenticate expiryRaw — the RAW string — not the parsed `expiry` number.
+    // Number(expiryRaw) is loose (" 123", "0x10", "+123", "1e999" all coerce to a
+    // finite number), so if this ever hashed the *parsed* value instead, then
+    // "uid.+<expiry>.sig" would reuse the signature computed for "uid.<expiry>.sig"
+    // and forge a valid token that merely spells the same instant differently.
+    // Hashing the raw string ties the signature to the exact bytes on the wire.
+    const expected = await hmacHex(`${userId}.${expiryRaw}`, signingKey);
+    return safeEqual(expected, sig) ? userId : null;
+  } catch (err) {
+    // No input here should ever throw (the `!key` check above is the one case
+    // WebCrypto would reject), but this must never be structural: an unexpected
+    // WebCrypto failure has to look like "no valid header" to middleware, not a
+    // 500. Log only a message — never the key or signature material.
+    console.warn(
+      "verifyViewer: unexpected failure, treating as unverified:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
+  }
 }

@@ -22,6 +22,12 @@ describe("verifyViewer accepts what signViewer produced", () => {
   });
 });
 
+describe("signViewer fails safe on a missing key", () => {
+  it("returns null instead of signing with nothing (crypto.subtle rejects a zero-length key)", async () => {
+    expect(await signViewer(UID, "", NOW)).toBeNull();
+  });
+});
+
 describe("verifyViewer rejects everything else", () => {
   it("rejects an absent header", async () => {
     expect(await verifyViewer(null, KEY, NOW)).toBeNull();
@@ -36,20 +42,20 @@ describe("verifyViewer rejects everything else", () => {
 
   it("rejects a tampered user id", async () => {
     const signed = await signViewer(UID, KEY, NOW);
-    const [, exp, sig] = signed.split(".");
+    const [, exp, sig] = signed!.split(".");
     const attacker = "99999999-9999-9999-9999-999999999999";
     expect(await verifyViewer(`${attacker}.${exp}.${sig}`, KEY, NOW)).toBeNull();
   });
 
   it("rejects a tampered expiry", async () => {
     const signed = await signViewer(UID, KEY, NOW);
-    const [uid, , sig] = signed.split(".");
+    const [uid, , sig] = signed!.split(".");
     expect(await verifyViewer(`${uid}.${NOW + 999_999}.${sig}`, KEY, NOW)).toBeNull();
   });
 
   it("rejects a bad signature", async () => {
     const signed = await signViewer(UID, KEY, NOW);
-    const [uid, exp] = signed.split(".");
+    const [uid, exp] = signed!.split(".");
     expect(await verifyViewer(`${uid}.${exp}.${"0".repeat(64)}`, KEY, NOW)).toBeNull();
   });
 
@@ -69,8 +75,42 @@ describe("verifyViewer rejects everything else", () => {
     }
   });
 
-  it("rejects an empty key rather than signing with nothing", async () => {
+  it("verifies with an empty key rather than accepting anything unsigned", async () => {
     const signed = await signViewer(UID, KEY, NOW);
     expect(await verifyViewer(signed, "", NOW)).toBeNull();
+  });
+
+  // These three exist to exercise `if (!userId || !expiryRaw || !sig) return null;`
+  // in verifyViewer, which no other test reaches: garbage splits to lengths that are
+  // never exactly 3 parts with an empty one, EXCEPT these shapes. Without the guard,
+  // signViewer("", KEY, NOW) produces ".<exp>.<sig>", and verifyViewer would return
+  // "" — falsy, but NOT null, breaking the "null means unverified" contract for any
+  // caller doing `=== null`.
+  it("rejects an empty user id even when correctly signed", async () => {
+    const signed = await signViewer("", KEY, NOW);
+    expect(await verifyViewer(signed, KEY, NOW)).toBeNull();
+  });
+
+  it("rejects an empty expiry field (uid.100.)", async () => {
+    expect(await verifyViewer("uid.100.", KEY, NOW)).toBeNull();
+  });
+
+  it("rejects an empty user-id field (.100.sig)", async () => {
+    expect(await verifyViewer(".100.sig", KEY, NOW)).toBeNull();
+  });
+
+  // Regression for the raw-expiry comment on hmacHex(`${userId}.${expiryRaw}`, key):
+  // Number(expiryRaw) is loose, so if verify ever hashed the *parsed* number instead
+  // of the raw string, these differently-spelled-but-equal-numeric expiries would
+  // reuse a legitimate signature and forge a valid token.
+  it("rejects same-value expiry spelled with a leading + or as hex, even reusing a real signature", async () => {
+    const signed = await signViewer(UID, KEY, NOW);
+    const [uid, exp, sig] = signed!.split(".");
+    const plusVariant = `${uid}.+${exp}.${sig}`;
+    const hexVariant = `${uid}.0x${Number(exp).toString(16)}.${sig}`;
+    expect(Number(`+${exp}`)).toBe(Number(exp));
+    expect(Number(`0x${Number(exp).toString(16)}`)).toBe(Number(exp));
+    expect(await verifyViewer(plusVariant, KEY, NOW)).toBeNull();
+    expect(await verifyViewer(hexVariant, KEY, NOW)).toBeNull();
   });
 });
