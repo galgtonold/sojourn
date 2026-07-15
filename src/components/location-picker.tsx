@@ -31,6 +31,10 @@ export function LocationPicker({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const [failed, setFailed] = useState(false);
+  // Hold the map hidden until it has settled and fade it in. The container has
+  // no background of its own, so MapLibre paints the style's LIGHT background
+  // layer before tiles arrive — a light flash on the dark dialog on every open.
+  const [ready, setReady] = useState(false);
 
   const nLat = Number(lat);
   const nLng = Number(lng);
@@ -102,7 +106,17 @@ export function LocationPicker({
       if (any) map.fitBounds(bounds, { padding: 40, maxZoom: 14, duration: 0 });
     });
 
+    // Reveal once the first frame is fully rendered (tiles + fitBounds settled).
+    // Registered outside `load` (not nested inside it) because that handler
+    // returns early when there are no tracks to draw — the common case — which
+    // would otherwise skip this and strand every no-track picker on the 2s net.
+    map.once("idle", () => setReady(true));
+
+    // Safety net: never leave the map hidden if `idle` is slow to fire.
+    const reveal = setTimeout(() => setReady(true), 2000);
+
     return () => {
+      clearTimeout(reveal);
       ro.disconnect();
       markerRef.current?.remove();
       markerRef.current = null;
@@ -149,5 +163,16 @@ export function LocationPicker({
     );
   }
 
-  return <div ref={container} className={className} />;
+  // The map element itself is left untouched (opacity/transform on it breaks
+  // MapLibre's canvas positioning). Instead a sibling overlay covers it during
+  // load and fades out — hiding the light-background flash before tiles land.
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      <div ref={container} className="h-full w-full" />
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 rounded-xl bg-ink-900 transition-opacity duration-300 ${ready ? "opacity-0" : "opacity-100"}`}
+      />
+    </div>
+  );
 }
