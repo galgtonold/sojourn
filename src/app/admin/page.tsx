@@ -90,11 +90,15 @@ async function loadStats(viewer: Viewer) {
 }
 
 export default async function AdminDashboard() {
+  // loadStats needs the viewer (it scopes counts to the member's trips), so the
+  // viewer is a real first wave. Everything else is independent of it.
   const viewer = await getViewer();
-  const { isAiConfigured } = await getAiConfig();
-  const locale = await getReaderLocale();
-  const stats = await loadStats(viewer);
-  const allTrips = await getTrips();
+  const [{ isAiConfigured }, locale, stats, allTrips] = await Promise.all([
+    getAiConfig(),
+    getReaderLocale(),
+    loadStats(viewer),
+    getTrips(),
+  ]);
   const trips = viewer.isOwner
     ? allTrips
     : allTrips.filter((t) => viewer.tripIds.includes(t.id));

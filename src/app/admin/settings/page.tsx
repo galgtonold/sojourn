@@ -30,7 +30,17 @@ export default async function SettingsPage() {
   // Resolved here rather than via the cached getAiConfig() so one DB read backs
   // both the config and the per-field provenance, and so the section reflects a
   // just-saved value instead of whatever the cache still holds.
-  const aiDb = await readAiSecrets();
+  const supabase = await getServerSupabase();
+  const [aiDb, { data }] = await Promise.all([
+    readAiSecrets(),
+    supabase!
+      .from("site_settings")
+      .select(
+        "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en",
+      )
+      .eq("id", 1)
+      .maybeSingle(),
+  ]);
   const aiRaw = readAiEnv();
   const aiCfg = resolveAiConfig(aiDb, aiRaw);
   const aiSources = resolveAiSources(aiDb, aiRaw);
@@ -46,15 +56,6 @@ export default async function SettingsPage() {
       },
     ]),
   ) as Record<AiFieldKey, AiFieldState>;
-
-  const supabase = await getServerSupabase();
-  const { data } = await supabase!
-    .from("site_settings")
-    .select(
-      "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en",
-    )
-    .eq("id", 1)
-    .maybeSingle();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const s = (data as any) ?? {};
