@@ -5,8 +5,15 @@ import type { Photo } from "@/lib/types";
 import { optimizedSrc, cn } from "@/lib/utils";
 import { coverFromPhotos } from "@/lib/post-editor-layout";
 import { ImageUploader } from "@/components/image-uploader";
-import { LocationDialog } from "@/components/location-dialog";
+import dynamic from "next/dynamic";
 import { useT } from "@/components/i18n";
+
+// The second static path into MapLibre — photo-manager has the other one.
+// Splitting only one leaves the chunk in the editor's first load.
+const LocationDialog = dynamic(
+  () => import("@/components/location-dialog").then((m) => m.LocationDialog),
+  { ssr: false },
+);
 
 const input =
   "w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400";

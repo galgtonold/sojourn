@@ -24,8 +24,16 @@ import { revalidatePublicPost } from "@/lib/revalidate-client";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
-import { LocationDialog } from "@/components/location-dialog";
+import dynamic from "next/dynamic";
 import type { ManagedTrack } from "@/components/track-manager";
+
+// MapLibre (~200KB) rides in behind LocationDialog, and most editing sessions
+// never open the picker — so it must not be in the editor's first load. Same
+// split the public post-view already does for the same map. Client-only anyway.
+const LocationDialog = dynamic(
+  () => import("@/components/location-dialog").then((m) => m.LocationDialog),
+  { ssr: false },
+);
 
 export type ManagedPhoto = {
   id: string;
