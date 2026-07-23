@@ -66,12 +66,16 @@ async function tripContext({
           role: "user",
           content:
             `${material}\n\n` +
-            "Dieser interne Kontext dient ausschließlich als Quelle, um KI-Beiträge " +
-            "für diese Reise zu generieren (nicht öffentlich sichtbar). Stelle 4–6 " +
-            "kurze, konkrete Fragen, deren Antworten den Kontext deutlich nützlicher " +
-            "machen — z. B. wer mitreist (Namen, Beziehung), Motivation und Ziele, " +
-            "Reisestil, Ausrüstung, wiederkehrende Themen, Insider-Details. Frage nur " +
-            "nach Dingen, die noch fehlen. " +
+            'Der oben stehende "Aktuelle interne Kontext" gilt als bereits ' +
+            "bekannt. Stelle KEINE Fragen zu Dingen, die er bereits beantwortet " +
+            "oder impliziert. Dieser interne Kontext dient ausschließlich als " +
+            "Quelle, um KI-Beiträge für diese Reise zu generieren (nicht " +
+            "öffentlich sichtbar). Stelle bis zu 6 kurze, konkrete Fragen — aber " +
+            "nur zu echten Lücken, deren Antworten den Kontext deutlich nützlicher " +
+            "machen (z. B. wer mitreist (Namen, Beziehung), Motivation und Ziele, " +
+            "Reisestil, Ausrüstung, wiederkehrende Themen, Insider-Details). Wenn " +
+            "kaum etwas fehlt, stelle entsprechend weniger — notfalls gar keine — " +
+            "Fragen; erfinde keine Fragen, nur um eine Mindestanzahl zu erreichen. " +
             'Antworte ausschließlich als JSON: {"questions": ["…"]}.',
         },
       ],
@@ -87,7 +91,7 @@ async function tripContext({
   const context = await deepseekChat({
     model: "fast",
     temperature: 0.5,
-    maxTokens: 900,
+    maxTokens: 8000,
     meta: { operation: "trip-context-refine", userId: user.id },
     messages: [
       {
@@ -100,12 +104,16 @@ async function tripContext({
         content:
           `${material}\n\n` +
           (qa ? `Antworten des Autors:\n${qa}\n\n` : "") +
-          "Schreibe einen verdichteten internen Kontext für diese Reise. Er wird " +
-          "NUR als Quelle für die KI-Generierung der Beiträge genutzt und ist nicht " +
-          "öffentlich. Fasse Teilnehmer, Motivation/Ziele, Reisestil und prägnante " +
-          "Details in klaren Stichpunkten oder kurzen Absätzen zusammen. Integriere " +
-          "den bestehenden Kontext und die Antworten. Gib NUR den Kontext-Text " +
-          "zurück, ohne Vorrede und ohne Anführungszeichen.",
+          "Aktualisiere den internen Kontext für diese Reise. Er wird NUR als " +
+          "Quelle für die KI-Generierung der Beiträge genutzt und ist nicht " +
+          'öffentlich. Der bestehende "Aktuelle interne Kontext" ist die ' +
+          "Grundlage: Übernimm JEDEN darin enthaltenen Fakt und jedes Detail " +
+          "vollständig — kürze, verdichte oder streiche nichts davon. Füge die " +
+          "Antworten des Autors hinzu und ordne bei Bedarf neu bzw. entferne " +
+          "reine Wortdopplungen. Das Ergebnis muss eine Obermenge des bestehenden " +
+          "Kontexts sein: alles Bisherige bleibt erhalten, ergänzt um das Neue. " +
+          "Strukturiere in klaren Stichpunkten oder kurzen Absätzen. Gib NUR den " +
+          "Kontext-Text zurück, ohne Vorrede und ohne Anführungszeichen.",
       },
     ],
   });
