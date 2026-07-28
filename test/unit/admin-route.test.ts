@@ -1,6 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
-import { resolveAdminRoute } from "@/lib/admin-route";
+import { resolveAdminRoute, resolvePublicRoute } from "@/lib/admin-route";
 import type { SetupState } from "@/lib/setup";
+
+describe("resolvePublicRoute", () => {
+  it("sends visitors to setup while the install is unclaimed", () => {
+    expect(resolvePublicRoute("needs-setup")).toBe("/admin/setup");
+  });
+
+  it("serves the site normally once claimed", () => {
+    expect(resolvePublicRoute("configured")).toBeNull();
+  });
+
+  it("fails open when the state is unknown, so a database blip cannot black out the site", () => {
+    expect(resolvePublicRoute("unknown")).toBeNull();
+  });
+});
 
 /** A setup-state fetcher that records whether it was consulted. */
 function state(s: SetupState) {

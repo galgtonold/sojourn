@@ -2,11 +2,36 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
 import { VIEWER_HEADER, signViewer } from "@/lib/auth-forward";
-import { resolveAdminRoute } from "@/lib/admin-route";
-import { getSetupState } from "@/lib/setup";
+import { resolveAdminRoute, resolvePublicRoute } from "@/lib/admin-route";
+import { getSetupState, type SetupState } from "@/lib/setup";
+
+// Once an install is claimed it stays claimed — there is no un-claim flow — so
+// remember that and stop querying. Only the positive is cached: remembering
+// "needs-setup" would keep redirecting after a successful claim (setup then
+// bounces back to login, and round it goes), and remembering "unknown" would
+// pin a transient outage for the life of the instance.
+let claimed = false;
+async function claimState(): Promise<SetupState> {
+  if (claimed) return "configured";
+  const state = await getSetupState();
+  if (state === "configured") claimed = true;
+  return state;
+}
 
 // Refreshes the Supabase session cookie and gates the admin area.
 export async function middleware(request: NextRequest) {
+  // Public routes: an unclaimed install funnels every visitor into setup, so a
+  // deploy can't quietly sit there unclaimed after landing the operator on an
+  // empty home page. Deliberately before any session work — the auth check
+  // below is a network round-trip to Supabase, which no public page view
+  // should ever pay for. After the first claimed request this costs nothing.
+  if (!request.nextUrl.pathname.startsWith("/admin")) {
+    const destination = resolvePublicRoute(await claimState());
+    return destination
+      ? NextResponse.redirect(new URL(destination, request.url))
+      : NextResponse.next();
+  }
+
   // The response can't exist yet: its request headers depend on the user, whom
   // we only know after getUser() — which is also what triggers setAll (during a
   // token refresh). So buffer the cookies here and replay them onto the response
@@ -37,7 +62,7 @@ export async function middleware(request: NextRequest) {
   const destination = await resolveAdminRoute(
     request.nextUrl.pathname,
     Boolean(user),
-    getSetupState,
+    claimState,
   );
 
   // This returns early, before the main response (and its cookie replay)
@@ -75,5 +100,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Everything except API routes, Next's build output, and anything with a file
+  // extension (sw.js, manifest.webmanifest, icon.svg, robots.txt, sitemap.xml).
+  // Public pages match so an unclaimed install can funnel them into setup; they
+  // never touch Supabase once the claim is cached.
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };

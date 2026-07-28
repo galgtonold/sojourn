@@ -1,5 +1,16 @@
 import type { SetupState } from "@/lib/setup";
 
+// An unclaimed install has nothing to show — its database is empty and its
+// ownership is still up for grabs — so every public route funnels into setup.
+// Without this, a deploy lands the operator on an empty home page with no hint
+// that the site is unclaimed, and it can sit that way indefinitely.
+//
+// `unknown` deliberately serves the site: a missing service-role key or a
+// database blip must never black out a working install.
+export function resolvePublicRoute(state: SetupState): string | null {
+  return state === "needs-setup" ? "/admin/setup" : null;
+}
+
 // Where an /admin/* request should go, or null to render what was asked for.
 // This is the single decision point for the admin gate: middleware can act on
 // it with a real 307, so a fresh install never renders a page it is about to
