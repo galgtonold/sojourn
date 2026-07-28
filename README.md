@@ -227,3 +227,13 @@ Built and working, but room to grow:
 - **Share surface** — dynamic per-post Open Graph images and a native share sheet.
 
 > Several earlier roadmap items — direct **photo upload**, a **comment moderation** UI, **rich Markdown** post bodies, **AI authoring**, **collaborators**, and **i18n** — are now implemented and listed under [Features](#features).
+
+## License
+
+Sojourn is free software under the **[GNU AGPL-3.0](LICENSE)** (`AGPL-3.0-only`).
+
+- **Self-host it freely, forever.** Run it for yourself or anyone else, and modify it however you like.
+- **Offering it as a service?** Also fine — the AGPL simply requires making the source of your modified version available to the people who use it.
+- **Want white-label use, closed modifications, or different terms?** Commercial licenses are available — contact Philipp Gergen: <philipp.gergen@web.de>.
+
+Contributions are welcome under a lightweight DCO + relicensing grant — see [CONTRIBUTING.md](CONTRIBUTING.md). The "Sojourn" name and logo are not covered by the code license.
