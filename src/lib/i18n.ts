@@ -346,6 +346,11 @@ const en = {
     "First-run setup needs the server-side service role key (SUPABASE_SERVICE_ROLE_KEY) and the database migrations from supabase/migrations. Add them and reload — or create the owner manually in the Supabase dashboard (Auth → Users), as described in the README.",
 
   "admin.setup.siteName": "What is this site called?",
+  "admin.setup.expiredTitle": "Setup window closed",
+  "admin.setup.expiredBody":
+    "This install only accepts its first account for a limited time after setup, so an unfinished deploy can't sit here waiting to be claimed by someone else. That time has passed. Restart or redeploy the site to get another window — or, if that's awkward, run this in your database and reload:",
+  "admin.setup.errorExpired":
+    "The setup window closed while you were filling this in. Reload the page for instructions.",
 
   "admin.onboarding.title": "Finish setting up",
   "admin.onboarding.progress": "{done} of {total}",
@@ -1053,6 +1058,11 @@ const de: Dict = {
     "Die Ersteinrichtung braucht serverseitig den Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) und die Datenbank-Migrationen aus supabase/migrations. Beides ergänzen und neu laden — oder das Inhaber-Konto manuell im Supabase-Dashboard anlegen (Auth → Users), wie im README beschrieben.",
 
   "admin.setup.siteName": "Wie heißt diese Site?",
+  "admin.setup.expiredTitle": "Einrichtungsfenster geschlossen",
+  "admin.setup.expiredBody":
+    "Diese Installation nimmt das erste Konto nur begrenzte Zeit nach der Einrichtung an — damit ein unfertiges Deployment nicht darauf wartet, dass jemand anderes es übernimmt. Diese Zeit ist abgelaufen. Starte die Seite neu oder deploye sie erneut, dann öffnet sich das Fenster wieder — oder führe, falls das unpraktisch ist, das hier in deiner Datenbank aus und lade neu:",
+  "admin.setup.errorExpired":
+    "Das Einrichtungsfenster ist zwischenzeitlich abgelaufen. Lade die Seite neu, dort steht, wie es weitergeht.",
 
   "admin.onboarding.title": "Einrichtung abschließen",
   "admin.onboarding.progress": "{done} von {total}",

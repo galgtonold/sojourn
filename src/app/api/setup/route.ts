@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { hasOwner } from "@/lib/setup";
+import { hasOwner, getClaimWindow } from "@/lib/setup";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // First-run claim of the owner account. Public by necessity — nobody can be
@@ -36,6 +36,15 @@ export async function POST(req: Request) {
   }
   if (owned) {
     return NextResponse.json({ error: "owner-exists" }, { status: 410 });
+  }
+
+  // Checked after ownership so a claimed install reports the useful answer
+  // ("already set up") rather than an expiry that no longer matters.
+  if ((await getClaimWindow()) === "expired") {
+    return NextResponse.json(
+      { error: "setup-window-expired" },
+      { status: 403 },
+    );
   }
 
   let userId: string;
@@ -91,6 +100,12 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: promoteError.message }, { status: 500 });
   }
+
+  // A reclaim — say, after deleting someone who got here first — must not
+  // inherit their AI provider config. `app_secrets` survives deleting the user
+  // that wrote it (updated_by is ON DELETE SET NULL), and the provider base
+  // URLs are free-form, so a stale one would keep receiving drafted content.
+  await admin.from("app_secrets").delete().neq("key", "");
 
   return NextResponse.json({ ok: true });
 }

@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const adm = vi.hoisted(() => ({ client: null as unknown }));
 const rl = vi.hoisted(() => ({ allow: true }));
+const win = vi.hoisted(() => ({ state: "open" as "open" | "expired" }));
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => adm.client }));
+// Keep the real owner lookup (it drives most of these cases); only the clock
+// is stubbed, so the window can be moved without touching timers.
+vi.mock("@/lib/setup", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/setup")>()),
+  getClaimWindow: () => Promise.resolve(win.state),
+}));
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: () => rl.allow,
   clientIp: () => "1.1.1.1",
@@ -30,12 +37,17 @@ function makeAdmin(cfg: {
     updateUserById: [] as [string, Record<string, unknown>][],
     deleteUser: [] as string[],
     upserts: [] as Record<string, unknown>[],
+    cleared: [] as string[],
   };
   const ownerResult: Result = cfg.owners ?? { data: [], error: null };
   const admin = {
-    from() {
+    from(table: string) {
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "ilike", "limit"]) q[m] = () => q;
+      for (const m of ["select", "eq", "ilike", "limit", "neq"]) q[m] = () => q;
+      q.delete = () => {
+        calls.cleared.push(table);
+        return q;
+      };
       q.maybeSingle = async () => ({
         data: cfg.profileByEmail ?? null,
         error: null,
@@ -86,6 +98,7 @@ const good = { email: "phil@example.com", password: "hunter2hunter2" };
 beforeEach(() => {
   adm.client = null;
   rl.allow = true;
+  win.state = "open";
 });
 
 describe("POST /api/setup", () => {
@@ -123,6 +136,31 @@ describe("POST /api/setup", () => {
     expect(res.status).toBe(410);
     expect((await res.json()).error).toBe("owner-exists");
     expect(calls.createUser).toHaveLength(0);
+  });
+
+  it("refuses once the claim window has expired, without creating anything", async () => {
+    win.state = "expired";
+    const { admin, calls } = makeAdmin();
+    adm.client = admin;
+    const res = await call(good);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("setup-window-expired");
+    expect(calls.createUser).toHaveLength(0);
+  });
+
+  it("reports the install as already claimed before it reports it as expired", async () => {
+    // An owner exists AND the window lapsed: the useful answer is "claimed".
+    win.state = "expired";
+    const { admin } = makeAdmin({ owners: { data: [{ id: "u1" }], error: null } });
+    adm.client = admin;
+    expect((await call(good)).status).toBe(410);
+  });
+
+  it("clears inherited AI provider config when claiming", async () => {
+    const { admin, calls } = makeAdmin();
+    adm.client = admin;
+    await call(good);
+    expect(calls.cleared).toContain("app_secrets");
   });
 
   it("creates a confirmed owner account and promotes its profile", async () => {

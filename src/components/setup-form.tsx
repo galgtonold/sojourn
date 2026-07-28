@@ -6,10 +6,22 @@ import { Compass } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
 
-// First-run owner claim. `notReady` renders the manual-instructions panel
-// instead of the form (no service role, or migrations not applied — see
-// getSetupState); the page decides, this component just displays.
-export default function SetupForm({ notReady }: { notReady: boolean }) {
+/** The SQL that reopens a lapsed claim window — shown verbatim so it is a
+ *  copy-paste, not a puzzle. Kept in sync with 0039_setup_window.sql. */
+const REOPEN_SQL =
+  "update public.site_settings set setup_opened_at = now() where id = 1;";
+
+export type SetupMode =
+  /** Claimable now. */
+  | "claim"
+  /** No service role or no migrations — nothing can be claimed yet. */
+  | "not-ready"
+  /** Claimable once, but the window lapsed. */
+  | "expired";
+
+// First-run owner claim. The page decides which of the three states applies;
+// this component just displays it.
+export default function SetupForm({ mode }: { mode: SetupMode }) {
   const router = useRouter();
   const t = useT();
   const [siteName, setSiteName] = useState("");
@@ -20,19 +32,31 @@ export default function SetupForm({ notReady }: { notReady: boolean }) {
   const [ownerExists, setOwnerExists] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (notReady) {
+  if (mode !== "claim") {
+    const expired = mode === "expired";
     return (
       <div className="grid min-h-dvh place-items-center px-6">
-        <div className="w-full max-w-sm space-y-4 rounded-3xl bg-ink-900 p-8 ring-1 ring-white/10">
+        <div className="w-full max-w-md space-y-4 rounded-3xl bg-ink-900 p-8 ring-1 ring-white/10">
           <div className="flex items-center gap-2">
             <Compass className="size-6 text-ember-400" />
             <h1 className="font-display text-2xl font-semibold">
-              {t("admin.setup.notReadyTitle")}
+              {t(
+                expired
+                  ? "admin.setup.expiredTitle"
+                  : "admin.setup.notReadyTitle",
+              )}
             </h1>
           </div>
           <p className="text-sm text-sand-100/50">
-            {t("admin.setup.notReadyBody")}
+            {t(
+              expired ? "admin.setup.expiredBody" : "admin.setup.notReadyBody",
+            )}
           </p>
+          {expired && (
+            <pre className="overflow-x-auto rounded-xl bg-ink-800 p-3 text-xs leading-relaxed text-sand-100/80">
+              <code>{REOPEN_SQL}</code>
+            </pre>
+          )}
         </div>
       </div>
     );
@@ -56,6 +80,9 @@ export default function SetupForm({ notReady }: { notReady: boolean }) {
         if (res.status === 410) {
           setOwnerExists(true);
           setError(t("admin.setup.errorOwnerExists"));
+        } else if (res.status === 403) {
+          // Lapsed between this page rendering and the submit.
+          setError(t("admin.setup.errorExpired"));
         } else if (res.status === 409) {
           setError(t("admin.setup.errorEmailTaken"));
         } else if (res.status === 429) {

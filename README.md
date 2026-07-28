@@ -112,9 +112,40 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only
    ```
-4. **Create the owner account.** Open **`/admin`** on the deployed site — a fresh install redirects you to **`/admin/setup`**, where you create the owner account right in the app (first visitor claims it, so do this straight after deploying). This needs `SUPABASE_SERVICE_ROLE_KEY` to be set; on an anon-key-only deploy, create the user manually instead: Supabase dashboard → **Auth → Users → Add user**.
+4. **Create the owner account.** Open the site — while it is unclaimed, **every page** redirects to **`/admin/setup`**, where you create the owner account (name your site, pick an email and password) and land signed in. This needs `SUPABASE_SERVICE_ROLE_KEY`; on an anon-key-only deploy, create the user manually instead: Supabase dashboard → **Auth → Users → Add user**.
+
+   > **Claim it before you point a domain at it.** The first visitor to a fresh install becomes its owner, and newly issued TLS certificates are published publicly (Certificate Transparency), so a custom domain is discoverable within minutes. Claiming on the `*.vercel.app` URL first avoids the race entirely. As a backstop, the claim is only open for **60 minutes** after the schema is installed — see below.
 
 > Because content is public-read, **no viewer accounts are ever needed** — the only account that exists is the admin.
+
+### The claim window
+
+An unclaimed install can be claimed by whoever reaches it first, so that state is
+deliberately short-lived: **60 minutes** from the moment the schema is installed
+(`site_settings.setup_opened_at`). After that `/admin/setup` explains itself and
+stops accepting a claim, so a half-finished deploy can't sit there indefinitely
+waiting to be adopted.
+
+Missed the window? **Restart the server (Docker) or redeploy (Vercel)** — an
+unclaimed install opens a fresh window for a deployment it hasn't seen before.
+That isn't a loophole: only whoever controls the deployment can restart it, so
+it proves the same thing a setup token would, without a secret to store. Note
+this tracks the *deployment*, not the process — serverless cold starts happen
+constantly and deliberately don't count.
+
+If restarting is awkward, the expired page also prints the manual way back in:
+
+```sql
+update public.site_settings set setup_opened_at = now() where id = 1;
+```
+
+Tune it with `SETUP_WINDOW_MINUTES` (default `60`; `0` disables the guard, which
+is reasonable on a LAN). Claiming also clears any stored AI provider config, so
+a reclaimed install never inherits credentials or endpoints from whoever held it
+before. Note this bounds neglect, not a determined attacker: someone who reaches
+`/admin/setup` inside the window can still claim it. If that matters for your
+deployment, claim the install immediately and keep it off a public domain until
+you have.
 
 Restart `npm run dev` and the site reads from your hosted database.
 

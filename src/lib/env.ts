@@ -28,6 +28,11 @@ export const env = {
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
     "https://tiles.openfreemap.org/styles/liberty",
 
+  // How many minutes an unclaimed install stays claimable, measured from
+  // `site_settings.setup_opened_at`. 0 (or negative) switches the guard off —
+  // reasonable on a LAN, where nobody unexpected can reach the setup page.
+  setupWindowMinutes: Number(process.env.SETUP_WINDOW_MINUTES ?? "60"),
+
   // Embedding dimension must match the DB `vector()` column, so it stays here:
   // changing it at runtime from the UI would silently corrupt search.
   embeddingDim: Number(process.env.EMBEDDING_DIM ?? "1536"),
