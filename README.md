@@ -90,7 +90,7 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 ## Architecture
 
 - **Content is public-read.** Trips, posts, photos, maps, comments, and reactions are shared by URL — there are no viewer accounts.
-- **Only `/admin` is gated.** Authentication is Supabase Auth for a single admin, enforced by Next middleware in `src/middleware.ts`.
+- **Only `/admin` is gated.** Authentication is Supabase Auth for a single admin, enforced by Next middleware in `src/middleware.ts`. On a fresh install, `/admin/setup` lets the first visitor claim the owner account (atomic via a single-owner unique index; a permanent redirect-to-login tombstone once an owner exists).
 - **Data access layer:** `src/lib/content.ts` — public reads via a cookieless anon client (RLS-bounded); query failures return empty, never fabricated content.
 - **Schema, RLS, and storage:** `supabase/migrations/0001_init.sql`.
 
@@ -112,7 +112,7 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only
    ```
-4. **Create the admin user.** In the Supabase dashboard go to **Auth → Users → Add user** and create one user with an email + password. That's your single admin login for `/admin`.
+4. **Create the owner account.** Open **`/admin`** on the deployed site — a fresh install redirects you to **`/admin/setup`**, where you create the owner account right in the app (first visitor claims it, so do this straight after deploying). This needs `SUPABASE_SERVICE_ROLE_KEY` to be set; on an anon-key-only deploy, create the user manually instead: Supabase dashboard → **Auth → Users → Add user**.
 
 > Because content is public-read, **no viewer accounts are ever needed** — the only account that exists is the admin.
 

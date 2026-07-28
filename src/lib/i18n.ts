@@ -325,6 +325,26 @@ const en = {
   "admin.login.signIn": "Sign in",
   "admin.login.signingIn": "Signing in…",
 
+  "admin.setup.title": "Welcome to Sojourn",
+  "admin.setup.subtitle":
+    "Create the owner account to finish setting up this site.",
+  "admin.setup.emailPlaceholder": "you@example.com",
+  "admin.setup.password": "Password (min 8 characters)",
+  "admin.setup.passwordRepeat": "Repeat password",
+  "admin.setup.create": "Create owner account",
+  "admin.setup.creating": "Creating…",
+  "admin.setup.mismatch": "The passwords don't match.",
+  "admin.setup.errorOwnerExists":
+    "This site is already set up — head to the sign-in page.",
+  "admin.setup.goToLogin": "Go to sign-in",
+  "admin.setup.errorEmailTaken": "An account with this email already exists.",
+  "admin.setup.errorRateLimited":
+    "Too many attempts — wait a moment and try again.",
+  "admin.setup.errorGeneric": "Setup failed. Check the server logs and try again.",
+  "admin.setup.notReadyTitle": "Almost there",
+  "admin.setup.notReadyBody":
+    "First-run setup needs the server-side service role key (SUPABASE_SERVICE_ROLE_KEY) and the database migrations from supabase/migrations. Add them and reload — or create the owner manually in the Supabase dashboard (Auth → Users), as described in the README.",
+
   "admin.account.title": "Change password",
   "admin.account.current": "Current password",
   "admin.account.new": "New password (min 8 characters)",
@@ -991,6 +1011,28 @@ const de: Dict = {
   "admin.login.password": "Passwort",
   "admin.login.signIn": "Anmelden",
   "admin.login.signingIn": "Anmelden…",
+
+  "admin.setup.title": "Willkommen bei Sojourn",
+  "admin.setup.subtitle":
+    "Lege das Inhaber-Konto an, um die Einrichtung dieser Site abzuschließen.",
+  "admin.setup.emailPlaceholder": "you@example.com",
+  "admin.setup.password": "Passwort (mind. 8 Zeichen)",
+  "admin.setup.passwordRepeat": "Passwort wiederholen",
+  "admin.setup.create": "Inhaber-Konto anlegen",
+  "admin.setup.creating": "Wird angelegt…",
+  "admin.setup.mismatch": "Die Passwörter stimmen nicht überein.",
+  "admin.setup.errorOwnerExists":
+    "Diese Site ist bereits eingerichtet — weiter zur Anmeldung.",
+  "admin.setup.goToLogin": "Zur Anmeldung",
+  "admin.setup.errorEmailTaken":
+    "Ein Konto mit dieser E-Mail existiert bereits.",
+  "admin.setup.errorRateLimited":
+    "Zu viele Versuche — bitte kurz warten und dann erneut versuchen.",
+  "admin.setup.errorGeneric":
+    "Einrichtung fehlgeschlagen. Prüfe die Server-Logs und versuche es erneut.",
+  "admin.setup.notReadyTitle": "Fast geschafft",
+  "admin.setup.notReadyBody":
+    "Die Ersteinrichtung braucht serverseitig den Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) und die Datenbank-Migrationen aus supabase/migrations. Beides ergänzen und neu laden — oder das Inhaber-Konto manuell im Supabase-Dashboard anlegen (Auth → Users), wie im README beschrieben.",
 
   "admin.account.title": "Passwort ändern",
   "admin.account.current": "Aktuelles Passwort",

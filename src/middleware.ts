@@ -34,6 +34,9 @@ export async function middleware(request: NextRequest) {
   // The invite/recovery link establishes its session client-side, so this page
   // must be reachable before a session cookie exists.
   const isWelcome = pathname.startsWith("/admin/welcome");
+  // First-run setup runs before any account exists; its own guards (owner
+  // check + atomic claim in /api/setup) make it a tombstone afterwards.
+  const isSetup = pathname.startsWith("/admin/setup");
 
   // Both branches below return early, before the main response (and its cookie
   // replay) further down is ever built. getUser() above is what populates
@@ -42,14 +45,14 @@ export async function middleware(request: NextRequest) {
   // That bites hardest for isLogin && user: the follow-up request would
   // re-present the OLD refresh token, surviving only on Supabase's
   // reuse-detection grace window.
-  if (pathname.startsWith("/admin") && !isLogin && !isWelcome && !user) {
+  if (pathname.startsWith("/admin") && !isLogin && !isWelcome && !isSetup && !user) {
     const redirect = NextResponse.redirect(new URL("/admin/login", request.url));
     for (const { name, value, options } of pendingCookies) {
       redirect.cookies.set({ name, value, ...options });
     }
     return redirect;
   }
-  if (isLogin && user) {
+  if ((isLogin || isSetup) && user) {
     const redirect = NextResponse.redirect(new URL("/admin", request.url));
     for (const { name, value, options } of pendingCookies) {
       redirect.cookies.set({ name, value, ...options });

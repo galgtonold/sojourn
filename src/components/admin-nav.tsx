@@ -41,6 +41,7 @@ export function AdminNav({ isOwner }: { isOwner: boolean }) {
   const hidden =
     pathname === "/admin/login" ||
     pathname === "/admin/welcome" ||
+    pathname === "/admin/setup" ||
     pathname.includes("/preview");
 
   const items = ITEMS.filter((i) => isOwner || !i.owner);
