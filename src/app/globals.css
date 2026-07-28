@@ -150,6 +150,20 @@ body {
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
+/* Autofilled fields keep the dark input styling. Chrome paints its own pale
+   background on :-webkit-autofill and ignores `background-color`, so the only
+   way to cover it is an inset shadow the size of the field — otherwise the one
+   field the browser filled (the email) sits there in light blue among its dark
+   siblings. Every autofillable input in the app is bg-ink-800. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  box-shadow: 0 0 0 1000px var(--color-ink-800) inset;
+  -webkit-text-fill-color: var(--color-sand-100);
+  caret-color: var(--color-sand-100);
+}
+
 /* Themed scrollbars — thin, subtle on the dark UI, ember on hover. */
 * {
   scrollbar-width: thin;

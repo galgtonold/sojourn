@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
 import { VIEWER_HEADER, signViewer } from "@/lib/auth-forward";
+import { resolveAdminRoute } from "@/lib/admin-route";
+import { getSetupState } from "@/lib/setup";
 
 // Refreshes the Supabase session cookie and gates the admin area.
 export async function middleware(request: NextRequest) {
@@ -29,31 +31,24 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isLogin = pathname.startsWith("/admin/login");
-  // The invite/recovery link establishes its session client-side, so this page
-  // must be reachable before a session cookie exists.
-  const isWelcome = pathname.startsWith("/admin/welcome");
-  // First-run setup runs before any account exists; its own guards (owner
-  // check + atomic claim in /api/setup) make it a tombstone afterwards.
-  const isSetup = pathname.startsWith("/admin/setup");
+  // Deciding here rather than inside the pages means a redirect is a real 307:
+  // an in-page `redirect()` resolves only after Next has streamed the layout,
+  // so the visitor watches an empty shell before being sent on.
+  const destination = await resolveAdminRoute(
+    request.nextUrl.pathname,
+    Boolean(user),
+    getSetupState,
+  );
 
-  // Both branches below return early, before the main response (and its cookie
-  // replay) further down is ever built. getUser() above is what populates
-  // pendingCookies (on a token refresh), so replay it onto these redirects too
-  // — otherwise a rotated refresh token is buffered and then discarded here.
-  // That bites hardest for isLogin && user: the follow-up request would
-  // re-present the OLD refresh token, surviving only on Supabase's
-  // reuse-detection grace window.
-  if (pathname.startsWith("/admin") && !isLogin && !isWelcome && !isSetup && !user) {
-    const redirect = NextResponse.redirect(new URL("/admin/login", request.url));
-    for (const { name, value, options } of pendingCookies) {
-      redirect.cookies.set({ name, value, ...options });
-    }
-    return redirect;
-  }
-  if ((isLogin || isSetup) && user) {
-    const redirect = NextResponse.redirect(new URL("/admin", request.url));
+  // This returns early, before the main response (and its cookie replay)
+  // further down is ever built. getUser() above is what populates
+  // pendingCookies (on a token refresh), so replay it onto the redirect too —
+  // otherwise a rotated refresh token is buffered and then discarded here.
+  // That bites hardest when a signed-in viewer hits the login page: the
+  // follow-up request would re-present the OLD refresh token, surviving only
+  // on Supabase's reuse-detection grace window.
+  if (destination) {
+    const redirect = NextResponse.redirect(new URL(destination, request.url));
     for (const { name, value, options } of pendingCookies) {
       redirect.cookies.set({ name, value, ...options });
     }
