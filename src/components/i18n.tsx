@@ -167,8 +167,14 @@ export function DocumentTitle({
   vars?: Vars;
   home?: boolean;
 }) {
-  const { locale, siteName } = useI18n();
+  // Error surfaces (dev error pages, a future global-error) render outside
+  // I18nProvider — a tab-title nicety must never turn them into a second
+  // crash, so read the context nullably and no-op without it.
+  const ctx = useContext(I18nCtx);
+  const locale = ctx?.locale;
+  const siteName = ctx?.siteName;
   useEffect(() => {
+    if (!locale || !siteName) return;
     const value = translate(locale, k, vars);
     const title = home ? `${siteName} — ${value}` : `${value} · ${siteName}`;
     document.title = title;
