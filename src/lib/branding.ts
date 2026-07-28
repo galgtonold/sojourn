@@ -15,6 +15,31 @@ import {
 export const BRANDING_TAG = "site-branding";
 export type { Branding };
 
+/** Whether the owner has actually chosen these, which `getBranding` cannot say:
+ *  an unset name reads back as `env.siteName`, indistinguishable from someone
+ *  who typed it. Cached under the same tag, so saving settings refreshes it. */
+export const getBrandingState = unstable_cache(
+  async (): Promise<{ nameSet: boolean; taglineSet: boolean }> => {
+    const supabase = getAdminSupabase();
+    if (!supabase) return { nameSet: false, taglineSet: false };
+    const { data } = await supabase
+      .from("site_settings")
+      .select("site_name, tagline_de, tagline_en")
+      .eq("id", 1)
+      .maybeSingle();
+    const row = (data ?? {}) as Record<string, unknown>;
+    const set = (v: unknown) => Boolean((v as string | undefined)?.trim());
+    return {
+      nameSet: set(row.site_name),
+      // Either language counts — nagging a one-language site for the other
+      // would never clear.
+      taglineSet: set(row.tagline_de) || set(row.tagline_en),
+    };
+  },
+  ["site-branding-state"],
+  { tags: [BRANDING_TAG] },
+);
+
 export const getBranding = unstable_cache(
   async (): Promise<Branding> => {
     const supabase = getAdminSupabase();

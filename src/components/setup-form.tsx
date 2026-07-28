@@ -12,6 +12,7 @@ import { useT } from "@/components/i18n";
 export default function SetupForm({ notReady }: { notReady: boolean }) {
   const router = useRouter();
   const t = useT();
+  const [siteName, setSiteName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -75,6 +76,15 @@ export default function SetupForm({ notReady }: { notReady: boolean }) {
         setBusy(false);
         return;
       }
+      // Name the site through the ordinary owner-gated settings route (we are
+      // the owner now), so /api/setup stays a pure account-claim endpoint.
+      // Deliberately non-fatal: the account is created and signed in either
+      // way, and the dashboard checklist still asks for a name if this failed.
+      await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ site_name: siteName.trim() }),
+      }).catch(() => {});
       router.push("/admin");
       router.refresh();
     } catch {
@@ -97,6 +107,16 @@ export default function SetupForm({ notReady }: { notReady: boolean }) {
         </div>
         <p className="text-sm text-sand-100/50">{t("admin.setup.subtitle")}</p>
 
+        <input
+          type="text"
+          required
+          maxLength={80}
+          autoComplete="off"
+          value={siteName}
+          onChange={(e) => setSiteName(e.target.value)}
+          placeholder={t("admin.setup.siteName")}
+          className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
+        />
         <input
           type="email"
           required

@@ -12,6 +12,8 @@ import {
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAiConfig } from "@/lib/ai-config";
 import { getTrips } from "@/lib/content";
+import { getBrandingState } from "@/lib/branding";
+import { SetupChecklist } from "@/components/setup-checklist";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { PushToggle } from "@/components/push-toggle";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -46,21 +48,29 @@ async function loadStats(viewer: Viewer) {
   }[] = [];
   let commentCount = 0;
   let postCount = 0;
+  // Only the owner's onboarding checklist reads this; members never see it.
+  let publishedCount = 0;
   if (owner) {
     // postCount doesn't depend on the comment queries (or vice versa) — only
     // the member branch below has a real postIds -> comments dependency.
-    const [{ count: pc }, c, { count }] = await Promise.all([
-      postCountQuery,
-      supabase
-        .from("comments")
-        .select("id, author_name, body, created_at")
-        .order("created_at", { ascending: false })
-        .limit(6),
-      supabase.from("comments").select("*", { count: "exact", head: true }),
-    ]);
+    const [{ count: pc }, c, { count }, { count: published }] =
+      await Promise.all([
+        postCountQuery,
+        supabase
+          .from("comments")
+          .select("id, author_name, body, created_at")
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase.from("comments").select("*", { count: "exact", head: true }),
+        supabase
+          .from("posts")
+          .select("*", { count: "exact", head: true })
+          .eq("published", true),
+      ]);
     postCount = pc ?? 0;
     recentComments = c.data ?? [];
     commentCount = count ?? 0;
+    publishedCount = published ?? 0;
   } else {
     const { count: pc } = await postCountQuery;
     postCount = pc ?? 0;
@@ -90,6 +100,7 @@ async function loadStats(viewer: Viewer) {
   return {
     email: viewer.email,
     postCount,
+    publishedCount,
     commentCount,
     recentComments,
   };
@@ -99,12 +110,14 @@ export default async function AdminDashboard() {
   // loadStats needs the viewer (it scopes counts to the member's trips), so the
   // viewer is a real first wave. Everything else is independent of it.
   const viewer = await getViewer();
-  const [{ isAiConfigured }, locale, stats, allTrips] = await Promise.all([
-    getAiConfig(),
-    getReaderLocale(),
-    loadStats(viewer),
-    getTrips(),
-  ]);
+  const [{ isAiConfigured }, locale, stats, allTrips, branding] =
+    await Promise.all([
+      getAiConfig(),
+      getReaderLocale(),
+      loadStats(viewer),
+      getTrips(),
+      getBrandingState(),
+    ]);
   const trips = viewer.isOwner
     ? allTrips
     : allTrips.filter((t) => viewer.tripIds.includes(t.id));
@@ -130,6 +143,16 @@ export default async function AdminDashboard() {
           <PushToggle />
         </div>
       </div>
+
+      {viewer.isOwner && (
+        <SetupChecklist
+          nameSet={branding.nameSet}
+          taglineSet={branding.taglineSet}
+          hasTrip={trips.length > 0}
+          hasPublishedPost={stats.publishedCount > 0}
+          aiConfigured={isAiConfigured}
+        />
+      )}
 
       {/* Primary actions */}
       <div className="mt-8 flex flex-wrap gap-3">

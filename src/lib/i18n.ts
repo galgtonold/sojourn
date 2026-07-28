@@ -345,6 +345,24 @@ const en = {
   "admin.setup.notReadyBody":
     "First-run setup needs the server-side service role key (SUPABASE_SERVICE_ROLE_KEY) and the database migrations from supabase/migrations. Add them and reload — or create the owner manually in the Supabase dashboard (Auth → Users), as described in the README.",
 
+  "admin.setup.siteName": "What is this site called?",
+
+  "admin.onboarding.title": "Finish setting up",
+  "admin.onboarding.progress": "{done} of {total}",
+  "admin.onboarding.optional": "Optional",
+  "admin.onboarding.name": "Name your site",
+  "admin.onboarding.nameHint": "It still goes by the default title.",
+  "admin.onboarding.tagline": "Write a tagline",
+  "admin.onboarding.taglineHint":
+    "The line under the title — it shows in the footer and in search results.",
+  "admin.onboarding.trip": "Add your first journey",
+  "admin.onboarding.tripHint": "Entries live inside a journey.",
+  "admin.onboarding.post": "Publish your first entry",
+  "admin.onboarding.postHint": "Drafts stay private until you publish them.",
+  "admin.onboarding.ai": "Turn on AI drafting",
+  "admin.onboarding.aiHint":
+    "Add a provider key to draft, caption and translate.",
+
   "admin.account.title": "Change password",
   "admin.account.current": "Current password",
   "admin.account.new": "New password (min 8 characters)",
@@ -1033,6 +1051,25 @@ const de: Dict = {
   "admin.setup.notReadyTitle": "Fast geschafft",
   "admin.setup.notReadyBody":
     "Die Ersteinrichtung braucht serverseitig den Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) und die Datenbank-Migrationen aus supabase/migrations. Beides ergänzen und neu laden — oder das Inhaber-Konto manuell im Supabase-Dashboard anlegen (Auth → Users), wie im README beschrieben.",
+
+  "admin.setup.siteName": "Wie heißt diese Site?",
+
+  "admin.onboarding.title": "Einrichtung abschließen",
+  "admin.onboarding.progress": "{done} von {total}",
+  "admin.onboarding.optional": "Optional",
+  "admin.onboarding.name": "Site benennen",
+  "admin.onboarding.nameHint": "Sie trägt noch den Standardtitel.",
+  "admin.onboarding.tagline": "Untertitel schreiben",
+  "admin.onboarding.taglineHint":
+    "Die Zeile unter dem Titel — sie steht im Footer und in Suchergebnissen.",
+  "admin.onboarding.trip": "Erste Reise anlegen",
+  "admin.onboarding.tripHint": "Beiträge gehören immer zu einer Reise.",
+  "admin.onboarding.post": "Ersten Beitrag veröffentlichen",
+  "admin.onboarding.postHint":
+    "Entwürfe bleiben privat, bis du sie veröffentlichst.",
+  "admin.onboarding.ai": "KI-Entwürfe aktivieren",
+  "admin.onboarding.aiHint":
+    "Mit einem Provider-Schlüssel entwirft, betextet und übersetzt die KI.",
 
   "admin.account.title": "Passwort ändern",
   "admin.account.current": "Aktuelles Passwort",
