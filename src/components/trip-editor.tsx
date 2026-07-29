@@ -6,6 +6,7 @@ import { slugify } from "@/lib/utils";
 import { useBeforeUnload } from "@/lib/use-before-unload";
 import { ImageUploader } from "@/components/image-uploader";
 import { AiContextRefiner } from "@/components/ai-context-refiner";
+import { DateField } from "@/components/date-field";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -149,24 +150,26 @@ export function TripEditor({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm text-sand-100/60">
-          {t("admin.trip.start")}
-          <input
-            type="date"
-            className={`${input} mt-1`}
+        <div>
+          <label className="mb-1 block text-sm text-sand-100/60" htmlFor="trip-start">
+            {t("admin.trip.start")}
+          </label>
+          <DateField
+            id="trip-start"
             value={trip.start_date}
-            onChange={(e) => set("start_date", e.target.value)}
+            onChange={(v) => set("start_date", v)}
           />
-        </label>
-        <label className="block text-sm text-sand-100/60">
-          {t("admin.trip.end")}
-          <input
-            type="date"
-            className={`${input} mt-1`}
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-sand-100/60" htmlFor="trip-end">
+            {t("admin.trip.end")}
+          </label>
+          <DateField
+            id="trip-end"
             value={trip.end_date}
-            onChange={(e) => set("end_date", e.target.value)}
+            onChange={(v) => set("end_date", v)}
           />
-        </label>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
