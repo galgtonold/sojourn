@@ -9,10 +9,26 @@
 // (`getAiConfig`) and @/lib/ai-config-fields. Only `embeddingDim` and the
 // `aiPrice*` rates remain, because neither can move.
 
+import { pickSupabaseKey, pickServiceKey } from "@/lib/env-aliases";
+
 export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  // Both spellings are accepted so a Vercel + Supabase Marketplace deploy works
+  // with the variables that integration writes, unchanged (see @/lib/env-aliases).
+  //
+  // Each `process.env.NEXT_PUBLIC_*` must be written out literally here: Next
+  // inlines those by textual substitution at build time, so handing the whole
+  // `process.env` object to a helper would leave the browser bundle with
+  // nothing to read.
+  supabaseAnonKey: pickSupabaseKey({
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  }),
+  supabaseServiceRoleKey: pickServiceKey({
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+  }),
   vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
@@ -63,7 +79,8 @@ export const isSupabaseConfigured = Boolean(
 // app requires Supabase; this surfaces a misconfigured deploy loudly instead of
 // silently serving nothing.
 export const SUPABASE_NOT_CONFIGURED =
-  "Supabase is not configured — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
+  "Supabase is not configured — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY " +
+  "(or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, which the Vercel Supabase integration sets).";
 
 export const isServiceRoleConfigured = Boolean(
   isSupabaseConfigured && env.supabaseServiceRoleKey,

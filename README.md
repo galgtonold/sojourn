@@ -101,11 +101,25 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 ## Going live with Supabase
 
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
-2. **Run the migration.** Apply `supabase/migrations/0001_init.sql` — either paste it into the Supabase **SQL Editor**, or push it with the CLI:
+2. **Run the migrations.** Point the CLI at your project and push everything in
+   `supabase/migrations` (there are ~40 files — apply them all, in order):
    ```bash
+   supabase link --project-ref YOUR-PROJECT-REF
    supabase db push
    ```
-   This creates all tables, the full-text search column, row-level security policies, and the `photos` storage bucket.
+   This creates all tables, the full-text search column, row-level security
+   policies, and the `photos` storage bucket.
+
+   > **`db push` can be noisy and still have worked.** Some CLI versions print a
+   > wall of certificate / edge-runtime errors and then say `Finished supabase db
+   > push.` — the migrations have usually applied fine. Don't retry blindly;
+   > check first. In the Supabase dashboard the **Table Editor** should list
+   > `trips`, `posts`, `photos` and friends, or run this in the **SQL Editor**:
+   > ```sql
+   > select count(*) as applied from supabase_migrations.schema_migrations;
+   > ```
+   > It should match the number of files in `supabase/migrations`. If it does,
+   > you're done — the errors were noise.
 3. **Copy your keys** into `.env.local` (copy `.env.example` first):
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
@@ -166,6 +180,21 @@ Web push lets the admin receive notifications (e.g. on new comments).
 3. Open **`/admin`** and click **"Enable notifications"**. The service worker (`public/sw.js`) registers the subscription, which is stored in the `push_subscriptions` table.
 
 ## Deployment — Cloud (Vercel)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn&project-name=sojourn&repository-name=sojourn&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY&envDescription=From%20your%20Supabase%20project%3A%20Settings%20%E2%86%92%20API&envLink=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn%23going-live-with-supabase)
+
+The button clones the repo and asks for the three values it can't guess. You
+still need a Supabase project with the migrations applied first — see
+[Going live with Supabase](#going-live-with-supabase).
+
+**Or let Vercel create the database for you.** Add the
+[Supabase integration](https://vercel.com/marketplace/supabase) from Vercel's
+marketplace and it provisions a project and writes the connection variables
+itself — no copying. It uses its own names (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`SUPABASE_SECRET_KEY`) rather than the ones above; Sojourn accepts both, so
+either way works untouched. You still apply the migrations yourself.
+
+Setting it up by hand instead:
 
 1. Connect the repository in Vercel.
 2. Set your environment variables. Mark the `NEXT_PUBLIC_*` ones (URL, anon key, VAPID public key, site name/URL, map style) and the **server-only** ones (`SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) accordingly.
