@@ -209,11 +209,40 @@ export default async function HomePage() {
 
 export async function generateMetadata() {
   const { name } = await getBranding();
+  const description = `Latest travel stories and photography from ${name}. Updated ${formatDate(
+    new Date().toISOString(),
+    "en",
+  )}.`;
+
+  // The home page is the URL people actually paste into chats, forums and
+  // social posts, and it was the one page with no share image — so a site whose
+  // whole point is photography previewed as a line of grey text. Entry and trip
+  // pages already offer their own cover; this borrows the newest one, which is
+  // both the freshest and the picture the author most recently chose to lead
+  // with. `og:image` needs an absolute URL: relative paths are dropped silently
+  // by every scraper, which is the failure mode that looks like it works.
+  const { posts } = await getPostSummaries({ limit: 1 });
+  const newest = posts[0];
+  const images = newest?.cover_image
+    ? [{ url: absolute(newest.cover_image), alt: newest.cover_alt ?? name }]
+    : undefined;
+
   return {
     alternates: { canonical: "/" },
-    description: `Latest travel stories and photography from ${name}. Updated ${formatDate(
-      new Date().toISOString(),
-      "en",
-    )}.`,
+    description,
+    openGraph: { title: name, description, url: "/", images },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title: name,
+      description,
+      images,
+    },
   };
+}
+
+/** Storage URLs are already absolute; anything site-relative needs the origin. */
+function absolute(url: string): string {
+  return /^https?:\/\//.test(url)
+    ? url
+    : `${env.siteUrl.replace(/\/$/, "")}${url.startsWith("/") ? "" : "/"}${url}`;
 }

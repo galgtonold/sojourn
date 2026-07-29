@@ -2,6 +2,15 @@
 
 **A bold, immersive travel journal.** Sojourn is a self-hostable blog/journal for documenting your travels — full-bleed hero imagery, interactive maps with route lines, photo galleries with a lightbox, reactions, comments, and full-text search. It's built to feel like a magazine and run like a single, portable container.
 
+### [→ Try the live demo](https://sojourn-demo.vercel.app)
+
+Four invented journeys, eighteen entries, real routes on real roads. **No sign-up:
+press “Explore the demo” on [the admin login](https://sojourn-demo.vercel.app/admin/login)
+and you're inside the editor** — every screen, with the content already there.
+
+The demo is read-only, so it stays as the last person found it. Everything else
+works: browse the maps and galleries, react to an entry, vote in a poll.
+
 Sojourn needs one thing to run: **Supabase** (Postgres + Auth + Storage). Point it at a local stack (`supabase start`) or a hosted project, run the migrations, and you have a working site. Everything beyond that — web push, AI authoring, semantic search, photo vision — is **optional** and lights up as you add the relevant keys. Nothing is locked to a single cloud vendor.
 
 ## Features
