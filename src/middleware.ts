@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { VIEWER_HEADER, signViewer } from "@/lib/auth-forward";
 import { resolveAdminRoute, resolvePublicRoute } from "@/lib/admin-route";
 import { getSetupState, type SetupState } from "@/lib/setup";
+import { demoBlocks } from "@/lib/demo";
 
 // Once an install is claimed it stays claimed — there is no un-claim flow — so
 // remember that and stop querying. Only the positive is cached: remembering
@@ -20,12 +21,27 @@ async function claimState(): Promise<SetupState> {
 
 // Refreshes the Supabase session cookie and gates the admin area.
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // The showcase deployment refuses writes from everyone, and it refuses them
+  // here — in front of every route — because the admin API has no single auth
+  // gate to hook (see @/lib/demo). Nothing below this runs for a blocked
+  // request, so no handler can be reached by a path nobody thought about.
+  if (env.demoMode && demoBlocks(pathname, request.method)) {
+    return NextResponse.json({ error: "demo" }, { status: 403 });
+  }
+
+  // API routes are matched only for the guard above. Everything below is about
+  // pages — sending an API call into the setup funnel would answer a fetch with
+  // a redirect to HTML.
+  if (pathname.startsWith("/api/")) return NextResponse.next();
+
   // Public routes: an unclaimed install funnels every visitor into setup, so a
   // deploy can't quietly sit there unclaimed after landing the operator on an
   // empty home page. Deliberately before any session work — the auth check
   // below is a network round-trip to Supabase, which no public page view
   // should ever pay for. After the first claimed request this costs nothing.
-  if (!request.nextUrl.pathname.startsWith("/admin")) {
+  if (!pathname.startsWith("/admin")) {
     const destination = resolvePublicRoute(await claimState());
     return destination
       ? NextResponse.redirect(new URL(destination, request.url))
@@ -60,7 +76,7 @@ export async function middleware(request: NextRequest) {
   // an in-page `redirect()` resolves only after Next has streamed the layout,
   // so the visitor watches an empty shell before being sent on.
   const destination = await resolveAdminRoute(
-    request.nextUrl.pathname,
+    pathname,
     Boolean(user),
     claimState,
   );
@@ -100,9 +116,15 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except API routes, Next's build output, and anything with a file
-  // extension (sw.js, manifest.webmanifest, icon.svg, robots.txt, sitemap.xml).
-  // Public pages match so an unclaimed install can funnel them into setup; they
-  // never touch Supabase once the claim is cached.
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  matcher: [
+    // Every page: all except API routes, Next's build output, and anything with
+    // a file extension (sw.js, manifest.webmanifest, icon.svg, robots.txt,
+    // sitemap.xml). Public pages match so an unclaimed install can funnel them
+    // into setup; they never touch Supabase once the claim is cached.
+    "/((?!api|_next|.*\\..*).*)",
+    // Plus the endpoints demo mode has to be able to refuse — nothing else
+    // under /api is matched. Keep in step with @/lib/demo (a test checks it).
+    "/api/admin/:path*",
+    "/api/comments",
+  ],
 };

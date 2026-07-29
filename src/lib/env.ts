@@ -44,6 +44,16 @@ export const env = {
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
     "https://tiles.openfreemap.org/styles/liberty",
 
+  // The public showcase deployment: read-only for everyone, with a one-click
+  // sign-in so visitors can see the admin without an account. NEXT_PUBLIC_
+  // because the login page (a client component) has to know whether to offer
+  // the button. Unset everywhere else, which leaves every demo path inert.
+  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === "1",
+  // The account that one-click button signs in as. Server-only: the password
+  // never reaches the browser (see /api/demo/login).
+  demoEmail: process.env.DEMO_EMAIL ?? "",
+  demoPassword: process.env.DEMO_PASSWORD ?? "",
+
   // How many minutes an unclaimed install stays claimable, measured from
   // `site_settings.setup_opened_at`. 0 (or negative) switches the guard off —
   // reasonable on a LAN, where nobody unexpected can reach the setup page.
