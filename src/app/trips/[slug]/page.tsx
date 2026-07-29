@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
 import { getTripOverview, getTrips } from "@/lib/content";
 import { formatDistance } from "@/lib/gpx";
+import { env } from "@/lib/env";
+import { shareImage } from "@/lib/utils";
 import { PostCard } from "@/components/post-card";
 import { T, LocText, LocDate } from "@/components/i18n";
 
@@ -27,7 +29,7 @@ export async function generateMetadata({
   if (!trip) return {};
   const path = `/trips/${slug}`;
   const images = trip.cover_image
-    ? [{ url: trip.cover_image, alt: trip.title }]
+    ? [{ url: shareImage(trip.cover_image, env.siteUrl), alt: trip.title }]
     : undefined;
   return {
     title: trip.title,

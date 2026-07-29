@@ -15,7 +15,7 @@ import {
   BrandHeroLead,
   BrandHeroAccent,
 } from "@/components/i18n";
-import { coverGradient, formatDate } from "@/lib/utils";
+import { coverGradient, formatDate, shareImage } from "@/lib/utils";
 
 // Fully static: prerendered in the default locale and the reader's language is
 // swapped in on the client (PostCard / LocText), so it serves from cache. Cached
@@ -219,12 +219,16 @@ export async function generateMetadata() {
   // whole point is photography previewed as a line of grey text. Entry and trip
   // pages already offer their own cover; this borrows the newest one, which is
   // both the freshest and the picture the author most recently chose to lead
-  // with. `og:image` needs an absolute URL: relative paths are dropped silently
-  // by every scraper, which is the failure mode that looks like it works.
+  // with. See `shareImage` for why it is resized and absolute.
   const { posts } = await getPostSummaries({ limit: 1 });
   const newest = posts[0];
   const images = newest?.cover_image
-    ? [{ url: absolute(newest.cover_image), alt: newest.cover_alt ?? name }]
+    ? [
+        {
+          url: shareImage(newest.cover_image, env.siteUrl),
+          alt: newest.cover_alt ?? name,
+        },
+      ]
     : undefined;
 
   return {
@@ -238,11 +242,4 @@ export async function generateMetadata() {
       images,
     },
   };
-}
-
-/** Storage URLs are already absolute; anything site-relative needs the origin. */
-function absolute(url: string): string {
-  return /^https?:\/\//.test(url)
-    ? url
-    : `${env.siteUrl.replace(/\/$/, "")}${url.startsWith("/") ? "" : "/"}${url}`;
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/content";
 import { getBranding } from "@/lib/branding";
 import { env } from "@/lib/env";
+import { shareImage } from "@/lib/utils";
 import { PostView } from "@/components/post-view";
 
 // Static, on-demand revalidation: the body is rendered in the default locale and
@@ -32,7 +33,12 @@ export async function generateMetadata({
   if (!post) return {};
   const path = `/posts/${slug}`;
   const images = post.cover_image
-    ? [{ url: post.cover_image, alt: post.cover_alt ?? post.title }]
+    ? [
+        {
+          url: shareImage(post.cover_image, env.siteUrl),
+          alt: post.cover_alt ?? post.title,
+        },
+      ]
     : undefined;
   return {
     title: post.title,

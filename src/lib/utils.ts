@@ -55,6 +55,28 @@ export function optimizedSrc(url: string, width = 2048, quality = 80): string {
 }
 
 /**
+ * A cover photo as an `og:image`: resized, and absolute.
+ *
+ * Both halves matter. A full-size cover is several hundred KB to a few MB of
+ * original camera JPEG, which every unfurler downloads before it can draw the
+ * card — so the preview lags behind the message that contains it. 1200px wide
+ * is what the platforms display at.
+ *
+ * And the URL must be absolute: a relative `og:image` is discarded by every
+ * scraper without complaint, so the page keeps its tag and the card silently
+ * has no picture — a failure that looks exactly like success from the outside.
+ *
+ * Format negotiation is safe here, checked against real user agents: Next's
+ * optimizer answers a wildcard Accept header — which is what Facebook, Twitter
+ * and Slack send — with JPEG, and only serves WebP/AVIF to clients that name
+ * them explicitly.
+ */
+export function shareImage(url: string, siteUrl: string): string {
+  const path = optimizedSrc(url, 1200, 75);
+  return `${siteUrl.replace(/\/$/, "")}${path}`;
+}
+
+/**
  * A deterministic, on-brand dark gradient derived from a seed string (a slug or
  * title) — so a post/trip with no cover image still gets a distinctive backdrop
  * instead of a flat black rectangle. Stays dark enough for white overlay text.
