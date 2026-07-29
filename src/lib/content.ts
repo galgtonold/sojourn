@@ -139,15 +139,20 @@ export async function getMapPosts(): Promise<MapPost[]> {
         distance_m: t.distance_m,
         started_at: t.started_at ?? null,
         ended_at: t.ended_at ?? null,
-        // World overview: a coarse but BOUNDED envelope. This used to sample
-        // every Nth point down to a fixed 120, which caps the size but lets the
-        // line cut corners by however much it likes — a hairpin between two
-        // samples simply vanished. Douglas-Peucker at 5 m spends its points
-        // where the route actually bends, and on the current tracks yields
-        // fewer of them (4.0k vs 5.2k) while never straying more than 5 m.
+        // Same 1 m envelope as every other map. This page opens on a world
+        // view, where far coarser geometry would look identical — but it zooms,
+        // and a coarse line puts the route on the wrong side of the street once
+        // you get close. One guarantee everywhere is easier to trust than a
+        // per-surface guess about how far someone will zoom.
+        //
+        // It used to sample every Nth point down to a fixed 120, which caps the
+        // size but bounds no error at all: a hairpin between two samples simply
+        // vanished. If this page's payload ever becomes the problem, the answer
+        // is zoom-tiered loading (coarse first, finer on zoom) rather than
+        // giving the guarantee up.
         geojson: t.geojson
           ? simplifyTrackGeoJson(t.geojson, {
-              horizontalM: 5,
+              horizontalM: 1,
               dropElevation: true,
               stripProperties: true,
             })
