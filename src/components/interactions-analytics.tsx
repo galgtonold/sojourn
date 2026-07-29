@@ -147,7 +147,7 @@ function InteractionCard({ it }: { it: InteractionAnalytics }) {
             {it.postTitle}
           </Link>
         ) : (
-          <span className="min-w-0 truncate text-sand-100/40">{it.postTitle}</span>
+          <span className="min-w-0 truncate text-sand-100/50">{it.postTitle}</span>
         )}
         <span className="ml-auto shrink-0 text-sand-100/50">
           {it.total > 0

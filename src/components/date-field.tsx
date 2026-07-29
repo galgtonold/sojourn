@@ -129,7 +129,7 @@ export function DateField({
         )}
       >
         <CalendarDays className="size-4 shrink-0 text-ember-400" />
-        <span className={cn("flex-1 truncate", value ? "text-sand-100/90" : "text-sand-100/40")}>
+        <span className={cn("flex-1 truncate", value ? "text-sand-100/90" : "text-sand-100/50")}>
           {value ? formatDate(value, locale) : t("admin.editor.date.none")}
         </span>
       </button>
@@ -164,7 +164,7 @@ export function DateField({
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-0.5 text-center text-[0.65rem] uppercase tracking-wider text-sand-100/40">
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[0.65rem] uppercase tracking-wider text-sand-100/50">
             {Array.from({ length: 7 }, (_, i) => (
               <span key={i} className="py-1">
                 {new Date(

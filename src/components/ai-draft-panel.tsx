@@ -569,7 +569,7 @@ export function AiDraftPanel({
             <Loader2 className="size-4 animate-spin" />
             <span>{step}…</span>
             {stepStartedAt != null && (
-              <span className="tabular-nums text-xs text-sand-100/40">
+              <span className="tabular-nums text-xs text-sand-100/50">
                 {fmtElapsed(elapsedS)}
               </span>
             )}
@@ -601,7 +601,7 @@ export function AiDraftPanel({
                       done && "bg-sage-500/25 text-sage-300",
                       active &&
                         "bg-ember-500/20 text-ember-300 ring-1 ring-ember-400/50",
-                      !done && !active && "bg-white/5 text-sand-100/40",
+                      !done && !active && "bg-white/5 text-sand-100/50",
                     )}
                   >
                     {done ? <Check className="size-3" /> : i + 1}

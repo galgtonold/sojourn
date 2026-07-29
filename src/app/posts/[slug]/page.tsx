@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { NotFoundView } from "@/components/not-found-view";
 import { prerenderParams } from "@/lib/prerender";
 import {
   getInteractions,
@@ -33,7 +33,11 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
-  if (!post) return {};
+  // A slug that no longer resolves still returns metadata, because it still
+  // returns a page (see below). Without `noindex` here a deleted entry stayed
+  // indexable: the root not-found file carries that directive, and this route
+  // never reaches it.
+  if (!post) return { robots: { index: false, follow: false } };
   const path = `/posts/${slug}`;
   const images = post.cover_image
     ? [
@@ -66,7 +70,15 @@ export default async function PostPage({
 }) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
-  if (!post) notFound();
+  // Rendered here rather than via notFound(). This route is prerendered with
+  // `revalidate = false` and has a loading.tsx, so an unknown slug streamed a
+  // shell whose Suspense fallback never resolved: the visitor got the header,
+  // the footer, and an empty page between them — no message, nothing to click.
+  // Verified in a browser, and adding not-found boundaries in the segment did
+  // not change it. Returning the view directly sidesteps boundary resolution
+  // entirely and always renders. See docs/qa/03-bug-log.md (BUG-001) for why
+  // the status stays 200; `robots: noindex` above keeps it out of search.
+  if (!post) return <NotFoundView />;
 
   // Interactions are authored content (safe fields only) — baked into the cached
   // page and refreshed on edit. Comments self-fetch on the client, so pass none.

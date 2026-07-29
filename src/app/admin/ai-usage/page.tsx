@@ -114,7 +114,7 @@ export default async function AiUsagePage() {
                   {(r.prompt_tokens + r.completion_tokens).toLocaleString()} tok
                 </span>
                 <span className="tabular-nums">{usd(r.cost_usd)}</span>
-                <span className="hidden text-xs text-sand-100/30 sm:inline">
+                <span className="hidden text-xs text-sand-100/50 sm:inline">
                   {formatDate(r.created_at, locale)}
                 </span>
               </span>

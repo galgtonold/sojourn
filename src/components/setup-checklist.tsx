@@ -73,14 +73,14 @@ export function SetupChecklist(facts: OnboardingFacts) {
                 <span
                   className={
                     step.done
-                      ? "text-sm text-sand-100/40 line-through decoration-sand-100/25"
+                      ? "text-sm text-sand-100/50 line-through decoration-sand-100/25"
                       : "text-sm font-medium"
                   }
                 >
                   <T k={LABEL[step.key]} />
                 </span>
                 {step.optional && !step.done && (
-                  <span className="ml-2 rounded-full bg-white/5 px-2 py-0.5 text-[0.68rem] uppercase tracking-wide text-sand-100/40">
+                  <span className="ml-2 rounded-full bg-white/5 px-2 py-0.5 text-[0.68rem] uppercase tracking-wide text-sand-100/50">
                     <T k="admin.onboarding.optional" />
                   </span>
                 )}

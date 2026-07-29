@@ -124,6 +124,10 @@ const en = {
   "notFound.title": "Off the map",
   "notFound.body": "This trail doesn’t lead anywhere — yet.",
   "notFound.back": "Back to the journal",
+  "error.title": "That didn’t load",
+  "error.body":
+    "Something went wrong fetching this page. It’s usually temporary — try again.",
+  "error.retry": "Try again",
 
   "preview.draft": "Draft preview",
   "preview.notPublished": "not published",
@@ -847,6 +851,10 @@ const de: Dict = {
   "notFound.title": "Abseits der Karte",
   "notFound.body": "Dieser Pfad führt (noch) nirgendwohin.",
   "notFound.back": "Zurück zum Journal",
+  "error.title": "Das hat nicht geladen",
+  "error.body":
+    "Beim Laden dieser Seite ist etwas schiefgegangen. Meist ist das vorübergehend — versuch es noch einmal.",
+  "error.retry": "Nochmal versuchen",
 
   "preview.draft": "Entwurfsvorschau",
   "preview.notPublished": "nicht veröffentlicht",

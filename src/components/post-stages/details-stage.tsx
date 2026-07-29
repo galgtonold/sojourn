@@ -160,7 +160,7 @@ export function DetailsStage({
               <span
                 className={cn(
                   "flex-1 truncate",
-                  lat && lng ? "text-sand-100/90" : "text-sand-100/40",
+                  lat && lng ? "text-sand-100/90" : "text-sand-100/50",
                 )}
               >
                 {lat && lng ? `${lat}, ${lng}` : t("admin.location.none")}
@@ -195,7 +195,7 @@ export function DetailsStage({
           value={excerpt}
           onChange={(e) => onField("excerpt", e.target.value)}
         />
-        <p className="mt-1.5 text-xs text-sand-100/40">
+        <p className="mt-1.5 text-xs text-sand-100/50">
           {t("admin.editor.details.summaryHint")}
         </p>
       </div>

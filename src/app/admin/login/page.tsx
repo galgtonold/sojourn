@@ -74,10 +74,10 @@ export default function AdminLogin() {
             >
               {demoBusy ? t("demo.login.entering") : t("demo.login.enter")}
             </button>
-            <p className="text-center text-xs text-sand-100/40">
+            <p className="text-center text-xs text-sand-100/50">
               {t("demo.login.hint")}
             </p>
-            <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-sand-100/30">
+            <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-sand-100/50">
               <span className="h-px flex-1 bg-white/10" />
               {t("demo.login.or")}
               <span className="h-px flex-1 bg-white/10" />

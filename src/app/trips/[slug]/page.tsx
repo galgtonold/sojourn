@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prerenderParams } from "@/lib/prerender";
-import { notFound } from "next/navigation";
+import { NotFoundView } from "@/components/not-found-view";
 import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
 import { getTripOverview, getTrips } from "@/lib/content";
 import { formatDistance } from "@/lib/gpx";
@@ -29,7 +29,9 @@ export async function generateMetadata({
   const { slug } = await params;
   const trips = await getTrips();
   const trip = trips.find((t) => t.slug === slug);
-  if (!trip) return {};
+  // See the posts route: a missing trip still renders a page, so it still needs
+  // `noindex` — the root not-found file's directive never reaches here.
+  if (!trip) return { robots: { index: false, follow: false } };
   const path = `/trips/${slug}`;
   const images = trip.cover_image
     ? [{ url: shareImage(trip.cover_image, env.siteUrl), alt: trip.title }]
@@ -56,7 +58,10 @@ export default async function TripPage({
   const { slug } = await params;
   const trips = await getTrips();
   const trip = trips.find((t) => t.slug === slug);
-  if (!trip) notFound();
+  // Rendered directly rather than via notFound() — same reason as the posts
+  // route: the streamed shell's Suspense fallback never resolved, leaving an
+  // empty page. See @/components/not-found-view.
+  if (!trip) return <NotFoundView />;
 
   // Summaries + counts only. This page shows no map, and PostCard is a client
   // component — fetching the full posts here serialized every GPX point into
