@@ -3,7 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
 import { getBranding } from "@/lib/branding";
-import { defaultTitle } from "@/lib/i18n";
+import { defaultTitle, DEFAULT_LOCALE } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteChrome } from "@/components/site-chrome";
@@ -11,6 +11,7 @@ import { RouteProgress } from "@/components/route-progress";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { I18nProvider } from "@/components/i18n";
 import { ConfirmProvider } from "@/components/confirm-dialog";
+import { DemoBanner } from "@/components/demo-banner";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -35,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(env.siteUrl),
     title: {
       // Metadata is rendered server-side in the default locale.
-      default: `${name} — ${tagline.de || defaultTitle("meta.tagline")}`,
+      default: `${name} — ${tagline[DEFAULT_LOCALE] || defaultTitle("meta.tagline")}`,
       template: `%s · ${name}`,
     },
     description:
@@ -70,7 +71,7 @@ export default async function RootLayout({
   const { name, tagline, heroLead, heroAccent, kicker } = await getBranding();
   const brand = { tagline, heroLead, heroAccent, kicker };
   return (
-    <html lang="de" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
         <I18nProvider siteName={name} brand={brand}>
           <ServiceWorkerRegistrar />
@@ -82,6 +83,7 @@ export default async function RootLayout({
               {children}
             </SiteChrome>
           </ConfirmProvider>
+          <DemoBanner />
         </I18nProvider>
         <Analytics />
       </body>

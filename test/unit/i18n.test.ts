@@ -2,9 +2,26 @@ import { describe, it, expect } from "vitest";
 import {
   translate,
   normalizeLocale,
+  pickDefaultLocale,
   dictionaries,
   type DictKey,
 } from "@/lib/i18n";
+
+describe("pickDefaultLocale", () => {
+  // What the server renders before anyone has chosen — so it's also what a
+  // search engine and a link preview get.
+  it("uses the deployment's choice", () => {
+    expect(pickDefaultLocale("en")).toBe("en");
+    expect(pickDefaultLocale("de")).toBe("de");
+  });
+
+  it("stays German when unset or nonsense, so nothing changes by accident", () => {
+    expect(pickDefaultLocale(undefined)).toBe("de");
+    expect(pickDefaultLocale("")).toBe("de");
+    expect(pickDefaultLocale("fr")).toBe("de");
+    expect(pickDefaultLocale("EN")).toBe("de");
+  });
+});
 
 describe("translate", () => {
   it("returns the localized string", () => {

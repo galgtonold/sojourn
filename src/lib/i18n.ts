@@ -2,8 +2,21 @@
 // German is the default.
 export type Locale = "de" | "en";
 export const LOCALES: Locale[] = ["de", "en"];
-export const DEFAULT_LOCALE: Locale = "de";
 export const LOCALE_COOKIE = "locale";
+
+/**
+ * The locale the server renders before a visitor has chosen one — which is also
+ * the one search engines and link previews see. German unless the deployment
+ * says otherwise: an English-speaking self-hoster (and the public demo) should
+ * not have to open in a language they don't read and then find the switcher.
+ */
+export function pickDefaultLocale(value: string | undefined | null): Locale {
+  return value === "en" || value === "de" ? value : "de";
+}
+
+export const DEFAULT_LOCALE: Locale = pickDefaultLocale(
+  process.env.NEXT_PUBLIC_DEFAULT_LOCALE,
+);
 
 /** A per-language string (editable branding copy keyed by locale). */
 export type LangPair = Record<Locale, string>;
@@ -324,6 +337,15 @@ const en = {
   "admin.login.password": "Password",
   "admin.login.signIn": "Sign in",
   "admin.login.signingIn": "Signing in…",
+
+  "demo.login.or": "or",
+  "demo.login.enter": "Explore the demo",
+  "demo.login.entering": "Opening the demo…",
+  "demo.login.hint": "Read-only. No account needed.",
+  "demo.login.failed": "The demo is having a moment. Try again shortly.",
+  "demo.banner.label": "Demo",
+  "demo.banner.text": "Read-only — nothing you change is saved.",
+  "demo.banner.cta": "Get Sojourn",
 
   "admin.setup.title": "Welcome to Sojourn",
   "admin.setup.subtitle":
@@ -1034,6 +1056,15 @@ const de: Dict = {
   "admin.login.password": "Passwort",
   "admin.login.signIn": "Anmelden",
   "admin.login.signingIn": "Anmelden…",
+
+  "demo.login.or": "oder",
+  "demo.login.enter": "Demo ansehen",
+  "demo.login.entering": "Demo wird geöffnet…",
+  "demo.login.hint": "Nur zum Lesen. Kein Konto nötig.",
+  "demo.login.failed": "Die Demo streikt gerade. Versuch es gleich noch einmal.",
+  "demo.banner.label": "Demo",
+  "demo.banner.text": "Nur zum Lesen — Änderungen werden nicht gespeichert.",
+  "demo.banner.cta": "Sojourn holen",
 
   "admin.setup.title": "Willkommen bei Sojourn",
   "admin.setup.subtitle":
