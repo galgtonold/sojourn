@@ -194,10 +194,13 @@ still need a Supabase project with the migrations applied first — see
 > the necessary privileges"* — so you cannot run the migrations, which is step
 > two of this guide. Create the project in Supabase yourself, as above.
 >
-> If you do use the integration's "Link Existing Supabase Account" path to sync
-> variables, it writes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and
-> `SUPABASE_SECRET_KEY` instead of the names above. Sojourn accepts either
-> spelling, so that works untouched.
+> The integration's other path — **"Link Existing Supabase Account"** — is fine,
+> and genuinely convenient: point it at a project you created yourself and it
+> syncs the connection variables into Vercel for you, so there is nothing to
+> copy. It writes both the classic names and Supabase's newer
+> `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY`; Sojourn
+> accepts either, so it works untouched. You still apply the migrations
+> yourself, which is why the database has to be yours.
 
 Setting it up by hand instead:
 
