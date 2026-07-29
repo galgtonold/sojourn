@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
-import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
+import { getTripOverview, getTrips } from "@/lib/content";
 import { formatDistance } from "@/lib/gpx";
 import { PostCard } from "@/components/post-card";
 import { T, LocText, LocDate } from "@/components/i18n";
@@ -53,15 +53,17 @@ export default async function TripPage({
   const trip = trips.find((t) => t.slug === slug);
   if (!trip) notFound();
 
-  const tripPosts = await getPublishedPostsByTrip(trip.id);
-  const tracks = tripPosts.flatMap((p) => p.tracks);
-  const waypointCount = tripPosts.reduce((s, p) => s + p.locations.length, 0);
-  const photoCount = tripPosts.reduce(
-    (s, p) => s + p.photos.filter((ph) => ph.lat != null && ph.lng != null).length,
-    0,
-  );
-  const totalDistance = tracks.reduce((s, t) => s + (t.distance_m ?? 0), 0);
-  const hasMap = tracks.length > 0 || waypointCount > 0 || photoCount > 0;
+  // Summaries + counts only. This page shows no map, and PostCard is a client
+  // component — fetching the full posts here serialized every GPX point into
+  // the payload just to render cards. See getTripOverview.
+  const {
+    posts: tripPosts,
+    trackCount,
+    totalDistanceM: totalDistance,
+    waypointCount,
+    geoPhotoCount: photoCount,
+  } = await getTripOverview(trip.id);
+  const hasMap = trackCount > 0 || waypointCount > 0 || photoCount > 0;
 
   return (
     <div className="mx-auto max-w-6xl px-6 pb-24 pt-28">

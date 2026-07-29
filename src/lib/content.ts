@@ -176,6 +176,71 @@ export async function getPostSummaries({
 
 // All published posts for a single trip (bounded set) — used by the trip page
 // and its journey map.
+/**
+ * The trip overview page: cards plus the headline numbers, and nothing else.
+ *
+ * PostCard is a client component, so every field on the object handed to it is
+ * serialized into the page. Passing the full post therefore dragged all GPX
+ * geometry into the payload — over a megabyte on a long trip — to render a
+ * title, a cover and a date, on a page that draws no map at all. The relations
+ * below are fetched only to be counted, and are stripped before the summaries
+ * are returned.
+ */
+export type TripOverview = {
+  posts: PostSummary[];
+  trackCount: number;
+  totalDistanceM: number;
+  waypointCount: number;
+  geoPhotoCount: number;
+};
+
+// distance_m / id / lat / lng only — never `tracks(*)`, whose geojson is the
+// whole problem.
+const TRIP_OVERVIEW_SELECT = `${SUMMARY_SELECT}, tracks(distance_m), locations(id), photos(lat, lng)`;
+
+export async function getTripOverview(tripId: string): Promise<TripOverview> {
+  const empty: TripOverview = {
+    posts: [],
+    trackCount: 0,
+    totalDistanceM: 0,
+    waypointCount: 0,
+    geoPhotoCount: 0,
+  };
+  const supabase = getPublicSupabase();
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(TRIP_OVERVIEW_SELECT)
+      .eq("published", true)
+      .eq("trip_id", tripId)
+      .order("published_at", { ascending: false });
+    if (error || !data) return empty;
+
+    const out = { ...empty, posts: [] as PostSummary[] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of data as any[]) {
+      const { tracks, locations, photos, ...summary } = row;
+      const t = tracks ?? [];
+      out.trackCount += t.length;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      out.totalDistanceM += t.reduce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s: number, x: any) => s + (x.distance_m ?? 0),
+        0,
+      );
+      out.waypointCount += (locations ?? []).length;
+      out.geoPhotoCount += (photos ?? []).filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p: any) => p.lat != null && p.lng != null,
+      ).length;
+      out.posts.push(summary as PostSummary);
+    }
+    return out;
+  } catch {
+    return empty;
+  }
+}
+
 export async function getPublishedPostsByTrip(
   tripId: string,
 ): Promise<PostWithRelations[]> {
