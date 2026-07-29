@@ -187,12 +187,17 @@ The button clones the repo and asks for the three values it can't guess. You
 still need a Supabase project with the migrations applied first — see
 [Going live with Supabase](#going-live-with-supabase).
 
-**Or let Vercel create the database for you.** Add the
-[Supabase integration](https://vercel.com/marketplace/supabase) from Vercel's
-marketplace and it provisions a project and writes the connection variables
-itself — no copying. It uses its own names (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-`SUPABASE_SECRET_KEY`) rather than the ones above; Sojourn accepts both, so
-either way works untouched. You still apply the migrations yourself.
+> **Don't let Vercel create the database for you.** Vercel's Supabase
+> integration offers two paths and **pre-selects the wrong one**: "Create New
+> Supabase Account (Vercel Native)" provisions a database that *Vercel* owns and
+> invoices. `supabase link` against one is refused — *"your account does not have
+> the necessary privileges"* — so you cannot run the migrations, which is step
+> two of this guide. Create the project in Supabase yourself, as above.
+>
+> If you do use the integration's "Link Existing Supabase Account" path to sync
+> variables, it writes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and
+> `SUPABASE_SECRET_KEY` instead of the names above. Sojourn accepts either
+> spelling, so that works untouched.
 
 Setting it up by hand instead:
 
