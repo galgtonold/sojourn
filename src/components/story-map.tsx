@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
+import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -91,30 +92,20 @@ export function StoryMap({
     map.on("load", () => {
       map.resize();
 
-      tracks.forEach((t, i) => {
-        const id = `track-${t.id ?? i}`;
-        map.addSource(id, { type: "geojson", data: t.geojson });
-        map.addLayer({
-          id,
-          type: "line",
-          source: id,
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
-        });
+      addTracksLayer(map, tracks, {
+        fallbackName: translate(readCookieLocale(), "map.route"),
+        width: 4,
+        opacity: 0.9,
         // Click a route → show its name (setText escapes for us).
-        const label = t.name ?? translate(readCookieLocale(), "map.route");
-        map.on("click", id, (e) => {
+        onRouteClick: (name, e) => {
           new maplibregl.Popup({ offset: 8, closeButton: true, maxWidth: "240px" })
-            .setLngLat(e.lngLat)
-            .setText(label)
+            .setLngLat(e.lngLat as maplibregl.LngLatLike)
+            .setText(name)
             .addTo(map);
-        });
-        map.on("mouseenter", id, () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", id, () => {
-          map.getCanvas().style.cursor = "";
-        });
+        },
+        onHover: (over) => {
+          map.getCanvas().style.cursor = over ? "pointer" : "";
+        },
       });
 
       markers.forEach((m, i) => {

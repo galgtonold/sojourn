@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import maplibregl from "maplibre-gl";
+import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ArrowLeft, Camera, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { env } from "@/lib/env";
@@ -150,17 +151,9 @@ export function JourneyExplorer({
     map.on("load", () => {
       map.resize();
 
-      tracks.forEach((t, i) => {
-        const id = `track-${t.id ?? i}`;
-        map.addSource(id, { type: "geojson", data: t.geojson });
-        map.addLayer({
-          id,
-          type: "line",
-          source: id,
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
-        });
-      });
+      // One source for all of this journey's stages (see map-tracks); its
+      // routes aren't clickable, so no handlers either.
+      addTracksLayer(map, tracks, { fallbackName: "", width: 4, opacity: 0.9 });
 
       // Dashed orange line bridging only the gaps the solid tracks leave
       // (overnight hops, transfers between recorded segments) — one feature per

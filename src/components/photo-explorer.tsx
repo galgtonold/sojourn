@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
+import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { cn, optimizedSrc } from "@/lib/utils";
@@ -234,22 +235,10 @@ export function PhotoExplorer({
     map.on("load", () => {
       map.resize();
       // Draw the GPX route lines first, so the photo clusters + pins sit on top.
-      tracks.forEach((tr, i) => {
-        const sid = `track-${tr.id ?? i}`;
-        if (map.getSource(sid)) return;
-        map.addSource(sid, { type: "geojson", data: tr.geojson });
-        map.addLayer({
-          id: sid,
-          type: "line",
-          source: sid,
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: {
-            "line-color": "#f56a1f",
-            "line-width": 3,
-            "line-opacity": 0.6,
-          },
-        });
-      });
+      // Every track in ONE source: this map draws the whole archive, and a
+      // layer each would cost a frame's work per journey ever taken. Its
+      // routes aren't clickable, so no label and no handlers.
+      addTracksLayer(map, tracks, { fallbackName: "", width: 3, opacity: 0.6 });
       const bounds = new maplibregl.LngLatBounds();
       photos.forEach((p) => bounds.extend([p.lng, p.lat]));
       extendTracks(bounds);

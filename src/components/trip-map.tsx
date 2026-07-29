@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
+import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
@@ -153,30 +154,22 @@ export function TripMap({
       map.resize();
 
       // GPX tracks
-      tracks.forEach((t, i) => {
-        const sourceId = `track-${t.id ?? i}`;
-        map.addSource(sourceId, { type: "geojson", data: t.geojson });
-        map.addLayer({
-          id: sourceId,
-          type: "line",
-          source: sourceId,
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": "#f56a1f", "line-width": 4, "line-opacity": 0.9 },
-        });
+      // One source, one layer, one set of handlers for every track — the name
+      // rides on each feature so a click still reports the right route.
+      addTracksLayer(map, tracks, {
+        fallbackName: translate(readCookieLocale(), "map.route"),
+        width: 4,
+        opacity: 0.9,
         // Click a route → show its name (setText escapes for us).
-        const label = t.name ?? translate(readCookieLocale(), "map.route");
-        map.on("click", sourceId, (e) => {
+        onRouteClick: (name, e) => {
           new maplibregl.Popup({ offset: 8, closeButton: true, maxWidth: "240px" })
-            .setLngLat(e.lngLat)
-            .setText(label)
+            .setLngLat(e.lngLat as maplibregl.LngLatLike)
+            .setText(name)
             .addTo(map);
-        });
-        map.on("mouseenter", sourceId, () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", sourceId, () => {
-          map.getCanvas().style.cursor = "";
-        });
+        },
+        onHover: (over) => {
+          map.getCanvas().style.cursor = over ? "pointer" : "";
+        },
       });
 
       // Waypoint connector (only when we have no GPX and route is requested)
