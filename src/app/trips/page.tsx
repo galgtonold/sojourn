@@ -26,7 +26,7 @@ export default async function TripsPage() {
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         {trips.map((trip, i) => (
-          <Reveal key={trip.id} delay={i * 0.05}>
+          <Reveal key={trip.id} index={i}>
             <TripCard trip={trip} />
           </Reveal>
         ))}

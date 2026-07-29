@@ -134,7 +134,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post, i) => (
-              <Reveal key={post.id} delay={i * 0.05}>
+              <Reveal key={post.id} index={i}>
                 <PostCard post={post} priority={i < 3} />
               </Reveal>
             ))}
@@ -175,7 +175,7 @@ export default async function HomePage() {
           </Reveal>
           <div className="grid gap-6 md:grid-cols-2">
             {trips.map((trip, i) => (
-              <Reveal key={trip.id} delay={i * 0.05}>
+              <Reveal key={trip.id} index={i}>
                 <TripCard trip={trip} />
               </Reveal>
             ))}
