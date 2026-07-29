@@ -12,6 +12,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAiConfig } from "@/lib/ai-config";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyLineStrings } from "@/lib/gpx";
+import { simplifyTrackGeoJson } from "@/lib/simplify-track";
 import { orderByGallery } from "@/lib/photo-order";
 import { buildExpandedTsQuery } from "@/lib/search-expand";
 import {
@@ -241,6 +242,28 @@ export async function getTripOverview(tripId: string): Promise<TripOverview> {
   }
 }
 
+/**
+ * Thin a post's GPX for map rendering: no drawn point moves more than 0.5 m, so
+ * the route still runs down the same side of the same street at any zoom.
+ *
+ * Only for surfaces that draw lines and nothing else. Post pages must NOT come
+ * through here: buildElevationSeries reads these same coordinates, and its
+ * smoothing windows are counted in POINTS rather than distance — so dropping
+ * any of them changes the ascent the reader sees. Measured on the Skandinavien
+ * tracks that is ~16% at a 1 m vertical budget and still ~10% at 0.1 m, i.e.
+ * it is the point count itself that matters, not the elevation detail lost.
+ */
+function withMapGeometry(post: PostWithRelations): PostWithRelations {
+  return {
+    ...post,
+    tracks: post.tracks.map((t) => ({
+      ...t,
+      geojson: t.geojson ? simplifyTrackGeoJson(t.geojson) : t.geojson,
+    })),
+  };
+}
+
+/** Feeds the journey map only (`/trips/[slug]/map`), which draws no chart. */
 export async function getPublishedPostsByTrip(
   tripId: string,
 ): Promise<PostWithRelations[]> {
@@ -253,7 +276,7 @@ export async function getPublishedPostsByTrip(
       .eq("trip_id", tripId)
       .order("published_at", { ascending: false });
     if (error || !data) return [];
-    return data.map(hydratePost);
+    return data.map(hydratePost).map(withMapGeometry);
   } catch {
     return [];
   }
