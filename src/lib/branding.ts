@@ -15,6 +15,29 @@ import {
 export const BRANDING_TAG = "site-branding";
 export type { Branding };
 
+/**
+ * Time bound on both caches below, for the reason `getAiConfig` has one
+ * (@/lib/ai-config): the cache key carries no build ID, so Vercel's Data Cache
+ * survives a deploy, and only a settings save busts the tag. Anything that
+ * writes `site_settings` from outside the app — a seed script, psql, a restore
+ * — therefore never invalidated anything, and no number of redeploys helped.
+ *
+ * That is not hypothetical. It is how the demo ended up serving its journeys
+ * under the placeholder name from before it was seeded: prerendered pages were
+ * rebuilt with the real branding on every deploy, while request-time renders
+ * kept reading the entry cached before the seed ran. Static pages said one
+ * thing and dynamic pages the other, indefinitely.
+ *
+ * Five minutes is a generous bound for copy that changes a few times a year,
+ * and saving from /admin/settings still busts the tag for an instant update.
+ */
+const BRANDING_TTL = 300;
+
+// A version suffix on the cache keys, bumped when the shape or the caching
+// rules change. It orphans entries written under the old rules — without it the
+// already-stored, never-expiring values above would have outlived this fix.
+const KEY = "v2";
+
 /** Whether the owner has actually chosen these, which `getBranding` cannot say:
  *  an unset name reads back as `env.siteName`, indistinguishable from someone
  *  who typed it. Cached under the same tag, so saving settings refreshes it. */
@@ -36,8 +59,8 @@ export const getBrandingState = unstable_cache(
       taglineSet: set(row.tagline_de) || set(row.tagline_en),
     };
   },
-  ["site-branding-state"],
-  { tags: [BRANDING_TAG] },
+  ["site-branding-state", KEY],
+  { tags: [BRANDING_TAG], revalidate: BRANDING_TTL },
 );
 
 export const getBranding = unstable_cache(
@@ -54,6 +77,6 @@ export const getBranding = unstable_cache(
       env.siteName,
     );
   },
-  ["site-branding"],
-  { tags: [BRANDING_TAG] },
+  ["site-branding", KEY],
+  { tags: [BRANDING_TAG], revalidate: BRANDING_TTL },
 );
