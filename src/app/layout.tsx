@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
 import { getBranding } from "@/lib/branding";
@@ -28,25 +28,9 @@ const inter = Inter({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-fraunces",
-  display: "swap",
-  // No `axes` — deliberately.
-  //
-  // `axes: ["opsz"]` used to be set here to keep SOFT/WONK out of the payload,
-  // but the build Google returns for that combination has broken mark
-  // positioning: every Latin Extended letter followed by another character
-  // rendered its diacritic over the NEXT glyph, which is how "Hokkaidō," came
-  // out with the macron over the comma. Measured on the rendered pixels — the
-  // same file requested with the default axis, or with opsz *and* wght, places
-  // the mark correctly, so it is that specific build and not the font.
-  //
-  // Dropping the option asks for the weight axis alone, which is smaller than
-  // what was here before, not larger. The cost is `font-optical-sizing: auto`
-  // in globals.css becoming a no-op — a subtlety worth losing to have accents
-  // land on the right letter.
-});
+// Fraunces is declared by hand in globals.css rather than through
+// next/font/google — see the @font-face block there for why. It needs no
+// variable from here; the CSS defines --font-fraunces itself.
 
 export async function generateMetadata(): Promise<Metadata> {
   const { name, tagline } = await getBranding();
@@ -89,7 +73,7 @@ export default async function RootLayout({
   const { name, tagline, heroLead, heroAccent, kicker } = await getBranding();
   const brand = { tagline, heroLead, heroAccent, kicker };
   return (
-    <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang={DEFAULT_LOCALE} className={inter.variable}>
       <body className="min-h-dvh antialiased">
         <I18nProvider siteName={name} brand={brand}>
           <ServiceWorkerRegistrar />
