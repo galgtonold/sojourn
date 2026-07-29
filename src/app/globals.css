@@ -1,42 +1,5 @@
 @import "tailwindcss";
 
-/* ─── Fraunces, declared by hand ─────────────────────────────────────────────
-   next/font/google emits THREE @font-face rules for Fraunces — vietnamese,
-   latin-ext, latin — and all three claim U+0304, the combining macron. With
-   that overlap Chrome stops treating "ō" as one glyph: it takes the base from
-   one face and the mark from another, cross-face attachment doesn't happen,
-   and the macron renders at its own advance — landing on whatever comes next.
-   That is how "Hokkaidō," ended up with the macron over the comma.
-
-   Measured on the rendered pixels: any two of those faces together are fine,
-   all three are not. next/font emits Google's own face order regardless of the
-   `subsets` array, and exposes no way to drop one, so the declaration lives
-   here instead — the same two Google subset files this site actually needs,
-   self-hosted from /public/fonts, minus the Vietnamese one it never did.
-
-   Files are the unmodified Google Fonts builds (Fraunces v38, weight axis
-   100–900); the licence sits beside them in public/fonts/Fraunces-OFL.txt. */
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/fraunces-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/fraunces-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
-    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
-    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 @theme {
   /* Ink (near-black, slightly warm) */
@@ -63,7 +26,7 @@
   --color-sage-400: #7fb39c;
   --color-sage-500: #5d9279;
 
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 

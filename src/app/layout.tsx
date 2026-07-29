@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
 import { getBranding } from "@/lib/branding";
@@ -17,20 +17,34 @@ import "./globals.css";
 
 // `latin-ext` alongside `latin` because this is a travel journal: Hokkaidō,
 // Kraków, Košice, Tromsø's neighbours. Latin Extended-A (ō ā ē ū š ž ł ő ą) is
-// NOT in the `latin` subset, and without it the browser drops to a fallback
-// face mid-word — which is how "Hokkaidō" came out with its macron sitting over
-// the comma. Costs nothing on pages that don't need it: next/font emits one
-// @font-face per subset with its own unicode-range, so the extended file is
-// only fetched when an extended character is actually on the page.
+// NOT in the `latin` subset.
+//
+// Without it the browser has to source those letters from the fallback while
+// their neighbours come from Fraunces, and the mark stops riding on its base:
+// measured at 100px, `ō` came out 4px WIDER than `o`, the macron taking an
+// advance of its own and landing on the following character. That is how
+// "Hokkaidō," rendered with the macron over the comma. With the subset present
+// `ō` and `o` measure identically — one composed glyph — for every accent the
+// site is likely to meet.
+//
+// Costs nothing on pages that don't need it: next/font emits one @font-face per
+// subset with its own unicode-range, so the extended file is only fetched when
+// an extended character is actually on the page.
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-inter",
   display: "swap",
 });
 
-// Fraunces is declared by hand in globals.css rather than through
-// next/font/google — see the @font-face block there for why. It needs no
-// variable from here; the CSS defines --font-fraunces itself.
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-fraunces",
+  display: "swap",
+  // Only the optical-size axis is used; SOFT/WONK were never referenced and just
+  // enlarged the variable-font payload. (Checked while chasing the macron above:
+  // this build composes accented glyphs correctly, so it is not implicated.)
+  axes: ["opsz"],
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const { name, tagline } = await getBranding();
@@ -73,7 +87,7 @@ export default async function RootLayout({
   const { name, tagline, heroLead, heroAccent, kicker } = await getBranding();
   const brand = { tagline, heroLead, heroAccent, kicker };
   return (
-    <html lang={DEFAULT_LOCALE} className={inter.variable}>
+    <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
         <I18nProvider siteName={name} brand={brand}>
           <ServiceWorkerRegistrar />
