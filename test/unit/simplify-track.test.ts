@@ -125,6 +125,28 @@ describe("simplifyTrackGeoJson", () => {
     expect(out.features[0].geometry.coordinates[0]).toEqual([11.77565, 57.577461, 9.4]);
   });
 
+  it("drops elevation when asked, and stops guarding the profile", () => {
+    // A climb on a dead-straight road: kept when elevation ships, collapsed
+    // when it doesn't, because there is no longer a chart to distort.
+    const climb = [p(0, 0), p(11, 0), p(22, 0), p(33, 5), p(44, 10)];
+    const kept = simplifyTrackGeoJson(fc(climb), { horizontalM: 1 }) as ReturnType<typeof fc>;
+    expect(kept.features[0].geometry.coordinates.length).toBeGreaterThan(2);
+
+    const flat = simplifyTrackGeoJson(fc(climb), {
+      horizontalM: 1,
+      dropElevation: true,
+    }) as ReturnType<typeof fc>;
+    expect(flat.features[0].geometry.coordinates).toHaveLength(2);
+    expect(flat.features[0].geometry.coordinates.every((c) => c.length === 2)).toBe(true);
+  });
+
+  it("strips GPX metadata when asked", () => {
+    const out = simplifyTrackGeoJson(fc([p(0), p(10), p(20)]), {
+      stripProperties: true,
+    }) as ReturnType<typeof fc>;
+    expect(out.features[0].properties).toEqual({});
+  });
+
   it("passes through anything that isn't a line", () => {
     const point = {
       type: "FeatureCollection",

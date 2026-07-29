@@ -18,13 +18,27 @@
 export type SimplifyOptions = {
   /** Max distance (m) the drawn line may sit from the recorded one. */
   horizontalM?: number;
-  /** Max error (m) allowed in the elevation profile. */
+  /** Max error (m) allowed in the elevation profile. Ignored when elevation is dropped. */
   verticalM?: number;
   /** Decimal places kept on lon/lat. 6 ≈ 11 cm. */
   decimals?: number;
+  /**
+   * Drop the third value. For a surface that draws lines and no chart it is
+   * dead weight — and once it isn't shipped there is nothing to protect, so
+   * the vertical criterion stops holding points back too.
+   */
+  dropElevation?: boolean;
+  /** Drop per-feature GPX metadata (names, timestamps) nothing renders. */
+  stripProperties?: boolean;
 };
 
-const DEFAULTS = { horizontalM: 0.5, verticalM: 1, decimals: 6 } as const;
+const DEFAULTS = {
+  horizontalM: 1,
+  verticalM: 1,
+  decimals: 6,
+  dropElevation: false,
+  stripProperties: false,
+} as const;
 
 const M_PER_DEG = 111_320;
 
@@ -75,7 +89,11 @@ export function simplifyLine(
   coords: number[][],
   options: SimplifyOptions = {},
 ): number[][] {
-  const { horizontalM, verticalM } = { ...DEFAULTS, ...options };
+  const { horizontalM, dropElevation } = { ...DEFAULTS, ...options };
+  // No point spending points to protect a profile nobody will see.
+  const verticalM = dropElevation
+    ? Number.POSITIVE_INFINITY
+    : { ...DEFAULTS, ...options }.verticalM;
   if (coords.length < 3) return coords;
 
   const keep = new Array<boolean>(coords.length).fill(false);
@@ -115,10 +133,12 @@ function round(value: number, decimals: number): number {
   return Math.round(value * f) / f;
 }
 
-function roundCoord(c: number[], decimals: number): number[] {
+function roundCoord(c: number[], decimals: number, dropElevation: boolean): number[] {
   const out = [round(c[0], decimals), round(c[1], decimals)];
   // Elevation to 10 cm — finer than any GPS or barometer reports.
-  if (c.length > 2 && Number.isFinite(c[2])) out.push(round(c[2], 1));
+  if (!dropElevation && c.length > 2 && Number.isFinite(c[2])) {
+    out.push(round(c[2], 1));
+  }
   return out;
 }
 
@@ -132,7 +152,7 @@ export function simplifyTrackGeoJson<T>(
   geojson: T,
   options: SimplifyOptions = {},
 ): T {
-  const { decimals } = { ...DEFAULTS, ...options };
+  const { decimals, dropElevation, stripProperties } = { ...DEFAULTS, ...options };
   const doc = geojson as unknown as {
     features?: { geometry?: { type?: string; coordinates?: unknown } }[];
   } | null;
@@ -150,10 +170,11 @@ export function simplifyTrackGeoJson<T>(
       );
       return {
         ...f,
+        ...(stripProperties ? { properties: {} } : null),
         geometry: {
           ...g,
           coordinates: simplifyLine(coords, options).map((c) =>
-            roundCoord(c, decimals),
+            roundCoord(c, decimals, dropElevation),
           ),
         },
       };

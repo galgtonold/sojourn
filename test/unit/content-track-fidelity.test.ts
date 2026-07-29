@@ -62,12 +62,19 @@ describe("track geometry per surface", () => {
     expect(pointsOf(post!)).toBe(COORDS.length);
   });
 
-  it("keeps elevation on the points the journey map retains", async () => {
+  it("ships no elevation to the journey map, which never reads it", async () => {
     const posts = await getPublishedPostsByTrip("t1");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const coords = (posts[0].tracks[0].geojson as any).features[0].geometry
       .coordinates as number[][];
+    expect(coords.every((c) => c.length === 2)).toBe(true);
+  });
+
+  it("keeps elevation on post pages, where the chart needs it", async () => {
+    const post = await getPostBySlug("day-one");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const coords = (post!.tracks[0].geojson as any).features[0].geometry
+      .coordinates as number[][];
     expect(coords.every((c) => c.length === 3)).toBe(true);
-    expect(coords[coords.length - 1][2]).toBeCloseTo(COORDS[COORDS.length - 1][2], 1);
   });
 });

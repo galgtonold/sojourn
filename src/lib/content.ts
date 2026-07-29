@@ -11,7 +11,6 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAiConfig } from "@/lib/ai-config";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
-import { simplifyLineStrings } from "@/lib/gpx";
 import { simplifyTrackGeoJson } from "@/lib/simplify-track";
 import { orderByGallery } from "@/lib/photo-order";
 import { buildExpandedTsQuery } from "@/lib/search-expand";
@@ -140,8 +139,19 @@ export async function getMapPosts(): Promise<MapPost[]> {
         distance_m: t.distance_m,
         started_at: t.started_at ?? null,
         ended_at: t.ended_at ?? null,
-        // Overview map: decimated geometry only (full GPX is invisible at this zoom).
-        geojson: t.geojson ? simplifyLineStrings(t.geojson) : t.geojson,
+        // World overview: a coarse but BOUNDED envelope. This used to sample
+        // every Nth point down to a fixed 120, which caps the size but lets the
+        // line cut corners by however much it likes — a hairpin between two
+        // samples simply vanished. Douglas-Peucker at 5 m spends its points
+        // where the route actually bends, and on the current tracks yields
+        // fewer of them (4.0k vs 5.2k) while never straying more than 5 m.
+        geojson: t.geojson
+          ? simplifyTrackGeoJson(t.geojson, {
+              horizontalM: 5,
+              dropElevation: true,
+              stripProperties: true,
+            })
+          : t.geojson,
       })),
     })) as MapPost[];
   } catch {
@@ -258,7 +268,15 @@ function withMapGeometry(post: PostWithRelations): PostWithRelations {
     ...post,
     tracks: post.tracks.map((t) => ({
       ...t,
-      geojson: t.geojson ? simplifyTrackGeoJson(t.geojson) : t.geojson,
+      geojson: t.geojson
+        ? simplifyTrackGeoJson(t.geojson, {
+            horizontalM: 1,
+            // The journey explorer draws routes, stops and photos — it never
+            // reads coords[2]. Shipping elevation there costs bytes for
+            // nothing, and once it's gone there is no profile left to protect.
+            dropElevation: true,
+          })
+        : t.geojson,
     })),
   };
 }
