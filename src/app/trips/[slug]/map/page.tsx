@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { prerenderParams } from "@/lib/prerender";
 import { getPublishedPostsByTrip, getTrips } from "@/lib/content";
 import {
   JourneyExplorer,
@@ -13,8 +14,10 @@ export const revalidate = false;
 export const metadata = { title: defaultTitle("meta.journeyMap") };
 
 export async function generateStaticParams() {
-  const trips = await getTrips();
-  return trips.map((t) => ({ slug: t.slug }));
+  return prerenderParams("trip maps", async () => {
+    const trips = await getTrips();
+    return trips.map((t) => ({ slug: t.slug }));
+  });
 }
 
 export default async function TripMapPage({

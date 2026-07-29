@@ -5,8 +5,9 @@ name: CI
 # build — on every push and pull request. Make the `verify` check required on
 # `main` (branch protection) to turn this from a signal into an actual gate.
 #
-# No secrets are needed: `next build` auto-loads the committed, public-only
-# `.env.production` (Supabase URL + anon key), the same config Vercel builds with.
+# No secrets are needed. The build step gets placeholder Supabase config (see
+# below) — this run compiles and type-checks the app, it does not produce a
+# deployable artifact, and it deliberately never touches a real database.
 # Lint is intentionally omitted for now — ESLint isn't configured yet (`next lint`
 # is unconfigured + deprecated); wiring up the ESLint CLI is a separate follow-up.
 
@@ -42,5 +43,20 @@ jobs:
       - name: Test
         run: npm test
 
+      # Placeholders, not credentials. `next build` prerenders the static pages,
+      # which means it reads content — so it needs Supabase to be *configured*
+      # or the app fails fast by design (SUPABASE_NOT_CONFIGURED). This used to
+      # come from a committed .env.production; that file pinned one deployment's
+      # project into the repo and has been removed, so CI supplies its own.
+      #
+      # Pointing at a host that answers nothing is the point: every read fails,
+      # the content helpers return empty, and the pages still compile and
+      # prerender. What that proves is that the code builds — which is all CI
+      # can honestly check without a database. The output is NOT deployable:
+      # the content pages are `revalidate = false`, so an empty prerender would
+      # stay empty. Real builds get real credentials from the deployment.
       - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
         run: npm run build

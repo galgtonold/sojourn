@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { prerenderParams } from "@/lib/prerender";
 import {
   getInteractions,
   getPostBySlug,
@@ -19,8 +20,10 @@ import { PostView } from "@/components/post-view";
 export const revalidate = false;
 
 export async function generateStaticParams() {
-  const { posts } = await getPostSummaries({ limit: 1000 });
-  return posts.map((p) => ({ slug: p.slug }));
+  return prerenderParams("posts", async () => {
+    const { posts } = await getPostSummaries({ limit: 1000 });
+    return posts.map((p) => ({ slug: p.slug }));
+  });
 }
 
 export async function generateMetadata({

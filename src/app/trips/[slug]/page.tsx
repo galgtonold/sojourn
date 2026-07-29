@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { prerenderParams } from "@/lib/prerender";
 import { notFound } from "next/navigation";
 import { ArrowRight, Camera, Compass, MapPin, Route } from "lucide-react";
 import { getTripOverview, getTrips } from "@/lib/content";
@@ -14,8 +15,10 @@ import { T, LocText, LocDate } from "@/components/i18n";
 export const revalidate = false;
 
 export async function generateStaticParams() {
-  const trips = await getTrips();
-  return trips.map((t) => ({ slug: t.slug }));
+  return prerenderParams("trips", async () => {
+    const trips = await getTrips();
+    return trips.map((t) => ({ slug: t.slug }));
+  });
 }
 
 export async function generateMetadata({
