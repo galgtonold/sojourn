@@ -15,14 +15,21 @@ import { DemoBanner } from "@/components/demo-banner";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+// `latin-ext` alongside `latin` because this is a travel journal: Hokkaidō,
+// Kraków, Košice, Tromsø's neighbours. Latin Extended-A (ō ā ē ū š ž ł ő ą) is
+// NOT in the `latin` subset, and without it the browser drops to a fallback
+// face mid-word — which is how "Hokkaidō" came out with its macron sitting over
+// the comma. Costs nothing on pages that don't need it: next/font emits one
+// @font-face per subset with its own unicode-range, so the extended file is
+// only fetched when an extended character is actually on the page.
 const inter = Inter({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-inter",
   display: "swap",
 });
 
 const fraunces = Fraunces({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-fraunces",
   display: "swap",
   // Only the optical-size axis is used; SOFT/WONK were never referenced and just
