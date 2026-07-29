@@ -7,6 +7,26 @@ import { withSentryConfig } from "@sentry/nextjs";
 const swVersion =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || String(Date.now());
 
+/** The configured Supabase origin as a next/image remote pattern, or nothing. */
+function supabaseImagePattern() {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return [];
+  try {
+    const { protocol, hostname, port } = new URL(raw);
+    return [
+      {
+        protocol: protocol.replace(":", ""),
+        hostname,
+        ...(port ? { port } : {}),
+      },
+    ];
+  } catch {
+    // A malformed URL is the Supabase client's problem to report, loudly and
+    // with a better message than a config-time crash here.
+    return [];
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Emit a self-contained server bundle so the same image runs on Vercel,
@@ -21,6 +41,12 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },
       { protocol: "https", hostname: "images.unsplash.com" },
+      // …and wherever this deploy's Supabase actually lives. The wildcard above
+      // only covers Supabase-hosted projects: run the stack locally
+      // (127.0.0.1:54321) or self-host it on your own domain and every photo
+      // throws "hostname is not configured", which surfaces as a blank page
+      // rather than a missing image.
+      ...supabaseImagePattern(),
     ],
   },
   eslint: {
