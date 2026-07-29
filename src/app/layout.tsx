@@ -32,9 +32,20 @@ const fraunces = Fraunces({
   subsets: ["latin", "latin-ext"],
   variable: "--font-fraunces",
   display: "swap",
-  // Only the optical-size axis is used; SOFT/WONK were never referenced and just
-  // enlarged the variable-font payload.
-  axes: ["opsz"],
+  // No `axes` — deliberately.
+  //
+  // `axes: ["opsz"]` used to be set here to keep SOFT/WONK out of the payload,
+  // but the build Google returns for that combination has broken mark
+  // positioning: every Latin Extended letter followed by another character
+  // rendered its diacritic over the NEXT glyph, which is how "Hokkaidō," came
+  // out with the macron over the comma. Measured on the rendered pixels — the
+  // same file requested with the default axis, or with opsz *and* wght, places
+  // the mark correctly, so it is that specific build and not the font.
+  //
+  // Dropping the option asks for the weight axis alone, which is smaller than
+  // what was here before, not larger. The cost is `font-optical-sizing: auto`
+  // in globals.css becoming a no-op — a subtlety worth losing to have accents
+  // land on the right letter.
 });
 
 export async function generateMetadata(): Promise<Metadata> {
