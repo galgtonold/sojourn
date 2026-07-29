@@ -39,20 +39,24 @@ export function addMonths(
 }
 
 /**
- * Six weeks of cells covering `month`, Monday first, padded from the
- * neighbouring months.
+ * Whole weeks covering `month`, Monday first, with the first and last padded
+ * from the neighbouring months.
  *
- * Always 42 cells: a month that needs only five rows would otherwise make the
- * popover change height as you page through the year, which reads as a glitch
- * and moves whatever sits below it.
+ * Only the weeks the month actually reaches into — four to six rows. A fixed
+ * six-row grid keeps the popover a constant height, but it buys that by
+ * drawing a trailing row of nothing but next month's greyed-out days, which
+ * reads as a rendering fault rather than as padding.
  */
 export function monthGrid(year: number, month: number): DayCell[] {
   const first = new Date(year, month, 1);
   // getDay() is Sunday-based; the week here starts on Monday.
   const lead = (first.getDay() + 6) % 7;
+  // Day 0 of the next month is the last day of this one.
+  const days = new Date(year, month + 1, 0).getDate();
+  const total = Math.ceil((lead + days) / 7) * 7;
 
   const cells: DayCell[] = [];
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < total; i++) {
     // Date normalises out-of-range days for us, so day 0 and day 32 resolve
     // into the neighbouring months without any special casing.
     const d = new Date(year, month, 1 - lead + i);

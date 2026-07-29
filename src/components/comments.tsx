@@ -6,6 +6,7 @@ import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { useT, useI18n } from "@/components/i18n";
 import { visitorToken } from "@/lib/visitor";
+import { env } from "@/lib/env";
 
 const NAME_KEY = "sojourn:name";
 const LIKED_KEY = "sojourn:liked-comments";
@@ -270,6 +271,23 @@ function CommentForm({
     await onSubmit(body);
     setBody("");
     setSending(false);
+  }
+
+  // The showcase deployment refuses new comments — free text on a site nobody
+  // is moderating. Say so here rather than letting someone write a paragraph
+  // and meet a bare "couldn't post that": a demo should look deliberate, not
+  // broken. The seeded conversations below still show the feature working.
+  if (env.demoMode) {
+    return (
+      <p
+        className={cn(
+          "rounded-2xl border border-dashed border-white/10 bg-ink-900 p-4 text-sm text-sand-100/50",
+          compact && "p-3",
+        )}
+      >
+        {t("demo.comments.off")}
+      </p>
+    );
   }
 
   return (

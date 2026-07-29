@@ -8,10 +8,28 @@ import { monthGrid, addMonths, toIso, isoToday } from "@/lib/calendar";
 // clicked.
 
 describe("monthGrid", () => {
-  it("returns six weeks, always — so the popover never changes height", () => {
+  it("returns whole weeks, and only the weeks the month reaches into", () => {
+    // A trailing row of nothing but next month's greyed-out days reads as a
+    // rendering fault, so the grid stops at the week the month ends in.
     for (const [y, m] of [[2024, 0], [2024, 1], [2026, 6], [2027, 11]] as const) {
-      expect(monthGrid(y, m)).toHaveLength(42);
+      const cells = monthGrid(y, m);
+      expect(cells.length % 7).toBe(0);
+      expect(cells.length).toBeLessThanOrEqual(42);
+      // The last row always contains at least one day of this month.
+      expect(cells.slice(-7).some((c) => c.inMonth)).toBe(true);
     }
+  });
+
+  it("uses five rows when five are enough", () => {
+    // February 2025: starts Saturday, 28 days → ends in the fifth row.
+    expect(monthGrid(2025, 1)).toHaveLength(35);
+    // February 2021: starts Monday, 28 days → exactly four rows.
+    expect(monthGrid(2021, 1)).toHaveLength(28);
+  });
+
+  it("uses six when the month needs them", () => {
+    // August 2026 starts on a Saturday and runs 31 days.
+    expect(monthGrid(2026, 7)).toHaveLength(42);
   });
 
   it("starts the week on Monday and pads with the previous month", () => {
@@ -33,10 +51,15 @@ describe("monthGrid", () => {
     expect(monthGrid(2025, 1).filter((c) => c.inMonth)).toHaveLength(28);
   });
 
-  it("pads the tail with the next month", () => {
+  it("pads the tail with the next month, but only to finish the week", () => {
+    // January 2024 ran Mon 1 – Wed 31, so the last row is padded to Sunday 4 Feb.
     const cells = monthGrid(2024, 0);
-    expect(cells[cells.length - 1].inMonth).toBe(false);
-    expect(cells[cells.length - 1].iso.startsWith("2024-02")).toBe(true);
+    expect(cells).toHaveLength(35);
+    expect(cells[cells.length - 1]).toEqual({
+      iso: "2024-02-04",
+      day: 4,
+      inMonth: false,
+    });
   });
 
   it("numbers days as the calendar does, not as an offset", () => {

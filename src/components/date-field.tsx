@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { monthGrid, addMonths, isoToday } from "@/lib/calendar";
@@ -34,6 +35,44 @@ export function DateField({
 
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+
+  // The calendar is portalled to <body> and positioned by hand, because every
+  // place this field appears sits inside a collapsible section that clips its
+  // own overflow — an absolutely-positioned popover simply got cut off at the
+  // panel edge. Fixed coordinates also mean it can't be trapped by a scroll
+  // container or lose a stacking-context fight with the sticky admin bar.
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const PANEL = { w: 304, h: 360 };
+
+  const place = useCallback(() => {
+    const r = trigger.current?.getBoundingClientRect();
+    if (!r) return;
+    // Below by default; above when there isn't room, which is the common case
+    // for a field near the bottom of a long editor.
+    const below = window.innerHeight - r.bottom;
+    const top = below >= PANEL.h + 12 || below >= r.top ? r.bottom + 8 : r.top - PANEL.h - 8;
+    // Keep it on screen horizontally even when the field is near an edge.
+    const left = Math.min(
+      Math.max(8, r.left),
+      Math.max(8, window.innerWidth - PANEL.w - 8),
+    );
+    setAt({ top, left });
+  }, [PANEL.h, PANEL.w]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    place();
+    // Anything that moves the trigger moves the panel with it. `true` catches
+    // scrolling in the editor's own containers, not just the window.
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place]);
 
   // The month on screen. Follows `value` when it changes underneath us (loading
   // a post, or clearing), but stays put while the user pages around.
@@ -44,11 +83,13 @@ export function DateField({
   }, [selected]);
 
   // Close on an outside click or Escape — a popover that only closes by
-  // re-clicking the trigger feels stuck.
+  // re-clicking the trigger feels stuck. The panel lives outside `wrap` now
+  // (it's portalled), so both have to count as inside.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!wrap.current?.contains(t) && !panel.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -77,6 +118,7 @@ export function DateField({
     <div ref={wrap} className="relative">
       <button
         id={id}
+        ref={trigger}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
@@ -92,11 +134,13 @@ export function DateField({
         </span>
       </button>
 
-      {open && (
+      {open && at && createPortal(
         <div
+          ref={panel}
           role="dialog"
           aria-label={monthLabel}
-          className="glass absolute left-0 top-full z-50 mt-2 w-[19rem] rounded-2xl p-3 shadow-2xl"
+          style={{ top: at.top, left: at.left, width: PANEL.w }}
+          className="glass fixed z-[200] rounded-2xl p-3 shadow-2xl"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <button
@@ -179,7 +223,8 @@ export function DateField({
               {t("admin.editor.date.clear")}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

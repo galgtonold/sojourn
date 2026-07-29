@@ -346,6 +346,10 @@ const en = {
   "demo.banner.label": "Demo",
   "demo.banner.text": "Read-only — nothing you change is saved.",
   "demo.banner.cta": "Get Sojourn",
+  "demo.comments.off":
+    "New comments are switched off in the demo — the ones above are part of it. On your own Sojourn, anyone can reply here.",
+  "demo.blocked":
+    "This is a read-only demo, so that didn't save. Everything else works — have a look around.",
 
   "admin.setup.title": "Welcome to Sojourn",
   "admin.setup.subtitle":
@@ -1074,6 +1078,10 @@ const de: Dict = {
   "demo.banner.label": "Demo",
   "demo.banner.text": "Nur zum Lesen — Änderungen werden nicht gespeichert.",
   "demo.banner.cta": "Sojourn holen",
+  "demo.comments.off":
+    "Neue Kommentare sind in der Demo abgeschaltet — die oben gehören dazu. Auf deinem eigenen Sojourn kann hier jede:r antworten.",
+  "demo.blocked":
+    "Das hier ist eine Demo zum Lesen, gespeichert wurde also nichts. Alles andere funktioniert — schau dich ruhig um.",
 
   "admin.setup.title": "Willkommen bei Sojourn",
   "admin.setup.subtitle":
