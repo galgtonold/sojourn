@@ -21,9 +21,15 @@ import {
 export function AnalyticsForm({
   initial,
   fromEnv,
+  onVercel,
 }: {
   initial: AnalyticsProvider | "";
   fromEnv: AnalyticsProvider;
+  /** Whether this deployment runs on Vercel. The only provider on offer today
+   *  is served by Vercel's own platform, so anywhere else there is nothing to
+   *  choose — and offering it anyway would mean a button that produces a 404
+   *  per page view and no data. */
+  onVercel: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -69,7 +75,21 @@ export function AnalyticsForm({
         {t("admin.settings.analyticsIntro")}
       </p>
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      {!onVercel && (
+        // No provider works here yet, so say that instead of offering a button
+        // that quietly does nothing. This is also where a host-agnostic option
+        // (Plausible, Umami — both just a script URL) would belong.
+        <p className="mt-5 rounded-xl border border-dashed border-white/10 px-3 py-3 text-sm text-sand-100/60">
+          {t("admin.settings.analyticsUnavailable")}
+        </p>
+      )}
+
+      <div
+        className={cn(
+          "mt-5 flex flex-wrap gap-2",
+          !onVercel && "hidden",
+        )}
+      >
         {ANALYTICS_PROVIDERS.map((p) => (
           <button
             key={p}

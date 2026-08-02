@@ -15,7 +15,7 @@
 
 import type { DictKey } from "@/lib/i18n";
 
-export type SettingsAreaId = "site" | "ai" | "privacy";
+export type SettingsAreaId = "site" | "writing" | "ai" | "privacy";
 
 export type SettingsArea = {
   id: SettingsAreaId;
@@ -29,8 +29,17 @@ export const SETTINGS_AREAS: readonly SettingsArea[] = [
   // because it is what a non-technical owner came to change, and it stays at
   // the settings root so /admin/settings is never a dead end.
   { id: "site", href: "/admin/settings", label: "admin.settings.nav.site" },
-  // Provider keys and the writing-style guide together: the guide exists only
-  // because AI drafts read it, so they were never really two subjects.
+  // The author's own voice. It briefly lived beside the API keys, on the
+  // grounds that AI drafts are what read it — a true dependency and the wrong
+  // mental model: a personal, expressive setting does not belong next to
+  // secrets. This is also the natural home for the content settings that don't
+  // exist yet (comment policy, default language, reading-time tuning).
+  {
+    id: "writing",
+    href: "/admin/settings/writing",
+    label: "admin.settings.nav.writing",
+  },
+  // Just the plumbing: which provider, which key, which model.
   { id: "ai", href: "/admin/settings/ai", label: "admin.settings.nav.ai" },
   // Analytics, and an honest account of the error reporting the owner can see
   // but not change from here.

@@ -43,6 +43,7 @@ export default async function PrivacySettingsPage() {
         <AnalyticsForm
           initial={isAnalyticsProvider(stored) ? stored : ""}
           fromEnv={resolveAnalytics(null, env.analytics)}
+          onVercel={env.onVercel}
         />
       </div>
 

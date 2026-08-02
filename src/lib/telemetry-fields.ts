@@ -41,9 +41,30 @@ export function isAnalyticsProvider(v: unknown): v is AnalyticsProvider {
 export function resolveAnalytics(
   stored: string | null | undefined,
   fromEnv: string | null | undefined,
+  opts: { onVercel?: boolean } = {},
 ): AnalyticsProvider {
   const db = (stored ?? "").trim();
-  if (db) return isAnalyticsProvider(db) ? db : "none";
   const env = (fromEnv ?? "").trim();
-  return isAnalyticsProvider(env) ? env : "none";
+  const chosen = db
+    ? isAnalyticsProvider(db)
+      ? db
+      : "none"
+    : isAnalyticsProvider(env)
+      ? env
+      : "none";
+
+  // Vercel Analytics is served BY Vercel: the script lives at
+  // /_vercel/insights/script.js on their platform, so anywhere else it is a
+  // 404 on every page view and no data at all — measured, not assumed. Someone
+  // who enabled it and later moved to a VPS, or who is running the same build
+  // locally, gets it switched off rather than a failing request per visit.
+  if (chosen === "vercel" && opts.onVercel === false) return "none";
+  return chosen;
+}
+
+/** Providers that can actually work on this host, for the settings UI to offer. */
+export function availableAnalytics(
+  opts: { onVercel: boolean },
+): readonly AnalyticsProvider[] {
+  return opts.onVercel ? ANALYTICS_PROVIDERS : ["none"];
 }

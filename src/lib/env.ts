@@ -55,6 +55,11 @@ export const env = {
   // "vercel" is the only value that does anything today; anything else, blank
   // included, means no analytics at all.
   analytics: process.env.NEXT_PUBLIC_ANALYTICS ?? "",
+  // Whether this deployment is running ON Vercel. Vercel sets it; nothing else
+  // does. Matters because Vercel Analytics is served by their platform, so the
+  // option is meaningless — and actively harmful, a 404 per page view —
+  // anywhere else. Server-side only, which is where the decision is made.
+  onVercel: Boolean(process.env.VERCEL),
   // Browser error reporting. The SERVER side has its own, unrelated SENTRY_DSN
   // (sentry.server.config.ts) — deliberately separate, because sending your
   // own server's stack traces somewhere is a much smaller decision than

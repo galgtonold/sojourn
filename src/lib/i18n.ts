@@ -299,8 +299,11 @@ const en = {
   "admin.settings.analyticsFromEnv":
     "Currently inherited from NEXT_PUBLIC_ANALYTICS. Choosing here overrides it — including choosing Off.",
   "admin.settings.analyticsError": "Couldn't save that. Try again.",
+  "admin.settings.analyticsUnavailable":
+    "No analytics provider is available on this host. The only option Sojourn ships is Vercel's, and it's served by Vercel — elsewhere it would load nothing.",
   "admin.settings.nav.site": "Site",
-  "admin.settings.nav.ai": "Writing & AI",
+  "admin.settings.nav.writing": "Writing",
+  "admin.settings.nav.ai": "AI",
   "admin.settings.nav.privacy": "Privacy",
   "admin.settings.privacyIntro":
     "What this site does and doesn't send anywhere. Nothing is on unless you turn it on.",
@@ -1054,8 +1057,11 @@ const de: Dict = {
   "admin.settings.analyticsFromEnv":
     "Kommt derzeit aus NEXT_PUBLIC_ANALYTICS. Eine Auswahl hier überschreibt das — auch „Aus“.",
   "admin.settings.analyticsError": "Konnte nicht gespeichert werden. Versuch es nochmal.",
+  "admin.settings.analyticsUnavailable":
+    "Auf diesem Host ist keine Statistik verfügbar. Die einzige mitgelieferte Option ist die von Vercel, und die wird von Vercel ausgeliefert — anderswo würde sie nichts laden.",
   "admin.settings.nav.site": "Website",
-  "admin.settings.nav.ai": "Schreiben & KI",
+  "admin.settings.nav.writing": "Schreiben",
+  "admin.settings.nav.ai": "KI",
   "admin.settings.nav.privacy": "Datenschutz",
   "admin.settings.privacyIntro":
     "Was diese Seite nach außen sendet — und was nicht. Nichts ist aktiv, solange du es nicht einschaltest.",

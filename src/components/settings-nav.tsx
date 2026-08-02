@@ -13,17 +13,20 @@ export function SettingsNav() {
   const active = activeSettingsArea(pathname);
 
   return (
-    <nav className="mt-8 flex flex-wrap gap-1 border-b border-white/10 pb-px">
+    /* Pills, matching the admin bar directly above it. The first version used
+       underlined tabs — a second navigation idiom one level down from the
+       first, in the same interface. */
+    <nav className="mt-6 flex flex-wrap gap-0.5 text-sm">
       {SETTINGS_AREAS.map((area) => (
         <Link
           key={area.id}
           href={area.href}
           aria-current={area.id === active ? "page" : undefined}
           className={cn(
-            "rounded-t-lg px-4 py-2.5 text-sm transition",
+            "shrink-0 rounded-full px-3 py-1.5 transition",
             area.id === active
-              ? "border-b-2 border-ember-400 font-medium text-sand-50"
-              : "border-b-2 border-transparent text-sand-100/60 hover:text-sand-50",
+              ? "bg-white/10 text-sand-50"
+              : "text-sand-100/70 hover:bg-white/5 hover:text-sand-50",
           )}
         >
           <T k={area.label} />

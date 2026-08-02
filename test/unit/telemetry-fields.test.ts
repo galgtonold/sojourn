@@ -3,7 +3,33 @@ import {
   ANALYTICS_PROVIDERS,
   resolveAnalytics,
   isAnalyticsProvider,
+  availableAnalytics,
 } from "@/lib/telemetry-fields";
+
+// Vercel Analytics is served by Vercel — the script lives on their platform, so
+// off-Vercel it is a 404 per page view and no data. Making this a button in the
+// admin turned that from "a variable only a technical person sets" into "a
+// control anyone can press", so the host has to be part of the decision.
+describe("Vercel Analytics only resolves where it can work", () => {
+  it("stays on when the deployment really is Vercel", () => {
+    expect(resolveAnalytics("vercel", "", { onVercel: true })).toBe("vercel");
+  });
+
+  it("switches off elsewhere, however it was configured", () => {
+    expect(resolveAnalytics("vercel", "", { onVercel: false })).toBe("none");
+    expect(resolveAnalytics("", "vercel", { onVercel: false })).toBe("none");
+  });
+
+  it("is unconstrained when the host is unknown, so nothing changes by accident", () => {
+    // No opinion passed = the old behaviour; only an explicit `false` disables.
+    expect(resolveAnalytics("vercel", "")).toBe("vercel");
+  });
+
+  it("offers only 'off' as a choice when the host can't support any provider", () => {
+    expect(availableAnalytics({ onVercel: false })).toEqual(["none"]);
+    expect(availableAnalytics({ onVercel: true })).toEqual(ANALYTICS_PROVIDERS);
+  });
+});
 
 // Precedence mirrors the AI config's rule — DB → env → off — so an owner who
 // sets this in /admin/settings overrides the deployment's variable, and an

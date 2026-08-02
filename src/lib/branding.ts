@@ -98,8 +98,9 @@ export const getBranding = unstable_cache(
  */
 export const getAnalyticsProvider = unstable_cache(
   async (): Promise<AnalyticsProvider> => {
+    const opts = { onVercel: env.onVercel };
     const supabase = getAdminSupabase();
-    if (!supabase) return resolveAnalytics(null, env.analytics);
+    if (!supabase) return resolveAnalytics(null, env.analytics, opts);
     const { data } = await supabase
       .from("site_settings")
       .select("analytics_provider")
@@ -108,6 +109,7 @@ export const getAnalyticsProvider = unstable_cache(
     return resolveAnalytics(
       (data as { analytics_provider?: string } | null)?.analytics_provider,
       env.analytics,
+      opts,
     );
   },
   ["site-analytics", KEY],
