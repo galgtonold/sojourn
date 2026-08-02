@@ -1,9 +1,9 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 import { CloudOff, RotateCw } from "lucide-react";
 import { T } from "@/components/i18n";
+import { env } from "@/lib/env";
 
 /**
  * What a visitor sees when a page throws.
@@ -30,7 +30,13 @@ export default function Error({
   useEffect(() => {
     // Without this the boundary would swallow the error: catching it stops it
     // reaching the global handler, so nothing would ever be reported.
-    Sentry.captureException(error);
+    //
+    // Imported lazily and only when a DSN is configured. A static import put
+    // ~11 KB of Sentry into every page's first load — for a call that did
+    // nothing, since the browser SDK is only initialised when the operator has
+    // opted in (instrumentation-client.ts).
+    if (!env.sentryDsnClient) return;
+    void import("@sentry/nextjs").then((S) => S.captureException(error));
   }, [error]);
 
   return (

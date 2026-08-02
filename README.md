@@ -292,8 +292,35 @@ sojourn/
 | `EMBEDDING_DIM` | server | Embedding vector size. **Env-only** — must match the DB `vector()` column (`supabase/migrations/0010_hybrid_search.sql`); changing it via a UI control would silently corrupt search. |
 | `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL_FAST` / `DEEPSEEK_MODEL_REASONER` | server | AI drafting provider. Optional — or set in `/admin/settings`. Without an API key the AI features are off. |
 | `VISION_API_KEY` / `VISION_BASE_URL` / `VISION_MODEL` | server | Photo-description provider (DeepSeek has no image input). Optional — or set in `/admin/settings`; falls back to the embeddings provider when unset. |
+| `NEXT_PUBLIC_ANALYTICS` | public | Set to `vercel` to enable Vercel Web Analytics. Unset = no analytics, no script, no request. See "Telemetry" below. |
+| `NEXT_PUBLIC_SENTRY_DSN` | public | Browser error reporting. Unset = the Sentry SDK is never loaded. |
+| `SENTRY_DSN` | **server only** | Server + edge error reporting. Separate from the browser one on purpose. |
 
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are **required** — the app fails fast without them. Everything else is optional; add each to progressively enable admin/server actions, push, and the AI features. The DeepSeek/embeddings/vision values (except `EMBEDDING_DIM`) can also be set from `/admin/settings` instead of the environment — see "How configuration works" above.
+
+## Telemetry
+
+**Sojourn sends nothing anywhere by default.** No analytics, no error reporting,
+no phoning home — not to Vercel, not to Sentry, not to the people who wrote it.
+A fresh install talks to your Supabase project, your map tile provider, and
+nobody else.
+
+Three switches turn parts of that on, each independently, each yours:
+
+| Set this | And you get |
+| --- | --- |
+| `NEXT_PUBLIC_ANALYTICS=vercel` | Vercel Web Analytics (cookieless page views). Only useful when hosting on Vercel. |
+| `NEXT_PUBLIC_SENTRY_DSN=…` | Errors from your readers' **browsers** reported to your Sentry project. |
+| `SENTRY_DSN=…` | Errors from **your server** reported to your Sentry project. |
+
+Leave one unset and the corresponding library is never even downloaded — not
+loaded-but-inert, absent. The browser and server Sentry variables are separate
+deliberately: shipping your own server's stack traces to a third party is a
+smaller decision than shipping your visitors' errors, and the two shouldn't be
+made with one switch.
+
+If you enable any of them and your readers are in the EU, that is now your
+processing to disclose. Which is exactly why none of it is on for you already.
 
 ## Roadmap
 

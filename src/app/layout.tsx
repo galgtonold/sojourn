@@ -12,7 +12,7 @@ import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { I18nProvider } from "@/components/i18n";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { DemoBanner } from "@/components/demo-banner";
-import { Analytics } from "@vercel/analytics/next";
+import { SiteAnalytics } from "@/components/site-analytics";
 import "./globals.css";
 
 // `latin-ext` alongside `latin` because this is a travel journal: Hokkaidō,
@@ -101,7 +101,7 @@ export default async function RootLayout({
           </ConfirmProvider>
           <DemoBanner />
         </I18nProvider>
-        <Analytics />
+        <SiteAnalytics />
       </body>
     </html>
   );

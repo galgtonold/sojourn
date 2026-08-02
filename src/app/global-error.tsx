@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { env } from "@/lib/env";
 
 /**
  * The last resort: an error thrown by the root layout itself, before any of the
@@ -8,10 +8,13 @@ import * as Sentry from "@sentry/nextjs";
  * cannot use the i18n provider, the fonts or the design tokens — none of them
  * have mounted — so the styling is inline and the copy is English only.
  *
- * Its real job is reporting. Sentry warned on every single build that React
- * render errors could not be captured without this file, which meant the one
- * class of failure that takes the whole site down was also the one class that
- * never reached the dashboard.
+ * Its real job is reporting — for operators who have opted into it. Sentry
+ * warned on every single build that React render errors could not be captured
+ * without this file, which meant the one class of failure that takes the whole
+ * site down was also the one class that never reached the dashboard. Reporting
+ * still only happens when NEXT_PUBLIC_SENTRY_DSN is set; otherwise the digest
+ * below and the server's own logs are what you have, and the SDK is never
+ * downloaded.
  */
 export default function GlobalError({
   error,
@@ -19,7 +22,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    if (!env.sentryDsnClient) return;
+    void import("@sentry/nextjs").then((S) => S.captureException(error));
   }, [error]);
 
   return (

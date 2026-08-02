@@ -44,6 +44,23 @@ export const env = {
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
     "https://tiles.openfreemap.org/styles/liberty",
 
+  // ── Telemetry, both off unless the operator turns them on ────────────────
+  //
+  // Sojourn is meant to be self-hosted, often for a journal about the author's
+  // own life, so nothing here may phone anywhere by default. Each switch is a
+  // separate decision the operator makes for their own deployment — and when
+  // unset, the corresponding library is never even loaded (see
+  // @/components/site-analytics and instrumentation-client.ts).
+  //
+  // "vercel" is the only value that does anything today; anything else, blank
+  // included, means no analytics at all.
+  analytics: process.env.NEXT_PUBLIC_ANALYTICS ?? "",
+  // Browser error reporting. The SERVER side has its own, unrelated SENTRY_DSN
+  // (sentry.server.config.ts) — deliberately separate, because sending your
+  // own server's stack traces somewhere is a much smaller decision than
+  // sending your readers' browser errors.
+  sentryDsnClient: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
+
   // The public showcase deployment: read-only for everyone, with a one-click
   // sign-in so visitors can see the admin without an account. NEXT_PUBLIC_
   // because the login page (a client component) has to know whether to offer
