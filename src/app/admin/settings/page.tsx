@@ -1,66 +1,24 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { getViewer } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { readAiSecrets } from "@/lib/ai-config";
-import {
-  AI_FIELD_KEYS,
-  isSecretField,
-  maskSecret,
-  readAiEnv,
-  resolveAiConfig,
-  resolveAiSources,
-  type AiFieldKey,
-} from "@/lib/ai-config-fields";
-import { WritingStyleForm } from "@/components/writing-style-form";
-import { AiProvidersForm, type AiFieldState } from "@/components/ai-providers-form";
 import { BrandingForm } from "@/components/branding-form";
-import { AnalyticsForm } from "@/components/analytics-form";
-import {
-  isAnalyticsProvider,
-  resolveAnalytics,
-} from "@/lib/telemetry-fields";
-import { T, DocumentTitle } from "@/components/i18n";
+import { T } from "@/components/i18n";
 import { defaultTitle, translate, type DictKey } from "@/lib/i18n";
 
 export const metadata = { title: defaultTitle("admin.settings.title") };
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
-  const viewer = await getViewer();
-  if (!viewer.isOwner) redirect("/admin");
-
+// What the site is called and how it introduces itself. Lives at the settings
+// root because it is what a non-technical owner came here to change — and
+// because /admin/settings should land somewhere, not redirect.
+export default async function SiteSettingsPage() {
   const supabase = await getServerSupabase();
-  const [aiDb, { data }] = await Promise.all([
-    // Resolved here rather than via the cached getAiConfig() so one DB read backs
-    // both the config and the per-field provenance, and so the section reflects a
-    // just-saved value instead of whatever the cache still holds.
-    readAiSecrets(),
-    supabase!
-      .from("site_settings")
-      .select(
-        "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en, analytics_provider",
-      )
-      .eq("id", 1)
-      .maybeSingle(),
-  ]);
-  const aiRaw = readAiEnv();
-  const aiCfg = resolveAiConfig(aiDb, aiRaw);
-  const aiSources = resolveAiSources(aiDb, aiRaw);
-  // The same shape the GET returns, so the section paints without a client
-  // round-trip. Secret values stop here: only a mask crosses to the browser.
-  const aiFields = Object.fromEntries(
-    AI_FIELD_KEYS.map((k) => [
-      k,
-      {
-        source: aiSources[k],
-        value: isSecretField(k) ? "" : aiCfg[k],
-        masked: isSecretField(k) ? maskSecret(aiCfg[k]) : "",
-      },
-    ]),
-  ) as Record<AiFieldKey, AiFieldState>;
+  const { data } = await supabase!
+    .from("site_settings")
+    .select(
+      "site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en",
+    )
+    .eq("id", 1)
+    .maybeSingle();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const s = (data as any) ?? {};
@@ -87,18 +45,10 @@ export default async function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-24 pt-28">
-      <DocumentTitle k="admin.settings.title" />
-      <Link
-        href="/admin"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-sand-100/70 hover:text-ember-400"
-      >
-        <ArrowLeft className="size-4" /> <T k="admin.dashboardLink" />
-      </Link>
-
-      <h1 className="font-display text-4xl font-semibold">
+    <>
+      <h2 className="font-display text-3xl font-semibold">
         <T k="admin.settings.brandHeading" />
-      </h1>
+      </h2>
       <p className="mt-2 max-w-2xl text-sand-100/60">
         <T k="admin.settings.brandIntro" />
       </p>
@@ -110,43 +60,6 @@ export default async function SettingsPage() {
           defaults={defaults}
         />
       </div>
-
-      <div className="mt-14">
-        <AnalyticsForm
-          initial={
-            isAnalyticsProvider(s.analytics_provider) ? s.analytics_provider : ""
-          }
-          fromEnv={resolveAnalytics(null, env.analytics)}
-        />
-      </div>
-
-      <h2 className="mt-14 font-display text-3xl font-semibold">
-        <T k="admin.settings.aiHeading" />
-      </h2>
-      <p className="mt-2 max-w-2xl text-sand-100/60">
-        <T k="admin.settings.aiIntro" />
-      </p>
-      {!aiCfg.isAiConfigured && (
-        <p className="mt-3 rounded-xl border border-ember-500/30 bg-ember-500/10 px-4 py-3 text-sm text-ember-200">
-          <T k="admin.settings.aiOff" />
-        </p>
-      )}
-      <div className="mt-8">
-        <AiProvidersForm initial={aiFields} />
-      </div>
-
-      <h2 className="mt-14 font-display text-3xl font-semibold">
-        <T k="admin.settings.styleHeading" />
-      </h2>
-      <p className="mt-2 max-w-2xl text-sand-100/60">
-        <T k="admin.settings.styleIntro" />
-      </p>
-      <div className="mt-8">
-        <WritingStyleForm
-          initial={(data?.writing_style as string) ?? ""}
-          aiConfigured={aiCfg.isAiConfigured}
-        />
-      </div>
-    </div>
+    </>
   );
 }

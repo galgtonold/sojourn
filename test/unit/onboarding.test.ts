@@ -37,6 +37,11 @@ describe("onboardingSteps", () => {
   });
 
   it("points each step at the page that does the job", () => {
+    // The AI step used to land on /admin/settings alongside name and tagline,
+    // which meant "connect an AI provider" opened the branding form and left
+    // the reader to find the right section. Settings is split by area now and
+    // each step links to its own; the paths come from @/lib/settings-areas so
+    // a section that moves takes its checklist link with it.
     const hrefs = Object.fromEntries(
       onboardingSteps(nothing).map((s) => [s.key, s.href]),
     );
@@ -45,7 +50,7 @@ describe("onboardingSteps", () => {
       tagline: "/admin/settings",
       trip: "/admin/trips/new",
       post: "/admin/posts/new",
-      ai: "/admin/settings",
+      ai: "/admin/settings/ai",
     });
   });
 

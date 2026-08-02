@@ -299,6 +299,18 @@ const en = {
   "admin.settings.analyticsFromEnv":
     "Currently inherited from NEXT_PUBLIC_ANALYTICS. Choosing here overrides it — including choosing Off.",
   "admin.settings.analyticsError": "Couldn't save that. Try again.",
+  "admin.settings.nav.site": "Site",
+  "admin.settings.nav.ai": "Writing & AI",
+  "admin.settings.nav.privacy": "Privacy",
+  "admin.settings.privacyIntro":
+    "What this site does and doesn't send anywhere. Nothing is on unless you turn it on.",
+  "admin.settings.errorsHeading": "Error reporting",
+  "admin.settings.errorsIntro":
+    "Set in the deployment's environment rather than here — the server reads it once at startup, so it can't be changed from this page.",
+  "admin.settings.errorsServer": "Server errors",
+  "admin.settings.errorsBrowser": "Browser errors",
+  "admin.settings.errorsOn": "On",
+  "admin.settings.errorsOff": "Off",
   "admin.settings.brandHeading": "Branding",
   "admin.settings.brandIntro":
     "The name and tagline shown across the site — in the header, footer, the home hero and page titles. Leave blank to use the defaults.",
@@ -1042,6 +1054,18 @@ const de: Dict = {
   "admin.settings.analyticsFromEnv":
     "Kommt derzeit aus NEXT_PUBLIC_ANALYTICS. Eine Auswahl hier überschreibt das — auch „Aus“.",
   "admin.settings.analyticsError": "Konnte nicht gespeichert werden. Versuch es nochmal.",
+  "admin.settings.nav.site": "Website",
+  "admin.settings.nav.ai": "Schreiben & KI",
+  "admin.settings.nav.privacy": "Datenschutz",
+  "admin.settings.privacyIntro":
+    "Was diese Seite nach außen sendet — und was nicht. Nichts ist aktiv, solange du es nicht einschaltest.",
+  "admin.settings.errorsHeading": "Fehlerberichte",
+  "admin.settings.errorsIntro":
+    "Wird in der Umgebung des Deployments gesetzt, nicht hier — der Server liest den Wert einmal beim Start, deshalb lässt er sich auf dieser Seite nicht ändern.",
+  "admin.settings.errorsServer": "Serverfehler",
+  "admin.settings.errorsBrowser": "Browserfehler",
+  "admin.settings.errorsOn": "An",
+  "admin.settings.errorsOff": "Aus",
   "admin.settings.brandHeading": "Branding",
   "admin.settings.brandIntro":
     "Name und Untertitel, die überall auf der Seite erscheinen — in Kopf- und Fußzeile, im Start-Hero und in den Seitentiteln. Leer lassen für die Voreinstellungen.",
