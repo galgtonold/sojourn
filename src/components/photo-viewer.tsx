@@ -4,38 +4,52 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
-  type TouchEvent as ReactTouchEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  type PanInfo,
+} from "framer-motion";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Photo } from "@/lib/types";
 import { optimizedSrc } from "@/lib/utils";
 import { blurhashToDataURL } from "@/lib/blurhash";
+import { swipeTarget, wasDragged } from "@/lib/swipe";
+import { PhotoSlide, type ViewerItem } from "@/components/photo-slide";
 import { useT } from "@/components/i18n";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
-export type ViewerItem = {
-  url: string;
-  alt?: string;
-  caption?: string | null;
-  blurhash?: string | null;
-  mediaType?: "image" | "video" | null;
-  posterUrl?: string | null;
-};
+export type { ViewerItem };
+
+// The track has to be re-centred in the same commit that swaps in the new
+// current photo, so this must run before paint. Guarded because the viewer is
+// rendered (and returns null) on the server, where useLayoutEffect warns.
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
  * The single full-screen media viewer for the whole site — article images, the
  * end-of-article gallery, the /photos explorer and the journey map. It shows a
  * collection and pages through it with prev/next buttons, keyboard arrows and a
- * horizontal swipe, and keeps every visual nicety of the old single-image
- * lightbox: an instant blurred backdrop (no black flash), landscape-on-portrait
- * rotation, a progressive hi-res crossfade, focus trap, body-scroll lock, and
+ * drag, and keeps every visual nicety of the old single-image lightbox: an
+ * instant blurred backdrop (no black flash), landscape-on-portrait rotation, a
+ * progressive hi-res crossfade, focus trap, body-scroll lock, and
  * hardware/Back closing it. Videos in the set render with native controls.
+ *
+ * Three photos are mounted at a time — previous, current, next — on a track that
+ * follows the pointer. That is one mechanism serving three ends: the drag has
+ * something to show (you watch one photo leave and the next arrive rather than
+ * waiting for a jump on release), the neighbours are fetched and decoded while
+ * you look at the current one, so paging is instant, and because it rides on
+ * pointer events a mouse drag on the desktop behaves exactly like a thumb.
  */
 export function PhotoViewer({
   open,
@@ -52,9 +66,6 @@ export function PhotoViewer({
 }) {
   const t = useT();
   const [mounted, setMounted] = useState(false);
-  const [rotated, setRotated] = useState(false);
-  const [hiRes, setHiRes] = useState(false);
-  const ratioRef = useRef(1); // natural width / height of the current photo
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open && mounted);
 
@@ -65,33 +76,85 @@ export function PhotoViewer({
   const item = count > 0 ? items[safeIndex] : null;
   const isVideo = item?.mediaType === "video";
 
-  const next = useCallback(() => {
-    if (count > 1) onIndexChange((safeIndex + 1) % count);
-  }, [count, safeIndex, onIndexChange]);
-  const prev = useCallback(() => {
-    if (count > 1) onIndexChange((safeIndex - 1 + count) % count);
-  }, [count, safeIndex, onIndexChange]);
+  // Viewport facts the slides need. Seeded from the real window on first render
+  // (not in an effect) so the first paint is already correct and a drag started
+  // immediately isn't measured against a zero width.
+  const [view, setView] = useState(() => ({
+    width: typeof window === "undefined" ? 0 : window.innerWidth,
+    portrait:
+      typeof window !== "undefined" && window.innerHeight > window.innerWidth,
+  }));
 
-  const shouldRotate = () =>
-    typeof window !== "undefined" &&
-    window.innerHeight > window.innerWidth &&
-    ratioRef.current > 1.15;
+  // Aspect ratios, remembered per URL. A neighbour is measured while it is still
+  // off-screen, so it slides in already rotated correctly instead of snapping
+  // once its onLoad lands.
+  const [ratios, setRatios] = useState<Record<string, number>>({});
+  const onRatio = useCallback((url: string, ratio: number) => {
+    setRatios((r) => (r[url] === ratio ? r : { ...r, [url]: ratio }));
+  }, []);
 
-  // Reset per-item state whenever the shown item changes (new photo re-measures
-  // its ratio on load and re-fetches its hi-res tier).
-  useEffect(() => {
-    if (!open) return;
-    setHiRes(false);
-    ratioRef.current = 1;
-    setRotated(false);
-  }, [safeIndex, open]);
+  // ── The track ─────────────────────────────────────────────────────────────
+  const x = useMotionValue(0);
+  // A commit is in flight: ignore further navigation until the index lands, or
+  // a fast double-tap on the arrows would leave the track mid-slide.
+  const busy = useRef(false);
+  // The pointer travelled far enough to be a drag, so swallow the click that
+  // trails it — otherwise paging would also dismiss the viewer.
+  const dragged = useRef(false);
+
+  // Re-centre the moment the index changes. The cells re-render around the new
+  // current photo, so zeroing the offset has to happen in the SAME commit or the
+  // previous photo flashes back for a frame.
+  useIsoLayoutEffect(() => {
+    x.set(0);
+    busy.current = false;
+  }, [safeIndex, open, x]);
+
+  const go = useCallback(
+    (dir: 1 | -1) => {
+      if (count < 2 || busy.current) return;
+      busy.current = true;
+      const span = view.width || window.innerWidth;
+      // The controls are themselves thenable — the index lands only once the
+      // outgoing photo has finished sliding, so the swap is never visible.
+      void animate(x, -dir * span, {
+        duration: 0.26,
+        ease: [0.2, 0.7, 0.2, 1],
+      }).then(() => {
+        onIndexChange((safeIndex + dir + count) % count);
+      });
+    },
+    [count, safeIndex, onIndexChange, view.width, x],
+  );
+  const next = useCallback(() => go(1), [go]);
+  const prev = useCallback(() => go(-1), [go]);
+
+  const onDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      dragged.current = wasDragged(info.offset.x);
+      const dir = swipeTarget({
+        dx: info.offset.x,
+        velocity: info.velocity.x,
+        width: view.width,
+      });
+      if (dir !== 0) go(dir);
+      // Not far enough: spring back rather than snap, so a hesitant drag reads
+      // as "not yet" instead of as a glitch.
+      else void animate(x, 0, { type: "spring", stiffness: 420, damping: 42 });
+    },
+    [go, view.width, x],
+  );
 
   // Open/close side effects — deliberately NOT keyed on the index (navigating
   // must not re-push history or re-lock scroll). onClose is stabilized by the
   // provider, so this runs once per open.
   useEffect(() => {
     if (!open) return;
-    const sync = () => setRotated(shouldRotate());
+    const sync = () =>
+      setView({
+        width: window.innerWidth,
+        portrait: window.innerHeight > window.innerWidth,
+      });
     sync();
     // A history entry so the browser / hardware Back closes the viewer.
     window.history.pushState({ ...window.history.state, lightbox: true }, "");
@@ -122,40 +185,10 @@ export function PhotoViewer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, next, prev, onClose]);
 
-  // Swipe-to-page. `swiped` suppresses the click that trails the gesture so a
-  // swipe doesn't also dismiss the viewer. A touch on the <video> is left to its
-  // native controls.
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swiped = useRef(false);
-  const onTouchStart = useCallback((e: ReactTouchEvent) => {
-    swiped.current = false;
-    if ((e.target as HTMLElement).closest("video")) {
-      touchStart.current = null;
-      return;
-    }
-    const p = e.touches[0];
-    touchStart.current = { x: p.clientX, y: p.clientY };
-  }, []);
-  const onTouchEnd = useCallback(
-    (e: ReactTouchEvent) => {
-      const start = touchStart.current;
-      touchStart.current = null;
-      if (!start || count < 2) return;
-      const p = e.changedTouches[0];
-      const dx = p.clientX - start.x;
-      const dy = p.clientY - start.y;
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        swiped.current = true;
-        if (dx < 0) next();
-        else prev();
-      }
-    },
-    [count, next, prev],
-  );
-  // Dismiss on a backdrop / photo tap — unless it's the tail of a swipe.
+  // Dismiss on a backdrop / photo tap — unless it's the tail of a drag.
   const onDismiss = useCallback(() => {
-    if (swiped.current) {
-      swiped.current = false;
+    if (dragged.current) {
+      dragged.current = false;
       return;
     }
     onClose();
@@ -164,8 +197,6 @@ export function PhotoViewer({
   if (!mounted) return null;
 
   const src = item?.url ?? null;
-  const sizeCls = rotated ? "h-[95vw] w-[92dvh]" : "h-[96dvh] w-[96vw]";
-  const imgCls = `object-contain max-w-none ${rotated ? "rotate-90" : ""} ${sizeCls}`;
   // Instant placeholder (decoded blurhash, else the already-displayed 1600px
   // tier — a cache hit). Skipped for video, which carries its own poster.
   const backdrop = isVideo
@@ -176,6 +207,10 @@ export function PhotoViewer({
     Math.max(window.innerWidth, window.innerHeight) *
       (window.devicePixelRatio || 1) >
     1600;
+  // A video owns its pointer for the native controls, so the track can't take
+  // the drag while one is centred; the arrows and the keyboard still page.
+  const canDrag = count > 1 && !isVideo;
+  const offsets = count > 1 ? [-1, 0, 1] : [0];
 
   return createPortal(
     <AnimatePresence>
@@ -187,8 +222,6 @@ export function PhotoViewer({
           aria-modal="true"
           aria-label={item?.alt || t("common.close")}
           onClick={onDismiss}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -207,6 +240,56 @@ export function PhotoViewer({
               className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-70 blur-2xl"
             />
           )}
+
+          <motion.div
+            style={{ x }}
+            drag={canDrag ? "x" : false}
+            dragDirectionLock
+            dragMomentum={false}
+            dragElastic={0.14}
+            dragConstraints={{ left: -view.width, right: view.width }}
+            onDragStart={() => {
+              dragged.current = true;
+            }}
+            onDragEnd={onDragEnd}
+            className={`absolute inset-0 select-none ${
+              canDrag ? "cursor-grab active:cursor-grabbing" : ""
+            }`}
+          >
+            {offsets.map((off) => {
+              const i = (safeIndex + off + count) % count;
+              const slide = items[i];
+              return (
+                <div
+                  key={off}
+                  style={{ left: `${off * 100}%` }}
+                  // Video: swallow the click so the controls work and a tap
+                  // doesn't close. Image: let it bubble to onDismiss.
+                  onClick={
+                    slide?.mediaType === "video"
+                      ? (e) => e.stopPropagation()
+                      : undefined
+                  }
+                  className={`absolute inset-y-0 flex w-full items-center justify-center ${
+                    canDrag || slide?.mediaType === "video"
+                      ? ""
+                      : "cursor-zoom-out"
+                  }`}
+                >
+                  {slide && (
+                    <PhotoSlide
+                      item={slide}
+                      active={off === 0}
+                      portrait={view.portrait}
+                      wantHiRes={wantHiRes}
+                      ratio={ratios[slide.url] ?? 0}
+                      onRatio={onRatio}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </motion.div>
 
           <button
             type="button"
@@ -245,66 +328,6 @@ export function PhotoViewer({
                 {safeIndex + 1} / {count}
               </div>
             </>
-          )}
-
-          <motion.div
-            key={safeIndex}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, ease: [0.2, 0.7, 0.2, 1] }}
-            // Video: swallow the click so the controls work and a tap doesn't
-            // close. Image: let the tap bubble to onDismiss (cursor-zoom-out).
-            onClick={isVideo ? (e) => e.stopPropagation() : undefined}
-            className={`relative ${isVideo ? "" : "cursor-zoom-out"} [filter:drop-shadow(0_24px_45px_rgba(10,9,8,0.55))]`}
-          >
-            {isVideo ? (
-              <video
-                src={src}
-                poster={item?.posterUrl ?? undefined}
-                controls
-                playsInline
-                autoPlay
-                className="max-h-[92dvh] w-auto max-w-[96vw] rounded-2xl"
-              />
-            ) : (
-              <>
-                {/* Low-res (usually cached) — sizes the box and shows quickly. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={optimizedSrc(src, 1600, 80)}
-                  alt={item?.alt ?? ""}
-                  onLoad={(e) => {
-                    const el = e.currentTarget;
-                    if (el.naturalHeight) {
-                      ratioRef.current = el.naturalWidth / el.naturalHeight;
-                      setRotated(shouldRotate());
-                    }
-                  }}
-                  className={imgCls}
-                />
-                {/* High-res — crossfades in once downloaded, on capable screens. */}
-                {wantHiRes && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={optimizedSrc(src, 2560, 85)}
-                    alt=""
-                    aria-hidden
-                    onLoad={() => setHiRes(true)}
-                    className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${imgCls} ${
-                      hiRes ? "opacity-100" : "opacity-0"
-                    }`}
-                  />
-                )}
-              </>
-            )}
-          </motion.div>
-
-          {item?.caption && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink-950/85 to-transparent px-4 pb-5 pt-12 sm:px-6 sm:pb-7">
-              <p className="mx-auto max-w-3xl text-center text-sm leading-snug text-sand-100/90 sm:text-base">
-                {item.caption}
-              </p>
-            </div>
           )}
         </motion.div>
       )}
