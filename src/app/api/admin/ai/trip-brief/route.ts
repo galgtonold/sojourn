@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { buildTripBrief } from "@/lib/ai/trip-brief";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const schema = z.object({ postId: z.string().uuid() });
 

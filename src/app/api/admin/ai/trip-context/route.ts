@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { deepseekChat, deepseekJson } from "@/lib/ai/deepseek";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const schema = z.object({
   mode: z.enum(["questions", "refine"]),

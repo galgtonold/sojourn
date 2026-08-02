@@ -6,7 +6,11 @@ import { buildDossier } from "@/lib/ai/dossier";
 import { reconcileOutline, type Outline } from "@/lib/ai/outline-plan";
 import { continuityBlock, langInstruction, qaBlock, type Lang } from "@/lib/ai/prompt";
 
-export const maxDuration = 60;
+// The clock has to clear the cap. An 8000-token plan on a model that reasons
+// first does not fit in 60s, and Vercel kills the function mid-call — which
+// records NOTHING (the usage row is written after the response returns), so the
+// step fails with no trace at all beyond a 504. See CLAUDE.md.
+export const maxDuration = 180;
 
 const schema = z.object({
   postId: z.string().uuid(),

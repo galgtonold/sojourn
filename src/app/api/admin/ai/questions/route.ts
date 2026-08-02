@@ -5,7 +5,7 @@ import { deepseekJson } from "@/lib/ai/deepseek";
 import { buildDossier, buildStyleGuide } from "@/lib/ai/dossier";
 import { questionsPrompt, normalizeQuestions, type Lang } from "@/lib/ai/prompt";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const schema = z.object({
   postId: z.string().uuid(),

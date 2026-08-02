@@ -4,7 +4,7 @@ import { adminRoute, type AdminCtx } from "@/lib/api/admin-route";
 import { deepseekChat, type ChatMessage } from "@/lib/ai/deepseek";
 import { getViewer } from "@/lib/auth";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const schema = z.object({});
 

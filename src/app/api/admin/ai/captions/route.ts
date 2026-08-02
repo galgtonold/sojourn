@@ -6,7 +6,7 @@ import { selectCaptionTargets } from "@/lib/ai/caption-select";
 import { fetchCaptionSources, saveCaptions } from "@/lib/db/photos";
 import { localProse } from "@/lib/ai/caption-context";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const schema = z.object({
   postId: z.string().uuid(),

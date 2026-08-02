@@ -42,6 +42,15 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   a prompt grows is how this bites. Size caps for the thinking with room to spare
   (8000+), not for the answer. Symptoms are in `ai_usage`: `finish_reason = 'length'`
   with `completion_tokens` exactly at the cap.
+- **Raising a cap means raising the route's clock too.** They are one decision. An
+  8000-token call on a reasoning model does not fit in Vercel's 60s, and a killed
+  function records **nothing** — `recordUsage`/`recordAiFailure` run *after* the
+  response returns — so `ai_usage` shows the preceding step succeeding and then
+  silence, which reads like "the route was never called". The only trace is a 504
+  in the Vercel runtime logs (`get_runtime_errors`), and the client's
+  `humanError()` maps a 504's non-JSON body to the *generic* "try again" message,
+  not the network one — so the UI actively misleads you. Any route running an
+  8000-token call carries `maxDuration = 180`.
 - **Tailwind v4 `space-y-*` beats per-child `mt-*`.** Its generated selector has higher
   specificity, so a heading's own `mt-10` is silently overridden, leaving headings flush
   with body text. Own block rhythm on the container with sibling selectors
