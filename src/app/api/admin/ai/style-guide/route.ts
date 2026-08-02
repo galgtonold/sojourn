@@ -43,15 +43,16 @@ async function proposeStyle({ supabase, user }: AdminCtx<z.infer<typeof schema>>
     { role: "user", content: userMsg },
   ];
 
-  // Use the fast (non-reasoning) model: the reasoner spends its token budget on
-  // chain-of-thought (reasoning_content) and, under a tight cap, returns empty
-  // content — which is exactly what happened here. A style distillation needs
-  // no deep reasoning, so the fast model (like outline/captions) is the right
-  // fit and returns the text directly.
+  // Use the fast model: a style distillation needs no deep reasoning, and the
+  // reasoner would spend far more of the budget on chain-of-thought. But BOTH
+  // models emit reasoning_content before the answer and BOTH count it against
+  // the cap, so the cap must clear the thinking with room to spare — under the
+  // old 800 the budget went entirely to reasoning and the content came back
+  // empty. See the reasoning-cap gotcha in CLAUDE.md.
   const style = await deepseekChat({
     model: "fast",
     temperature: 0.5,
-    maxTokens: 800,
+    maxTokens: 8000,
     messages,
     meta: { operation: "style-guide", userId: user.id },
   });

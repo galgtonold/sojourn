@@ -40,7 +40,12 @@ async function questions({
   const data = await deepseekJson<{ questions: unknown }>({
     model: "fast",
     temperature: 0.6,
-    maxTokens: 1200,
+    // The fast model reasons before it writes, and `reasoning_content` counts
+    // against the cap — this prompt asks it to sketch the post first, which
+    // alone costs ~1000 tokens. The old 1200 was spent entirely on thinking, so
+    // the answer came back EMPTY and the parse threw. Six questions need ~300
+    // tokens; the cap is a stop, not a squeeze.
+    maxTokens: 8000,
     meta: { operation: "questions", postId: input.postId, userId: user.id },
     messages: [
       {

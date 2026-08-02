@@ -94,7 +94,10 @@ export async function buildTripBrief(
     const brief = await deepseekChat({
       model: "fast",
       temperature: 0.3,
-      maxTokens: 1500,
+      // Reasoning tokens count against the cap and land before the first byte of
+      // the answer, so a brief-sized cap returns nothing at all. See the
+      // reasoning-cap gotcha in CLAUDE.md.
+      maxTokens: 8000,
       meta: { operation: "trip_brief", postId, userId: meta?.userId },
       messages: [
         { role: "system", content: SYSTEM_BRIEF },

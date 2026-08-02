@@ -54,7 +54,9 @@ async function tripContext({
     const data = await deepseekJson<{ questions: string[] }>({
       model: "fast",
       temperature: 0.6,
-      maxTokens: 600,
+      // Reasoning tokens count against the cap (CLAUDE.md): 600 barely covers
+      // the thinking, let alone the questions. Match the refine call below.
+      maxTokens: 8000,
       meta: { operation: "trip-context-questions", userId: user.id },
       messages: [
         {
