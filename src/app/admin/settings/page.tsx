@@ -17,6 +17,11 @@ import {
 import { WritingStyleForm } from "@/components/writing-style-form";
 import { AiProvidersForm, type AiFieldState } from "@/components/ai-providers-form";
 import { BrandingForm } from "@/components/branding-form";
+import { AnalyticsForm } from "@/components/analytics-form";
+import {
+  isAnalyticsProvider,
+  resolveAnalytics,
+} from "@/lib/telemetry-fields";
 import { T, DocumentTitle } from "@/components/i18n";
 import { defaultTitle, translate, type DictKey } from "@/lib/i18n";
 
@@ -36,7 +41,7 @@ export default async function SettingsPage() {
     supabase!
       .from("site_settings")
       .select(
-        "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en",
+        "writing_style, site_name, tagline_de, tagline_en, hero_lead_de, hero_lead_en, hero_accent_de, hero_accent_en, kicker_de, kicker_en, analytics_provider",
       )
       .eq("id", 1)
       .maybeSingle(),
@@ -103,6 +108,15 @@ export default async function SettingsPage() {
           defaultName={env.siteName}
           initial={initial}
           defaults={defaults}
+        />
+      </div>
+
+      <div className="mt-14">
+        <AnalyticsForm
+          initial={
+            isAnalyticsProvider(s.analytics_provider) ? s.analytics_provider : ""
+          }
+          fromEnv={resolveAnalytics(null, env.analytics)}
         />
       </div>
 

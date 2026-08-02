@@ -11,6 +11,10 @@ import {
   parseBrandingRow,
   type Branding,
 } from "@/lib/branding-fields";
+import {
+  resolveAnalytics,
+  type AnalyticsProvider,
+} from "@/lib/telemetry-fields";
 
 export const BRANDING_TAG = "site-branding";
 export type { Branding };
@@ -78,5 +82,34 @@ export const getBranding = unstable_cache(
     );
   },
   ["site-branding", KEY],
+  { tags: [BRANDING_TAG], revalidate: BRANDING_TTL },
+);
+
+/**
+ * Which analytics provider this deployment uses — the owner's choice from
+ * /admin/settings, falling back to NEXT_PUBLIC_ANALYTICS (see
+ * @/lib/telemetry-fields for the precedence).
+ *
+ * Its own cached read rather than a field on `getBranding`, because it isn't
+ * branding and folding it in would mean every caller of branding carries a
+ * telemetry setting around. Same tag, same TTL, same one-row table — so a
+ * settings save busts both together and the cost is one small query per five
+ * minutes, not one per render.
+ */
+export const getAnalyticsProvider = unstable_cache(
+  async (): Promise<AnalyticsProvider> => {
+    const supabase = getAdminSupabase();
+    if (!supabase) return resolveAnalytics(null, env.analytics);
+    const { data } = await supabase
+      .from("site_settings")
+      .select("analytics_provider")
+      .eq("id", 1)
+      .maybeSingle();
+    return resolveAnalytics(
+      (data as { analytics_provider?: string } | null)?.analytics_provider,
+      env.analytics,
+    );
+  },
+  ["site-analytics", KEY],
   { tags: [BRANDING_TAG], revalidate: BRANDING_TTL },
 );

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
-import { getBranding } from "@/lib/branding";
+import { getBranding, getAnalyticsProvider } from "@/lib/branding";
 import { defaultTitle, DEFAULT_LOCALE } from "@/lib/i18n";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -84,7 +84,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { name, tagline, heroLead, heroAccent, kicker } = await getBranding();
+  const [{ name, tagline, heroLead, heroAccent, kicker }, analytics] =
+    await Promise.all([getBranding(), getAnalyticsProvider()]);
   const brand = { tagline, heroLead, heroAccent, kicker };
   return (
     <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
@@ -101,7 +102,7 @@ export default async function RootLayout({
           </ConfirmProvider>
           <DemoBanner />
         </I18nProvider>
-        <SiteAnalytics />
+        <SiteAnalytics provider={analytics} />
       </body>
     </html>
   );

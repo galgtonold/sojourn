@@ -289,6 +289,16 @@ const en = {
     "e.g. Warm first-person plural, short sentences, concrete sensory detail, dry humour, no marketing-speak …",
   "admin.settings.propose": "Propose from my posts",
   "admin.settings.saved": "Saved",
+  "admin.settings.analyticsHeading": "Analytics",
+  "admin.settings.analyticsIntro":
+    "Off by default. Sojourn sends nothing anywhere unless you turn it on here — error reporting is separate and stays in the deployment's environment.",
+  "admin.settings.analyticsOff": "Off",
+  "admin.settings.analyticsVercel": "Vercel Analytics",
+  "admin.settings.analyticsVercelNote":
+    "This loads Vercel's script. For numbers to actually appear you also need Web Analytics enabled on the project in your Vercel dashboard.",
+  "admin.settings.analyticsFromEnv":
+    "Currently inherited from NEXT_PUBLIC_ANALYTICS. Choosing here overrides it — including choosing Off.",
+  "admin.settings.analyticsError": "Couldn't save that. Try again.",
   "admin.settings.brandHeading": "Branding",
   "admin.settings.brandIntro":
     "The name and tagline shown across the site — in the header, footer, the home hero and page titles. Leave blank to use the defaults.",
@@ -1022,6 +1032,16 @@ const de: Dict = {
     "z. B. Warme Wir-Perspektive, kurze Sätze, konkrete Sinneseindrücke, trockener Humor, kein Werbe-Sprech …",
   "admin.settings.propose": "Aus meinen Beiträgen vorschlagen",
   "admin.settings.saved": "Gespeichert",
+  "admin.settings.analyticsHeading": "Statistik",
+  "admin.settings.analyticsIntro":
+    "Standardmäßig aus. Sojourn sendet nichts nach außen, solange du das hier nicht einschaltest — Fehlerberichte sind davon getrennt und bleiben in der Umgebung des Deployments.",
+  "admin.settings.analyticsOff": "Aus",
+  "admin.settings.analyticsVercel": "Vercel Analytics",
+  "admin.settings.analyticsVercelNote":
+    "Das lädt Vercels Skript. Damit tatsächlich Zahlen erscheinen, muss Web Analytics zusätzlich im Vercel-Dashboard für das Projekt aktiviert sein.",
+  "admin.settings.analyticsFromEnv":
+    "Kommt derzeit aus NEXT_PUBLIC_ANALYTICS. Eine Auswahl hier überschreibt das — auch „Aus“.",
+  "admin.settings.analyticsError": "Konnte nicht gespeichert werden. Versuch es nochmal.",
   "admin.settings.brandHeading": "Branding",
   "admin.settings.brandIntro":
     "Name und Untertitel, die überall auf der Seite erscheinen — in Kopf- und Fußzeile, im Start-Hero und in den Seitentiteln. Leer lassen für die Voreinstellungen.",
