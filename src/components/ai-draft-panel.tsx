@@ -169,15 +169,7 @@ export function AiDraftPanel({
   const [notes, setNotes] = useState(initialNotes);
   const dictation = useDictation({
     lang: lang === "de" ? "de-DE" : "en-US",
-    // TEMP diagnostics: log each append (see "[dict]" in the console). If this
-    // fires once per phrase but the text still doubles, the bug is here (state),
-    // not in the recognizer.
-    onFinal: (text) =>
-      setNotes((n) => {
-        // eslint-disable-next-line no-console
-        console.log("[dict] APPEND", JSON.stringify(text), "notesLen", n.length);
-        return appendTranscript(n, text);
-      }),
+    onFinal: (text) => setNotes((n) => appendTranscript(n, text)),
   });
   // Last value known to be persisted server-side. The notes textarea is plain
   // React state — the main Save never carried it — so without this it lived only

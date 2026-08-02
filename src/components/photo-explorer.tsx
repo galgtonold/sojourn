@@ -1,7 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { addTracksLayer } from "@/lib/map-tracks";
+import {
+  addTracksLayer,
+  addTrackFeatures,
+  TRACKS_SOURCE,
+  TRACKS_LAYER,
+} from "@/lib/map-tracks";
+import { needsDetail } from "@/lib/map-lod";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";
 import { cn, optimizedSrc } from "@/lib/utils";
@@ -29,9 +35,17 @@ function esc(s: string): string {
 export function PhotoExplorer({
   photos: rawPhotos,
   tracks = [],
+  fetchTracks = false,
 }: {
   photos: GeoPhoto[];
+  /** Routes passed straight in — used where the set is small and already loaded. */
   tracks?: Track[];
+  /**
+   * Fetch the routes from /api/map/tracks instead, coarse first and refined on
+   * zoom. Set on /map, which draws the entire archive: that geometry grows
+   * without bound and has no business inside the page's HTML. See @/lib/map-lod.
+   */
+  fetchTracks?: boolean;
 }) {
   const { t, locale } = useI18n();
   const container = useRef<HTMLDivElement>(null);
@@ -238,7 +252,63 @@ export function PhotoExplorer({
       // Every track in ONE source: this map draws the whole archive, and a
       // layer each would cost a frame's work per journey ever taken. Its
       // routes aren't clickable, so no label and no handlers.
-      addTracksLayer(map, tracks, { fallbackName: "", width: 3, opacity: 0.6 });
+      if (fetchTracks) {
+        // Coarse tier first — sub-pixel at every zoom it is shown at — then the
+        // metre-accurate one once the reader zooms far enough that the
+        // difference could show. Nothing is lost by zooming in; it simply
+        // wasn't paid for up front. See @/lib/map-lod.
+        let stage: "none" | "overview" | "detail" | "loading" = "none";
+        const load = async (detail: boolean) => {
+          const res = await fetch(`/api/map/tracks${detail ? "?detail=1" : ""}`);
+          if (!res.ok) throw new Error(String(res.status));
+          return res.json();
+        };
+        const refine = async () => {
+          if (stage === "loading" || stage === "detail") return;
+          const want = needsDetail(map.getZoom());
+          if (stage === "overview" && !want) return;
+          const was = stage;
+          stage = "loading";
+          try {
+            const fc = await load(want);
+            // The map can be torn down mid-flight, and setData on a removed
+            // source throws — inside an event handler that surfaces as an
+            // unhandled rejection.
+            if (!mapRef.current) return;
+            const src = map.getSource(TRACKS_SOURCE);
+            if (src && "setData" in src) {
+              (src as maplibregl.GeoJSONSource).setData(fc);
+            } else {
+              addTrackFeatures(map, fc, {
+                fallbackName: "",
+                width: 3,
+                opacity: 0.6,
+              });
+              // The routes used to be added before the photo layers, so they
+              // sat underneath. Fetched, they arrive after — so put them back
+              // below the first photo layer, or the lines cover the pins.
+              if (map.getLayer("photo-clusters")) {
+                map.moveLayer(TRACKS_LAYER, "photo-clusters");
+              }
+            }
+            stage = want ? "detail" : "overview";
+            if (want) map.off("zoomend", refine);
+          } catch {
+            // Leave whatever is already drawn and let a later zoom retry — a
+            // failed refinement should cost fidelity, never the routes.
+            stage = was;
+          }
+        };
+        map.on("zoomend", refine);
+        void refine();
+      } else {
+        addTracksLayer(map, tracks, {
+          fallbackName: "",
+          width: 3,
+          opacity: 0.6,
+        });
+      }
+
       const bounds = new maplibregl.LngLatBounds();
       photos.forEach((p) => bounds.extend([p.lng, p.lat]));
       extendTracks(bounds);

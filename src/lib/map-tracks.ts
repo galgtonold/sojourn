@@ -95,7 +95,23 @@ export function addTracksLayer(
   tracks: Track[] | null | undefined,
   opts: AddTracksOptions,
 ): number {
-  const data = trackFeatureCollection(tracks, opts.fallbackName);
+  return addTrackFeatures(
+    map,
+    trackFeatureCollection(tracks, opts.fallbackName),
+    opts,
+  );
+}
+
+/**
+ * The same, for callers that already hold a FeatureCollection rather than rows
+ * — /map fetches its routes from an endpoint instead of receiving them as
+ * props, so it never has `Track[]` to hand.
+ */
+export function addTrackFeatures(
+  map: TrackLayerMap,
+  data: TrackFeatureCollection,
+  opts: AddTracksOptions,
+): number {
   if (data.features.length === 0) return 0;
   if (map.getSource?.(TRACKS_SOURCE)) return 0;
 

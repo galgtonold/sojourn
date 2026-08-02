@@ -12,6 +12,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAiConfig } from "@/lib/ai-config";
 import { embedText, toVectorLiteral } from "@/lib/ai/embeddings";
 import { simplifyTrackGeoJson } from "@/lib/simplify-track";
+import { OVERVIEW_TOLERANCE_M } from "@/lib/map-lod";
 import { orderByGallery } from "@/lib/photo-order";
 import { buildExpandedTsQuery } from "@/lib/search-expand";
 import {
@@ -117,7 +118,11 @@ export type MapPost = {
 const MAP_SELECT =
   "id, slug, title, location, lat, lng, source_locale, i18n, locations(*), tracks(*)";
 
-export async function getMapPosts(): Promise<MapPost[]> {
+export async function getMapPosts(
+  // Which level of detail to simplify the routes to. The page ships the
+  // overview; /api/map/tracks serves the detail tier on zoom. See @/lib/map-lod.
+  toleranceM: number = OVERVIEW_TOLERANCE_M,
+): Promise<MapPost[]> {
   const supabase = getPublicSupabase();
   try {
     const { data, error } = await supabase
@@ -139,20 +144,18 @@ export async function getMapPosts(): Promise<MapPost[]> {
         distance_m: t.distance_m,
         started_at: t.started_at ?? null,
         ended_at: t.ended_at ?? null,
-        // Same 1 m envelope as every other map. This page opens on a world
-        // view, where far coarser geometry would look identical — but it zooms,
-        // and a coarse line puts the route on the wrong side of the street once
-        // you get close. One guarantee everywhere is easier to trust than a
-        // per-surface guess about how far someone will zoom.
+        // Simplified to whatever tier the caller asked for. The payload did
+        // become the problem — 123 KB compressed on eighteen routes, growing
+        // with every journey — so this is the zoom-tiered loading the previous
+        // comment here promised, rather than giving the 1 m guarantee up.
         //
-        // It used to sample every Nth point down to a fixed 120, which caps the
+        // (It once sampled every Nth point down to a fixed 120, which caps the
         // size but bounds no error at all: a hairpin between two samples simply
-        // vanished. If this page's payload ever becomes the problem, the answer
-        // is zoom-tiered loading (coarse first, finer on zoom) rather than
-        // giving the guarantee up.
+        // vanished. Douglas–Peucker caps the error instead, which is the part
+        // worth keeping.)
         geojson: t.geojson
           ? simplifyTrackGeoJson(t.geojson, {
-              horizontalM: 1,
+              horizontalM: toleranceM,
               dropElevation: true,
               stripProperties: true,
             })
