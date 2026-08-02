@@ -107,6 +107,10 @@ async function singleCompletion(
 
 export type Completion = { content: string; finishReason: string | null };
 
+// Ceiling for the cap escalation below. Matches the section route's cap — the
+// largest this app ever asks a model for.
+const CAP_CEILING = 32000;
+
 const REPAIR_SYSTEM =
   "You repair malformed JSON. Output ONLY one valid, complete, minified JSON " +
   "object — no prose, no markdown, no code fences.";
@@ -121,6 +125,14 @@ const REPAIR_SYSTEM =
  * (`length` → truncated at the cap; otherwise malformed) and returns the raw
  * text for the caller's parse to throw on. `complete`'s `overrides.repair` marks
  * the repair round so the caller can meter it separately.
+ *
+ * A `length` finish gets the cap DOUBLED for the next attempt (bounded by
+ * CAP_CEILING) rather than a blind re-roll: that output wasn't unlucky, it was
+ * cut off by the cap, so the same budget buys the same truncation at full price.
+ * It also can't be repaired — reasoning_content is billed against the cap and
+ * comes first, so a cap-truncated round often returns EMPTY content, leaving the
+ * repair pass nothing to work on (which is how the questions route failed three
+ * identical times, then gave up without ever attempting repair).
  */
 export async function runJsonWithRepair(opts: {
   messages: ChatMessage[];
@@ -136,10 +148,12 @@ export async function runJsonWithRepair(opts: {
   const { messages, attempts, maxTokens, isParseable, complete, onFail } = opts;
   let last = "";
   let lastFinish: string | null = null;
+  // The cap actually in force — raised, never lowered, as truncation shows up.
+  let cap = maxTokens;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const r = await complete(messages, {});
+      const r = await complete(messages, { maxTokens: cap });
       last = r.content;
       lastFinish = r.finishReason;
     } catch (e) {
@@ -152,6 +166,8 @@ export async function runJsonWithRepair(opts: {
       throw e;
     }
     if (isParseable(last)) return last;
+    // Cut off by the cap, not by bad luck — buy room before trying again.
+    if (lastFinish === "length") cap = Math.min(cap * 2, CAP_CEILING);
     // Otherwise loop and try again for a clean JSON object.
   }
 
@@ -172,7 +188,7 @@ export async function runJsonWithRepair(opts: {
               last,
           },
         ],
-        { temperature: 0, maxTokens: Math.max(maxTokens, 2048), repair: true },
+        { temperature: 0, maxTokens: Math.max(cap, 2048), repair: true },
       );
       if (isParseable(repaired.content)) return repaired.content;
       last = repaired.content;
@@ -184,12 +200,14 @@ export async function runJsonWithRepair(opts: {
 
   // Give up: the JSON never parsed. Record why (truncated at the cap vs.
   // malformed) so it's diagnosable, then return the raw text — the caller's
-  // parse throws, which the UI turns into a friendly message.
+  // parse throws, which the UI turns into a friendly message. Name the cap it
+  // gave up at, not the caller's starting one: after escalation those differ,
+  // and the one that still wasn't enough is the diagnostic.
   await onFail({
     finishReason: lastFinish,
     error:
       lastFinish === "length"
-        ? `output truncated at the ${maxTokens}-token cap`
+        ? `output truncated at the ${cap}-token cap`
         : "unparseable model JSON after retries + repair",
   });
   return last;

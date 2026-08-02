@@ -17,7 +17,10 @@ const parse = (s: string) => {
 // A transport that returns (or throws) scripted results in order, repeating the
 // last once exhausted, and records the (messages, overrides) it was called with.
 function scripted(results: Array<Completion | Error>) {
-  const calls: { messages: unknown; overrides: { repair?: boolean } }[] = [];
+  const calls: {
+    messages: unknown;
+    overrides: { repair?: boolean; maxTokens?: number };
+  }[] = [];
   let i = 0;
   const complete = async (
     messages: unknown,
@@ -82,16 +85,37 @@ describe("runJsonWithRepair", () => {
     expect(onFail.mock.calls[0][0].error).toMatch(/unparseable/);
   });
 
-  it("records a 'truncated at the cap' failure when the finish reason is length", async () => {
+  it("doubles the cap after a 'length' finish, so the retry is a real second chance", async () => {
+    const { complete, calls } = scripted([
+      ok("trunc", "length"),
+      ok("trunc", "length"),
+      ok('{"a":1}'),
+    ]);
+    const out = await run({ complete, maxTokens: 8000 });
+    expect(out).toBe('{"a":1}');
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 16000, 32000]);
+  });
+
+  it("does NOT raise the cap for output that merely failed to parse", async () => {
+    const { complete, calls } = scripted([ok("nope"), ok("nope"), ok('{"a":1}')]);
+    await run({ complete, maxTokens: 8000 });
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 8000, 8000]);
+  });
+
+  it("records a 'truncated at the cap' failure naming the cap it gave up at", async () => {
     const onFail = vi.fn();
-    const { complete } = scripted([
+    const { complete, calls } = scripted([
       ok("bad", "length"),
       ok("bad", "length"),
       ok("bad", "length"),
       ok("still bad", "length"),
     ]);
     await run({ complete, onFail, maxTokens: 8000 });
-    expect(onFail.mock.calls[0][0].error).toMatch(/truncated at the 8000-token cap/);
+    // 8000 → 16000 → 32000, then held at the ceiling for the repair pass.
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([
+      8000, 16000, 32000, 32000,
+    ]);
+    expect(onFail.mock.calls[0][0].error).toMatch(/truncated at the 32000-token cap/);
   });
 
   it("retries a 5xx transport error, then succeeds", async () => {
@@ -122,7 +146,23 @@ describe("runJsonWithRepair", () => {
     const { complete, calls } = scripted([ok(""), ok(""), ok("")]);
     const out = await run({ complete, onFail });
     expect(out).toBe("");
-    expect(calls.length).toBe(3); // no repair call
+    expect(calls.length).toBe(3); // no repair call — nothing to repair
     expect(onFail).toHaveBeenCalledTimes(1);
+  });
+
+  // The reasoning-cap failure in full: the model spends the whole budget on
+  // reasoning_content and returns EMPTY content, so there is no text for the
+  // repair pass to work on. Buying room on the retry is the only way out.
+  it("buys room for an empty, cap-truncated answer instead of re-rolling it", async () => {
+    const onFail = vi.fn();
+    const { complete, calls } = scripted([
+      ok("", "length"),
+      ok("", "length"),
+      ok('{"questions":[]}'),
+    ]);
+    const out = await run({ complete, onFail, maxTokens: 1200 });
+    expect(out).toBe('{"questions":[]}');
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([1200, 2400, 4800]);
+    expect(onFail).not.toHaveBeenCalled();
   });
 });
