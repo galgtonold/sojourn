@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { optimizedSrc } from "@/lib/utils";
+import { shouldRotatePhoto } from "@/lib/photo-rotation";
 
 export type ViewerItem = {
   url: string;
@@ -11,25 +12,23 @@ export type ViewerItem = {
   posterUrl?: string | null;
 };
 
-/** A landscape photo on a portrait screen is turned 90° so it fills the display
- *  instead of sitting in two fat letterbox bars. Below this ratio the gain isn't
- *  worth asking the reader to tilt their phone. */
-const ROTATE_ABOVE_RATIO = 1.15;
-
 /**
  * One photo in the viewer's track, with its caption.
  *
- * Rotation is decided per photo rather than once for the viewer: three photos
- * are mounted at a time and they don't share an aspect ratio, so a neighbour has
- * to arrive already turned the right way — the reader sees it before it is
- * centred. The measured ratio is reported UP to the viewer, which remembers it
- * per URL: by the time a neighbour slides in it was measured while off-screen,
- * so it is rotated on its very first frame instead of visibly snapping.
+ * The photo and its caption form a single unit that turns together (see
+ * @/lib/photo-rotation for why it is only ever these two). Rotating the photo
+ * and leaving its caption upright leaves the two reading at right angles; as one
+ * unit the caption stays on the photo's bottom edge either way, and travels with
+ * it as the slide is dragged.
  *
- * The caption lives INSIDE the rotated wrapper on purpose. Rotating the photo
- * while leaving its caption upright leaves the two reading at right angles to
- * each other; rotating them together keeps the caption on the photo's bottom
- * edge in both orientations, and carries it along as the slide is dragged.
+ * The unit shrink-wraps the photo — `max-h/max-w` on the image rather than a
+ * fixed box with `object-contain` — so the caption anchored to its bottom edge
+ * sits ON the photo at any aspect ratio, instead of floating in the letterbox
+ * beside it. The hi-res overlay gets the same rect for free.
+ *
+ * Rotation is decided per photo, and the measured ratio is reported UP so the
+ * viewer can remember it per URL: a neighbour is measured while off-screen, so
+ * it arrives already facing the right way rather than snapping once centred.
  */
 export function PhotoSlide({
   item,
@@ -55,10 +54,16 @@ export function PhotoSlide({
   // transparent, or the new photo inherits the old one's finished fade.
   useEffect(() => setHiRes(false), [item.url]);
 
-  const rotated = portrait && ratio > ROTATE_ABOVE_RATIO;
-  // The box the photo is fitted into. Rotated, it's the viewport with its axes
-  // swapped — width measured in vh and height in vw.
-  const boxCls = rotated ? "h-[95vw] w-[92dvh]" : "h-[96dvh] w-[96vw]";
+  const rotated = shouldRotatePhoto({ portrait, ratio });
+  // Turned, the photo is measured against the viewport with its axes swapped:
+  // its width is bounded by the screen's HEIGHT and vice versa.
+  const fitCls = rotated
+    ? "max-h-[95vw] max-w-[92dvh]"
+    : "max-h-[96dvh] max-w-[96vw]";
+  // The caption clears the prev/next buttons. Upright they never meet, but
+  // turned, the photo's bottom edge runs down the screen's LEFT edge — straight
+  // through the previous button — so it is pushed in far enough to miss it.
+  const captionPad = rotated ? "pb-[4.5rem]" : "pb-3 sm:pb-5";
 
   if (isVideo) {
     return (
@@ -74,10 +79,16 @@ export function PhotoSlide({
   }
 
   return (
+    // `shrink-0` is load-bearing: turned, the unit is deliberately WIDER than the
+    // viewport-wide cell it sits in (its width is bounded by the screen's
+    // height). Left to shrink it collapses to the cell's width and takes the
+    // photo down with it — barely half the size it should be. The rotation is
+    // purely visual, so overflowing the cell is exactly right; the dialog clips.
     <div
-      className={`relative ${boxCls} ${rotated ? "rotate-90" : ""} [filter:drop-shadow(0_24px_45px_rgba(10,9,8,0.55))]`}
+      className={`relative flex shrink-0 ${rotated ? "rotate-90" : ""} [filter:drop-shadow(0_24px_45px_rgba(10,9,8,0.55))]`}
     >
-      {/* Low-res (usually a cache hit from the page behind) — shows quickly. */}
+      {/* Low-res (usually a cache hit from the page behind) — shows quickly, and
+          sizes the unit that everything else is positioned against. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={optimizedSrc(item.url, 1600, 80)}
@@ -88,7 +99,7 @@ export function PhotoSlide({
           if (el.naturalHeight)
             onRatio(item.url, el.naturalWidth / el.naturalHeight);
         }}
-        className="size-full select-none object-contain"
+        className={`select-none object-contain ${fitCls}`}
       />
       {/* High-res — crossfades in once downloaded, on capable screens. Only for
           the centred slide: neighbours exist to be ready, not to be studied, and
@@ -108,10 +119,12 @@ export function PhotoSlide({
       )}
 
       {item.caption && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3 sm:px-5 sm:pb-5">
-          {/* A panel sized to the text, not a full-width gradient: once the photo
-              is rotated the caption sits over the middle of the frame, where a
-              scrim anchored to the screen's bottom edge does nothing. */}
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 sm:px-5 ${captionPad}`}
+        >
+          {/* A panel sized to the text, not a full-width gradient: the caption
+              sits over the photo itself, where a scrim anchored to the screen's
+              bottom edge would do nothing. */}
           <p className="max-w-3xl rounded-xl bg-ink-950/65 px-3 py-2 text-center text-sm leading-snug text-sand-50 shadow-lg backdrop-blur-md sm:text-base">
             {item.caption}
           </p>
