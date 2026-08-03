@@ -71,11 +71,12 @@ import {
 } from "@/lib/content";
 
 describe("content layer (faked backend)", () => {
-  it("hydrates a post: sorts photos, summarizes reactions, counts comments", async () => {
+  it("hydrates a post: sorts photos, summarizes reactions", async () => {
     const [post] = await getPublishedPosts();
     expect(post.photos.map((p) => p.id)).toEqual(["ph1", "ph2"]); // by sort_order
     expect(post.reactions).toEqual({ heart: 2, fire: 1, wow: 0, star: 0 });
-    expect(post.comment_count).toBe(3);
+    // No comment_count: POST_SELECT no longer embeds `comments(count)`, which
+    // required table-level SELECT that anon does not have after 0043.
     expect(post.trip?.id).toBe("t1");
     expect(post.tracks[0]).toMatchObject({ name: "Day 1", distance_m: 1000 });
   });

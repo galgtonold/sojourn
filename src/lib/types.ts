@@ -136,7 +136,6 @@ export type PostWithRelations = Post & {
   locations: GeoPoint[];
   tracks: Track[];
   reactions: ReactionSummary;
-  comment_count: number;
 };
 
 // Public-safe shape for an inline interactive block (no correct answer).

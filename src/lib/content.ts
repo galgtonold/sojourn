@@ -61,7 +61,6 @@ function hydratePost(row: any): PostWithRelations {
       geojson: t.geojson,
     })),
     reactions: summarizeReactions(row.reactions),
-    comment_count: row.comments?.[0]?.count ?? 0,
   };
 }
 
@@ -77,9 +76,22 @@ const POST_SELECT = `
   photos(*),
   locations(*),
   tracks(*),
-  reactions(kind),
-  comments(count)
+  reactions(kind)
 `;
+// No `comments(count)` here, and it is not an oversight.
+//
+// PostgREST compiles that shorthand to `count(*)`, which Postgres checks
+// against TABLE-level SELECT — column grants do not satisfy it. So the moment
+// 0043 column-scoped `comments` to keep visitor_token away from anon, every
+// query using POST_SELECT started returning 42501, getPostBySlug returned null,
+// and every post page on the site rendered as not-found. Explicit aggregate
+// syntax (`comments(id.count())`) is no escape either: PostgREST rejects it
+// with PGRST123 unless aggregates are enabled, and they are not.
+//
+// It cost nothing to lose: `comment_count` was mapped in hydratePost and never
+// rendered anywhere. The admin dashboard counts comments through the service
+// role, which is unaffected. If a count is ever wanted on a card, it wants a
+// maintained column on `posts`, not an aggregate join on every read.
 
 export async function getPublishedPosts(): Promise<PostWithRelations[]> {
   const supabase = getPublicSupabase();
