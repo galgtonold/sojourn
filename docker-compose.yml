@@ -15,8 +15,10 @@ services:
     # trade on the small VPS this is most often deployed to. Published by
     # .github/workflows/publish-image.yml on every release.
     #
-    # Pin harder than :latest by setting SOJOURN_TAG — v0.2, v0, or an exact
-    # v0.2.1 — to choose how much change you are willing to take unattended.
+    # Pin harder than :latest by setting SOJOURN_TAG — 0.2, 0, or an exact
+    # 0.2.1 — to choose how much change you are willing to take unattended.
+    # No leading "v": the publish workflow's {{version}} pattern strips it, so
+    # the registry has :0.2.1, not :v0.2.1.
     image: ghcr.io/galgtonold/sojourn:${SOJOURN_TAG:-latest}
     build:
       context: .
@@ -43,4 +45,9 @@ services:
       # transaction pooler. Unset means they are skipped, loudly, in the logs.
       DATABASE_URL: ${DATABASE_URL:-}
     env_file:
-      - .env.local
+      # `required: false` because a fresh clone has no .env.local — it is
+      # gitignored — and Compose treats a missing env_file as a hard error.
+      # Without this, the very first command in the README's Docker section
+      # fails on a machine that has done nothing wrong. (Needs Compose ≥ 2.24.)
+      - path: .env.local
+        required: false

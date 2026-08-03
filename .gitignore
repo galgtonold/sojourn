@@ -66,3 +66,19 @@ scripts/demo/photos/
 # Working notes from the design/planning workflow. Useful while building, but
 # they are process rather than product — kept locally, out of the public repo.
 docs/superpowers/
+.superpowers/
+
+# Agent working memory and one-off review write-ups. None of this has ever been
+# committed, and the only thing that was stopping it was a line in CLAUDE.md
+# reminding whoever was staging not to use `git add -A`. That is a fine reminder
+# and a poor control — especially once the repo is public and other people are
+# staging things. memory/ holds business notes and a personal address.
+memory/
+docs/*-review.html
+docs/security-audit.html
+prod-licenses.txt
+
+# Editor/agent local settings. .claude/launch.json is deliberately tracked (it
+# is how the dev server gets started); nothing else in there should be.
+.claude/*
+!.claude/launch.json

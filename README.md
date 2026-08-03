@@ -11,6 +11,11 @@ and you're inside the editor** — every screen, with the content already there.
 The demo is read-only, so it stays as the last person found it. Everything else
 works: browse the maps and galleries, react to an entry, vote in a poll.
 
+> **Where this is: v0.1.** I run it for my own journal and it works, but it is
+> young. Expect schema churn between releases (migrations apply themselves, so
+> that mostly means "redeploy"), expect rough edges away from the paths I use
+> daily, and read the release notes before updating. Issues and PRs welcome.
+
 Sojourn needs one thing to run: **Supabase** (Postgres + Auth + Storage). Point it at a local stack (`supabase start`) or a hosted project, run the migrations, and you have a working site. Everything beyond that — web push, AI authoring, semantic search, photo vision — is **optional** and lights up as you add the relevant keys. Nothing is locked to a single cloud vendor.
 
 ## Features
@@ -72,13 +77,25 @@ You need a Supabase to point at. The fastest path is the local stack (requires D
 
 ```bash
 npm install
-supabase start          # boots local Postgres + Auth + Storage
-supabase db reset        # applies migrations in supabase/migrations + seed.sql
+supabase start               # boots local Postgres + Auth + Storage, applies migrations + seed.sql
 cp .env.example .env.local   # then fill in the printed local URL + anon key
 npm run dev
 ```
 
-Open **http://localhost:3000**. `supabase/seed.sql` populates sample trips, posts, photos, comments, and two admin users so the site is fully exercised in development. Prefer a hosted project instead? See **Going live with Supabase** below — the only difference is which URL/keys land in `.env.local`.
+Open **http://localhost:3000**. `supabase/seed.sql` populates sample trips, posts, photos, comments and two accounts, so the site is fully exercised in development.
+
+**Sign in at `/admin/login` with:**
+
+| Email | Password | Role |
+| --- | --- | --- |
+| `owner@sojourn.test` | `sojourn-admin` | owner — sees everything |
+| `collab@sojourn.test` | `sojourn-collab` | member — granted two trips |
+
+These are local development fixtures, in the repo on purpose, and they only ever exist in a database built by `supabase/seed.sql`. A real install has no seeded accounts: you create the owner yourself on first run.
+
+> Already ran `supabase start` before? `supabase db reset` rebuilds the database from `supabase/migrations` and re-applies the seed.
+
+Prefer a hosted project? See **Going live with Supabase** below — the only difference is which URL and keys land in `.env.local`.
 
 Other scripts:
 
@@ -86,26 +103,28 @@ Other scripts:
 npm run build      # production build (standalone output)
 npm run start      # serve the production build
 npm run typecheck  # tsc --noEmit
-npm run lint       # next lint
+npm test           # vitest
+npm run migrate:status  # what the database still owes, without applying it
 npm run gen:vapid  # generate a VAPID key pair (web-push)
 ```
 
-> **Heads-up:** `next build`/`next start` run with `NODE_ENV=production`, so they
-> load `.env.production` — which points at the **live** Supabase. A local
-> production build therefore reads (and could write to) production data. Use
-> `npm run dev` (which loads `.env.local`) for local development; don't run
-> write-flow tests against a local production build.
+> **Heads-up:** `npm run build` applies any pending database migrations first,
+> against whatever `DATABASE_URL` (or `.env.local`) points at. That is the point
+> — schema arrives with the code that needs it — but it does mean a local
+> production build migrates the database it is configured for. It prints the host
+> it connected to as its first line; check that line if you keep more than one
+> database around.
 
 ## Architecture
 
 - **Content is public-read.** Trips, posts, photos, maps, comments, and reactions are shared by URL — there are no viewer accounts.
 - **Only `/admin` is gated.** Authentication is Supabase Auth for a single admin, enforced by Next middleware in `src/middleware.ts`. On a fresh install, `/admin/setup` lets the first visitor claim the owner account (atomic via a single-owner unique index; a permanent redirect-to-login tombstone once an owner exists).
 - **Data access layer:** `src/lib/content.ts` — public reads via a cookieless anon client (RLS-bounded); query failures return empty, never fabricated content.
-- **Schema, RLS, and storage:** `supabase/migrations/0001_init.sql`.
+- **Schema, RLS, and storage:** `supabase/migrations/` — 44 files applied in the order declared by `src/lib/migrations.mjs`. `0001_init.sql` is where it starts, not the whole of it.
 
 ### Database tables
 
-`trips`, `posts` (with a generated `tsvector` full-text search column `search_tsv`), `locations` (map pins), `photos`, `comments`, `reactions`, `push_subscriptions`, `notifications`.
+`trips`, `posts` (with a generated `tsvector` search column `search_tsv`), `locations` (map pins), `photos`, `tracks` (GPX), `comments`, `comment_likes`, `reactions`, `interactions` + `interaction_responses` (polls and quizzes), `profiles`, `trip_members`, `member_invites`, `site_settings`, `app_secrets`, `post_chunks`, `post_ai_drafts`, `ai_usage`, `ai_jobs`, `push_subscriptions`, `notifications`.
 
 ## Going live with Supabase
 
@@ -166,7 +185,18 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only
    ```
-4. **Create the owner account.** Open the site — while it is unclaimed, **every page** redirects to **`/admin/setup`**, where you create the owner account (name your site, pick an email and password) and land signed in. This needs `SUPABASE_SERVICE_ROLE_KEY`; on an anon-key-only deploy, create the user manually instead: Supabase dashboard → **Auth → Users → Add user**.
+4. **Turn off public sign-ups.** Supabase dashboard → **Authentication → Sign In / Providers** → switch off *"Allow new users to sign up"*.
+
+   Sojourn has exactly two kinds of account: the owner, and members the owner adds. Nobody signs themselves up. Left on, anyone can create an account on your project with the anon key that appears in every page — it will not get them a profile, and without one they can do nothing (that is what migration `0043` is for), but there is no reason to hand out sessions at all.
+
+5. **Create the owner account.** Open the site — while it is unclaimed, **every page** redirects to **`/admin/setup`**, where you create the owner account (name your site, pick an email and password) and land signed in. This needs `SUPABASE_SERVICE_ROLE_KEY`.
+
+   On an anon-key-only deploy, create it by hand instead: Supabase dashboard → **Auth → Users → Add user**, then in the **SQL Editor** give that user a profile, because nothing else will:
+
+   ```sql
+   insert into public.profiles (id, email, role)
+   values ('<the new user id>', '<their email>', 'owner');
+   ```
 
    > **Claim it before you point a domain at it.** The first visitor to a fresh install becomes its owner, and newly issued TLS certificates are published publicly (Certificate Transparency), so a custom domain is discoverable within minutes. Claiming on the `*.vercel.app` URL first avoids the race entirely. As a backstop, the claim is only open for **60 minutes** after the schema is installed — see below.
 
@@ -221,7 +251,7 @@ Web push lets the admin receive notifications (e.g. on new comments).
 
 ## Deployment — Cloud (Vercel)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn&project-name=sojourn&repository-name=sojourn&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY&envDescription=From%20your%20Supabase%20project%3A%20Settings%20%E2%86%92%20API&envLink=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn%23going-live-with-supabase)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn&project-name=sojourn&repository-name=sojourn&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,DATABASE_URL&envDescription=From%20your%20Supabase%20project%3A%20Settings%20%E2%86%92%20API&envLink=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn%23going-live-with-supabase)
 
 The button clones the repo and asks for the three values it can't guess. You
 still need a Supabase project with the migrations applied first — see
@@ -261,7 +291,7 @@ commands — and schema migrations apply themselves at container start, so there
 is no second step (see
 [ADR-0002](docs/adr/0002-updates-and-schema-migrations.md)).
 
-Pin how much change you take unattended with `SOJOURN_TAG` — `v0.2.1`, `v0.2`,
+Pin how much change you take unattended with `SOJOURN_TAG` — `0.2.1`, `0.2`,
 `v0` or the default `latest`.
 
 To build from source instead — a fork, a patch, an architecture we don't
@@ -289,7 +319,7 @@ There are two pieces, and each is independently portable:
 1. **The web app is already a portable container.** Next standalone output means the app has no Vercel-specific runtime requirements. `docker compose up -d --build` on any VPS gives you the same running app.
 
 2. **The data layer is your choice.** Either:
-   - **Self-host Supabase** with its official Docker Compose stack, run the same `supabase/migrations/0001_init.sql`, and point the app's env vars at it; **or**
+   - **Self-host Supabase** with its official Docker Compose stack, point `DATABASE_URL` at it and let the migration runner apply `supabase/migrations/` on the next build; **or**
    - **Keep hosted Supabase** and just move the web container — the database doesn't have to move at all.
 
 Because we avoided proprietary lock-in (keyless maps, standard Postgres, a vanilla Next build), migration comes down to **pointing your env vars at the new Postgres/Supabase and running the same migration SQL**. The application code is identical in every environment.
@@ -320,7 +350,8 @@ sojourn/
 │   └── middleware.ts         # gates /admin via Supabase Auth
 ├── supabase/
 │   └── migrations/
-│       └── 0001_init.sql     # tables, RLS, full-text search, storage bucket
+│       ├── 0001_init.sql     # tables, RLS, full-text search, storage bucket
+│       └── …                   # 43 more, applied in manifest order
 ├── public/
 │   └── sw.js                 # web push service worker
 ├── Dockerfile                # multi-stage, Next standalone
@@ -335,7 +366,12 @@ sojourn/
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key for public-read data. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Bypasses RLS for admin/API routes. Never expose to the browser. |
-| `DATABASE_URL` | **server only** | Direct Postgres connection (port 5432), used *only* to apply schema migrations at build/container start. The app itself never opens one — it goes through PostgREST, which cannot execute DDL. On Vercel, `POSTGRES_URL_NON_POOLING` from the Supabase integration is picked up instead. |
+| `DATABASE_URL` | **server only** | Direct Postgres connection (port 5432), used *only* to apply schema migrations at build/container start. The app itself never opens one — it goes through PostgREST, which cannot execute DDL. On Vercel, `POSTGRES_URL_NON_POOLING` from the Supabase integration is picked up instead. Also accepts `SOJOURN_DATABASE_URL` and `POSTGRES_URL`. |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SITE_URL`, `SITE_NAME`, `MAP_STYLE_URL`, `VAPID_PUBLIC_KEY`, `SENTRY_DSN_CLIENT`, `ANALYTICS`, `DEMO_MODE` | server, read at **runtime** | The same values as the `NEXT_PUBLIC_*` rows above, without the prefix — and they win when both are set. Reach for these when running a **prebuilt image**: `NEXT_PUBLIC_*` is compiled into the bundle when the image is built, so it cannot describe a container the builder never saw. The server reads these per request and hands them to the browser (`src/lib/public-config.ts`). Building from source or deploying on Vercel? The prefixed names are fine and nothing changes. |
+| `SOJOURN_RELEASE_REPO` | server | Which GitHub repo the Updates page checks for a newer release. Defaults to upstream; set it if you maintain a real downstream fork. |
+| `SOJOURN_RUNTIME` | server | Set to `docker` by our own Dockerfile so the Updates page can name the right update command for the host. Nothing else reads it. |
+| `EDGE_SHARED_SECRET` | **server only** | Shared secret authenticating Next.js → the Supabase Edge Functions (`llm-call`, `translate`). Unset means slow generations run inline instead. |
+| `NEXT_PUBLIC_DEFAULT_LOCALE` | public | `de` (default) or `en` — the language the site serves before a visitor picks one. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | public | VAPID public key for web push subscriptions. |
 | `VAPID_PRIVATE_KEY` | **server only** | VAPID private key for sending push. |
 | `VAPID_SUBJECT` | server | Contact (e.g. `mailto:you@example.com`) for push. |
