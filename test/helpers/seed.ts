@@ -51,6 +51,12 @@ export function makeSeed(
     photos,
     tracks: [],
     interactions: [],
+    // The caller's profile. `adminRoute` looks this up and refuses with 403
+    // when it is missing, because a Supabase session on its own proves nothing
+    // about authority — every capability in the schema is read from this row.
+    // Without it the whole AI pipeline 403s, which is the gate doing its job.
+    // `user-1` is makeFakeSupabase's default signed-in id.
+    profiles: [{ id: "user-1", email: "owner@sojourn.test", role: "owner" }],
   };
 
   return { db, postId, photoIds: photos.map((p) => p.id) };

@@ -108,6 +108,38 @@ describe("AI pipeline (faked DeepSeek + Supabase)", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
+  // A Supabase session is not a permission. These routes read nothing from the
+  // database before spending money — the prompt comes straight off the request
+  // — so there is no query for RLS to filter and no second line of defence.
+  // Until 0043 that meant anyone holding any session could bill 32,000-token
+  // generations to the operator's provider key, and Supabase handed sessions to
+  // anyone who asked for one.
+  describe("a session without a profile", () => {
+    it("cannot reach an AI route", async () => {
+      const seed = makeSeed();
+      seed.db.profiles = [];
+      const client = makeFakeSupabase(seed.db);
+      sb.client = client;
+      ds.fn = makeFakeDeepseek({ photoIds: seed.photoIds }).chat as typeof ds.fn;
+
+      const res = await call(outline, { postId: seed.postId, lang: "de" });
+      expect(res.status).toBe(403);
+    });
+
+    it("is refused before the model is ever called", async () => {
+      // The point is the bill, not the status code: a 403 that still ran the
+      // generation would have fixed nothing.
+      const seed = makeSeed();
+      seed.db.profiles = [];
+      sb.client = makeFakeSupabase(seed.db);
+      const spy = makeFakeDeepseek({ photoIds: seed.photoIds });
+      ds.fn = spy.chat as typeof ds.fn;
+
+      await call(outline, { postId: seed.postId, lang: "de" });
+      expect(spy.calls.length).toBe(0);
+    });
+  });
+
   it("runs outline → sections → captions → save-draft and materialises a poll", async () => {
     const { postId, photoIds } = setup();
 

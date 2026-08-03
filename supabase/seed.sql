@@ -31,8 +31,20 @@ insert into auth.identities (id, user_id, identity_data, provider, provider_id, 
    jsonb_build_object('sub','00000000-0000-0000-0000-0000000000a2','email','collab@sojourn.test'),
    'email','00000000-0000-0000-0000-0000000000a2', now(), now(), now());
 
--- handle_new_user() created a 'member' profile for each; promote the owner.
-update public.profiles set role = 'owner' where id = '00000000-0000-0000-0000-0000000000a1';
+-- Profiles, written explicitly.
+--
+-- This used to read "handle_new_user() created a 'member' profile for each;
+-- promote the owner" — but 0043 dropped that trigger, because a trigger that
+-- hands a profile to every new auth user also hands one to anyone who signs
+-- themselves up, and a profile is where all authority in this schema comes
+-- from. Both real paths (/api/setup and /api/admin/members) always wrote the
+-- profile themselves with the service role; this seed is the third and now
+-- does too.
+insert into public.profiles (id, email, role) values
+  ('00000000-0000-0000-0000-0000000000a1','owner@sojourn.test','owner'),
+  ('00000000-0000-0000-0000-0000000000a2','collab@sojourn.test','member')
+on conflict (id) do update
+  set role = excluded.role, email = excluded.email;
 
 -- ---- Site settings (singleton) ----
 insert into public.site_settings (id, writing_style)
