@@ -15,7 +15,7 @@
 
 import type { DictKey } from "@/lib/i18n";
 
-export type SettingsAreaId = "site" | "writing" | "ai" | "privacy";
+export type SettingsAreaId = "site" | "writing" | "ai" | "privacy" | "updates";
 
 export type SettingsArea = {
   id: SettingsAreaId;
@@ -47,6 +47,17 @@ export const SETTINGS_AREAS: readonly SettingsArea[] = [
     id: "privacy",
     href: "/admin/settings/privacy",
     label: "admin.settings.nav.privacy",
+  },
+  // Not a setting so much as a status page, and last because it is the one
+  // read rarely and urgently rather than often and idly: what version this is,
+  // whether a newer one exists, how to get it on this particular host, and
+  // whether the database kept up. It lives among the settings anyway because it
+  // owns one real switch — whether to ask GitHub at all — and because a sixth
+  // item in the top nav would crowd out the five people use daily.
+  {
+    id: "updates",
+    href: "/admin/settings/updates",
+    label: "admin.settings.nav.updates",
   },
 ] as const;
 

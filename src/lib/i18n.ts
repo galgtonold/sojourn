@@ -305,6 +305,59 @@ const en = {
   "admin.settings.nav.writing": "Writing",
   "admin.settings.nav.ai": "AI",
   "admin.settings.nav.privacy": "Privacy",
+  "admin.settings.nav.updates": "Updates",
+  "admin.updates.intro":
+    "What you're running, whether there's a newer release, and how to get it on this host. Sojourn doesn't update itself — its database schema does.",
+  "admin.updates.versionHeading": "Version",
+  "admin.updates.running": "This install",
+  "admin.updates.latest": "Latest release",
+  "admin.updates.upToDate": "Up to date",
+  "admin.updates.newer": "Update available",
+  "admin.updates.unreachable": "Couldn't check",
+  "admin.updates.unreachableHint":
+    "GitHub didn't answer. That's expected if this server has no outbound internet access, or if the request was rate-limited — nothing is wrong with your install.",
+  "admin.updates.checkDisabled": "Checks off",
+  "admin.updates.releaseNotes": "Read the release notes",
+  "admin.updates.howHeading": "How to update",
+  "admin.updates.hostVercel": "Vercel",
+  "admin.updates.hostDocker": "Docker",
+  "admin.updates.hostNode": "Node",
+  "admin.updates.recipeVercel":
+    "Open your fork on GitHub and press Sync fork. Vercel builds and deploys the result on its own — there's nothing to run here.",
+  "admin.updates.recipeVercelNote":
+    "If you deployed from your own copy rather than a fork, pull from upstream and push to your main branch instead.",
+  "admin.updates.recipeDocker": "From the directory holding your docker-compose.yml:",
+  "admin.updates.recipeNode": "From your checkout:",
+  "admin.updates.recipeNodeNote":
+    "Then restart however you run it — systemd, pm2, whatever supervises the process. The build wants roughly a gigabyte of free memory; on a small VPS, build elsewhere and copy the result across.",
+  "admin.updates.migrationsNote":
+    "Database migrations apply themselves as part of that. There is nothing separate to run.",
+  "admin.updates.schemaHeading": "Database schema",
+  "admin.updates.schemaState": "Status",
+  "admin.updates.schemaCurrent": "Up to date",
+  "admin.updates.schemaBehind": "Applies on next deploy",
+  "admin.updates.schemaBehindHint":
+    "This build carries migrations the database hasn't run yet. They apply automatically the next time the site builds or the container starts. If this is still here afterwards, the runner couldn't reach the database — check that a connection string is set.",
+  "admin.updates.schemaUnseeded": "Needs seeding",
+  "admin.updates.schemaUnseededHint":
+    "This database has Sojourn's schema, but nothing recorded which migrations produced it — so there is no safe way to tell what it still needs. Rather than guess and risk replaying migrations over live data, Sojourn stops. See docs/adr/0002-updates-and-schema-migrations.md for how to set the mark once, by hand.",
+  "admin.updates.schemaAhead": "Ahead of this build",
+  "admin.updates.schemaAheadHint":
+    "The database was migrated by a newer Sojourn than the one running, which usually means the code was rolled back. Deploy that version or newer — the database itself is fine.",
+  "admin.updates.schemaNeverRun": "Never run",
+  "admin.updates.schemaNeverRunHint":
+    "No migration has ever been recorded here, so Sojourn has never reached this database with permission to change it. Set DATABASE_URL to the direct connection (port 5432) and deploy again.",
+  "admin.updates.schemaUnknownState": "Unknown",
+  "admin.updates.schemaNoKeyHint":
+    "Without SUPABASE_SERVICE_ROLE_KEY this page cannot read the migration mark. The site works without it; only this status is missing.",
+  "admin.updates.schemaErrorHint":
+    "The migration mark could not be read. The site may well be fine — but check your server logs.",
+  "admin.updates.checkHeading": "Check for updates",
+  "admin.updates.checkIntro":
+    "Ask GitHub whether a newer Sojourn has been released. Nothing about you or your readers is sent — it is an unauthenticated request for a public release tag, made only while this page is open, and remembered for six hours.",
+  "admin.updates.checkOn": "On",
+  "admin.updates.checkOff": "Off",
+  "admin.updates.checkError": "Couldn't save that. Try again.",
   "admin.settings.privacyIntro":
     "What this site does and doesn't send anywhere. Nothing is on unless you turn it on.",
   "admin.settings.errorsHeading": "Error reporting",
@@ -1063,6 +1116,59 @@ const de: Dict = {
   "admin.settings.nav.writing": "Schreiben",
   "admin.settings.nav.ai": "KI",
   "admin.settings.nav.privacy": "Datenschutz",
+  "admin.settings.nav.updates": "Updates",
+  "admin.updates.intro":
+    "Was hier läuft, ob es eine neuere Version gibt und wie du sie auf diesem Host bekommst. Sojourn aktualisiert sich nicht selbst — sein Datenbankschema schon.",
+  "admin.updates.versionHeading": "Version",
+  "admin.updates.running": "Diese Installation",
+  "admin.updates.latest": "Neueste Veröffentlichung",
+  "admin.updates.upToDate": "Aktuell",
+  "admin.updates.newer": "Update verfügbar",
+  "admin.updates.unreachable": "Nicht erreichbar",
+  "admin.updates.unreachableHint":
+    "GitHub hat nicht geantwortet. Das ist zu erwarten, wenn dieser Server keine Verbindung nach außen hat oder die Anfrage gedrosselt wurde — mit deiner Installation ist nichts verkehrt.",
+  "admin.updates.checkDisabled": "Prüfung aus",
+  "admin.updates.releaseNotes": "Release-Notes lesen",
+  "admin.updates.howHeading": "Wie du aktualisierst",
+  "admin.updates.hostVercel": "Vercel",
+  "admin.updates.hostDocker": "Docker",
+  "admin.updates.hostNode": "Node",
+  "admin.updates.recipeVercel":
+    "Öffne deinen Fork auf GitHub und klicke auf „Sync fork“. Vercel baut und veröffentlicht das Ergebnis von allein — hier ist nichts auszuführen.",
+  "admin.updates.recipeVercelNote":
+    "Wenn du nicht von einem Fork deployst, sondern von einer eigenen Kopie: hole die Änderungen von upstream und pushe sie auf deinen main-Branch.",
+  "admin.updates.recipeDocker": "Im Verzeichnis mit deiner docker-compose.yml:",
+  "admin.updates.recipeNode": "In deinem Checkout:",
+  "admin.updates.recipeNodeNote":
+    "Danach den Prozess neu starten — je nachdem, womit du ihn betreibst: systemd, pm2 oder was ihn sonst überwacht. Der Build braucht rund ein Gigabyte freien Speicher; auf einem kleinen VPS baust du besser woanders und kopierst das Ergebnis herüber.",
+  "admin.updates.migrationsNote":
+    "Datenbank-Migrationen laufen dabei von selbst mit. Es ist nichts zusätzlich auszuführen.",
+  "admin.updates.schemaHeading": "Datenbankschema",
+  "admin.updates.schemaState": "Status",
+  "admin.updates.schemaCurrent": "Aktuell",
+  "admin.updates.schemaBehind": "Läuft beim nächsten Deploy",
+  "admin.updates.schemaBehindHint":
+    "Dieser Build bringt Migrationen mit, die die Datenbank noch nicht ausgeführt hat. Sie laufen automatisch beim nächsten Build oder Containerstart. Steht das danach immer noch hier, wurde die Datenbank nicht erreicht — prüfe, ob eine Verbindungszeichenfolge gesetzt ist.",
+  "admin.updates.schemaUnseeded": "Muss initialisiert werden",
+  "admin.updates.schemaUnseededHint":
+    "Diese Datenbank hat Sojourns Schema, aber nirgends ist festgehalten, welche Migrationen es erzeugt haben — es lässt sich also nicht sicher sagen, was noch fehlt. Statt zu raten und Migrationen womöglich über Live-Daten zu wiederholen, hält Sojourn an. In docs/adr/0002-updates-and-schema-migrations.md steht, wie du die Marke einmalig von Hand setzt.",
+  "admin.updates.schemaAhead": "Neuer als dieser Build",
+  "admin.updates.schemaAheadHint":
+    "Die Datenbank wurde von einer neueren Sojourn-Version migriert als der laufenden — meist heißt das, der Code wurde zurückgerollt. Veröffentliche diese Version oder eine neuere; die Datenbank selbst ist in Ordnung.",
+  "admin.updates.schemaNeverRun": "Nie ausgeführt",
+  "admin.updates.schemaNeverRunHint":
+    "Hier wurde noch nie eine Migration verzeichnet — Sojourn konnte diese Datenbank also nie mit Änderungsrechten erreichen. Setze DATABASE_URL auf die direkte Verbindung (Port 5432) und deploye erneut.",
+  "admin.updates.schemaUnknownState": "Unbekannt",
+  "admin.updates.schemaNoKeyHint":
+    "Ohne SUPABASE_SERVICE_ROLE_KEY kann diese Seite die Migrationsmarke nicht lesen. Die Website funktioniert auch ohne; es fehlt nur diese Statusanzeige.",
+  "admin.updates.schemaErrorHint":
+    "Die Migrationsmarke konnte nicht gelesen werden. Womöglich ist alles in Ordnung — sieh trotzdem in die Server-Logs.",
+  "admin.updates.checkHeading": "Nach Updates suchen",
+  "admin.updates.checkIntro":
+    "Bei GitHub nachfragen, ob eine neuere Sojourn-Version veröffentlicht wurde. Über dich oder deine Leser wird nichts gesendet — es ist eine unauthentifizierte Anfrage nach einem öffentlichen Release-Tag, nur während diese Seite offen ist, und sechs Stunden gemerkt.",
+  "admin.updates.checkOn": "An",
+  "admin.updates.checkOff": "Aus",
+  "admin.updates.checkError": "Konnte nicht gespeichert werden. Versuch es noch einmal.",
   "admin.settings.privacyIntro":
     "Was diese Seite nach außen sendet — und was nicht. Nichts ist aktiv, solange du es nicht einschaltest.",
   "admin.settings.errorsHeading": "Fehlerberichte",

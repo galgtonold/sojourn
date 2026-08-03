@@ -23,12 +23,14 @@ const schema = z.object({
   // Constrained to the providers the UI offers, so a malformed request can't
   // park an unknown string in the column for the layout to puzzle over.
   analytics_provider: z.enum(ANALYTICS_PROVIDERS).optional(),
+  // Whether the Updates page may ask GitHub for the latest release.
+  update_check: z.boolean().optional(),
 });
 
 // Owner-only: persist the blog-wide writing-style guide + branding. RLS has no
 // client write policy, so the update goes through the service role.
 export const PUT = ownerRoute(schema, async ({ admin, input }) => {
-  const update: Record<string, string> = {};
+  const update: Record<string, string | boolean> = {};
   if (input.writing_style !== undefined) update.writing_style = input.writing_style;
   for (const k of BRANDING_COLUMNS) {
     if (input[k] !== undefined) update[k] = input[k]!.trim();
@@ -36,6 +38,9 @@ export const PUT = ownerRoute(schema, async ({ admin, input }) => {
   if (input.analytics_provider !== undefined) {
     update.analytics_provider = input.analytics_provider;
   }
+  // Read only by /admin/settings/updates, which is force-dynamic — so unlike
+  // branding and analytics this one needs no cache invalidation below.
+  if (input.update_check !== undefined) update.update_check = input.update_check;
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   // Both are read by the root layout through the same cache tag, so both need

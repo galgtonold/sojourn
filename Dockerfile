@@ -53,6 +53,10 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# So the admin's Updates page can name the right update gesture for this host
+# without sniffing for /.dockerenv — which Podman omits and plenty of unrelated
+# images carry. Nothing reads it but @/lib/update-hosts.
+ENV SOJOURN_RUNTIME=docker
 
 # Migrate, then serve — and only then. A container that could not bring the
 # schema up to the code it is about to run has no business answering requests;

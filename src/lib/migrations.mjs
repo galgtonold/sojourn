@@ -78,6 +78,7 @@ export const MIGRATIONS = [
   "0039_setup_window.sql",
   "0040_missing_ai_columns.sql",
   "0041_analytics_setting.sql",
+  "0042_update_check.sql",
 ];
 
 /**
