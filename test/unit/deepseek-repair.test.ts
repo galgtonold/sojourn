@@ -56,66 +56,41 @@ describe("runJsonWithRepair", () => {
     expect(onFail).not.toHaveBeenCalled();
   });
 
-  it("runs one repair pass after the retries and returns the repaired JSON", async () => {
+  it("runs one repair pass and returns the repaired JSON", async () => {
     const onFail = vi.fn();
-    const { complete, calls } = scripted([
-      ok("nope"),
-      ok("nope"),
-      ok("nope"),
-      ok('{"a":1}'),
-    ]);
+    const { complete, calls } = scripted([ok("nope"), ok('{"a":1}')]);
     const out = await run({ complete, onFail });
     expect(out).toBe('{"a":1}');
-    expect(calls.length).toBe(4); // 3 attempts + 1 repair
-    expect(calls[3].overrides.repair).toBe(true);
+    expect(calls.length).toBe(2); // 1 attempt + 1 repair, no blind re-roll
+    expect(calls[1].overrides.repair).toBe(true);
     expect(onFail).not.toHaveBeenCalled();
   });
 
   it("records a 'malformed' failure and returns raw when repair also fails", async () => {
     const onFail = vi.fn();
-    const { complete } = scripted([
-      ok("bad1"),
-      ok("bad2"),
-      ok("bad3"),
-      ok("still bad"),
-    ]);
+    const { complete } = scripted([ok("bad1"), ok("still bad")]);
     const out = await run({ complete, onFail });
     expect(out).toBe("still bad");
     expect(onFail).toHaveBeenCalledTimes(1);
     expect(onFail.mock.calls[0][0].error).toMatch(/unparseable/);
   });
 
-  it("doubles the cap after a 'length' finish, so the retry is a real second chance", async () => {
-    const { complete, calls } = scripted([
-      ok("trunc", "length"),
-      ok("trunc", "length"),
-      ok('{"a":1}'),
-    ]);
-    const out = await run({ complete, maxTokens: 8000 });
-    expect(out).toBe('{"a":1}');
-    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 16000, 32000]);
-  });
-
-  it("does NOT raise the cap for output that merely failed to parse", async () => {
-    const { complete, calls } = scripted([ok("nope"), ok("nope"), ok('{"a":1}')]);
+  it("holds the cap steady across the attempt and the repair", async () => {
+    const { complete, calls } = scripted([ok("nope"), ok('{"a":1}')]);
     await run({ complete, maxTokens: 8000 });
-    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 8000, 8000]);
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 8000]);
   });
 
   it("records a 'truncated at the cap' failure naming the cap it gave up at", async () => {
     const onFail = vi.fn();
     const { complete, calls } = scripted([
       ok("bad", "length"),
-      ok("bad", "length"),
-      ok("bad", "length"),
       ok("still bad", "length"),
     ]);
     await run({ complete, onFail, maxTokens: 8000 });
-    // 8000 → 16000 → 32000, then held at the ceiling for the repair pass.
-    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([
-      8000, 16000, 32000, 32000,
-    ]);
-    expect(onFail.mock.calls[0][0].error).toMatch(/truncated at the 32000-token cap/);
+    // One attempt at the caller's cap, then the repair pass at the same cap.
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000, 8000]);
+    expect(onFail.mock.calls[0][0].error).toMatch(/truncated at the 8000-token cap/);
   });
 
   it("retries a 5xx transport error, then succeeds", async () => {
@@ -143,73 +118,81 @@ describe("runJsonWithRepair", () => {
 
   it("skips the repair pass entirely when every attempt is empty", async () => {
     const onFail = vi.fn();
-    const { complete, calls } = scripted([ok(""), ok(""), ok("")]);
+    const { complete, calls } = scripted([ok("")]);
     const out = await run({ complete, onFail });
     expect(out).toBe("");
-    expect(calls.length).toBe(3); // no repair call — nothing to repair
+    expect(calls.length).toBe(1); // no repair call — nothing to repair
     expect(onFail).toHaveBeenCalledTimes(1);
   });
 
   // The reasoning-cap failure in full: the model spends the whole budget on
-  // reasoning_content and returns EMPTY content, so there is no text for the
-  // repair pass to work on. Buying room on the retry is the only way out.
-  it("buys room for an empty, cap-truncated answer instead of re-rolling it", async () => {
+  // reasoning_content and returns EMPTY content, so there is nothing for the
+  // repair pass to work on either.
+  //
+  // This used to assert that buying room on the retry was "the only way out".
+  // It is not, and measuring settled it: against a real article the same call
+  // burned 8000 reasoning tokens at an 8000 cap and 32000 at a 32000 cap, the
+  // thinking circling back over sentences it had already cleared. No cap
+  // finishes. The way out is not to ask the model to think (ChatOpts.noThinking)
+  // — so the loop's job here is simply to stop and say so, cheaply.
+  it("gives up immediately on an empty, cap-truncated answer", async () => {
     const onFail = vi.fn();
-    const { complete, calls } = scripted([
-      ok("", "length"),
-      ok("", "length"),
-      ok('{"questions":[]}'),
-    ]);
+    const { complete, calls } = scripted([ok("", "length")]);
     const out = await run({ complete, onFail, maxTokens: 1200 });
-    expect(out).toBe('{"questions":[]}');
-    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([1200, 2400, 4800]);
-    expect(onFail).not.toHaveBeenCalled();
+    expect(out).toBe("");
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([1200]);
+    expect(onFail).toHaveBeenCalledTimes(1);
   });
 });
 
-// A cap that the caller has already sized generously should not be escalated.
+// The cap never moves any more, for anybody.
 //
-// The proofreader is the case this exists for. Its failure mode is not "the
-// answer was slightly too long" — it is the model spending the whole budget on
-// reasoning_content and never starting the answer, which returns EMPTY content
-// with finish_reason "length". Doubling then buys the identical outcome at
-// 16000 and 32000 tokens while the author watches a spinner, which is how one
-// failed proofread came to take minutes.
-describe("runJsonWithRepair with escalateCap: false", () => {
-  it("makes exactly one call when the cap truncates to empty", async () => {
+// It used to double on every `length` finish, up to 32000. The proofreader made
+// the cost visible: 8000 reasoning tokens, then 16000, then a failure — three
+// generations to reach the same place, with the author waiting through all of
+// them. A retry is now only ever for a transient server error.
+describe("runJsonWithRepair never escalates the cap", () => {
+  it("asks for exactly the cap it was given, once, when truncated", async () => {
     const { complete, calls } = scripted([ok("", "length")]);
-    await run({ complete, escalateCap: false, maxTokens: 8000 });
-    expect(calls.length).toBe(1);
-    // Empty content also means there is nothing for the repair pass to repair.
-    expect(calls.every((c) => !c.overrides.repair)).toBe(true);
-  });
-
-  it("never raises the cap it was given", async () => {
-    const { complete, calls } = scripted([ok("", "length")]);
-    await run({ complete, escalateCap: false, maxTokens: 8000 });
+    await run({ complete, maxTokens: 8000 });
     expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000]);
   });
 
-  it("reports the truncation rather than silently returning nothing", async () => {
+  it("does not re-roll a truncated response at all", async () => {
+    // Empty content also leaves the repair pass nothing to work on, so this is
+    // genuinely one round trip rather than three.
+    const { complete, calls } = scripted([ok("", "length")]);
+    await run({ complete, maxTokens: 8000 });
+    expect(calls.length).toBe(1);
+    expect(calls.every((c) => !c.overrides.repair)).toBe(true);
+  });
+
+  it("reports the truncation instead of silently returning nothing", async () => {
     const onFail = vi.fn();
     const { complete } = scripted([ok("", "length")]);
-    await run({ complete, onFail, escalateCap: false, maxTokens: 8000 });
+    await run({ complete, onFail, maxTokens: 8000 });
     expect(onFail).toHaveBeenCalledTimes(1);
     expect(onFail.mock.calls[0][0]).toMatchObject({ finishReason: "length" });
     expect(onFail.mock.calls[0][0].error).toMatch(/8000/);
   });
 
-  it("still retries a malformed — as opposed to truncated — response", async () => {
-    // Not a cap problem, so the opt-out must not disable the ordinary re-roll.
+  it("sends a malformed reply straight to repair rather than re-rolling", async () => {
+    // Temperature is 0 for these calls, so another roll of the same dice
+    // reproduces the same output. Repair is the only thing that can help.
     const { complete, calls } = scripted([ok("not json", "stop"), ok('{"a":1}')]);
-    const out = await run({ complete, escalateCap: false });
+    const out = await run({ complete });
     expect(out).toBe('{"a":1}');
-    expect(calls.length).toBeGreaterThan(1);
+    expect(calls.length).toBe(2);
+    expect(calls[1].overrides.repair).toBe(true);
   });
 
-  it("leaves escalation on by default, for every other caller", async () => {
-    const { complete, calls } = scripted([ok("", "length")]);
-    await run({ complete, maxTokens: 4096 });
-    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([4096, 8192, 16384]);
+  it("still retries a transient server error", async () => {
+    // The one case a retry is for.
+    const boom = Object.assign(new Error("upstream"), { status: 503 });
+    const { complete, calls } = scripted([boom, ok('{"a":1}')]);
+    const out = await run({ complete });
+    expect(out).toBe('{"a":1}');
+    expect(calls.length).toBe(2);
+    expect(calls.every((c) => !c.overrides.repair)).toBe(true);
   });
 });

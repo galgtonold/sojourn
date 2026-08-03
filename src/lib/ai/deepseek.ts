@@ -41,13 +41,20 @@ type ChatOpts = {
   json?: boolean;
   meta?: UsageMeta;
   /**
-   * Whether a `length` finish may double the cap and try again. Default true.
+   * Turn the model's chain-of-thought off for this call.
    *
-   * Set false when `maxTokens` is already generous for the work: escalation
-   * then cannot help, and each extra round costs a full generation of the same
-   * truncation — which the caller waits through. See the proofread route.
+   * `reasoning_content` is billed inside `completion_tokens` and arrives BEFORE
+   * the first byte of the answer, so a model that will not stop thinking never
+   * produces one. Measured on the proofreader against a real 4,600-character
+   * article: 8000-token cap → 8000 reasoning tokens, 0 content; 32000 → 32000
+   * reasoning tokens, 0 content, with the thinking visibly repeating itself.
+   * With thinking off the same article answered in 5.7s and found MORE real
+   * errors than the reasoning run did.
+   *
+   * Use it for tasks that are recognition rather than deliberation. Leave it on
+   * for drafting.
    */
-  escalateCap?: boolean;
+  noThinking?: boolean;
 };
 
 // One round-trip to the model. Returns the text plus `finishReason` ("stop" |
@@ -72,6 +79,7 @@ async function singleCompletion(
       temperature: opts.temperature ?? 0.7,
       max_tokens: opts.maxTokens ?? 4096,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+      ...(opts.noThinking ? { thinking: { type: "disabled" } } : {}),
     }),
   });
 
@@ -126,32 +134,33 @@ async function singleCompletion(
 
 export type Completion = { content: string; finishReason: string | null };
 
-// Ceiling for the cap escalation below. Matches the section route's cap — the
-// largest this app ever asks a model for.
-const CAP_CEILING = 32000;
-
 const REPAIR_SYSTEM =
   "You repair malformed JSON. Output ONLY one valid, complete, minified JSON " +
   "object — no prose, no markdown, no code fences.";
 
 /**
- * The JSON retry + repair decision loop — transport-injected so the retry-vs-
- * repair-vs-give-up decisions (and *which* failure to record) are testable
- * without a network. Runs up to `attempts` completions, retrying ONLY a 5xx with
- * attempts remaining (a client error is recorded via `onFail` then rethrown);
- * returns as soon as an output parses. If none do, it runs ONE targeted repair
- * pass (temperature 0, a repair prompt) and, failing that, records the reason
- * (`length` → truncated at the cap; otherwise malformed) and returns the raw
- * text for the caller's parse to throw on. `complete`'s `overrides.repair` marks
- * the repair round so the caller can meter it separately.
+ * The JSON retry + repair decision loop — transport-injected so the
+ * retry-vs-repair-vs-give-up decisions (and *which* failure to record) are
+ * testable without a network.
  *
- * A `length` finish gets the cap DOUBLED for the next attempt (bounded by
- * CAP_CEILING) rather than a blind re-roll: that output wasn't unlucky, it was
- * cut off by the cap, so the same budget buys the same truncation at full price.
- * It also can't be repaired — reasoning_content is billed against the cap and
- * comes first, so a cap-truncated round often returns EMPTY content, leaving the
- * repair pass nothing to work on (which is how the questions route failed three
- * identical times, then gave up without ever attempting repair).
+ * A RETRY IS ONLY EVER FOR A TRANSIENT SERVER ERROR. A 5xx with attempts
+ * remaining is retried; a client error is recorded via `onFail` and rethrown;
+ * anything that came back but did not parse goes straight to the repair pass.
+ *
+ * There used to be a third case: a `length` finish doubled the cap and tried
+ * again, up to a 32000 ceiling. The intent was sound — that output was cut off,
+ * not unlucky — but in practice it turned one failure into three, each slower
+ * than the last and all ending identically, while the author waited. The
+ * proofreader made the cost plain: 8000 tokens of reasoning, then 16000, then
+ * nothing to show for either. Callers now choose a cap that fits the work up
+ * front, and a truncated call is reported rather than re-bought.
+ *
+ * Failing everything, it runs ONE targeted repair pass (temperature 0, a repair
+ * prompt), then records the reason (`length` → truncated at the cap; otherwise
+ * malformed) and returns the raw text for the caller's parse to throw on. A
+ * cap-truncated round often returns EMPTY content — reasoning is billed first
+ * and arrives first — which leaves repair nothing to work on, so it is skipped.
+ * `complete`'s `overrides.repair` marks the repair round for separate metering.
  */
 export async function runJsonWithRepair(opts: {
   messages: ChatMessage[];
@@ -163,22 +172,15 @@ export async function runJsonWithRepair(opts: {
     overrides: { temperature?: number; maxTokens?: number; repair?: boolean },
   ) => Promise<Completion>;
   onFail: (f: { error: string; finishReason?: string | null }) => Promise<void>;
-  /** Default true — see ChatOpts.escalateCap. */
-  escalateCap?: boolean;
 }): Promise<string> {
-  const {
-    messages,
-    attempts,
-    maxTokens,
-    isParseable,
-    complete,
-    onFail,
-    escalateCap = true,
-  } = opts;
+  const { messages, attempts, maxTokens, isParseable, complete, onFail } = opts;
   let last = "";
   let lastFinish: string | null = null;
-  // The cap actually in force — raised, never lowered, as truncation shows up.
-  let cap = maxTokens;
+  // Fixed for the life of the call. It used to double on every `length` finish,
+  // up to a 32000 ceiling — which turned one failure into three, each slower than
+  // the last, all ending the same way. Callers now pick a cap generous enough
+  // for the work up front.
+  const cap = maxTokens;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
@@ -195,17 +197,11 @@ export async function runJsonWithRepair(opts: {
       throw e;
     }
     if (isParseable(last)) return last;
-    if (lastFinish === "length") {
-      // Cut off by the cap, not by bad luck — buy room before trying again.
-      //
-      // Unless the caller says the cap is already as big as the work needs. Then
-      // escalation is not a fix, it is the same truncation bought twice more at
-      // double and quadruple the price, with the author waiting through all of
-      // it. Stop and report instead.
-      if (!escalateCap) break;
-      cap = Math.min(cap * 2, CAP_CEILING);
-    }
-    // Otherwise loop and try again for a clean JSON object.
+    // Neither truncation nor malformed JSON is worth another roll of the same
+    // dice: temperature is already 0 for these calls, so a re-run reproduces
+    // the same output at full price. Only a transient server error earns a
+    // retry, and that is handled in the catch above. Go straight to repair.
+    break;
   }
 
   // Still not valid JSON after the retries. Run one targeted repair pass: hand
@@ -307,7 +303,6 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
     isParseable: isParseableJson,
     complete,
     onFail,
-    escalateCap: opts.escalateCap,
   });
 }
 

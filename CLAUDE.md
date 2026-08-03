@@ -31,17 +31,26 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   `.paint-group` (globals.css, `opacity: .999`) *inside* the clipped element — opacity
   < 1 forces group rendering, so the stack flattens once and the clip rasterizes once.
   Hover-zoom transforms and the blur placeholder are fine with the group in place.
-- **`maxTokens` is a stop, never a squeeze — reasoning is billed against it.** Both
-  DeepSeek models (the "fast" one too) emit `reasoning_content` *before* the first
-  byte of the answer, and it counts against `max_tokens`. A cap sized to the answer
-  is therefore spent entirely on thinking: `finish_reason: "length"`,
-  `reasoning_tokens == max_tokens`, and `message.content` comes back **empty** — a
-  JSON caller then throws "Could not parse model JSON output" and a text caller gets
-  "". A prompt that asks the model to plan first ("sketch what the post would cover")
-  costs ~1000 reasoning tokens on its own, so tightening or *not raising* a cap when
-  a prompt grows is how this bites. Size caps for the thinking with room to spare
-  (8000+), not for the answer. Symptoms are in `ai_usage`: `finish_reason = 'length'`
-  with `completion_tokens` exactly at the cap.
+- **A reasoning model that will not stop reasoning cannot be fixed with a bigger
+  cap — turn the thinking off.** `reasoning_content` is billed against
+  `max_tokens` and arrives *before* the first byte of the answer, so a model that
+  over-deliberates spends the whole budget thinking and returns `finish_reason:
+  "length"` with **empty** `message.content`. A JSON caller then throws "Could
+  not parse model JSON output". Measured on the proofreader against a real
+  4,600-character German article: an 8000 cap produced 8000 reasoning tokens and
+  no answer; 32000 produced 32000 and no answer, the thinking visibly circling
+  back over sentences it had already cleared. Sending `thinking: {type:
+  "disabled"}` returned the same article in ~6s — and caught 5/5 planted errors
+  where the reasoning run caught 4/5. Use `ChatOpts.noThinking` for recognition
+  tasks (proofreading, classification); leave thinking on for drafting.
+  Diagnose from `ai_usage`: `reasoning_tokens ≈ completion_tokens` with an empty
+  `response_preview` is this failure exactly.
+- **There is no cap escalation any more, deliberately.** The JSON loop used to
+  double `max_tokens` on every `length` finish up to 32000. It turned one
+  failure into three, each slower than the last, all ending identically, with
+  the author waiting through all of them. A retry is now only ever for a
+  transient 5xx; anything that came back but did not parse goes straight to the
+  single repair pass. Pick a cap that fits the work up front.
 - **Raising a cap means raising the route's clock too.** They are one decision. An
   8000-token call on a reasoning model does not fit in Vercel's 60s, and a killed
   function records **nothing** — `recordUsage`/`recordAiFailure` run *after* the
