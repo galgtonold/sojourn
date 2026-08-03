@@ -6,7 +6,11 @@ import {
   type ChatMessage,
 } from "@/lib/ai/deepseek";
 import { maskProtectedTokens } from "@/lib/ai/token-mask";
-import { validateFindings } from "@/lib/ai/proofread";
+import {
+  validateFindings,
+  CAPTION_PREFIX,
+  type ProofUnit,
+} from "@/lib/ai/proofread";
 
 // A single bounded JSON call; keep headroom for a long post.
 export const maxDuration = 180;
@@ -45,14 +49,42 @@ function systemPrompt(lang: "de" | "en"): string {
   return shared + (lang === "de" ? de : en);
 }
 
-async function proofread({ user, input }: AdminCtx<z.infer<typeof schema>>) {
+async function proofread({
+  supabase,
+  user,
+  input,
+}: AdminCtx<z.infer<typeof schema>>) {
   const { postId, title, excerpt, body, lang } = input;
   const { masked } = maskProtectedTokens(body);
-  const fields = { title, excerpt, body: masked };
+
+  // Captions are read here rather than sent by the client: the editor's copy can
+  // be stale, and the server already has a session that RLS lets read the photos
+  // of a post this user may edit.
+  const { data: photos } = await supabase
+    .from("photos")
+    .select("id, caption, sort_order")
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+
+  const units: ProofUnit[] = [
+    { key: "title", text: title },
+    { key: "excerpt", text: excerpt },
+    { key: "body", text: masked },
+    ...((photos ?? []) as { id: string; caption: string | null }[])
+      .map((p, i) => ({
+        key: `${CAPTION_PREFIX}${p.id}`,
+        text: p.caption ?? "",
+        // Position in the gallery, so the author can find it. Numbering counts
+        // every photo, not just captioned ones — "caption 4" has to mean the
+        // fourth photo or it sends them hunting.
+        ordinal: i + 1,
+      }))
+      .filter((u) => u.text.trim() !== ""),
+  ].filter((u) => u.text.trim() !== "");
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(lang) },
-    { role: "user", content: JSON.stringify(fields) },
+    { role: "user", content: JSON.stringify({ units }) },
   ];
 
   const raw = await deepseekChat({
@@ -84,5 +116,11 @@ async function proofread({ user, input }: AdminCtx<z.infer<typeof schema>>) {
   } catch {
     parsed = { findings: [] };
   }
-  return { findings: validateFindings(parsed, fields) };
+  // The caption units travel back too. The dialog already holds title/excerpt/
+  // body, but it has never seen a caption — and it needs the full text, not just
+  // the matched fragment, to compose several fixes into one new value.
+  const captions = units
+    .filter((u) => u.key.startsWith(CAPTION_PREFIX))
+    .map((u) => ({ key: u.key, text: u.text, ordinal: u.ordinal }));
+  return { findings: validateFindings(parsed, units), captions };
 }

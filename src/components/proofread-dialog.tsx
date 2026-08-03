@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useT } from "@/components/i18n";
-import { applyFinding, type Finding, type ProofField } from "@/lib/ai/proofread";
+import {
+  applyFinding,
+  captionPhotoId,
+  type Finding,
+} from "@/lib/ai/proofread";
 
 // Signature of the user-written content, used by the publish nudge to tell
 // whether the current text has been proofread.
@@ -35,7 +39,7 @@ export function ProofreadDialog({
   title: string;
   excerpt: string;
   body: string;
-  onApply: (field: ProofField, value: string) => void;
+  onApply: (key: string, value: string) => void;
   onRan?: (content: { title: string; excerpt: string; body: string }) => void;
 }) {
   const t = useT();
@@ -48,8 +52,14 @@ export function ProofreadDialog({
   // queue, so it always points at something still to review.
   const [cursor, setCursor] = useState(0);
   // Working copy so sequential applies compose correctly and the parent can't
-  // change underneath a modal. Seeded on open.
-  const [draft, setDraft] = useState({ title, excerpt, body });
+  // change underneath a modal. Keyed by unit key — the post fields are seeded on
+  // open, captions arrive with the response because the dialog has never seen
+  // them and needs the whole text, not the matched fragment, to compose fixes.
+  const [draft, setDraft] = useState<Record<string, string>>({
+    title,
+    excerpt,
+    body,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -68,8 +78,20 @@ export function ProofreadDialog({
           body: JSON.stringify({ postId, title, excerpt, body, lang }),
         });
         if (!res.ok) throw new Error("proofread failed");
-        const j = (await res.json()) as { findings: Finding[] };
+        const j = (await res.json()) as {
+          findings: Finding[];
+          captions?: { key: string; text: string }[];
+        };
         if (cancelled) return;
+        // Seed the draft with the caption texts the server read. Without this,
+        // `draft[key]` is empty for a caption and applyFinding cannot locate the
+        // substring, so every caption fix would quietly mark itself "stale" —
+        // findings visible, nothing applicable.
+        setDraft((d) => {
+          const next = { ...d };
+          for (const c of j.captions ?? []) next[c.key] = c.text;
+          return next;
+        });
         setFindings(j.findings ?? []);
         setRan(true);
       } catch {
@@ -88,7 +110,18 @@ export function ProofreadDialog({
   if (!open) return null;
 
   function close() {
-    if (ran) onRan?.(draft);
+    if (ran) {
+      // Only the post fields feed the "already proofread" signature. Captions
+      // deliberately do not: the workspace cannot recompute a signature over
+      // text it does not hold, and a signature it cannot reproduce would mark
+      // every post permanently stale. Editing a caption therefore does not
+      // re-arm the pre-publish nudge — a known gap, not an oversight.
+      onRan?.({
+        title: draft.title ?? "",
+        excerpt: draft.excerpt ?? "",
+        body: draft.body ?? "",
+      });
+    }
     setRan(false);
     onClose();
   }
@@ -97,13 +130,13 @@ export function ProofreadDialog({
   // queue and the cursor naturally lands on the next unresolved one (no need to
   // advance — the shrinking list does it). The cursor is clamped at render.
   function apply(f: Finding) {
-    const cur = draft[f.field];
+    const cur = draft[f.key] ?? "";
     const next = applyFinding(cur, f.original, f.suggestion);
     if (next == null) {
       setStatus((s) => ({ ...s, [f.id]: "stale" }));
     } else {
-      setDraft((d) => ({ ...d, [f.field]: next }));
-      onApply(f.field, next);
+      setDraft((d) => ({ ...d, [f.key]: next }));
+      onApply(f.key, next);
       setStatus((s) => ({ ...s, [f.id]: "applied" }));
     }
   }
@@ -117,16 +150,17 @@ export function ProofreadDialog({
     const st: Record<string, Status> = { ...status };
     for (const f of findings) {
       if (st[f.id] === "applied" || st[f.id] === "skipped") continue;
-      const r = applyFinding(next[f.field], f.original, f.suggestion);
+      const r = applyFinding(next[f.key] ?? "", f.original, f.suggestion);
       if (r == null) st[f.id] = "stale";
       else {
-        next[f.field] = r;
+        next[f.key] = r;
         st[f.id] = "applied";
       }
     }
     setDraft(next);
-    (["title", "excerpt", "body"] as ProofField[]).forEach((field) => {
-      if (next[field] !== draft[field]) onApply(field, next[field]);
+    // Every unit that actually moved, post field or caption alike.
+    Object.keys(next).forEach((key) => {
+      if (next[key] !== draft[key]) onApply(key, next[key]);
     });
     setStatus(st);
   }
@@ -192,7 +226,9 @@ export function ProofreadDialog({
                 })}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5">
-                {t(`admin.proofread.field.${current.field}` as never)}
+                {captionPhotoId(current.key)
+                  ? `${t("admin.proofread.field.caption")} ${current.ordinal ?? ""}`.trim()
+                  : t(`admin.proofread.field.${current.key}` as never)}
               </span>
               <span className="rounded-full bg-ember-500/15 px-2 py-0.5 text-ember-300">
                 {t(`admin.proofread.type.${current.type}` as never)}

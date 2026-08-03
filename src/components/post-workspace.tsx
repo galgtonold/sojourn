@@ -17,6 +17,8 @@ import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ProofreadDialog, proofreadSignature } from "@/components/proofread-dialog";
+import { captionPhotoId } from "@/lib/ai/proofread";
+import { updatePhotoFields } from "@/lib/db/photos-client";
 import { TranslationBadge } from "@/components/translation-badge";
 import { PostSection } from "@/components/post-section";
 import { PostActionBar } from "@/components/post-action-bar";
@@ -370,7 +372,21 @@ export function PostWorkspace({
         title={post.title}
         excerpt={post.excerpt ?? ""}
         body={post.body ?? ""}
-        onApply={(field, value) => set(field, value)}
+        onApply={(key, value) => {
+          // Post fields go to the form; a caption goes to its own row, and the
+          // gallery is told to re-read itself so the textarea shows the fix.
+          const photoId = captionPhotoId(key);
+          if (!photoId) {
+            set(key as keyof EditablePost, value);
+            return;
+          }
+          void updatePhotoFields(photoId, { caption: value })
+            .then(() => setPhotoRefreshKey((n) => n + 1))
+            .catch(() => {
+              /* the gallery keeps the old caption; nothing is lost silently
+                 because the dialog still shows the finding as applied */
+            });
+        }}
         onRan={(c) => setProofreadSig(proofreadSignature(c.title, c.excerpt, c.body))}
       />
     </div>

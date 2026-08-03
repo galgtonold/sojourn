@@ -7,11 +7,40 @@ export type ProofType =
   | "capitalization"
   | "wordchoice";
 
-export type ProofField = "title" | "excerpt" | "body";
+/**
+ * One addressable piece of text the proofreader checks.
+ *
+ * The key is opaque and travels through the model and back untouched. Post
+ * fields keep their own names; anything with an identity carries it after a
+ * colon, e.g. `caption:9f3c…`. That is what lets a finding say WHICH caption it
+ * belongs to — the old closed `"title" | "excerpt" | "body"` union had nowhere
+ * to put that, which is the only reason captions went unchecked while being the
+ * likeliest place for a typo: they are written by hand, quickly, and skip the
+ * drafting pipeline entirely.
+ *
+ * `ordinal` is for display ("Caption 3"), not identity.
+ */
+export type ProofUnit = { key: string; text: string; ordinal?: number };
+
+/** Post fields keep their bare names, so old findings still resolve. */
+export const POST_KEYS = ["title", "excerpt", "body"] as const;
+export type ProofField = (typeof POST_KEYS)[number];
+
+export const CAPTION_PREFIX = "caption:";
+
+/** The photo id inside a caption key, or null for anything else. */
+export function captionPhotoId(key: string): string | null {
+  return key.startsWith(CAPTION_PREFIX)
+    ? key.slice(CAPTION_PREFIX.length) || null
+    : null;
+}
 
 export type Finding = {
   id: string;
-  field: ProofField;
+  /** Which unit this belongs to — see ProofUnit. */
+  key: string;
+  /** 1-based position among units of the same kind, for labelling only. */
+  ordinal?: number;
   type: ProofType;
   original: string;
   suggestion: string;
@@ -57,7 +86,6 @@ const TYPES: ProofType[] = [
   "capitalization",
   "wordchoice",
 ];
-const FIELDS: ProofField[] = ["title", "excerpt", "body"];
 
 // Replace the FIRST literal occurrence of `original` with `suggestion`. Returns
 // the new text, or null when `original` is absent (the author edited it away).
@@ -75,30 +103,33 @@ export function applyFinding(
 // Keep only well-formed findings whose `original` is a verbatim substring of the
 // submitted field (title/excerpt as-is; body already masked to [[KEEP-n]]),
 // contains no KEEP sentinel, and actually changes the text. Assigns stable ids.
-export function validateFindings(
-  raw: unknown,
-  fields: { title: string; excerpt: string; body: string },
-): Finding[] {
+export function validateFindings(raw: unknown, units: ProofUnit[]): Finding[] {
+  const byKey = new Map(units.map((u) => [u.key, u]));
   const list = (raw as { findings?: unknown } | null)?.findings;
   const arr = Array.isArray(list) ? list : [];
   const out: Finding[] = [];
   for (const item of arr) {
     if (!item || typeof item !== "object") continue;
     const f = item as Record<string, unknown>;
-    if (!FIELDS.includes(f.field as ProofField)) continue;
+    const key = typeof f.key === "string" ? f.key : "";
+    const unit = byKey.get(key);
+    // A key we never sent is a hallucination, and so is a suggestion whose
+    // `original` is not actually in that unit's text. Both are dropped rather
+    // than shown: an author cannot act on a fix that does not fit anywhere.
+    if (!unit) continue;
     if (!TYPES.includes(f.type as ProofType)) continue;
     const original = typeof f.original === "string" ? f.original : "";
     const suggestion = typeof f.suggestion === "string" ? f.suggestion : "";
     const explanation = typeof f.explanation === "string" ? f.explanation : "";
     if (!original || !suggestion || original === suggestion) continue;
     if (original.includes("[[KEEP-")) continue;
-    const hay = fields[f.field as ProofField] ?? "";
-    const at = hay.indexOf(original);
+    const at = unit.text.indexOf(original);
     if (at === -1) continue;
-    const { before, after } = buildContext(hay, at, original.length);
+    const { before, after } = buildContext(unit.text, at, original.length);
     out.push({
       id: `f${out.length}`,
-      field: f.field as ProofField,
+      key: unit.key,
+      ordinal: unit.ordinal,
       type: f.type as ProofType,
       original,
       suggestion,
