@@ -110,14 +110,39 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 ## Going live with Supabase
 
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
-2. **Run the migrations.** Point the CLI at your project and push everything in
-   `supabase/migrations` (there are ~40 files — apply them all, in order):
+2. **Give Sojourn the database URL, and it runs its own migrations.** Copy the
+   **direct** connection string — Supabase dashboard → **Project Settings →
+   Database → Connection string → URI**, port **5432**, not the transaction
+   pooler on 6543 — and set it as `DATABASE_URL`:
+   ```bash
+   DATABASE_URL=postgresql://postgres:PASSWORD@db.YOUR-PROJECT.supabase.co:5432/postgres
+   ```
+   Every build and every container start now applies whatever the database is
+   missing, in order, before the app that needs it starts — an empty project
+   gets all ~40 files; a project that is already current gets nothing. There is
+   no button to press and no step to forget, which is the point: the schema can
+   no longer fall behind the code. See
+   [ADR-0002](docs/adr/0002-updates-and-schema-migrations.md).
+
+   On **Vercel**, the Supabase integration already sets
+   `POSTGRES_URL_NON_POOLING` and the runner finds it by itself — there is
+   nothing to configure.
+
+   To see what would happen without doing it: `npm run migrate:status`.
+
+   <details>
+   <summary>Or apply them with the Supabase CLI instead</summary>
+
    ```bash
    supabase link --project-ref YOUR-PROJECT-REF
    supabase db push
    ```
-   This creates all tables, the full-text search column, row-level security
-   policies, and the `photos` storage bucket.
+
+   > **Pick one and stay with it.** The CLI keeps its own ledger, in its own
+   > naming scheme, in `supabase_migrations.schema_migrations`; Sojourn keeps a
+   > watermark in `public.sojourn_schema`. Neither can read the other. Running
+   > `db push` against a database the runner built will find an empty ledger and
+   > try to apply everything again.
 
    > **`db push` can be noisy and still have worked.** Some CLI versions print a
    > wall of certificate / edge-runtime errors and then say `Finished supabase db
@@ -129,6 +154,8 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
    > ```
    > It should match the number of files in `supabase/migrations`. If it does,
    > you're done — the errors were noise.
+
+   </details>
 3. **Copy your keys** into `.env.local` (copy `.env.example` first):
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
@@ -282,6 +309,7 @@ sojourn/
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key for public-read data. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Bypasses RLS for admin/API routes. Never expose to the browser. |
+| `DATABASE_URL` | **server only** | Direct Postgres connection (port 5432), used *only* to apply schema migrations at build/container start. The app itself never opens one — it goes through PostgREST, which cannot execute DDL. On Vercel, `POSTGRES_URL_NON_POOLING` from the Supabase integration is picked up instead. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | public | VAPID public key for web push subscriptions. |
 | `VAPID_PRIVATE_KEY` | **server only** | VAPID private key for sending push. |
 | `VAPID_SUBJECT` | server | Contact (e.g. `mailto:you@example.com`) for push. |

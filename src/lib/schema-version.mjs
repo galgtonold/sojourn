@@ -1,15 +1,19 @@
+// @ts-check
 // Where a given database sits in the migration order, and what it still owes.
 //
 // See docs/adr/0002-updates-and-schema-migrations.md. The watermark names the
-// last file from @/lib/migrations that this database has applied. Everything
+// last file from ./migrations.mjs that this database has applied. Everything
 // after it in that list is owed.
 //
 // The bookkeeping table is created by the RUNNER, not by a migration. A
 // migration that creates the table the runner reads to decide which migrations
 // to run cannot be applied by that runner — so this DDL sits outside the
 // sequence entirely and is run before anything is decided.
+//
+// Plain ESM rather than TypeScript for the same reason as ./migrations.mjs:
+// scripts/migrate.mjs has to load it on hosts with no toolchain.
 
-import { MIGRATIONS, latestMigration, pendingAfter } from "@/lib/migrations";
+import { MIGRATIONS, latestMigration, pendingAfter } from "./migrations.mjs";
 
 export const WATERMARK_TABLE = "sojourn_schema";
 
@@ -45,17 +49,32 @@ export const EXISTS_SQL = `select to_regclass('public.${WATERMARK_TABLE}') is no
  */
 export const HAS_SCHEMA_SQL = `select to_regclass('public.posts') is not null as present;`;
 
-export type SchemaState =
-  /** Empty database. The whole manifest is owed. */
-  | { kind: "fresh"; pending: string[] }
-  /** Seeded and up to date. */
-  | { kind: "current"; watermark: string; pending: [] }
-  /** Seeded and behind. */
-  | { kind: "behind"; watermark: string; pending: string[] }
-  /** Schema present, watermark absent — an install from before this existed. */
-  | { kind: "unseeded" }
-  /** Watermark names a migration this build does not have. */
-  | { kind: "unknown"; watermark: string };
+/**
+ * Record a file as applied. Runs INSIDE the same transaction as the migration
+ * itself — Postgres has transactional DDL, so "applied but not recorded" and
+ * "recorded but not applied" are both unreachable states rather than things the
+ * runner has to recover from.
+ */
+export const ADVANCE_SQL = `
+insert into public.${WATERMARK_TABLE} (id, last_applied, updated_at)
+values (1, $1, now())
+on conflict (id) do update
+  set last_applied = excluded.last_applied, updated_at = now();
+`.trim();
+
+/**
+ * @typedef {{ kind: "fresh", pending: string[] }} FreshSchema
+ *   Empty database. The whole manifest is owed.
+ * @typedef {{ kind: "current", watermark: string, pending: [] }} CurrentSchema
+ *   Seeded and up to date.
+ * @typedef {{ kind: "behind", watermark: string, pending: string[] }} BehindSchema
+ *   Seeded and behind.
+ * @typedef {{ kind: "unseeded" }} UnseededSchema
+ *   Schema present, watermark absent — an install from before this existed.
+ * @typedef {{ kind: "unknown", watermark: string }} UnknownSchema
+ *   Watermark names a migration this build does not have.
+ * @typedef {FreshSchema | CurrentSchema | BehindSchema | UnseededSchema | UnknownSchema} SchemaState
+ */
 
 /**
  * Decide what a database owes. Pure, so the decision is testable without one.
@@ -71,11 +90,11 @@ export type SchemaState =
  * `unknown` — the watermark names something absent from this build, which
  * happens when the app is rolled back to an older version than the database.
  * The database is ahead; running anything would be running it twice.
+ *
+ * @param {{ watermark: string | null, hasExistingSchema: boolean }} opts
+ * @returns {SchemaState}
  */
-export function assessSchema(opts: {
-  watermark: string | null;
-  hasExistingSchema: boolean;
-}): SchemaState {
+export function assessSchema(opts) {
   const { watermark, hasExistingSchema } = opts;
 
   if (watermark === null) {
@@ -95,8 +114,12 @@ export function assessSchema(opts: {
   return { kind: "behind", watermark, pending: pendingAfter(watermark) };
 }
 
-/** A one-line account of the state, for build logs and the admin. */
-export function describeSchema(state: SchemaState): string {
+/**
+ * A one-line account of the state, for build logs and the admin.
+ * @param {SchemaState} state
+ * @returns {string}
+ */
+export function describeSchema(state) {
   switch (state.kind) {
     case "fresh":
       return `empty database — applying all ${state.pending.length} migrations`;

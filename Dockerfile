@@ -34,8 +34,30 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# ─── the migration runner ────────────────────────────────────────────────────
+# Container start is this host's release seam (docs/adr/0002), and `standalone`
+# contains only what Next traced from the app — which is not this, because
+# nothing in the app imports it. So the runner's four pieces are copied in by
+# hand: the script, the SQL it applies, the modules it shares with the app so
+# both decide from one implementation, and its driver.
+#
+# `postgres` is used rather than `pg` precisely for this line: it has no
+# dependencies, so one directory is the whole driver.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/supabase/migrations ./supabase/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/migrations.mjs \
+     /app/src/lib/schema-version.mjs /app/src/lib/migrate-config.mjs ./src/lib/
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/postgres ./node_modules/postgres
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-CMD ["node", "server.js"]
+
+# Migrate, then serve — and only then. A container that could not bring the
+# schema up to the code it is about to run has no business answering requests;
+# exiting makes that visible in `docker logs` instead of as mystery 404s from
+# pages selecting columns that do not exist yet.
+#
+# `exec` hands PID 1 to node so it receives SIGTERM and shuts down cleanly.
+CMD ["sh", "-c", "node scripts/migrate.mjs && exec node server.js"]

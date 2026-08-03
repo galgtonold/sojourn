@@ -1,3 +1,4 @@
+// @ts-check
 // The order migrations are applied in — declared, not inferred.
 //
 // See docs/adr/0002-updates-and-schema-migrations.md. The short version: the
@@ -21,8 +22,19 @@
 // applied, and everything after it is owed. A test asserts the list and the
 // directory agree, because the failure it prevents is silent — add a migration,
 // forget the list, and it simply never runs.
+//
+// ── Why this file is .mjs and not .ts ────────────────────────────────────────
+//
+// scripts/migrate.mjs runs in two places that have no TypeScript: Vercel's
+// build step, and the Docker runner stage, which contains `.next/standalone`
+// and nothing else — no source, no toolchain. Plain ESM is the only thing both
+// the app and the runner can load, so the runner executes *this* logic rather
+// than a second copy of it that could quietly drift. Getting these decisions
+// wrong replays DDL against live data, which is not a risk worth a duplicate.
+// The JSDoc types are checked by `tsc --noEmit` via `allowJs` + `@ts-check`.
 
-export const MIGRATIONS: readonly string[] = [
+/** @type {readonly string[]} */
+export const MIGRATIONS = [
   "0001_init.sql",
   "0002_push_audience.sql",
   "0003_alt_likes_moderation.sql",
@@ -66,14 +78,21 @@ export const MIGRATIONS: readonly string[] = [
   "0039_setup_window.sql",
   "0040_missing_ai_columns.sql",
   "0041_analytics_setting.sql",
-] as const;
+];
 
-/** The last entry — what a fully up-to-date database's watermark should read. */
-export function latestMigration(): string {
+/**
+ * The last entry — what a fully up-to-date database's watermark should read.
+ * @returns {string}
+ */
+export function latestMigration() {
   return MIGRATIONS[MIGRATIONS.length - 1];
 }
 
-export function isKnownMigration(name: string): boolean {
+/**
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isKnownMigration(name) {
   return MIGRATIONS.includes(name);
 }
 
@@ -87,8 +106,11 @@ export function isKnownMigration(name: string): boolean {
  * readings are both dangerous: treat it as null and the runner replays history
  * against live data; treat it as up-to-date and real migrations are skipped
  * forever. "I do not know where this database is" is not a state to guess at.
+ *
+ * @param {string | null} applied
+ * @returns {string[]}
  */
-export function pendingAfter(applied: string | null): string[] {
+export function pendingAfter(applied) {
   if (applied === null) return [...MIGRATIONS];
   const at = MIGRATIONS.indexOf(applied);
   if (at === -1) {

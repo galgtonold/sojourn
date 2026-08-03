@@ -5,7 +5,7 @@ import {
   pendingAfter,
   isKnownMigration,
   latestMigration,
-} from "@/lib/migrations";
+} from "@/lib/migrations.mjs";
 
 // The manifest is the order. Filenames are not, and cannot be: 00271 sorts
 // BEFORE 0027 because "1" precedes "_". A runner that inferred order from the

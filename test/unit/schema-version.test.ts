@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { assessSchema } from "@/lib/schema-version";
-import { MIGRATIONS, latestMigration } from "@/lib/migrations";
+import { assessSchema } from "@/lib/schema-version.mjs";
+import { MIGRATIONS, latestMigration } from "@/lib/migrations.mjs";
 
 // The runner's whole job is deciding what a database still owes. Every wrong
 // answer here is destructive in one direction or the other, so each case is

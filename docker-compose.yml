@@ -21,6 +21,10 @@ services:
     environment:
       # Server-only secrets are read at runtime (not baked into the image).
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      # Schema migrations run at container start, before the server accepts a
+      # request — see docs/adr/0002. Wants the DIRECT connection (5432), not the
+      # transaction pooler. Unset means they are skipped, loudly, in the logs.
+      DATABASE_URL: ${DATABASE_URL:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}

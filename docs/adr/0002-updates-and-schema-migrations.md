@@ -1,7 +1,13 @@
 # ADR-0002: Updates are a platform gesture; migrations run themselves
 
 ## Status
-Proposed — 2026-08-03
+Accepted — 2026-08-03
+
+Implemented: the manifest (`src/lib/migrations.mjs`), the watermark
+(`src/lib/schema-version.mjs`, seeded on production and the demo) and the runner
+(`scripts/migrate.mjs`, wired into `npm run build` and the Docker `CMD`).
+Outstanding: the Updates area in the admin, and GHCR images for the Docker
+update path.
 
 ## Context
 
