@@ -31,14 +31,18 @@ function systemPrompt(lang: "de" | "en"): string {
     "spelling/typos, grammar, punctuation, capitalization, and clearly wrong words. " +
     "Do NOT suggest stylistic, tonal, or rephrasing changes, and do NOT rewrite for " +
     "flow — if a passage is merely a matter of taste, leave it alone.\n" +
-    "You are given a JSON object with fields \"title\", \"excerpt\" and \"body\". " +
+    "You are given a JSON object with a `units` array. Each unit has a `key` and " +
+    "a `text`: the article's \"title\", \"excerpt\" and \"body\", plus one unit per " +
+    "photo caption, keyed \"caption:<id>\". Check EVERY unit. Captions are short " +
+    "and are often written in haste — they deserve the same scrutiny as the body, " +
+    "not less.\n" +
     "The body may contain placeholders of the form [[KEEP-0]], [[KEEP-1]] … — these " +
     "stand for images and interactive blocks: NEVER flag them and NEVER include one " +
     "in your output.\n" +
     "Return ONLY a JSON object of the form " +
-    '{"findings":[{"field":"title"|"excerpt"|"body","type":"spelling"|"grammar"|"punctuation"|"capitalization"|"wordchoice","original":"…","suggestion":"…","explanation":"…"}]}. ' +
+    '{"findings":[{"key":"<the unit key, copied exactly>","type":"spelling"|"grammar"|"punctuation"|"capitalization"|"wordchoice","original":"…","suggestion":"…","explanation":"…"}]}. ' +
     "For each finding, `original` MUST be an exact, verbatim substring copied from " +
-    "the given field text (long enough to be unique), and `suggestion` is the exact " +
+    "THAT unit's text (long enough to be unique within it), and `suggestion` is the exact " +
     "text that should replace that substring. Keep `original`/`suggestion` as short " +
     "as the fix allows. Give a one-sentence `explanation`. If there are no errors, " +
     'return {"findings":[]}.';
@@ -60,7 +64,7 @@ async function proofread({
   // Captions are read here rather than sent by the client: the editor's copy can
   // be stale, and the server already has a session that RLS lets read the photos
   // of a post this user may edit.
-  const { data: photos } = await supabase
+  const { data: photos, error: photosError } = await supabase
     .from("photos")
     .select("id, caption, sort_order")
     .eq("post_id", postId)
@@ -81,6 +85,16 @@ async function proofread({
       }))
       .filter((u) => u.text.trim() !== ""),
   ].filter((u) => u.text.trim() !== "");
+
+  // What actually went to the model. Token arithmetic could not settle whether
+  // captions were reaching the call — this says so outright, in the runtime log,
+  // without a schema change or a guess.
+  console.log(
+    `[proofread] post=${postId} units=${units.length} ` +
+      `captions=${units.filter((u) => u.key.startsWith(CAPTION_PREFIX)).length} ` +
+      `photosRead=${photos?.length ?? "null"}` +
+      (photosError ? ` photosError=${photosError.code ?? photosError.message}` : ""),
+  );
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(lang) },
@@ -122,5 +136,15 @@ async function proofread({
   const captions = units
     .filter((u) => u.key.startsWith(CAPTION_PREFIX))
     .map((u) => ({ key: u.key, text: u.text, ordinal: u.ordinal }));
-  return { findings: validateFindings(parsed, units), captions };
+  const findings = validateFindings(parsed, units);
+  // Raw vs kept, so a finding lost in validation is distinguishable from one the
+  // model never made — the two need completely different fixes.
+  const rawCount = Array.isArray((parsed as { findings?: unknown })?.findings)
+    ? ((parsed as { findings: unknown[] }).findings ?? []).length
+    : 0;
+  console.log(
+    `[proofread] post=${postId} rawFindings=${rawCount} kept=${findings.length} ` +
+      `keptCaptions=${findings.filter((f) => f.key.startsWith(CAPTION_PREFIX)).length}`,
+  );
+  return { findings, captions };
 }
