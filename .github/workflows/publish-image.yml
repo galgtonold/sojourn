@@ -1,0 +1,83 @@
+name: Publish image
+
+# Builds the container image and pushes it to GitHub's registry, so self-hosters
+# can `docker compose pull` instead of compiling Next on their own hardware —
+# which is the point: that build wants roughly a gigabyte of memory and takes
+# the site down while it runs (docs/adr/0002-updates-and-schema-migrations.md).
+#
+# NOTHING deployment-specific is baked in. Public configuration — including the
+# Supabase URL and anon key the browser needs — is read from the environment at
+# request time and handed to the page by the server (src/lib/public-config.ts).
+# Without that, an image built here would carry THIS repository's config into
+# every visitor's JavaScript, which is why the two changes shipped together.
+
+on:
+  release:
+    types: [published]
+  # Cutting an image without cutting a release, for testing the pipeline itself.
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The token GitHub already provides is enough to push to this repo's own
+      # package; no PAT, no registry secret to store or rotate.
+      packages: write
+      # Lets the registry record, verifiably, that this image came from this
+      # workflow at this commit.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # arm64 matters more than it looks: a Raspberry Pi or an Ampere VPS is
+      # exactly the machine where building Next locally hurts most, so it is
+      # exactly where a prebuilt image earns its keep. QEMU makes that possible
+      # on an amd64 runner — slowly, but this runs once per release.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # v0.2.1 publishes :0.2.1, :0.2, :0 and :latest. The partial tags are
+          # what let an operator pin how much change they are willing to take
+          # without editing compose on every release.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=Sojourn
+            org.opencontainers.image.description=A travel journal you host yourself.
+            org.opencontainers.image.licenses=AGPL-3.0-only
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Layer cache lives in the registry alongside the image, so the second
+          # release does not recompile what the first already did.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true

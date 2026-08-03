@@ -5,28 +5,42 @@
 # can add the Supabase stack here too (see README → "Moving to a VPS").
 services:
   web:
+    # Two ways to get the app, and they share this one name:
+    #
+    #   from the registry   docker compose pull && docker compose up -d
+    #   from source         docker compose up -d --build
+    #
+    # The registry path is the one worth having — compiling Next wants about a
+    # gigabyte of memory and takes the site down while it runs, which is a poor
+    # trade on the small VPS this is most often deployed to. Published by
+    # .github/workflows/publish-image.yml on every release.
+    #
+    # Pin harder than :latest by setting SOJOURN_TAG — v0.2, v0, or an exact
+    # v0.2.1 — to choose how much change you are willing to take unattended.
+    image: ghcr.io/galgtonold/sojourn:${SOJOURN_TAG:-latest}
     build:
       context: .
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME}
-        NEXT_PUBLIC_MAP_STYLE_URL: ${NEXT_PUBLIC_MAP_STYLE_URL}
-    image: sojourn:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
+    # Everything the app needs is read at RUNTIME — including the values the
+    # browser sees. Nothing is baked in, so this same image runs any deployment
+    # (see src/lib/public-config.ts).
+    #
+    # `.env.local` is passed through whole, so the NEXT_PUBLIC_* spellings you
+    # already have keep working untouched. The unprefixed names below are the
+    # ones to reach for when you want to point a container somewhere without
+    # editing that file; blank means "not set" and falls through.
     environment:
-      # Server-only secrets are read at runtime (not baked into the image).
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SITE_URL: ${SITE_URL:-}
+      SITE_NAME: ${SITE_NAME:-}
+      MAP_STYLE_URL: ${MAP_STYLE_URL:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       # Schema migrations run at container start, before the server accepts a
       # request — see docs/adr/0002. Wants the DIRECT connection (5432), not the
       # transaction pooler. Unset means they are skipped, loudly, in the logs.
       DATABASE_URL: ${DATABASE_URL:-}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
-      VAPID_SUBJECT: ${VAPID_SUBJECT}
-      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
     env_file:
       - .env.local

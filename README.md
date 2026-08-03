@@ -253,10 +253,32 @@ Sojourn deliberately avoids Vercel-only APIs, so the **exact same project also p
 ## Deployment — Docker / VPS
 
 ```bash
+docker compose pull && docker compose up -d
+```
+
+Runs the published image from GitHub's registry. Updating later is the same two
+commands — and schema migrations apply themselves at container start, so there
+is no second step (see
+[ADR-0002](docs/adr/0002-updates-and-schema-migrations.md)).
+
+Pin how much change you take unattended with `SOJOURN_TAG` — `v0.2.1`, `v0.2`,
+`v0` or the default `latest`.
+
+To build from source instead — a fork, a patch, an architecture we don't
+publish:
+
+```bash
 docker compose up -d --build
 ```
 
-This builds the multi-stage `Dockerfile` and runs the Next standalone server. Pass your env vars through `docker-compose.yml` or an env file. **This is the same image that runs in the cloud** — what you test locally in Docker is exactly what ships.
+> Expect this to want about a gigabyte of free memory and to take a few minutes,
+> which is exactly why the prebuilt image exists.
+
+**Nothing deployment-specific is baked into the image**, including the Supabase
+URL and key the browser needs. The server reads its environment on every request
+and hands the result to the page, so one image serves any deployment
+(`src/lib/public-config.ts`). Set your variables in `.env.local` or through
+`docker-compose.yml`; there are no build arguments to pass.
 
 ## Moving to a VPS later
 

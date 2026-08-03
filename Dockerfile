@@ -13,13 +13,22 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Public env vars are inlined at build time; pass them as build args in CI.
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
-ARG NEXT_PUBLIC_SITE_URL
-ARG NEXT_PUBLIC_SITE_NAME
-ARG NEXT_PUBLIC_MAP_STYLE_URL
+# Deliberately NO build args for the public config.
+#
+# Next inlines `process.env.NEXT_PUBLIC_*` into the browser bundle at build
+# time, which is fine when whoever builds is whoever deploys — and wrong the
+# moment this image is published, because it would carry the builder's Supabase
+# URL into every visitor's JavaScript. The server now reads its environment at
+# request time and hands the result to the page (see src/lib/public-config.ts),
+# so one image serves any deployment and everything below is set at RUN time.
+#
+# `next build` still needs *a* Supabase URL to prerender with, because the client
+# wrappers throw rather than quietly serve an empty page. `.invalid` is reserved
+# by RFC 2606 and can never resolve, so this cannot accidentally point at a real
+# project — and @/lib/public-config recognises it as a placeholder, so the app
+# reports itself unconfigured rather than failing DNS. Same trick as CI.
+ENV NEXT_PUBLIC_SUPABASE_URL=https://build.invalid
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=build-placeholder-anon-key
 RUN npm run build
 
 # ─── runner ──────────────────────────────────────────────────────────────────

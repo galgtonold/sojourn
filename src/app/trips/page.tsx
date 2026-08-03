@@ -8,8 +8,10 @@ export const metadata = {
   title: defaultTitle("meta.trips"),
   alternates: { canonical: "/trips" },
 };
-// Static, on-demand revalidation — trip card text/dates are localized on the client.
-export const revalidate = false;
+// Static, on-demand revalidation — trip card text/dates are localized on the
+// client. The hourly floor is the prebuilt-image safety net explained in
+// src/app/page.tsx.
+export const revalidate = 3600;
 
 export default async function TripsPage() {
   const trips = await getTrips();

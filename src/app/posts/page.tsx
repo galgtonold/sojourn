@@ -10,8 +10,9 @@ export const metadata = {
 };
 // Static, on-demand revalidation: the whole (small) published set ships once;
 // PostsArchive slices it by `?page` on the client, so the route never goes
-// dynamic on searchParams.
-export const revalidate = false;
+// dynamic on searchParams. The hourly floor is the prebuilt-image safety net
+// explained in src/app/page.tsx.
+export const revalidate = 3600;
 
 export default async function PostsPage() {
   const { posts, total } = await getPostSummaries({ limit: 1000 });

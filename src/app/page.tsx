@@ -17,11 +17,23 @@ import {
 } from "@/components/i18n";
 import { coverGradient, formatDate, shareImage } from "@/lib/utils";
 
-// Fully static: prerendered in the default locale and the reader's language is
-// swapped in on the client (PostCard / LocText), so it serves from cache. Cached
-// indefinitely and refreshed on demand only — admin save/publish (revalidatePath)
-// and the translate Edge Function's /api/revalidate callback when i18n lands.
-export const revalidate = false;
+// Static: prerendered in the default locale and the reader's language is
+// swapped in on the client (PostCard / LocText), so it serves from cache.
+// Refreshed on demand — admin save/publish (revalidatePath) and the translate
+// Edge Function's /api/revalidate callback when i18n lands.
+//
+// The number is a ceiling, not the mechanism. It used to be `false` — "never
+// regenerate on its own" — which is right until the build and the deploy stop
+// being the same event: a prebuilt Docker image is compiled against no database
+// at all, so this page would otherwise ship as an empty shell and stay one
+// forever. On-demand invalidation still lands instantly; this only bounds how
+// long a deployment nobody has written to yet can be wrong.
+//
+// The observed value is lower than what is written here. Next takes the minimum
+// across the segment and everything it renders, and the root layout's
+// getBranding() caches for BRANDING_TTL (300s) — so `next build` reports 5m for
+// this route and for /map, /posts and /trips, which carry the same reasoning.
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const { posts, total } = await getPostSummaries({ limit: 6 });

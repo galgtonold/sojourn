@@ -1,8 +1,15 @@
 node_modules
 .next
 .git
-.env
-.env*.local
+# EVERY env file, not just the obvious ones. `.env` and `.env*.local` used to be
+# the rule, which quietly let `.env.production` through — and Next loads that
+# during `next build`, so the author's own Supabase URL ended up inlined in the
+# browser bundle of an image meant to be handed to strangers. Caught by grepping
+# a built image for it; nothing else would have said a word.
+#
+# The build needs none of these now: public config is read at runtime and
+# injected per request (src/lib/public-config.ts), and secrets never were.
+.env*
 npm-debug.log*
 Dockerfile
 docker-compose.yml

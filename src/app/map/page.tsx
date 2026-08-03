@@ -17,7 +17,8 @@ export const metadata = {
 // every visit, uncacheable apart from the markup. Fetched separately they are
 // cached, shared between visits, and loaded at the level of detail the current
 // zoom can actually show. See @/lib/map-lod.
-export const revalidate = false;
+// The hourly floor is the prebuilt-image safety net explained in src/app/page.tsx.
+export const revalidate = 3600;
 
 export default async function MapPage() {
   const photos = await getGeotaggedPhotos();

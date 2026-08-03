@@ -10,28 +10,32 @@
 // `aiPrice*` rates remain, because neither can move.
 
 import { pickSupabaseKey, pickServiceKey } from "@/lib/env-aliases";
+import {
+  publicConfigFromEnv,
+  injectedPublicConfig,
+  mergePublicConfig,
+  DEFAULT_MAP_STYLE,
+  type PublicConfig,
+} from "@/lib/public-config";
 
-export const env = {
+// What the build inlined. Each `process.env.NEXT_PUBLIC_*` must be written out
+// literally: Next substitutes those textually at build time, so handing the
+// whole `process.env` object to a helper would leave the browser bundle with
+// nothing to read.
+//
+// This is now the FALLBACK rather than the source. It still answers for every
+// deployment built before the runtime config script existed, and for any page
+// somehow served without it — so nothing that works today stops working.
+const inlined: PublicConfig = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   // Both spellings are accepted so a Vercel + Supabase Marketplace deploy works
   // with the variables that integration writes, unchanged (see @/lib/env-aliases).
-  //
-  // Each `process.env.NEXT_PUBLIC_*` must be written out literally here: Next
-  // inlines those by textual substitution at build time, so handing the whole
-  // `process.env` object to a helper would leave the browser bundle with
-  // nothing to read.
   supabaseAnonKey: pickSupabaseKey({
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   }),
-  supabaseServiceRoleKey: pickServiceKey({
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
-  }),
-  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
-  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
-  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
+  siteName: process.env.NEXT_PUBLIC_SITE_NAME ?? "Sojourn",
   // Prefer an explicit URL; otherwise use Vercel's stable production domain
   // (set automatically on Vercel), falling back to localhost in dev.
   siteUrl:
@@ -39,10 +43,34 @@ export const env = {
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "http://localhost:3000"),
-  siteName: process.env.NEXT_PUBLIC_SITE_NAME ?? "Sojourn",
-  mapStyleUrl:
-    process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
-    "https://tiles.openfreemap.org/styles/liberty",
+  mapStyleUrl: process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? DEFAULT_MAP_STYLE,
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+  sentryDsnClient: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
+  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === "1",
+};
+
+// On the server, the environment as it is right now — which in a container is
+// the only thing that can be right, since the image was built by someone else.
+// In the browser, whatever that server put in the page, falling back to the
+// build's own values. See @/lib/public-config for why the two differ.
+const publicConfig: PublicConfig =
+  typeof window === "undefined"
+    ? publicConfigFromEnv(process.env)
+    : mergePublicConfig(injectedPublicConfig(), inlined);
+
+export const env = {
+  supabaseUrl: publicConfig.supabaseUrl,
+  supabaseAnonKey: publicConfig.supabaseAnonKey,
+  supabaseServiceRoleKey: pickServiceKey({
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+  }),
+  vapidPublicKey: publicConfig.vapidPublicKey,
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
+  siteUrl: publicConfig.siteUrl,
+  siteName: publicConfig.siteName,
+  mapStyleUrl: publicConfig.mapStyleUrl,
 
   // ── Telemetry, both off unless the operator turns them on ────────────────
   //
@@ -53,8 +81,11 @@ export const env = {
   // @/components/site-analytics and instrumentation-client.ts).
   //
   // "vercel" is the only value that does anything today; anything else, blank
-  // included, means no analytics at all.
-  analytics: process.env.NEXT_PUBLIC_ANALYTICS ?? "",
+  // included, means no analytics at all. `ANALYTICS` first so a container can
+  // set it without a rebuild; the prefixed spelling still answers for existing
+  // deployments. Only ever read on the server — the layout resolves it and
+  // passes the answer down as a prop.
+  analytics: process.env.ANALYTICS || (process.env.NEXT_PUBLIC_ANALYTICS ?? ""),
   // Whether this deployment is running ON Vercel. Vercel sets it; nothing else
   // does. Matters because Vercel Analytics is served by their platform, so the
   // option is meaningless — and actively harmful, a 404 per page view —
@@ -64,13 +95,13 @@ export const env = {
   // (sentry.server.config.ts) — deliberately separate, because sending your
   // own server's stack traces somewhere is a much smaller decision than
   // sending your readers' browser errors.
-  sentryDsnClient: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
+  sentryDsnClient: publicConfig.sentryDsnClient,
 
   // The public showcase deployment: read-only for everyone, with a one-click
-  // sign-in so visitors can see the admin without an account. NEXT_PUBLIC_
-  // because the login page (a client component) has to know whether to offer
-  // the button. Unset everywhere else, which leaves every demo path inert.
-  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === "1",
+  // sign-in so visitors can see the admin without an account. Reaches the
+  // browser because the login page (a client component) has to know whether to
+  // offer the button. Unset everywhere else, which leaves every demo path inert.
+  demoMode: publicConfig.demoMode,
   // The account that one-click button signs in as. Server-only: the password
   // never reaches the browser (see /api/demo/login).
   demoEmail: process.env.DEMO_EMAIL ?? "",
@@ -95,11 +126,13 @@ export const env = {
   // authenticates Next.js → the function. When unset, generation falls back to
   // a synchronous in-route call (current behaviour).
   edgeSharedSecret: process.env.EDGE_SHARED_SECRET ?? "",
-  edgeFunctionUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/llm-call`
+  // Derived from the resolved URL rather than the inlined one, so a container
+  // pointed at a different Supabase reaches that project's functions too.
+  edgeFunctionUrl: publicConfig.supabaseUrl
+    ? `${publicConfig.supabaseUrl}/functions/v1/llm-call`
     : "",
-  edgeTranslateUrl: process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/translate`
+  edgeTranslateUrl: publicConfig.supabaseUrl
+    ? `${publicConfig.supabaseUrl}/functions/v1/translate`
     : "",
 };
 

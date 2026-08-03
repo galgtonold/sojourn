@@ -13,6 +13,7 @@ import { I18nProvider } from "@/components/i18n";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { DemoBanner } from "@/components/demo-banner";
 import { SiteAnalytics } from "@/components/site-analytics";
+import { publicConfigFromEnv, publicConfigScript } from "@/lib/public-config";
 import "./globals.css";
 
 // `latin-ext` alongside `latin` because this is a travel journal: Hokkaidō,
@@ -90,6 +91,22 @@ export default async function RootLayout({
   return (
     <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-dvh antialiased">
+        {/*
+          The browser's Supabase URL and key, read from this server's own
+          environment at request time and handed over before any bundle loads.
+          First child of <body> deliberately: it has to run before the framework
+          scripts that pull in @/lib/env.
+
+          Without it those values would be whatever was inlined when the app was
+          BUILT, which is fine when you build your own deployment and wrong the
+          moment anyone runs a prebuilt image. See @/lib/public-config.
+        */}
+        <script
+          id="sojourn-config"
+          dangerouslySetInnerHTML={{
+            __html: publicConfigScript(publicConfigFromEnv(process.env)),
+          }}
+        />
         <I18nProvider siteName={name} brand={brand}>
           <ServiceWorkerRegistrar />
           <Suspense fallback={null}>
