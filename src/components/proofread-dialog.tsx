@@ -5,7 +5,7 @@ import { Loader2, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useT } from "@/components/i18n";
 import {
   applyFinding,
-  captionPhotoId,
+  parseProofKey,
   type Finding,
 } from "@/lib/ai/proofread";
 
@@ -80,6 +80,8 @@ export function ProofreadDialog({
         if (!res.ok) throw new Error("proofread failed");
         const j = (await res.json()) as {
           findings: Finding[];
+          extras?: { key: string; text: string }[];
+          /** Previous name for `extras`; kept so an older server still works. */
           captions?: { key: string; text: string }[];
         };
         if (cancelled) return;
@@ -89,7 +91,7 @@ export function ProofreadDialog({
         // findings visible, nothing applicable.
         setDraft((d) => {
           const next = { ...d };
-          for (const c of j.captions ?? []) next[c.key] = c.text;
+          for (const u of j.extras ?? j.captions ?? []) next[u.key] = u.text;
           return next;
         });
         setFindings(j.findings ?? []);
@@ -226,9 +228,20 @@ export function ProofreadDialog({
                 })}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5">
-                {captionPhotoId(current.key)
-                  ? `${t("admin.proofread.field.caption")} ${current.ordinal ?? ""}`.trim()
-                  : t(`admin.proofread.field.${current.key}` as never)}
+                {(() => {
+                  const target = parseProofKey(current.key);
+                  if (!target) return current.key;
+                  if (target.kind === "post") {
+                    return t(`admin.proofread.field.${target.field}` as never);
+                  }
+                  // "Caption 4", "Quiz 2 · answer 3" — the number is where to
+                  // look, which a key like caption:9f3c… cannot tell anyone.
+                  const label = t(`admin.proofread.field.${target.kind}` as never);
+                  const where = current.ordinal ? ` ${current.ordinal}` : "";
+                  return target.kind === "option"
+                    ? `${label}${where}·${target.index + 1}`
+                    : `${label}${where}`;
+                })()}
               </span>
               <span className="rounded-full bg-ember-500/15 px-2 py-0.5 text-ember-300">
                 {t(`admin.proofread.type.${current.type}` as never)}

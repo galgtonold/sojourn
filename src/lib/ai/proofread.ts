@@ -28,11 +28,57 @@ export type ProofField = (typeof POST_KEYS)[number];
 
 export const CAPTION_PREFIX = "caption:";
 
+/**
+ * What a key points at. Everything reader-facing on a post is addressable:
+ *
+ *   title | excerpt | body        the article itself
+ *   caption:<photoId>             what sits under a photo
+ *   alt:<photoId>                 what a screen reader says instead
+ *   question:<interactionId>      a poll or quiz prompt
+ *   option:<interactionId>:<i>    one answer of one
+ *   explanation:<interactionId>   the note shown after answering
+ *
+ * All of it is published prose. Only the article was ever checked.
+ */
+export type ProofTarget =
+  | { kind: "post"; field: ProofField }
+  | { kind: "caption"; photoId: string }
+  | { kind: "alt"; photoId: string }
+  | { kind: "question"; interactionId: string }
+  | { kind: "explanation"; interactionId: string }
+  | { kind: "option"; interactionId: string; index: number };
+
+/** Null for anything unrecognised — an unknown key is never guessed at. */
+export function parseProofKey(key: string): ProofTarget | null {
+  if ((POST_KEYS as readonly string[]).includes(key)) {
+    return { kind: "post", field: key as ProofField };
+  }
+  const [prefix, id, tail] = key.split(":");
+  if (!id) return null;
+  switch (prefix) {
+    case "caption":
+      return { kind: "caption", photoId: id };
+    case "alt":
+      return { kind: "alt", photoId: id };
+    case "question":
+      return { kind: "question", interactionId: id };
+    case "explanation":
+      return { kind: "explanation", interactionId: id };
+    case "option": {
+      const index = Number(tail);
+      return Number.isInteger(index) && index >= 0
+        ? { kind: "option", interactionId: id, index }
+        : null;
+    }
+    default:
+      return null;
+  }
+}
+
 /** The photo id inside a caption key, or null for anything else. */
 export function captionPhotoId(key: string): string | null {
-  return key.startsWith(CAPTION_PREFIX)
-    ? key.slice(CAPTION_PREFIX.length) || null
-    : null;
+  const t = parseProofKey(key);
+  return t?.kind === "caption" ? t.photoId : null;
 }
 
 export type Finding = {

@@ -32,7 +32,28 @@ describe("the prompt asks for what the validator reads", () => {
 
   it("describes the units array it actually sends", () => {
     expect(ROUTE).toMatch(/`units` array/);
-    expect(ROUTE).toMatch(/caption:<id>/);
+  });
+
+  it("names every key kind the route can emit", () => {
+    // The prompt has to describe each shape or the model invents its own, and an
+    // invented key resolves to nothing and is dropped in silence.
+    for (const kind of ["caption:<id>", "alt:<id>", "question:<id>", "option:<id>:<n>", "explanation:<id>"]) {
+      expect(ROUTE, `prompt never mentions ${kind}`).toContain(kind);
+    }
+  });
+
+  it("actually builds each of those kinds", () => {
+    // The mirror of the test above: the prompt promising a kind the route never
+    // sends is just as broken as the reverse.
+    for (const built of [
+      "${CAPTION_PREFIX}${p.id}",
+      "alt:${p.id}",
+      "question:${b.id}",
+      "option:${b.id}:${oi}",
+      "explanation:${b.id}",
+    ]) {
+      expect(ROUTE, `route never builds ${built}`).toContain(built);
+    }
   });
 
   it("sends units, not a bare field map", () => {

@@ -17,8 +17,9 @@ import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ProofreadDialog, proofreadSignature } from "@/components/proofread-dialog";
-import { captionPhotoId } from "@/lib/ai/proofread";
+import { parseProofKey } from "@/lib/ai/proofread";
 import { updatePhotoFields } from "@/lib/db/photos-client";
+import { applyInteractionFix } from "@/lib/db/interactions-client";
 import { TranslationBadge } from "@/components/translation-badge";
 import { PostSection } from "@/components/post-section";
 import { PostActionBar } from "@/components/post-action-bar";
@@ -373,19 +374,27 @@ export function PostWorkspace({
         excerpt={post.excerpt ?? ""}
         body={post.body ?? ""}
         onApply={(key, value) => {
-          // Post fields go to the form; a caption goes to its own row, and the
-          // gallery is told to re-read itself so the textarea shows the fix.
-          const photoId = captionPhotoId(key);
-          if (!photoId) {
-            set(key as keyof EditablePost, value);
+          // Each kind of text lives somewhere different, so applying a fix means
+          // routing it home: the form for post fields, the photo row for a
+          // caption or alt text, the interaction row for a poll or quiz.
+          const target = parseProofKey(key);
+          if (!target) return;
+          if (target.kind === "post") {
+            set(target.field as keyof EditablePost, value);
             return;
           }
-          void updatePhotoFields(photoId, { caption: value })
-            .then(() => setPhotoRefreshKey((n) => n + 1))
-            .catch(() => {
-              /* the gallery keeps the old caption; nothing is lost silently
-                 because the dialog still shows the finding as applied */
-            });
+          if (target.kind === "caption" || target.kind === "alt") {
+            void updatePhotoFields(target.photoId, { [target.kind]: value })
+              .then(() => setPhotoRefreshKey((n) => n + 1))
+              .catch(() => {
+                /* the gallery keeps the old text; nothing is lost silently,
+                   the dialog still shows what it applied */
+              });
+            return;
+          }
+          void applyInteractionFix(target, value, interactions).then((updated) => {
+            if (updated) setInteractions(updated);
+          });
         }}
         onRan={(c) => setProofreadSig(proofreadSignature(c.title, c.excerpt, c.body))}
       />

@@ -9,6 +9,7 @@ import { maskProtectedTokens } from "@/lib/ai/token-mask";
 import {
   validateFindings,
   CAPTION_PREFIX,
+  POST_KEYS,
   type ProofUnit,
 } from "@/lib/ai/proofread";
 
@@ -32,10 +33,11 @@ function systemPrompt(lang: "de" | "en"): string {
     "Do NOT suggest stylistic, tonal, or rephrasing changes, and do NOT rewrite for " +
     "flow — if a passage is merely a matter of taste, leave it alone.\n" +
     "You are given a JSON object with a `units` array. Each unit has a `key` and " +
-    "a `text`: the article's \"title\", \"excerpt\" and \"body\", plus one unit per " +
-    "photo caption, keyed \"caption:<id>\". Check EVERY unit. Captions are short " +
-    "and are often written in haste — they deserve the same scrutiny as the body, " +
-    "not less.\n" +
+    "a `text`. The keys are \"title\", \"excerpt\" and \"body\" for the article; " +
+    "\"caption:<id>\" and \"alt:<id>\" for a photo's caption and its alt text; and " +
+    "\"question:<id>\", \"option:<id>:<n>\" and \"explanation:<id>\" for a poll or " +
+    "quiz. Check EVERY unit. The short ones are written in haste and read by " +
+    "everybody — they deserve the same scrutiny as the body, not less.\n" +
     "The body may contain placeholders of the form [[KEEP-0]], [[KEEP-1]] … — these " +
     "stand for images and interactive blocks: NEVER flag them and NEVER include one " +
     "in your output.\n" +
@@ -64,26 +66,54 @@ async function proofread({
   // Captions are read here rather than sent by the client: the editor's copy can
   // be stale, and the server already has a session that RLS lets read the photos
   // of a post this user may edit.
-  const { data: photos, error: photosError } = await supabase
-    .from("photos")
-    .select("id, caption, sort_order")
-    .eq("post_id", postId)
-    .order("sort_order", { ascending: true });
+  const [{ data: photos, error: photosError }, { data: blocks }] =
+    await Promise.all([
+      supabase
+        .from("photos")
+        .select("id, caption, alt, sort_order")
+        .eq("post_id", postId)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("interactions")
+        .select("id, question, options, explanation, sort_order")
+        .eq("post_id", postId)
+        .order("sort_order", { ascending: true }),
+    ]);
+
+  type PhotoRow = { id: string; caption: string | null; alt: string | null };
+  type BlockRow = {
+    id: string;
+    question: string | null;
+    options: unknown;
+    explanation: string | null;
+  };
+
+  const photoUnits = ((photos ?? []) as PhotoRow[]).flatMap((p, i) => [
+    // Position in the gallery, so the author can find it. Numbering counts every
+    // photo, not just the ones with text — "caption 4" has to mean the fourth
+    // photo or it sends them hunting.
+    { key: `${CAPTION_PREFIX}${p.id}`, text: p.caption ?? "", ordinal: i + 1 },
+    { key: `alt:${p.id}`, text: p.alt ?? "", ordinal: i + 1 },
+  ]);
+
+  const blockUnits = ((blocks ?? []) as BlockRow[]).flatMap((b, i) => [
+    { key: `question:${b.id}`, text: b.question ?? "", ordinal: i + 1 },
+    ...(Array.isArray(b.options) ? (b.options as unknown[]) : []).map(
+      (o, oi) => ({
+        key: `option:${b.id}:${oi}`,
+        text: typeof o === "string" ? o : "",
+        ordinal: i + 1,
+      }),
+    ),
+    { key: `explanation:${b.id}`, text: b.explanation ?? "", ordinal: i + 1 },
+  ]);
 
   const units: ProofUnit[] = [
     { key: "title", text: title },
     { key: "excerpt", text: excerpt },
     { key: "body", text: masked },
-    ...((photos ?? []) as { id: string; caption: string | null }[])
-      .map((p, i) => ({
-        key: `${CAPTION_PREFIX}${p.id}`,
-        text: p.caption ?? "",
-        // Position in the gallery, so the author can find it. Numbering counts
-        // every photo, not just captioned ones — "caption 4" has to mean the
-        // fourth photo or it sends them hunting.
-        ordinal: i + 1,
-      }))
-      .filter((u) => u.text.trim() !== ""),
+    ...photoUnits,
+    ...blockUnits,
   ].filter((u) => u.text.trim() !== "");
 
   // What actually went to the model. Token arithmetic could not settle whether
@@ -91,8 +121,9 @@ async function proofread({
   // without a schema change or a guess.
   console.log(
     `[proofread] post=${postId} units=${units.length} ` +
-      `captions=${units.filter((u) => u.key.startsWith(CAPTION_PREFIX)).length} ` +
-      `photosRead=${photos?.length ?? "null"}` +
+      `photoUnits=${photoUnits.filter((u) => u.text.trim()).length} ` +
+      `blockUnits=${blockUnits.filter((u) => u.text.trim()).length} ` +
+      `photosRead=${photos?.length ?? "null"} blocksRead=${blocks?.length ?? "null"}` +
       (photosError ? ` photosError=${photosError.code ?? photosError.message}` : ""),
   );
 
@@ -130,11 +161,12 @@ async function proofread({
   } catch {
     parsed = { findings: [] };
   }
-  // The caption units travel back too. The dialog already holds title/excerpt/
-  // body, but it has never seen a caption — and it needs the full text, not just
-  // the matched fragment, to compose several fixes into one new value.
-  const captions = units
-    .filter((u) => u.key.startsWith(CAPTION_PREFIX))
+  // Everything that is not a post field travels back too. The dialog holds
+  // title/excerpt/body already, but has never seen a caption, an alt text or a
+  // quiz option — and it needs each whole string, not just the matched fragment,
+  // to compose several fixes into one new value.
+  const extras = units
+    .filter((u) => !(POST_KEYS as readonly string[]).includes(u.key))
     .map((u) => ({ key: u.key, text: u.text, ordinal: u.ordinal }));
   const findings = validateFindings(parsed, units);
   // Raw vs kept, so a finding lost in validation is distinguishable from one the
@@ -144,7 +176,9 @@ async function proofread({
     : 0;
   console.log(
     `[proofread] post=${postId} rawFindings=${rawCount} kept=${findings.length} ` +
-      `keptCaptions=${findings.filter((f) => f.key.startsWith(CAPTION_PREFIX)).length}`,
+      `keptExtras=${findings.filter((f) => !(POST_KEYS as readonly string[]).includes(f.key)).length}`,
   );
-  return { findings, captions };
+  // `captions` kept as an alias so a browser tab still running the previous
+  // bundle keeps working through the deploy — it reads that name.
+  return { findings, extras, captions: extras };
 }
