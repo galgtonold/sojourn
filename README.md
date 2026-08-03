@@ -124,9 +124,13 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
    no longer fall behind the code. See
    [ADR-0002](docs/adr/0002-updates-and-schema-migrations.md).
 
-   On **Vercel**, the Supabase integration already sets
-   `POSTGRES_URL_NON_POOLING` and the runner finds it by itself — there is
-   nothing to configure.
+   On Vercel this is **only** already done for you if you added Supabase
+   through the **Vercel marketplace integration**, which writes a set of
+   `POSTGRES_*` variables the runner picks up on its own. If you created the
+   project at supabase.com and pasted the keys in yourself — the path described
+   just above — you have no such variable and you do need this step. Check
+   under **Settings → Environment Variables**: no `POSTGRES_URL_NON_POOLING`
+   means no automatic migrations.
 
    To see what would happen without doing it: `npm run migrate:status`.
 
