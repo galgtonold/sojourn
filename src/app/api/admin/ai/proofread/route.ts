@@ -75,9 +75,20 @@ async function proofread({ user, input }: AdminCtx<z.infer<typeof schema>>) {
       const raw = await deepseekChat({
         model: "fast",
         temperature: 0,
-        // Sized for a segment, not a whole post. The old 8000 was spent on
-        // reasoning before the answer began.
-        maxTokens: 3000,
+        // Generous from the outset, and deliberately not escalated.
+        //
+        // A segment is ~1400 characters — a few hundred tokens in, and findings
+        // for it are shorter still. 8000 is therefore enormous headroom, most of
+        // which exists for `reasoning_content`, which is billed against this cap
+        // and arrives before the first byte of the answer.
+        //
+        // If even that is not enough, doubling it is not the answer: it buys the
+        // same truncation twice more, at 16000 and 32000, with the author
+        // watching a spinner through all three. That is precisely how a failed
+        // proofread came to take minutes instead of seconds. One generous
+        // attempt, then say so.
+        maxTokens: 8000,
+        escalateCap: false,
         json: true,
         messages,
         meta: { operation: "proofread", postId, userId: user.id },

@@ -40,6 +40,14 @@ type ChatOpts = {
   maxTokens?: number;
   json?: boolean;
   meta?: UsageMeta;
+  /**
+   * Whether a `length` finish may double the cap and try again. Default true.
+   *
+   * Set false when `maxTokens` is already generous for the work: escalation
+   * then cannot help, and each extra round costs a full generation of the same
+   * truncation — which the caller waits through. See the proofread route.
+   */
+  escalateCap?: boolean;
 };
 
 // One round-trip to the model. Returns the text plus `finishReason` ("stop" |
@@ -82,6 +90,13 @@ async function singleCompletion(
     const u = data?.usage ?? {};
     const prompt = u.prompt_tokens ?? 0;
     const hit = u.prompt_cache_hit_tokens ?? 0;
+    // Thinking is billed inside completion_tokens and never appears in the
+    // output, so without this a truncated call is indistinguishable from one
+    // that genuinely wrote too much. Two opposite bugs, one row.
+    const reasoning: number | undefined =
+      typeof u.completion_tokens_details?.reasoning_tokens === "number"
+        ? u.completion_tokens_details.reasoning_tokens
+        : undefined;
     // Await (don't fire-and-forget): on fast-returning serverless routes the
     // lambda can freeze right after the handler returns, dropping a pending
     // background insert — which is why short calls like the outline went
@@ -98,7 +113,11 @@ async function singleCompletion(
         cache_hit_tokens: hit,
         cache_miss_tokens:
           u.prompt_cache_miss_tokens ?? Math.max(0, prompt - hit),
+        reasoning_tokens: reasoning,
       },
+      // Recorded only when the call was cut off. Usually empty, and empty is
+      // the answer: it means nothing was written before the budget ran out.
+      responsePreview: data?.choices?.[0]?.message?.content ?? "",
     });
   }
 
@@ -144,8 +163,18 @@ export async function runJsonWithRepair(opts: {
     overrides: { temperature?: number; maxTokens?: number; repair?: boolean },
   ) => Promise<Completion>;
   onFail: (f: { error: string; finishReason?: string | null }) => Promise<void>;
+  /** Default true — see ChatOpts.escalateCap. */
+  escalateCap?: boolean;
 }): Promise<string> {
-  const { messages, attempts, maxTokens, isParseable, complete, onFail } = opts;
+  const {
+    messages,
+    attempts,
+    maxTokens,
+    isParseable,
+    complete,
+    onFail,
+    escalateCap = true,
+  } = opts;
   let last = "";
   let lastFinish: string | null = null;
   // The cap actually in force — raised, never lowered, as truncation shows up.
@@ -166,8 +195,16 @@ export async function runJsonWithRepair(opts: {
       throw e;
     }
     if (isParseable(last)) return last;
-    // Cut off by the cap, not by bad luck — buy room before trying again.
-    if (lastFinish === "length") cap = Math.min(cap * 2, CAP_CEILING);
+    if (lastFinish === "length") {
+      // Cut off by the cap, not by bad luck — buy room before trying again.
+      //
+      // Unless the caller says the cap is already as big as the work needs. Then
+      // escalation is not a fix, it is the same truncation bought twice more at
+      // double and quadruple the price, with the author waiting through all of
+      // it. Stop and report instead.
+      if (!escalateCap) break;
+      cap = Math.min(cap * 2, CAP_CEILING);
+    }
     // Otherwise loop and try again for a clean JSON object.
   }
 
@@ -270,6 +307,7 @@ export async function deepseekChat(opts: ChatOpts): Promise<string> {
     isParseable: isParseableJson,
     complete,
     onFail,
+    escalateCap: opts.escalateCap,
   });
 }
 

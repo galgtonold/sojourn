@@ -9,6 +9,14 @@ export type Usage = {
   completion_tokens: number;
   cache_hit_tokens: number;
   cache_miss_tokens: number;
+  /**
+   * Of `completion_tokens`, how many the model spent thinking before it began
+   * the answer. Billed the same, invisible in the output, and the difference
+   * between "it reasoned itself into the cap" and "it genuinely wrote that
+   * much" — which are opposite bugs with opposite fixes. Undefined on providers
+   * or models that do not report it.
+   */
+  reasoning_tokens?: number;
 };
 
 export function estimateCost(u: Usage): number {
@@ -33,6 +41,12 @@ export async function recordUsage(input: {
   // model hit the token cap and the output is truncated — the usual reason a
   // JSON step later fails to parse.
   finishReason?: string | null;
+  /**
+   * The first few hundred characters of what came back, recorded only when the
+   * call failed. Empty is itself informative: a cap-truncated response usually
+   * has no content at all, because reasoning is billed first and arrives first.
+   */
+  responsePreview?: string | null;
 }): Promise<void> {
   try {
     const admin = getAdminSupabase();
@@ -49,6 +63,12 @@ export async function recordUsage(input: {
       cost_usd: input.costUsd ?? estimateCost(input.usage),
       ok: input.finishReason === "length" ? false : true,
       finish_reason: input.finishReason ?? null,
+      reasoning_tokens: input.usage.reasoning_tokens ?? null,
+      // Only on failure — a successful call's output is the post itself.
+      response_preview:
+        input.finishReason === "length"
+          ? (input.responsePreview ?? "").slice(0, 600) || null
+          : null,
     });
   } catch {
     /* metering is best effort */
@@ -65,6 +85,12 @@ export async function recordAiFailure(input: {
   postId?: string | null;
   userId?: string | null;
   finishReason?: string | null;
+  /**
+   * The first few hundred characters of what came back, recorded only when the
+   * call failed. Empty is itself informative: a cap-truncated response usually
+   * has no content at all, because reasoning is billed first and arrives first.
+   */
+  responsePreview?: string | null;
 }): Promise<void> {
   console.error(
     `[ai] ${input.operation} failed (${input.model}` +
@@ -87,6 +113,7 @@ export async function recordAiFailure(input: {
       ok: false,
       error: input.error.slice(0, 500),
       finish_reason: input.finishReason ?? null,
+      response_preview: (input.responsePreview ?? "").slice(0, 600) || null,
     });
   } catch {
     /* best effort */

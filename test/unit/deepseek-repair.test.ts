@@ -166,3 +166,50 @@ describe("runJsonWithRepair", () => {
     expect(onFail).not.toHaveBeenCalled();
   });
 });
+
+// A cap that the caller has already sized generously should not be escalated.
+//
+// The proofreader is the case this exists for. Its failure mode is not "the
+// answer was slightly too long" — it is the model spending the whole budget on
+// reasoning_content and never starting the answer, which returns EMPTY content
+// with finish_reason "length". Doubling then buys the identical outcome at
+// 16000 and 32000 tokens while the author watches a spinner, which is how one
+// failed proofread came to take minutes.
+describe("runJsonWithRepair with escalateCap: false", () => {
+  it("makes exactly one call when the cap truncates to empty", async () => {
+    const { complete, calls } = scripted([ok("", "length")]);
+    await run({ complete, escalateCap: false, maxTokens: 8000 });
+    expect(calls.length).toBe(1);
+    // Empty content also means there is nothing for the repair pass to repair.
+    expect(calls.every((c) => !c.overrides.repair)).toBe(true);
+  });
+
+  it("never raises the cap it was given", async () => {
+    const { complete, calls } = scripted([ok("", "length")]);
+    await run({ complete, escalateCap: false, maxTokens: 8000 });
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([8000]);
+  });
+
+  it("reports the truncation rather than silently returning nothing", async () => {
+    const onFail = vi.fn();
+    const { complete } = scripted([ok("", "length")]);
+    await run({ complete, onFail, escalateCap: false, maxTokens: 8000 });
+    expect(onFail).toHaveBeenCalledTimes(1);
+    expect(onFail.mock.calls[0][0]).toMatchObject({ finishReason: "length" });
+    expect(onFail.mock.calls[0][0].error).toMatch(/8000/);
+  });
+
+  it("still retries a malformed — as opposed to truncated — response", async () => {
+    // Not a cap problem, so the opt-out must not disable the ordinary re-roll.
+    const { complete, calls } = scripted([ok("not json", "stop"), ok('{"a":1}')]);
+    const out = await run({ complete, escalateCap: false });
+    expect(out).toBe('{"a":1}');
+    expect(calls.length).toBeGreaterThan(1);
+  });
+
+  it("leaves escalation on by default, for every other caller", async () => {
+    const { complete, calls } = scripted([ok("", "length")]);
+    await run({ complete, maxTokens: 4096 });
+    expect(calls.map((c) => c.overrides.maxTokens)).toEqual([4096, 8192, 16384]);
+  });
+});
