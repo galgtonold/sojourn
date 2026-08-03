@@ -2,6 +2,8 @@
 
 **A bold, immersive travel journal.** Sojourn is a self-hostable blog/journal for documenting your travels — full-bleed hero imagery, interactive maps with route lines, photo galleries with a lightbox, reactions, comments, and full-text search. It's built to feel like a magazine and run like a single, portable container.
 
+![The Sojourn home page: a full-bleed photograph of a cliff-backed Atlantic beach, with a large serif headline reading "Somewhere, ahead of the weather" and a link through to the latest entry.](docs/screenshots/home.jpg)
+
 ### [→ Try the live demo](https://sojourn-demo.vercel.app)
 
 Four invented journeys, eighteen entries, real routes on real roads. **No sign-up:
@@ -35,6 +37,16 @@ Sojourn needs one thing to run: **Supabase** (Postgres + Auth + Storage). Point 
 - **Web Push notifications** (VAPID) for the admin and subscribers.
 - **Installable PWA** — offline caching of visited pages and assets, add-to-home-screen.
 - **Portable by design** — Next.js standalone output, Dockerized, no vendor lock-in.
+
+### What it looks like
+
+![An entry page: an aurora photograph fills the screen behind the headline "Reine, and the Night It Finally Worked", and the story text scrolls beside a map pinned to the stretch of coast being described.](docs/screenshots/post-story-map.jpg)
+
+*Entries pair the writing with a map that follows along as you read.*
+
+![The journey explorer: the full E10 route drawn across the Lofoten islands in orange, with circular photo thumbnails pinned at the places they were taken and a card stepping through them one stop at a time.](docs/screenshots/journey-map.jpg)
+
+*Every trip also opens as a route you can walk through, stop by stop.*
 
 ## Tech stack
 
