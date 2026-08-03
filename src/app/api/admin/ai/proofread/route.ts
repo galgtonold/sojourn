@@ -6,7 +6,11 @@ import {
   type ChatMessage,
 } from "@/lib/ai/deepseek";
 import { maskProtectedTokens } from "@/lib/ai/token-mask";
-import { validateFindings } from "@/lib/ai/proofread";
+import {
+  validateFindings,
+  segmentBody,
+  mergeFindingPayloads,
+} from "@/lib/ai/proofread";
 
 // A single bounded JSON call; keep headroom for a long post.
 export const maxDuration = 180;
@@ -45,30 +49,54 @@ function systemPrompt(lang: "de" | "en"): string {
   return shared + (lang === "de" ? de : en);
 }
 
+/** Concurrency across segments: enough to stay inside maxDuration, few enough
+ *  not to trip provider rate limits on a long post. */
+const LANES = 3;
+
 async function proofread({ user, input }: AdminCtx<z.infer<typeof schema>>) {
   const { postId, title, excerpt, body, lang } = input;
   const { masked } = maskProtectedTokens(body);
   const fields = { title, excerpt, body: masked };
 
-  const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(lang) },
-    { role: "user", content: JSON.stringify(fields) },
+  // One unit for the headings, then the body in segments. Each is a separate
+  // bounded call: sending the whole post in one go is what started failing —
+  // see the note above segmentBody in @/lib/ai/proofread.
+  const units: { title: string; excerpt: string; body: string }[] = [
+    ...(title || excerpt ? [{ title, excerpt, body: "" }] : []),
+    ...segmentBody(masked).map((seg) => ({ title: "", excerpt: "", body: seg })),
   ];
 
-  const raw = await deepseekChat({
-    model: "fast",
-    temperature: 0,
-    maxTokens: 8000,
-    json: true,
-    messages,
-    meta: { operation: "proofread", postId, userId: user.id },
-  });
+  const askOne = async (unit: (typeof units)[number]): Promise<unknown> => {
+    const messages: ChatMessage[] = [
+      { role: "system", content: systemPrompt(lang) },
+      { role: "user", content: JSON.stringify(unit) },
+    ];
+    try {
+      const raw = await deepseekChat({
+        model: "fast",
+        temperature: 0,
+        // Sized for a segment, not a whole post. The old 8000 was spent on
+        // reasoning before the answer began.
+        maxTokens: 3000,
+        json: true,
+        messages,
+        meta: { operation: "proofread", postId, userId: user.id },
+      });
+      return parseJsonLoose(raw);
+    } catch {
+      // One bad segment must not lose the findings from the others. The author
+      // sees fewer suggestions, never an error page.
+      return { findings: [] };
+    }
+  };
 
-  let parsed: unknown = { findings: [] };
-  try {
-    parsed = parseJsonLoose(raw);
-  } catch {
-    parsed = { findings: [] };
+  const payloads: unknown[] = [];
+  for (let i = 0; i < units.length; i += LANES) {
+    payloads.push(...(await Promise.all(units.slice(i, i + LANES).map(askOne))));
   }
-  return { findings: validateFindings(parsed, fields) };
+
+  // Validated against the FULL fields, not the segment it came from: every
+  // segment is a verbatim slice, so `original` still resolves — and anything
+  // the model invented does not, and is dropped.
+  return { findings: validateFindings(mergeFindingPayloads(payloads), fields) };
 }
