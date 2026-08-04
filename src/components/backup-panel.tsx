@@ -83,11 +83,13 @@ export function BackupPanel({ isEmpty }: { isEmpty: boolean }) {
     setDone(null);
     setImporting(true);
     try {
-      const form = new FormData();
-      form.append("archive", file);
+      // The file as the raw body, not multipart: the route counts bytes off
+      // the stream to enforce its ceiling, which it cannot do if something has
+      // already buffered and parsed the whole request.
       const res = await fetch("/api/admin/backup/import", {
         method: "POST",
-        body: form,
+        headers: { "content-type": "application/zip" },
+        body: file,
       });
       const body = (await res.json().catch(() => ({}))) as ImportResult & {
         error?: string;

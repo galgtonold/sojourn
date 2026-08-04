@@ -23,31 +23,45 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "forbidden" }, { status: gate.status });
   }
 
-  const declared = Number(req.headers.get("content-length") ?? 0);
-  if (declared > MAX_UPLOAD_BYTES) {
-    return NextResponse.json(
-      {
-        error:
-          `That file is larger than this import can hold in memory. ` +
-          `Use scripts/restore.sh on the machine itself.`,
-      },
-      { status: 413 },
-    );
-  }
-
+  // Read the body as a stream and count as it arrives, rather than handing it
+  // to formData() — which parses and buffers the whole thing FIRST, so a
+  // content-length check before it is advisory at best and a request with no
+  // length header skips it entirely. Counting here is a real ceiling, and it
+  // also means no multipart parser runs on a file we have not vetted.
+  //
+  // The client posts the file as the raw body for the same reason: there is
+  // nothing to parse.
   let archive: Buffer;
   try {
-    const form = await req.formData();
-    const file = form.get("archive");
-    if (!(file instanceof File)) {
+    const stream = req.body;
+    if (!stream) {
       return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
     }
-    const bytes = await file.arrayBuffer();
-    // Re-checked after reading: content-length is a claim, not a measurement.
-    if (bytes.byteLength > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: "file too large" }, { status: 413 });
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_UPLOAD_BYTES) {
+        // Stop pulling; the connection is torn down rather than drained.
+        await reader.cancel();
+        return NextResponse.json(
+          {
+            error:
+              `That file is larger than this import can hold in memory. ` +
+              `Use scripts/restore.sh on the host instead.`,
+          },
+          { status: 413 },
+        );
+      }
+      chunks.push(value);
     }
-    archive = Buffer.from(bytes);
+    if (size === 0) {
+      return NextResponse.json({ error: "no file uploaded" }, { status: 400 });
+    }
+    archive = Buffer.concat(chunks);
   } catch {
     return NextResponse.json({ error: "could not read the upload" }, { status: 400 });
   }

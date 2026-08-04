@@ -105,7 +105,10 @@ SITE_NAME=Sojourn
 # SOURCE_URL=https://git.example.org/you/sojourn
 `;
 
-writeFileSync(OUT, file);
+// 0600: this holds the JWT secret every service trusts and the Postgres
+// password. The default would be world-readable, which on a shared host is the
+// whole database.
+writeFileSync(OUT, file, { mode: 0o600 });
 console.error(
   `Wrote ${OUT}: Postgres password, JWT secret and the anon/service_role keys.\n` +
     `Edit SUPABASE_PUBLIC_URL and SITE_URL for your host, then:\n` +

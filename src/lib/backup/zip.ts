@@ -37,6 +37,60 @@ export function crc32(buf: Uint8Array): number {
 export type ZipEntry = { name: string; data: Uint8Array };
 
 /**
+ * The largest single entry we will inflate.
+ *
+ * A deflated entry declares how big it becomes, but the declaration is part of
+ * the file — so it is a claim, not a fact, and inflating without a ceiling means
+ * a few kilobytes of upload can ask for gigabytes of memory. Forty megabytes of
+ * zeros compresses to under two hundred kilobytes; the box this runs on is a
+ * 2 GB VPS already mostly given over to Postgres.
+ *
+ * Above what a photograph can be (the all-in-one caps uploads at 50 MB), well
+ * under what would hurt.
+ */
+const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
+
+/**
+ * And a ceiling on the whole archive once unpacked.
+ *
+ * The per-entry limit alone is not enough: readZip holds every entry in memory
+ * at once, so an archive of a thousand entries each just under the per-entry
+ * cap is the same attack with more steps. Deflate reaches about 1000:1 on
+ * repetitive data, so a 250 MB upload — the most the import route accepts —
+ * could otherwise ask for far more than any host has.
+ */
+const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
+
+/**
+ * Is this a name we are willing to write anywhere?
+ *
+ * The import turns `photos/<name>` into a storage path, so an entry called
+ * `photos/../../x` becomes `../../x` — uploaded with the service role and
+ * upsert:true, wherever that resolves to. That is zip-slip, and it comes free
+ * with the format: nothing stops an archive naming a path outside itself.
+ *
+ * Refused rather than sanitised. A name that tries to climb out is either
+ * hostile or broken, and quietly rewriting it to something safe would import
+ * someone's photograph under a path they never chose.
+ */
+export function isSafeEntryName(name: string): boolean {
+  if (name.length === 0 || name.length > 512) return false;
+  // Backslashes are separators on the systems that will unpack this, and a
+  // control character in a path is either an attack or a corrupt archive.
+  // Written out rather than as one regex: a character class holding NUL is
+  // exactly the kind of literal that gets mangled in transit and then silently
+  // matches nothing.
+  const BACKSLASH = 0x5c;
+  for (let i = 0; i < name.length; i++) {
+    const c = name.charCodeAt(i);
+    if (c < 0x20 || c === BACKSLASH) return false;
+  }
+  // Absolute, or a Windows drive.
+  if (name.startsWith("/") || /^[A-Za-z]:/.test(name)) return false;
+  return !name.split("/").includes("..");
+}
+
+/**
  * Read an archive back.
  *
  * Driven from the central directory rather than by scanning for local headers:
@@ -55,6 +109,7 @@ export function readZip(buf: Buffer): ZipEntry[] {
   const count = buf.readUInt16LE(eocd + 10);
   let p = buf.readUInt32LE(eocd + 16);
   const entries: ZipEntry[] = [];
+  let unpacked = 0;
 
   for (let i = 0; i < count; i++) {
     if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error("corrupt central directory");
@@ -73,10 +128,31 @@ export function readZip(buf: Buffer): ZipEntry[] {
     const start = localOffset + 30 + localNameLen + localExtraLen;
     const raw = buf.subarray(start, start + compressedSize);
 
+    if (!isSafeEntryName(name)) {
+      throw new Error(`unsafe path in archive: ${JSON.stringify(name)}`);
+    }
+
     let data: Uint8Array;
-    if (method === 0) data = new Uint8Array(raw);
-    else if (method === 8) data = new Uint8Array(inflateRawSync(raw));
-    else throw new Error(`unsupported compression (method ${method}) for ${name}`);
+    if (method === 0) {
+      if (raw.length !== compressedSize) {
+        throw new Error(`truncated entry: ${name}`);
+      }
+      data = new Uint8Array(raw);
+    } else if (method === 8) {
+      // Bounded, because the declared size is part of the file being checked.
+      data = new Uint8Array(
+        inflateRawSync(raw, { maxOutputLength: MAX_ENTRY_BYTES }),
+      );
+    } else {
+      throw new Error(`unsupported compression (method ${method}) for ${name}`);
+    }
+
+    unpacked += data.byteLength;
+    if (unpacked > MAX_TOTAL_BYTES) {
+      throw new Error(
+        `archive unpacks to more than ${Math.round(MAX_TOTAL_BYTES / 1024 / 1024)} MB`,
+      );
+    }
 
     // Directory entries are zero-length names ending in "/" — nothing to carry.
     if (!name.endsWith("/")) entries.push({ name, data });
