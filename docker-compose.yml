@@ -36,10 +36,19 @@ services:
     environment:
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      # Supabase's newer name for the same key. Accepted by the app, so it has
+      # to be accepted here too or a project created today cannot be configured.
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
       SITE_URL: ${SITE_URL:-}
       SITE_NAME: ${SITE_NAME:-}
       MAP_STYLE_URL: ${MAP_STYLE_URL:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      SENTRY_DSN_CLIENT: ${SENTRY_DSN_CLIENT:-}
+      DEMO_MODE: ${DEMO_MODE:-}
+      # Where visitors can get the source of THIS deployment (AGPL §13). Unset
+      # points at upstream, which is correct until you change the code — after
+      # that, setting it is an obligation rather than a preference.
+      SOURCE_URL: ${SOURCE_URL:-}
       # Schema migrations run at container start, before the server accepts a
       # request — see docs/adr/0002. Wants the DIRECT connection (5432), not the
       # transaction pooler. Unset means they are skipped, loudly, in the logs.
