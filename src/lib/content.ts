@@ -19,7 +19,6 @@ import {
   emptyReactions,
   type Comment,
   type GeoPoint,
-  type Photo,
   type PhotoSearchResult,
   type PhotoTranslation,
   type PostSummary,
@@ -253,7 +252,7 @@ export async function getTripOverview(tripId: string): Promise<TripOverview> {
       const { tracks, locations, photos, ...summary } = row;
       const t = tracks ?? [];
       out.trackCount += t.length;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       out.totalDistanceM += t.reduce(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (s: number, x: any) => s + (x.distance_m ?? 0),

@@ -103,7 +103,7 @@ self.addEventListener("push", (event) => {
   let data = { title: "Sojourn", body: "", url: "/" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
-  } catch (_) {
+  } catch {
     if (event.data) data.body = event.data.text();
   }
 

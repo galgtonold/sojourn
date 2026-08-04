@@ -49,7 +49,7 @@ function hasPython(): boolean {
 
 describe.runIf(hasPython())("the export archive", () => {
   it("carries every table, the photo files, and a readable manifest", async () => {
-    const { db, postId, photoIds } = makeSeed({ photoCount: 2 });
+    const { db, postId } = makeSeed({ photoCount: 2 });
     const post = (db.posts as { id: string; title: string }[]).find(
       (p) => p.id === postId,
     )!;

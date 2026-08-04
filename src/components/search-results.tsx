@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { PhotoSearchResult, PostSummary } from "@/lib/types";
@@ -36,18 +36,13 @@ export function SearchResults() {
   const [, rerender] = useReducer((n) => n + 1, 0);
   // Bumped by the retry button to force a re-fetch of the same query.
   const [retry, bumpRetry] = useReducer((n) => n + 1, 0);
-  // The query currently being fetched (so the "Searching…" state is tied to the
-  // live query, never a stale one).
-  const [loadingQ, setLoadingQ] = useState<string | null>(null);
 
   useEffect(() => {
     // Nothing to do when blank or already cached (the back-button case).
     if (!q || cache.has(q)) {
-      setLoadingQ(null);
       return;
     }
     let cancelled = false;
-    setLoadingQ(q);
     fetch(`/api/search?q=${encodeURIComponent(q)}`)
       .then((r) =>
         r.ok ? r.json() : { posts: [], photos: [], error: true },
@@ -57,7 +52,6 @@ export function SearchResults() {
       .catch(() => remember(q, { posts: [], photos: [], error: true }))
       .finally(() => {
         if (!cancelled) {
-          setLoadingQ(null);
           rerender();
         }
       });

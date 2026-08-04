@@ -1,4 +1,3 @@
-import { getServerSupabase } from "@/lib/supabase/server";
 import { readAiSecrets } from "@/lib/ai-config";
 import {
   AI_FIELD_KEYS,

@@ -84,6 +84,10 @@ export function RouteProgress() {
       window.removeEventListener("popstate", onPop);
       stopTimers();
     };
+    // start/stopTimers close over refs and setState setters only, all stable for
+    // the life of the component. Listing them would re-bind the document
+    // listeners on every render, which is the thing this effect exists to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Commit: the route (or its query string) changed — finish the bar.

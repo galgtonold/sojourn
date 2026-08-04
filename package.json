@@ -11,6 +11,7 @@
     "migrate": "node scripts/migrate.mjs",
     "migrate:status": "node scripts/migrate.mjs --dry-run",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "notices": "node scripts/gen-notices.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

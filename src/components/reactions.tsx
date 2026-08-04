@@ -65,7 +65,8 @@ export function Reactions({
 
     // Optimistic update.
     const nextMine = new Set(mine);
-    active ? nextMine.delete(kind) : nextMine.add(kind);
+    if (active) nextMine.delete(kind);
+    else nextMine.add(kind);
     setMine(nextMine);
     setCounts((c) => ({ ...c, [kind]: Math.max(0, c[kind] + (active ? -1 : 1)) }));
     localStorage.setItem(

@@ -222,10 +222,14 @@ export async function gatherDossierData(
     enriched_at: p.enriched_at,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const trip = (Array.isArray((post as any)?.trips)
-    ? (post as any).trips[0]
-    : (post as any)?.trips) as TripFields | undefined;
+  // PostgREST returns an embedded one-to-one as either an object or a
+  // single-element array depending on how it inferred the relationship, and the
+  // generated types describe only one of those. Narrowed here rather than
+  // pretended away.
+  const embedded = (post as { trips?: unknown })?.trips;
+  const trip = (Array.isArray(embedded) ? embedded[0] : embedded) as
+    | TripFields
+    | undefined;
 
   // Manually pinned geotags store only coordinates, so a hand-tagged photo has
   // lat/lng but no place_name — to the model that reads as bare numbers.

@@ -8,8 +8,8 @@ name: CI
 # No secrets are needed. The build step gets placeholder Supabase config (see
 # below) — this run compiles and type-checks the app, it does not produce a
 # deployable artifact, and it deliberately never touches a real database.
-# Lint is intentionally omitted for now — ESLint isn't configured yet (`next lint`
-# is unconfigured + deprecated); wiring up the ESLint CLI is a separate follow-up.
+# Lint runs here too, driving the ESLint CLI directly — `next lint` is deprecated
+# and was never configured. See eslint.config.mjs.
 
 on:
   push:
@@ -45,6 +45,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Test
         run: npm test

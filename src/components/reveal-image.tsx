@@ -46,6 +46,9 @@ export function RevealImage({
           className="pointer-events-none absolute inset-0 size-full scale-105 object-cover blur-2xl"
         />
       )}
+      {/* eslint-disable-next-line jsx-a11y/alt-text --
+          `alt` comes in through {...img}, which this rule cannot follow.
+          next/image's types require it, so tsc is the real check here. */}
       <Image
         {...img}
         ref={ref}

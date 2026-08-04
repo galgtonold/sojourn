@@ -48,6 +48,10 @@ export default function GlobalError({
           <p style={{ margin: "0.75rem 0 1.75rem", opacity: 0.75 }}>
             The page couldn&apos;t be displayed. Reloading usually helps.
           </p>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages --
+              global-error renders when React has already failed, outside the
+              router. next/link would depend on the thing that just broke; a
+              plain anchor is a full page load, which is the point. */}
           <a
             href="/"
             style={{
