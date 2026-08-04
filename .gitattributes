@@ -1,0 +1,11 @@
+# Files that are read by Linux, whoever checks them out.
+#
+# core.autocrlf is on for this repo, so a checkout on Windows converts LF to
+# CRLF. That is right for source, and wrong for anything a container executes:
+# `#!/bin/bash\r` fails with "no such file or directory", naming a file that is
+# plainly there. Same for the SQL and entrypoints these mount.
+*.sh text eol=lf
+docker/* text eol=lf
+supabase/migrations/*.sql text eol=lf
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
