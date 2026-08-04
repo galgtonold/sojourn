@@ -6,6 +6,7 @@ import {
   isPlaceholderUrl,
   CONFIG_GLOBAL,
   DEFAULT_MAP_STYLE,
+  UPSTREAM_SOURCE_URL,
   type PublicConfig,
 } from "@/lib/public-config";
 
@@ -23,6 +24,7 @@ const EMPTY: PublicConfig = {
   vapidPublicKey: "",
   sentryDsnClient: "",
   demoMode: false,
+  sourceUrl: "",
 };
 
 describe("reading the environment at runtime", () => {
@@ -184,5 +186,57 @@ describe("handing it to the browser", () => {
     const js = publicConfigScript({ ...EMPTY, siteName: nasty });
     const parsed = JSON.parse(js.slice(`window.${CONFIG_GLOBAL}=`.length));
     expect(parsed.siteName).toBe(nasty);
+  });
+});
+
+// AGPL §13: anyone interacting with this software over a network must be
+// offered the Corresponding Source of the version they are actually talking to.
+// That is an obligation on every deployment, not on this repository — so a fork
+// running modified code has to be able to point it at their own source without
+// rebuilding, which is exactly what runtime config is for.
+describe("source URL (AGPL §13)", () => {
+  it("defaults to upstream, so an unmodified deploy is already compliant", () => {
+    expect(publicConfigFromEnv({}).sourceUrl).toBe(UPSTREAM_SOURCE_URL);
+  });
+
+  it("lets a deployment point at its own fork", () => {
+    expect(
+      publicConfigFromEnv({ SOURCE_URL: "https://git.example.org/me/sojourn" })
+        .sourceUrl,
+    ).toBe("https://git.example.org/me/sojourn");
+  });
+
+  it("accepts the NEXT_PUBLIC_ spelling too, like every other field", () => {
+    expect(
+      publicConfigFromEnv({ NEXT_PUBLIC_SOURCE_URL: "https://example.org/src" })
+        .sourceUrl,
+    ).toBe("https://example.org/src");
+  });
+
+  it("prefers the unprefixed name, which is the runtime-settable one", () => {
+    expect(
+      publicConfigFromEnv({
+        SOURCE_URL: "https://runtime.example/src",
+        NEXT_PUBLIC_SOURCE_URL: "https://baked-in.example/src",
+      }).sourceUrl,
+    ).toBe("https://runtime.example/src");
+  });
+
+  it("lets an injected value beat the one baked into the bundle", () => {
+    // The whole point for a prebuilt image: the fork's URL arrives at runtime.
+    const inlined = publicConfigFromEnv({});
+    const merged = mergePublicConfig(
+      { ...inlined, sourceUrl: "https://fork.example/src" },
+      inlined,
+    );
+    expect(merged.sourceUrl).toBe("https://fork.example/src");
+  });
+
+  it("falls back to the build's value rather than showing nothing", () => {
+    // A blank offer is worse than a stale one: §13 wants a link that works.
+    const inlined = publicConfigFromEnv({ SOURCE_URL: "https://built.example/src" });
+    expect(
+      mergePublicConfig({ ...inlined, sourceUrl: "" }, inlined).sourceUrl,
+    ).toBe("https://built.example/src");
   });
 });

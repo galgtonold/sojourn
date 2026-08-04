@@ -40,7 +40,22 @@ export type PublicConfig = {
   vapidPublicKey: string;
   sentryDsnClient: string;
   demoMode: boolean;
+  /**
+   * Where a visitor can get the source of THIS deployment (AGPL §13).
+   * Runtime-settable, because the obligation belongs to whoever is running the
+   * code — a fork must be able to point it at their own repository.
+   */
+  sourceUrl: string;
 };
+
+/**
+ * The upstream repository — the default answer to "where is the source?".
+ *
+ * Correct for any unmodified deployment, which is most of them, so §13 is
+ * satisfied out of the box with nothing to configure. Modify the code and you
+ * must change it: set SOURCE_URL to wherever your version actually lives.
+ */
+export const UPSTREAM_SOURCE_URL = "https://github.com/galgtonold/sojourn";
 
 export const DEFAULT_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
@@ -117,6 +132,11 @@ export function publicConfigFromEnv(e: Env): PublicConfig {
     vapidPublicKey: firstSet(e.VAPID_PUBLIC_KEY, e.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
     sentryDsnClient: firstSet(e.SENTRY_DSN_CLIENT, e.NEXT_PUBLIC_SENTRY_DSN),
     demoMode: firstSet(e.DEMO_MODE, e.NEXT_PUBLIC_DEMO_MODE) === "1",
+    sourceUrl: firstSet(
+      e.SOURCE_URL,
+      e.NEXT_PUBLIC_SOURCE_URL,
+      UPSTREAM_SOURCE_URL,
+    ),
   };
 }
 
@@ -173,5 +193,7 @@ export function mergePublicConfig(
     vapidPublicKey: injected.vapidPublicKey || inlined.vapidPublicKey,
     sentryDsnClient: injected.sentryDsnClient || inlined.sentryDsnClient,
     demoMode: injected.demoMode ?? inlined.demoMode,
+    // Never blank: a source offer that links nowhere does not discharge §13.
+    sourceUrl: injected.sourceUrl || inlined.sourceUrl,
   };
 }

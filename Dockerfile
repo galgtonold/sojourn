@@ -43,6 +43,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# The licences travel with the distribution. Publishing this image redistributes
+# every dependency inside it, and nearly all of their licences permit that only
+# on the condition that their copyright notices come along — a condition
+# minification otherwise quietly strips.
+COPY --from=builder /app/LICENSE /app/THIRD-PARTY-NOTICES.txt ./
+
 # ─── the migration runner ────────────────────────────────────────────────────
 # Container start is this host's release seam (docs/adr/0002), and `standalone`
 # contains only what Next traced from the app — which is not this, because

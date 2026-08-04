@@ -12,6 +12,7 @@
 import { pickSupabaseKey, pickServiceKey } from "@/lib/env-aliases";
 import {
   publicConfigFromEnv,
+  UPSTREAM_SOURCE_URL,
   injectedPublicConfig,
   mergePublicConfig,
   DEFAULT_MAP_STYLE,
@@ -47,6 +48,7 @@ const inlined: PublicConfig = {
   vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
   sentryDsnClient: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
   demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === "1",
+  sourceUrl: process.env.NEXT_PUBLIC_SOURCE_URL || UPSTREAM_SOURCE_URL,
 };
 
 // On the server, the environment as it is right now — which in a container is
@@ -70,6 +72,8 @@ export const env = {
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
   siteUrl: publicConfig.siteUrl,
   siteName: publicConfig.siteName,
+  // Where this deployment's source lives — AGPL §13 (see public-config).
+  sourceUrl: publicConfig.sourceUrl,
   mapStyleUrl: publicConfig.mapStyleUrl,
 
   // ── Telemetry, both off unless the operator turns them on ────────────────

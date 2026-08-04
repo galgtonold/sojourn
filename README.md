@@ -436,10 +436,33 @@ Built and working, but room to grow:
 
 ## License
 
-Sojourn is free software under the **[GNU AGPL-3.0](LICENSE)** (`AGPL-3.0-only`).
+Copyright © 2026 Philipp Gergen.
+
+Sojourn is free software: you can redistribute it and/or modify it under the terms
+of the GNU Affero General Public License as published by the Free Software
+Foundation, version 3 — see **[LICENSE](LICENSE)** (`AGPL-3.0-only`). It is
+distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 - **Self-host it freely, forever.** Run it for yourself or anyone else, and modify it however you like.
 - **Offering it as a service?** Also fine — the AGPL simply requires making the source of your modified version available to the people who use it.
 - **Want white-label use, closed modifications, or different terms?** Commercial licenses are available — contact Philipp Gergen: <philipp.gergen@web.de>.
 
 Contributions are welcome under a lightweight DCO + relicensing grant — see [CONTRIBUTING.md](CONTRIBUTING.md). The "Sojourn" name and logo are not covered by the code license.
+
+**Running a modified version?** AGPL §13 requires you to offer your users the source
+of the version they are actually using. The footer carries that link, and it is
+runtime configuration rather than something baked into the build — point
+`SOURCE_URL` at your own repository and every deployment of your image says so:
+
+```bash
+SOURCE_URL=https://git.example.org/you/sojourn
+```
+
+Unmodified deployments need do nothing; it already points at this repository.
+
+**Third-party code.** Sojourn bundles other people's work — MapLibre GL JS, React,
+Next.js and some 370 more — each under its own terms, reproduced in
+[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). Regenerate it with `npm run
+notices` after changing dependencies; a test fails if it drifts. The Docker image
+additionally embeds LGPL-3.0 libvips by way of `sharp`.

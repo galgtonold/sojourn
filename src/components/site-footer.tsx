@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { T, BrandTagline } from "@/components/i18n";
+import { env } from "@/lib/env";
 
 export function SiteFooter({ name }: { name: string }) {
   return (
@@ -24,6 +25,21 @@ export function SiteFooter({ name }: { name: string }) {
           <Link href="/admin" className="hover:text-ember-400">
             <T k="nav.admin" />
           </Link>
+          {/*
+            AGPL §13: anyone who interacts with this over a network must be
+            offered the Corresponding Source of the version they are talking to.
+            That is an obligation on whoever runs it, which is why the URL comes
+            from runtime config — a fork points SOURCE_URL at their own tree
+            without rebuilding. It is a plain anchor because it leaves the app.
+          */}
+          <a
+            href={env.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-ember-400"
+          >
+            <T k="footer.source" />
+          </a>
         </nav>
       </div>
     </footer>

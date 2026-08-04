@@ -653,6 +653,7 @@ const en = {
   "admin.ai.title": "AI draft",
   "admin.ai.subtitle": "From your photos, routes and notes — in your voice.",
   "admin.ai.notes": "Notes — bullet points, route, highlights, who you were with…",
+  "footer.source": "Source code",
   "admin.ai.dictate.start": "Dictate notes",
   "admin.ai.dictate.stop": "Stop dictation",
   "admin.ai.dictate.hearing": "Listening",
@@ -1491,6 +1492,7 @@ const de: Dict = {
   "admin.ai.subtitle": "Aus deinen Fotos, Routen und Notizen — in deinem Stil.",
   "admin.ai.notes":
     "Notizen — Stichpunkte, Route, Höhepunkte, Begleitung …",
+  "footer.source": "Quellcode",
   "admin.ai.dictate.start": "Notizen diktieren",
   "admin.ai.dictate.stop": "Diktat stoppen",
   "admin.ai.dictate.hearing": "Höre zu",
