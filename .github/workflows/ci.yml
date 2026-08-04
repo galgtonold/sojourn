@@ -17,6 +17,12 @@ on:
   pull_request:
     branches: [main]
 
+# Read-only, explicitly. Without this the token inherits whatever the repository
+# default is, which for a public repo is a write-scoped token handed to every
+# pull request build — including ones from forks.
+permissions:
+  contents: read
+
 # A newer push to the same branch/PR cancels the in-flight run.
 concurrency:
   group: ci-${{ github.ref }}
