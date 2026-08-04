@@ -7,7 +7,16 @@ import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { embedPostRecord } from "@/lib/ai/embed-records";
-import { triggerPostTranslation } from "@/lib/ai/translate";
+import { triggerPostTranslation } from "@/lib/ai/translate";
+
+// Translation runs in-process when no Edge Function is configured (see
+// @/lib/ai/translate), scheduled with `after()` — so the model calls are billed
+// against THIS function's clock even though the response has already gone. The
+// body pass is capped at 8000 tokens, which does not fit in Vercel's default 60s
+// and a killed function records nothing at all. Raising a cap and raising the
+// route's clock are one decision (CLAUDE.md).
+export const maxDuration = 180;
+
 
 function revalidatePublic(slug?: string | null, alsoSlug?: string | null) {
   revalidatePath("/");
