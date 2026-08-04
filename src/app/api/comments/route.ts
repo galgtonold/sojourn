@@ -4,7 +4,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
 import { notifyComment, notifyCommentAuthor } from "@/lib/notify";
-import { logError } from "@/lib/log";
+import { afterResponse } from "@/lib/after-response";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
 
@@ -73,19 +73,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 
-  notifyComment(postId, {
-    type: "comment",
-    title: `New ${parentId ? "reply" : "comment"} from ${data.author_name}`,
-    body: body.slice(0, 120),
-    url: `${env.siteUrl}/admin/comments`,
-  }).catch((e) => logError("notify.comment", e));
+  // after(), not a floating promise — see @/lib/after-response. Left loose,
+  // these are frozen with the response and usually never sent.
+  afterResponse("notify.comment", () =>
+    notifyComment(postId, {
+      type: "comment",
+      title: `New ${parentId ? "reply" : "comment"} from ${data.author_name}`,
+      body: body.slice(0, 120),
+      url: `${env.siteUrl}/admin/comments`,
+    }),
+  );
 
   if (parentId) {
-    notifyCommentAuthor(parentId, visitorToken, {
-      kind: "reply",
-      actorName: data.author_name,
-      bodyExcerpt: body.slice(0, 120),
-    }).catch((e) => logError("notify.reply", e));
+    afterResponse("notify.reply", () =>
+      notifyCommentAuthor(parentId, visitorToken, {
+        kind: "reply",
+        actorName: data.author_name,
+        bodyExcerpt: body.slice(0, 120),
+      }),
+    );
   }
 
   return NextResponse.json({ ...data, like_count: 0 }, { status: 201 });

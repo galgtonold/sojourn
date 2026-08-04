@@ -4,6 +4,7 @@ import "server-only";
 import webpush from "web-push";
 import { env, isPushConfigured } from "@/lib/env";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 let configured = false;
 function ensureVapid() {
@@ -24,6 +25,18 @@ export type NotifyInput = {
 
 type Sub = { id: string; endpoint: string; p256dh: string; auth: string };
 
+/**
+ * The push service's host — safe to log. The rest of the endpoint is not: it
+ * is a capability, and whoever holds it can push to that device with our key.
+ */
+function pushService(endpoint: string): string {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return "unknown";
+  }
+}
+
 // Sends a push payload to a set of subscriptions, pruning dead ones.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deliver(supabase: any, subs: Sub[], payload: NotifyInput) {
@@ -43,8 +56,21 @@ async function deliver(supabase: any, subs: Sub[], payload: NotifyInput) {
       } catch (err: unknown) {
         const code = (err as { statusCode?: number })?.statusCode;
         if (code === 404 || code === 410) {
+          // The browser dropped this subscription for good. Pruning it is the
+          // expected end of a subscription's life, not a fault worth logging.
           await supabase.from("push_subscriptions").delete().eq("id", s.id);
+          return;
         }
+        // Everything else — a network abort, an FCM 429 or 5xx, a bad VAPID
+        // key — was swallowed here without a word, so a notification could
+        // fail forever and leave nothing behind to look at. Logged by hand
+        // rather than passing `err` through: web-push puts the full endpoint
+        // on its error object.
+        logError("push.send", {
+          service: pushService(s.endpoint),
+          statusCode: code ?? null,
+          message: (err as Error)?.message,
+        });
       }
     }),
   );

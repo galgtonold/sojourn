@@ -4,11 +4,12 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
 import { notifyViewers } from "@/lib/notify";
+import { afterResponse } from "@/lib/after-response";
 import { env } from "@/lib/env";
 import { randomUUID } from "node:crypto";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
-import { triggerPostTranslation } from "@/lib/ai/translate";
+import { triggerPostTranslation } from "@/lib/ai/translate";
 
 // Translation runs in-process when no Edge Function is configured (see
 // @/lib/ai/translate), scheduled with `after()` — so the model calls are billed
@@ -125,11 +126,14 @@ export async function POST(req: Request) {
 
   // Newly published → tell readers who opted in.
   if (p.published) {
-    notifyViewers({
-      title: `New story: ${title}`,
-      body: p.excerpt ?? undefined,
-      url: `${env.siteUrl}/posts/${slug}`,
-    }).catch(() => {});
+    // after(), not a floating promise — see @/lib/after-response.
+    afterResponse("notify.viewers", () =>
+      notifyViewers({
+        title: `New story: ${title}`,
+        body: p.excerpt ?? undefined,
+        url: `${env.siteUrl}/posts/${slug}`,
+      }),
+    );
   }
 
   return NextResponse.json(data, { status: 201 });

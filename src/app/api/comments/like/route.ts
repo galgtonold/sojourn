@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { notifyCommentAuthor } from "@/lib/notify";
-import { logError } from "@/lib/log";
+import { afterResponse } from "@/lib/after-response";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +33,9 @@ export async function POST(req: Request) {
         { onConflict: "comment_id,visitor_token", ignoreDuplicates: true },
       );
     if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
-    notifyCommentAuthor(commentId, token, { kind: "like" }).catch((e) =>
-      logError("notify.like", e),
+    // after(), not a floating promise — see @/lib/after-response.
+    afterResponse("notify.like", () =>
+      notifyCommentAuthor(commentId, token, { kind: "like" }),
     );
   } else {
     // See migration 0046 — anon no longer holds DELETE here, and the function
