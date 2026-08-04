@@ -473,7 +473,7 @@ export function AiDraftPanel({
         <span>{t("admin.ai.workflowHint")}</span>
       </p>
 
-      <div className="relative mt-4">
+      <div className="mt-4">
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -481,40 +481,53 @@ export function AiDraftPanel({
           rows={4}
           disabled={busy}
           placeholder={t("admin.ai.notes")}
-          className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 pr-12 text-sm outline-none focus:border-ember-400"
+          className="w-full resize-y rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-sm outline-none focus:border-ember-400"
         />
+        {/*
+          The mic sits BELOW the textarea rather than floating inside it.
+          Overlaid, it had two neighbours it could not avoid: the scrollbar,
+          which only appears once the notes get long and then slides under the
+          button, and the native resize grabber in the bottom-right corner. Both
+          are drawn inside the textarea's box, so no amount of offsetting fixes
+          them for every state at once. Out here it is always clear of both, and
+          the live transcript has somewhere to go.
+        */}
         {dictation.supported && (
-          <button
-            type="button"
-            onClick={dictation.toggle}
-            disabled={busy}
-            aria-label={
-              dictation.listening
-                ? t("admin.ai.dictate.stop")
-                : t("admin.ai.dictate.start")
-            }
-            title={
-              dictation.listening
-                ? t("admin.ai.dictate.stop")
-                : t("admin.ai.dictate.start")
-            }
-            className={cn(
-              "absolute right-2 top-2 grid size-9 place-items-center rounded-full border transition disabled:opacity-40",
-              dictation.listening
-                ? "animate-pulse border-red-500/50 bg-red-500/20 text-red-300"
-                : "border-white/10 bg-ink-950/60 text-sand-100/70 hover:border-ember-400 hover:text-ember-400",
+          <div className="mt-2 flex items-start gap-2">
+            <button
+              type="button"
+              onClick={dictation.toggle}
+              disabled={busy}
+              aria-label={
+                dictation.listening
+                  ? t("admin.ai.dictate.stop")
+                  : t("admin.ai.dictate.start")
+              }
+              title={
+                dictation.listening
+                  ? t("admin.ai.dictate.stop")
+                  : t("admin.ai.dictate.start")
+              }
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-full border transition disabled:opacity-40",
+                dictation.listening
+                  ? "animate-pulse border-red-500/50 bg-red-500/20 text-red-300"
+                  : "border-white/10 bg-ink-950/60 text-sand-100/70 hover:border-ember-400 hover:text-ember-400",
+              )}
+            >
+              <Mic className="size-4" />
+            </button>
+            {dictation.listening && (
+              <p className="min-w-0 flex-1 pt-1.5 text-xs text-sand-100/50">
+                <span className="text-ember-300">
+                  {t("admin.ai.dictate.hearing")}:
+                </span>{" "}
+                {dictation.interim || "…"}
+              </p>
             )}
-          >
-            <Mic className="size-4" />
-          </button>
+          </div>
         )}
       </div>
-      {dictation.listening && dictation.interim && (
-        <p className="mt-1 text-xs text-sand-100/50">
-          <span className="text-ember-300">{t("admin.ai.dictate.hearing")}:</span>{" "}
-          {dictation.interim}
-        </p>
-      )}
       {dictation.denied && (
         <p className="mt-1 text-xs text-red-400">{t("admin.ai.dictate.denied")}</p>
       )}

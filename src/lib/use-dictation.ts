@@ -31,12 +31,31 @@ function getCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-// TEMPORARY diagnostics for the dictation-doubling bug: logs the recognition
-// event stream to the console (filter DevTools by "[dict]"). Remove once fixed.
-const DICT_DEBUG = true;
+// Diagnostics for the recognition event stream, OFF unless asked for.
+//
+// This used to be a hard-coded `true`, which meant every author's dictated words
+// were printed to their console in production — the transcript, verbatim, on a
+// personal journal. It is also the only way to debug this API, which behaves
+// differently on every browser and cannot be reproduced in a test.
+//
+// So: opt in per browser, on any deployment, and it survives a reload.
+//   localStorage.dictDebug = "1"    (or load the page with ?dictdebug=1)
+function dictDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).has("dictdebug")) {
+      window.localStorage.setItem("dictDebug", "1");
+    }
+    return window.localStorage.getItem("dictDebug") === "1";
+  } catch {
+    // Storage can throw in a locked-down browser; never take dictation down
+    // over a logging switch.
+    return false;
+  }
+}
 let __dictHooks = 0;
 function dlog(...args: unknown[]) {
-  if (DICT_DEBUG && typeof console !== "undefined") console.log("[dict]", ...args);
+  if (dictDebug() && typeof console !== "undefined") console.log("[dict]", ...args);
 }
 
 // Append a dictated chunk to the existing text with sane spacing.
@@ -55,8 +74,15 @@ export function appendTranscript(existing: string, chunk: string): string {
 // chunk on every event, and Chrome's `resultIndex` does NOT reliably advance
 // past finalized results — reading it re-appends the earlier chunks on each event
 // (the first words double while the last stay fine). So we track our own position
-// by the finalized text emitted so far and append only what extends it. Finals
-// only ever grow within a session, so this emits each chunk exactly once. Pure.
+// by the finalized text emitted so far and append only what extends it. Pure.
+//
+// It diffs from the COMMON PREFIX rather than requiring that the new text start
+// with the old. The stricter version deadlocked: browsers sometimes revise an
+// already-finalized chunk — re-punctuating it, or changing its capitalisation —
+// and after one such revision `startsWith` was false forever, so the position
+// never advanced and not one further word was ever emitted. Silence, with the
+// microphone still showing as live. Diffing from the common prefix costs a
+// re-emitted tail on the rare revision and cannot get stuck.
 export function growthFrom(
   results: { transcript: string; isFinal: boolean }[],
   emitted: string,
@@ -67,11 +93,11 @@ export function growthFrom(
     if (r.isFinal) finalText += r.transcript;
     else interim += r.transcript;
   }
-  const delta =
-    finalText.length > emitted.length && finalText.startsWith(emitted)
-      ? finalText.slice(emitted.length)
-      : "";
-  return { delta, finalText, interim };
+  let i = 0;
+  while (i < emitted.length && i < finalText.length && emitted[i] === finalText[i]) {
+    i++;
+  }
+  return { delta: finalText.slice(i), finalText, interim };
 }
 
 export type Dictation = {
@@ -153,9 +179,10 @@ export function useDictation(opts: {
         "final=" + JSON.stringify(finalText),
         "delta=" + JSON.stringify(delta),
       );
-      // Advance our position when the finalized text grew (guard against a rare
-      // rewrite so we never lose ground and re-emit).
-      if (finalText.startsWith(emitted)) emittedRef.current = finalText;
+      // Always advance: growthFrom diffs from the common prefix, so the position
+      // is simply "everything finalized so far", revision or not. Conditioning
+      // this on startsWith is what froze it.
+      emittedRef.current = finalText;
       if (delta.trim()) {
         dlog("EMIT h" + hookId, JSON.stringify(delta));
         onFinalRef.current(delta);
