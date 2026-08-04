@@ -2,10 +2,64 @@ import { describe, it, expect } from "vitest";
 import {
   applyEnd,
   applyResult,
+  faultFrom,
   growthFrom,
   insertTranscript,
   startSession,
 } from "@/lib/use-dictation";
+
+// Every one of these ends the session. Only one of them used to say anything,
+// so the microphone would go quiet mid-thought and the author was left to guess
+// whether they had done something wrong, whether it was still listening, or
+// whether the feature simply did not work.
+describe("faultFrom — why the microphone stopped", () => {
+  it("reports a refused permission", () => {
+    expect(faultFrom("not-allowed")).toBe("denied");
+    expect(faultFrom("service-not-allowed")).toBe("denied");
+  });
+
+  it("reports a missing microphone separately from a refused one", () => {
+    // Different fix: one is a browser prompt, the other is hardware.
+    expect(faultFrom("audio-capture")).toBe("no-mic");
+  });
+
+  it("reports a dropped speech service", () => {
+    expect(faultFrom("network")).toBe("network");
+  });
+
+  it("reports having heard nothing", () => {
+    expect(faultFrom("no-speech")).toBe("no-speech");
+  });
+
+  // Chrome raises `no-speech` for a long enough pause, including one at the end
+  // of a session that transcribed perfectly well. Telling the author it caught
+  // nothing when it had just written a paragraph for them would be a lie, and
+  // the sort that makes the honest warnings worthless.
+  it("stays quiet about silence in a session that did hear something", () => {
+    expect(faultFrom("no-speech", true)).toBeNull();
+  });
+
+  it("still reports the other faults even when it heard something first", () => {
+    expect(faultFrom("network", true)).toBe("network");
+    expect(faultFrom("audio-capture", true)).toBe("no-mic");
+  });
+
+  it("reports a language the browser cannot dictate", () => {
+    expect(faultFrom("language-not-supported")).toBe("language");
+  });
+
+  // The one silence that is correct: the author pressed stop, or the panel
+  // unmounted. Raising an alarm for that would train them to ignore all of them.
+  it("says nothing when the stop was deliberate", () => {
+    expect(faultFrom("aborted")).toBeNull();
+  });
+
+  it("still says something for a code it has never seen", () => {
+    expect(faultFrom("bad-grammar")).toBe("unknown");
+    expect(faultFrom("some-future-code")).toBe("unknown");
+    expect(faultFrom("")).toBe("unknown");
+  });
+});
 
 // A session is the event stream the browser hands us: any number of `result`
 // events, then exactly one `end`. These drive it directly, which is the whole

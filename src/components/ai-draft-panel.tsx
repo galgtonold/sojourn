@@ -12,7 +12,11 @@ import {
   Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDictation, insertTranscript } from "@/lib/use-dictation";
+import {
+  useDictation,
+  insertTranscript,
+  type DictationFault,
+} from "@/lib/use-dictation";
 import type { ManagedInteraction } from "@/components/interaction-manager";
 import type { DictKey } from "@/lib/i18n";
 import { runDraft, type DraftStepKey } from "@/lib/ai/run-draft";
@@ -136,6 +140,21 @@ function humanError(e: unknown, t: (k: string) => string): string {
     return t("admin.ai.err.network");
   return t("admin.ai.err.generic");
 }
+
+// Why the microphone stopped, in words. Every one of these ends the session;
+// only a refused permission used to be reported, so the rest looked from the
+// author's chair like the feature had simply given up on them.
+const FAULT_COPY: Record<DictationFault, DictKey> = {
+  denied: "admin.ai.dictate.denied",
+  "no-mic": "admin.ai.dictate.noMic",
+  network: "admin.ai.dictate.network",
+  "no-speech": "admin.ai.dictate.noSpeech",
+  language: "admin.ai.dictate.language",
+  unknown: "admin.ai.dictate.unknown",
+};
+// The ones that will keep happening until something is changed — a permission,
+// a device, a language — as opposed to the ones worth another try.
+const FAULT_IS_BLOCKING = new Set<DictationFault>(["denied", "no-mic", "language"]);
 
 export function AiDraftPanel({
   postId,
@@ -569,8 +588,20 @@ export function AiDraftPanel({
           </div>
         )}
       </div>
-      {dictation.denied && (
-        <p className="mt-1 text-xs text-red-400">{t("admin.ai.dictate.denied")}</p>
+      {dictation.fault && (
+        <p
+          role="status"
+          className={cn(
+            "mt-1 text-xs",
+            // Red for the three the author has to go and fix; amber for the
+            // ones where the answer is simply to tap the mic again.
+            FAULT_IS_BLOCKING.has(dictation.fault)
+              ? "text-red-400"
+              : "text-amber-300/80",
+          )}
+        >
+          {t(FAULT_COPY[dictation.fault])}
+        </p>
       )}
 
       {phase === "answering" && questions.length > 0 && (

@@ -172,11 +172,62 @@ export function applyEnd(s: Session): { session: Session; emit: string } {
   return { session: startSession(), emit: s.interim.trim() };
 }
 
+/**
+ * Why the microphone stopped, when it stopped for a reason worth saying.
+ *
+ * Every recognition error ends the session. Only a refused permission used to
+ * be reported, so every other one — a dropped speech service, an unplugged
+ * microphone, a language the browser will not dictate — looked identical from
+ * the author's chair: the mic quietly stops mid-thought and nothing says why.
+ */
+export type DictationFault =
+  | "denied"
+  | "no-mic"
+  | "network"
+  | "no-speech"
+  | "language"
+  | "unknown";
+
+/**
+ * Map a `SpeechRecognitionErrorEvent.error` code onto something sayable.
+ *
+ * `null` means "do not say anything": `aborted` is the author pressing stop, or
+ * the panel unmounting. Warning about that would teach them to ignore the
+ * warnings that matter.
+ *
+ * `heardAnything` is why this takes a second argument. Chrome raises
+ * `no-speech` for a long enough pause, including the one that ends a session
+ * which transcribed fine — and "didn't catch anything" is simply false there.
+ */
+export function faultFrom(
+  code: string,
+  heardAnything = false,
+): DictationFault | null {
+  switch (code) {
+    case "aborted":
+      return null;
+    case "not-allowed":
+    case "service-not-allowed":
+      return "denied";
+    case "audio-capture":
+      return "no-mic";
+    case "network":
+      return "network";
+    case "no-speech":
+      return heardAnything ? null : "no-speech";
+    case "language-not-supported":
+      return "language";
+    default:
+      return "unknown";
+  }
+}
+
 export type Dictation = {
   supported: boolean;
   listening: boolean;
   interim: string;
-  denied: boolean;
+  /** Why it stopped, or null while all is well. See DictationFault. */
+  fault: DictationFault | null;
   toggle: () => void;
   stop: () => void;
 };
@@ -188,7 +239,7 @@ export function useDictation(opts: {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
-  const [denied, setDenied] = useState(false);
+  const [fault, setFault] = useState<DictationFault | null>(null);
   // A stable id per hook INSTANCE — if the logs show two different ids emitting,
   // the panel is mounting the hook twice (that would double the text).
   const [hookId] = useState(() => ++__dictHooks);
@@ -226,7 +277,7 @@ export function useDictation(opts: {
   const start = useCallback(() => {
     const Ctor = getCtor();
     if (!Ctor) return;
-    setDenied(false);
+    setFault(null);
     wantRef.current = true;
     sessionRef.current = startSession();
     dlog("START", hookId, "existing rec?", !!recRef.current);
@@ -266,10 +317,10 @@ export function useDictation(opts: {
     };
     rec.onerror = (e) => {
       dlog("onerror h" + hookId, e.error);
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        setDenied(true);
-      }
-      // Other errors (no-speech, aborted, network) just end the session via onend.
+      // Every error also ends the session, via onend — which is where the words
+      // still in flight get committed. This only has to explain the silence.
+      const s = sessionRef.current;
+      setFault(faultFrom(e.error, !!(s.emitted.trim() || s.interim.trim())));
     };
     rec.onend = () => {
       // Commit anything the session ended holding, before the only copy of it
@@ -314,5 +365,5 @@ export function useDictation(opts: {
     };
   }, []);
 
-  return { supported, listening, interim, denied, toggle, stop };
+  return { supported, listening, interim, fault, toggle, stop };
 }

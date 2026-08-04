@@ -657,6 +657,14 @@ const en = {
   "admin.ai.dictate.stop": "Stop dictation",
   "admin.ai.dictate.hearing": "Listening",
   "admin.ai.dictate.denied": "Microphone access denied — you can still type or use your keyboard's mic.",
+  "admin.ai.dictate.noMic":
+    "No microphone found — check that one is connected and selected.",
+  "admin.ai.dictate.network":
+    "Lost the connection to the speech service. Anything already heard was kept — tap the mic to carry on.",
+  "admin.ai.dictate.noSpeech": "Didn't catch anything — tap the mic and speak again.",
+  "admin.ai.dictate.language": "Your browser can't dictate this language.",
+  "admin.ai.dictate.unknown":
+    "Dictation stopped unexpectedly — tap the mic to carry on.",
   "admin.ai.suggestQuestions": "Suggest questions",
   "admin.ai.askMore": "Ask more questions",
   "admin.ai.addToContext": "Add to context",
@@ -1487,6 +1495,15 @@ const de: Dict = {
   "admin.ai.dictate.stop": "Diktat stoppen",
   "admin.ai.dictate.hearing": "Höre zu",
   "admin.ai.dictate.denied": "Mikrofonzugriff verweigert — du kannst weiter tippen oder das Mikro deiner Tastatur nutzen.",
+  "admin.ai.dictate.noMic":
+    "Kein Mikrofon gefunden — prüfe, ob eines angeschlossen und ausgewählt ist.",
+  "admin.ai.dictate.network":
+    "Verbindung zum Spracherkennungsdienst verloren. Bereits Gehörtes wurde übernommen — tippe aufs Mikro, um weiterzumachen.",
+  "admin.ai.dictate.noSpeech":
+    "Nichts verstanden — tippe aufs Mikro und sprich noch einmal.",
+  "admin.ai.dictate.language": "Dein Browser kann diese Sprache nicht diktieren.",
+  "admin.ai.dictate.unknown":
+    "Das Diktat wurde unerwartet beendet — tippe aufs Mikro, um weiterzumachen.",
   "admin.ai.suggestQuestions": "Fragen vorschlagen",
   "admin.ai.askMore": "Weitere Fragen",
   "admin.ai.addToContext": "Zum Kontext hinzufügen",
