@@ -149,5 +149,43 @@ export function makeFakeSupabase(seed: FakeDb, userId = "user-1") {
         return { data: { user: { id: userId } }, error: null };
       },
     },
+    /**
+     * The security-definer functions from migration 0046, modelled closely
+     * enough to be worth trusting: anon no longer holds DELETE on these tables,
+     * so a fake that let a bare `.delete()` through would pass while production
+     * returned "permission denied".
+     *
+     * The token-length guard is copied deliberately — it is the part that stops
+     * a blank token matching every blank-token row.
+     */
+    async rpc(name: string, args: Record<string, unknown>) {
+      const token = args.p_token;
+      const usable = typeof token === "string" && token.length >= 8;
+      const remove = (table: string, match: (r: Row) => boolean) => {
+        const rows = store[table] ?? [];
+        const keep = rows.filter((r) => !match(r));
+        const removed = rows.length - keep.length;
+        store[table] = keep;
+        return { data: removed, error: null };
+      };
+      if (name === "remove_reaction") {
+        if (!usable) return { data: 0, error: null };
+        return remove(
+          "reactions",
+          (r) =>
+            r.post_id === args.p_post_id &&
+            r.kind === args.p_kind &&
+            r.visitor_token === token,
+        );
+      }
+      if (name === "remove_comment_like") {
+        if (!usable) return { data: 0, error: null };
+        return remove(
+          "comment_likes",
+          (r) => r.comment_id === args.p_comment_id && r.visitor_token === token,
+        );
+      }
+      return { data: null, error: { message: `unknown function ${name}` } };
+    },
   };
 }

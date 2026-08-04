@@ -37,10 +37,12 @@ export async function POST(req: Request) {
       logError("notify.like", e),
     );
   } else {
-    const { error } = await supabase
-      .from("comment_likes")
-      .delete()
-      .match({ comment_id: commentId, visitor_token: token });
+    // See migration 0046 — anon no longer holds DELETE here, and the function
+    // can only remove a like whose visitor_token matches.
+    const { error } = await supabase.rpc("remove_comment_like", {
+      p_comment_id: commentId,
+      p_token: token,
+    });
     if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
 

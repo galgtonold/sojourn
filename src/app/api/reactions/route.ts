@@ -58,10 +58,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "unavailable" }, { status: 500 });
     }
   } else {
-    const { error } = await supabase
-      .from("reactions")
-      .delete()
-      .match({ post_id: postId, kind, visitor_token: token });
+    // Through a security-definer function rather than a direct delete: anon no
+    // longer holds DELETE on this table, because a policy permissive enough to
+    // allow it was permissive enough to empty it (see migration 0046). The
+    // function can only remove a row whose visitor_token matches.
+    const { error } = await supabase.rpc("remove_reaction", {
+      p_post_id: postId,
+      p_kind: kind,
+      p_token: token,
+    });
     if (error) {
       return NextResponse.json({ error: "unavailable" }, { status: 500 });
     }
