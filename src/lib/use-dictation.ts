@@ -58,12 +58,39 @@ function dlog(...args: unknown[]) {
   if (dictDebug() && typeof console !== "undefined") console.log("[dict]", ...args);
 }
 
-// Append a dictated chunk to the existing text with sane spacing.
-export function appendTranscript(existing: string, chunk: string): string {
+/**
+ * Insert a dictated chunk at a caret position, with the spacing a person would
+ * have typed, and report where the caret ends up.
+ *
+ * Dictation used to always append to the very end of the notes. That is right
+ * often enough to hide how wrong it is the rest of the time: put the cursor in
+ * the middle of what you have written, speak, and the words land somewhere you
+ * are not looking. Pure, so the spacing rules are pinned by tests rather than
+ * discovered while talking to a microphone.
+ */
+export function insertTranscript(
+  existing: string,
+  chunk: string,
+  at: number,
+): { text: string; caret: number } {
   const c = chunk.trim();
-  if (!c) return existing;
-  if (!existing) return c;
-  return existing + (/\s$/.test(existing) ? "" : " ") + c;
+  if (!c) return { text: existing, caret: at };
+
+  const pos = Math.max(0, Math.min(at, existing.length));
+  const before = existing.slice(0, pos);
+  const after = existing.slice(pos);
+
+  // A space before unless we are at the start or already after whitespace.
+  const lead = before && !/\s$/.test(before) ? " " : "";
+  // A space after only when something follows that would otherwise be glued on.
+  // Punctuation is excluded: dictating into "…the hill." must not become
+  // "…the hill ." when the caret sat before the full stop.
+  const trail = after && !/^[\s.,;:!?)\]}»"']/.test(after) ? " " : "";
+
+  return {
+    text: before + lead + c + trail + after,
+    caret: before.length + lead.length + c.length,
+  };
 }
 
 // From the CUMULATIVE results of the current recognition session and the

@@ -12,7 +12,7 @@ import {
   Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDictation, appendTranscript } from "@/lib/use-dictation";
+import { useDictation, insertTranscript } from "@/lib/use-dictation";
 import type { ManagedInteraction } from "@/components/interaction-manager";
 import type { DictKey } from "@/lib/i18n";
 import { runDraft, type DraftStepKey } from "@/lib/ai/run-draft";
@@ -167,9 +167,43 @@ export function AiDraftPanel({
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("de");
   const [notes, setNotes] = useState(initialNotes);
+  // The notes textarea, and where the caret was last seen in it. Dictation
+  // writes at that point rather than at the very end — and then puts the caret
+  // after what it wrote and scrolls it into view, because otherwise the words
+  // land off-screen in a long note and it looks like nothing happened at all.
+  const notesElRef = useRef<HTMLTextAreaElement | null>(null);
+  const caretRef = useRef<number | null>(null);
+  const rememberCaret = () => {
+    const el = notesElRef.current;
+    if (el) caretRef.current = el.selectionStart;
+  };
+
   const dictation = useDictation({
     lang: lang === "de" ? "de-DE" : "en-US",
-    onFinal: (text) => setNotes((n) => appendTranscript(n, text)),
+    onFinal: (text) =>
+      setNotes((n) => {
+        const { text: next, caret } = insertTranscript(
+          n,
+          text,
+          caretRef.current ?? n.length,
+        );
+        caretRef.current = caret;
+        // After React has painted the new value: put the caret where the words
+        // ended and let the browser scroll it into view. Focusing is the point,
+        // not a side effect — a caret you cannot see is the other half of the
+        // complaint.
+        requestAnimationFrame(() => {
+          const el = notesElRef.current;
+          if (!el) return;
+          el.focus({ preventScroll: true });
+          el.setSelectionRange(caret, caret);
+          // setSelectionRange scrolls the caret into view in every browser we
+          // support EXCEPT when the element was not focused a moment ago, so
+          // nudge the common case (dictating onto the end) explicitly.
+          if (caret >= next.length - 1) el.scrollTop = el.scrollHeight;
+        });
+        return next;
+      }),
   });
   // Last value known to be persisted server-side. The notes textarea is plain
   // React state — the main Save never carried it — so without this it lived only
@@ -475,8 +509,15 @@ export function AiDraftPanel({
 
       <div className="mt-4">
         <textarea
+          ref={notesElRef}
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => {
+            caretRef.current = e.target.selectionStart;
+            setNotes(e.target.value);
+          }}
+          onSelect={rememberCaret}
+          onClick={rememberCaret}
+          onKeyUp={rememberCaret}
           onBlur={() => void persistNotes(notes)}
           rows={4}
           disabled={busy}

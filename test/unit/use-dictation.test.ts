@@ -1,20 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { appendTranscript, growthFrom } from "@/lib/use-dictation";
-
-describe("appendTranscript", () => {
-  it("joins with a single space", () => {
-    expect(appendTranscript("Heute waren wir", "am Hafen")).toBe("Heute waren wir am Hafen");
-  });
-  it("returns the chunk when existing is empty", () => {
-    expect(appendTranscript("", "Los geht's")).toBe("Los geht's");
-  });
-  it("does not double the space when existing already ends in whitespace", () => {
-    expect(appendTranscript("Heute waren wir ", "am Hafen")).toBe("Heute waren wir am Hafen");
-  });
-  it("ignores a blank chunk", () => {
-    expect(appendTranscript("Heute", "   ")).toBe("Heute");
-  });
-});
+import { growthFrom, insertTranscript } from "@/lib/use-dictation";
 
 describe("growthFrom", () => {
   it("separates finalized text (delta) from interim", () => {
@@ -120,5 +105,65 @@ describe("growthFrom when the browser revises text it already finalized", () => 
     expect(emit(["der Weg war schmal"])).toBe("der Weg war schmal");
     // And the session continues normally from the corrected text.
     expect(emit(["der Weg war schmal", " und steil"])).toBe(" und steil");
+  });
+});
+
+// Dictation used to append to the very end regardless of where the caret was.
+// These pin the spacing a person would have typed, and the caret landing after
+// the words rather than before them — the two halves of "I cannot see where it
+// went".
+describe("insertTranscript", () => {
+  it("appends at the end, like it always did", () => {
+    const r = insertTranscript("Der Weg war schmal.", "Und steil", 19);
+    expect(r.text).toBe("Der Weg war schmal. Und steil");
+    expect(r.caret).toBe(r.text.length);
+  });
+
+  it("inserts where the caret actually is", () => {
+    // Caret after "Der Weg" — the words belong there, not at the end.
+    const r = insertTranscript("Der Weg war schmal.", "hinauf", 7);
+    expect(r.text).toBe("Der Weg hinauf war schmal.");
+  });
+
+  it("leaves the caret after what it inserted", () => {
+    const r = insertTranscript("Der Weg war schmal.", "hinauf", 7);
+    expect(r.text.slice(0, r.caret)).toBe("Der Weg hinauf");
+  });
+
+  it("does not double a space that is already there", () => {
+    const r = insertTranscript("Der Weg ", "hinauf", 8);
+    expect(r.text).toBe("Der Weg hinauf");
+  });
+
+  it("does not put a space before punctuation", () => {
+    // Caret sits just before the full stop: "…schmal[.]"
+    const r = insertTranscript("Der Weg war schmal.", "und steil", 18);
+    expect(r.text).toBe("Der Weg war schmal und steil.");
+  });
+
+  it("needs no leading space at the very start", () => {
+    const r = insertTranscript("war schmal.", "Der Weg", 0);
+    expect(r.text).toBe("Der Weg war schmal.");
+  });
+
+  it("ignores a blank chunk and leaves the caret alone", () => {
+    const r = insertTranscript("Der Weg", "   ", 3);
+    expect(r).toEqual({ text: "Der Weg", caret: 3 });
+  });
+
+  it("survives a caret beyond the text, which a stale position can be", () => {
+    const r = insertTranscript("kurz", "weiter", 999);
+    expect(r.text).toBe("kurz weiter");
+    expect(r.caret).toBe(r.text.length);
+  });
+
+  it("composes across consecutive chunks the way a session does", () => {
+    let text = "";
+    let caret = 0;
+    for (const chunk of ["Der Weg", "war schmal", "und steil"]) {
+      ({ text, caret } = insertTranscript(text, chunk, caret));
+    }
+    expect(text).toBe("Der Weg war schmal und steil");
+    expect(caret).toBe(text.length);
   });
 });
