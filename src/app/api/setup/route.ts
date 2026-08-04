@@ -16,7 +16,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!rateLimit(`setup:${clientIp(req)}`, 5, 10 * 60_000)) {
+  if (!(await rateLimit(`setup:${clientIp(req)}`, 5, 10 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
   const admin = getAdminSupabase();

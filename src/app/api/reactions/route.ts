@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!rateLimit(`reactions:${clientIp(req)}`, 40, 60_000)) {
+  if (!(await rateLimit(`reactions:${clientIp(req)}`, 40, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));

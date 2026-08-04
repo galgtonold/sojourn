@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { isAllowedPushEndpoint } from "@/lib/push-endpoint";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +25,24 @@ async function getUser() {
 }
 
 export async function POST(req: Request) {
+  // Anonymous by design — a visitor opting their own browser in — so it needs a
+  // ceiling. Without one, this endpoint would write an unbounded number of rows
+  // and hand out an unbounded number of URLs for the push sender to call later.
+  if (!(await rateLimit(`push-subscribe:${clientIp(req)}`, 20, 60 * 60_000))) {
+    return NextResponse.json({ error: "rate-limited" }, { status: 429 });
+  }
   const parsed = subscribeSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const { endpoint, keys, audience, userAgent, visitorToken } = parsed.data;
+
+  // `z.string().url()` accepts http://10.0.0.5:8080/ quite happily, and the
+  // push sender POSTs to whatever is stored here — from inside whatever network
+  // this server is on. See @/lib/push-endpoint.
+  if (!isAllowedPushEndpoint(endpoint)) {
+    return NextResponse.json({ error: "invalid-endpoint" }, { status: 400 });
+  }
 
   // Admin subscriptions require an authenticated user (owner OR collaborator);
   // viewer subscriptions are open to anyone (it's their own browser opting in).

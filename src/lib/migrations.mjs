@@ -83,6 +83,7 @@ export const MIGRATIONS = [
   "0044_ai_usage_diagnostics.sql",
   "0045_ai_usage_transparency.sql",
   "0046_scope_anonymous_deletes.sql",
+  "0047_shared_rate_limits.sql",
 ];
 
 /**

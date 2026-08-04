@@ -96,7 +96,7 @@ const voteSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!rateLimit(`interactions:${clientIp(req)}`, 30, 60_000)) {
+  if (!(await rateLimit(`interactions:${clientIp(req)}`, 30, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = voteSchema.safeParse(await req.json().catch(() => null));

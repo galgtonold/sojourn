@@ -14,7 +14,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!rateLimit(`like:${clientIp(req)}`, 60, 60_000)) {
+  if (!(await rateLimit(`like:${clientIp(req)}`, 60, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));

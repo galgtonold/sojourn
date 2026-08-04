@@ -46,6 +46,9 @@ export const EXCLUDED_TABLES: Record<string, string> = {
   // undeliverable at best and someone else's device at worst.
   push_subscriptions: "browser endpoints, meaningless on another host",
   notifications: "derived from content, and rebuilt as it arrives",
+  // Counters, not content — and stale ones on a new host would throttle its
+  // first visitors for no reason.
+  rate_limits: "throttling counters, meaningless on another host",
   // Working state of the AI pipeline. Large, uninteresting, regenerable.
   ai_jobs: "transient queue",
   ai_usage: "a cost meter, not content",
