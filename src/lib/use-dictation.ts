@@ -127,6 +127,51 @@ export function growthFrom(
   return { delta: finalText.slice(i), finalText, interim };
 }
 
+/**
+ * What we know about the recognition session currently running: the finalized
+ * text committed so far (our position in the accumulating results list) and the
+ * text the browser is still showing as provisional.
+ */
+export type Session = { emitted: string; interim: string };
+
+export function startSession(): Session {
+  return { emitted: "", interim: "" };
+}
+
+/**
+ * Fold one `result` event into the session. `emit` is the newly finalized text
+ * to write into the document, empty when nothing new finalized.
+ */
+export function applyResult(
+  s: Session,
+  results: { transcript: string; isFinal: boolean }[],
+): { session: Session; emit: string } {
+  const { delta, finalText, interim } = growthFrom(results, s.emitted);
+  return {
+    session: { emitted: finalText, interim },
+    emit: delta.trim() ? delta : "",
+  };
+}
+
+/**
+ * Fold the end of the session — and commit whatever it ended holding.
+ *
+ * The API only ever hands text over by marking a result final. If the session
+ * ends first, the provisional text is gone from the browser for good: there is
+ * no flush, no last event, no way to ask for it. Our `interim` is the only copy
+ * left. It used to be dropped on the floor, so an utterance interrupted by a
+ * dropped speech-service connection, an aborted stream, or the author tapping
+ * the mic mid-word disappeared in front of them — words visibly typed out
+ * beside the microphone, then nothing in the notes and no error to explain it.
+ *
+ * Normal endings cost nothing: the browser finalizes before it ends, which
+ * empties `interim` on the last result event, so there is nothing here to
+ * commit and no risk of writing a chunk twice.
+ */
+export function applyEnd(s: Session): { session: Session; emit: string } {
+  return { session: startSession(), emit: s.interim.trim() };
+}
+
 export type Dictation = {
   supported: boolean;
   listening: boolean;
@@ -155,9 +200,11 @@ export function useDictation(opts: {
   langRef.current = opts.lang;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
-  // The finalized text emitted so far in the current session — our own position
-  // in the accumulating results list (see growthFrom). Reset in start().
-  const emittedRef = useRef("");
+  // The running session (see applyResult/applyEnd). Reset in start().
+  const sessionRef = useRef<Session>(startSession());
+  // Set when the component goes away mid-dictation: abort() still fires onend,
+  // and there is no document left to commit the last words into.
+  const goneRef = useRef(false);
 
   // Feature-detect after mount (not during render) so SSR and the first client
   // render agree — no hydration mismatch on the button's visibility.
@@ -181,7 +228,7 @@ export function useDictation(opts: {
     if (!Ctor) return;
     setDenied(false);
     wantRef.current = true;
-    emittedRef.current = "";
+    sessionRef.current = startSession();
     dlog("START", hookId, "existing rec?", !!recRef.current);
     const rec = new Ctor();
     rec.lang = langRef.current;
@@ -195,26 +242,27 @@ export function useDictation(opts: {
           isFinal: e.results[i].isFinal,
         });
       }
-      const emitted = emittedRef.current;
-      const { delta, finalText, interim } = growthFrom(results, emitted);
+      const before = sessionRef.current;
+      const { session, emit } = applyResult(before, results);
       dlog(
         "onresult h" + hookId,
         "ri=" + e.resultIndex,
         "n=" + results.length,
         results.map((r, i) => i + (r.isFinal ? "F" : "i")).join(","),
-        "emittedLen=" + emitted.length,
-        "final=" + JSON.stringify(finalText),
-        "delta=" + JSON.stringify(delta),
+        "emittedLen=" + before.emitted.length,
+        "final=" + JSON.stringify(session.emitted),
+        "delta=" + JSON.stringify(emit),
+        "interim=" + JSON.stringify(session.interim),
       );
       // Always advance: growthFrom diffs from the common prefix, so the position
       // is simply "everything finalized so far", revision or not. Conditioning
       // this on startsWith is what froze it.
-      emittedRef.current = finalText;
-      if (delta.trim()) {
-        dlog("EMIT h" + hookId, JSON.stringify(delta));
-        onFinalRef.current(delta);
+      sessionRef.current = session;
+      if (emit) {
+        dlog("EMIT h" + hookId, JSON.stringify(emit));
+        onFinalRef.current(emit);
       }
-      setInterim(interim);
+      setInterim(session.interim);
     };
     rec.onerror = (e) => {
       dlog("onerror h" + hookId, e.error);
@@ -224,7 +272,12 @@ export function useDictation(opts: {
       // Other errors (no-speech, aborted, network) just end the session via onend.
     };
     rec.onend = () => {
-      dlog("onend h" + hookId);
+      // Commit anything the session ended holding, before the only copy of it
+      // goes out of scope. See applyEnd — normal endings have nothing here.
+      const { session, emit } = applyEnd(sessionRef.current);
+      sessionRef.current = session;
+      dlog("onend h" + hookId, "flush=" + JSON.stringify(emit));
+      if (emit && !goneRef.current) onFinalRef.current(emit);
       // Do NOT auto-restart: restarting re-hears the buffered tail of the last
       // utterance and doubles it. The session ends on a longer silence; the author
       // taps the mic again to continue. (Short pauses stay in one session — Chrome
@@ -249,13 +302,17 @@ export function useDictation(opts: {
   }, [start, stop]);
 
   // Stop recognition if the component unmounts mid-dictation.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Cleared on (re)mount as well as set on unmount: StrictMode runs the
+    // cleanup and then re-runs the effect on the same instance, and a ref that
+    // stayed true would silently suppress every flush from then on.
+    goneRef.current = false;
+    return () => {
       wantRef.current = false;
+      goneRef.current = true;
       recRef.current?.abort();
-    },
-    [],
-  );
+    };
+  }, []);
 
   return { supported, listening, interim, denied, toggle, stop };
 }

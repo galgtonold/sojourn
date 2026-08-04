@@ -1,5 +1,79 @@
 import { describe, it, expect } from "vitest";
-import { growthFrom, insertTranscript } from "@/lib/use-dictation";
+import {
+  applyEnd,
+  applyResult,
+  growthFrom,
+  insertTranscript,
+  startSession,
+} from "@/lib/use-dictation";
+
+// A session is the event stream the browser hands us: any number of `result`
+// events, then exactly one `end`. These drive it directly, which is the whole
+// reason the folding lives outside the hook — the recognition API itself cannot
+// be run in a test, so the decisions it feeds have to be reachable without it.
+describe("a dictation session, folded event by event", () => {
+  const res = (...rs: [string, boolean][]) =>
+    rs.map(([transcript, isFinal]) => ({ transcript, isFinal }));
+
+  it("emits a chunk once, when the browser finalizes it", () => {
+    let s = startSession();
+    const a = applyResult(s, res(["der Weg war schmal", false]));
+    expect(a.emit).toBe(""); // still interim — nothing to write yet
+    s = a.session;
+    const b = applyResult(s, res(["der Weg war schmal", true]));
+    expect(b.emit).toBe("der Weg war schmal");
+    s = b.session;
+    // …and the end has nothing left to say.
+    expect(applyEnd(s).emit).toBe("");
+  });
+
+  // The bug. The speech service drops the connection, or the stream aborts, or
+  // the author taps the mic mid-word: the session ends while a result is still
+  // interim. The API will never hand that text over again — our copy is the
+  // only one — and it used to be discarded, so words the author had watched
+  // appear simply vanished, with no error and nothing in the notes.
+  it("commits text the session ended on before the browser finalized it", () => {
+    const s = applyResult(startSession(), res(["und dann bergauf", false]));
+    expect(s.emit).toBe("");
+    expect(applyEnd(s.session).emit).toBe("und dann bergauf");
+  });
+
+  it("commits only the un-finalized tail, not the whole utterance again", () => {
+    let s = startSession();
+    s = applyResult(s, res(["der Weg war schmal", true])).session;
+    s = applyResult(s, res(["der Weg war schmal", true], [" und steil", false]))
+      .session;
+    expect(applyEnd(s).emit).toBe("und steil");
+  });
+
+  it("never double-commits a chunk that finalized normally", () => {
+    let s = startSession();
+    s = applyResult(s, res(["hallo", false])).session;
+    const fin = applyResult(s, res(["hallo", true]));
+    expect(fin.emit).toBe("hallo");
+    expect(applyEnd(fin.session).emit).toBe("");
+  });
+
+  it("has nothing to commit when the author never spoke", () => {
+    expect(applyEnd(startSession()).emit).toBe("");
+  });
+
+  it("treats a whitespace-only interim as nothing", () => {
+    const s = applyResult(startSession(), res(["   ", false]));
+    expect(applyEnd(s.session).emit).toBe("");
+  });
+
+  it("starts the next session clean, so the old text is not re-emitted", () => {
+    const ended = applyEnd(
+      applyResult(startSession(), res(["kurz", false])).session,
+    );
+    expect(ended.emit).toBe("kurz");
+    // The session it hands back must owe nothing, or tapping the mic again
+    // would replay the last words.
+    expect(applyEnd(ended.session).emit).toBe("");
+    expect(applyResult(ended.session, res(["kurz", true])).emit).toBe("kurz");
+  });
+});
 
 describe("growthFrom", () => {
   it("separates finalized text (delta) from interim", () => {
