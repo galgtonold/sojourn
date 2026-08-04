@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Download,
@@ -9,7 +9,9 @@ import {
   AlertTriangle,
   TerminalSquare,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { T, useT } from "@/components/i18n";
+import { DOWNLOAD_COOKIE } from "@/lib/backup/download-token";
 import { useConfirm } from "@/components/confirm-dialog";
 
 type ImportResult = {
@@ -30,9 +32,44 @@ export function BackupPanel({ isEmpty }: { isEmpty: boolean }) {
   const router = useRouter();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // The token rides in the href, and the route echoes it back as a cookie with
+  // the response headers — which arrive exactly when the archive is ready. See
+  // @/lib/backup/download-token for why that is the only signal a real download
+  // link can give back.
+  //
+  // Minted in an effect rather than during render: crypto.randomUUID() on the
+  // server would differ from the client's and break hydration on the one
+  // attribute that matters here.
+  const [token, setToken] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  useEffect(() => setToken(crypto.randomUUID()), []);
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!preparing || !token) return;
+    const seen = () =>
+      document.cookie.split("; ").includes(`${DOWNLOAD_COOKIE}=${token}`);
+    const stop = () => {
+      // Clear it, or the next click finishes the instant it starts.
+      document.cookie = `${DOWNLOAD_COOKIE}=; Path=/; Max-Age=0`;
+      setPreparing(false);
+      // A fresh token for the next click, or the stale cookie would make it
+      // look finished the instant it started.
+      setToken(crypto.randomUUID());
+    };
+    const poll = setInterval(() => {
+      if (seen()) stop();
+    }, 400);
+    // A backstop, because a download that never starts must not leave the
+    // button spinning forever — the browser has its own error surface for that.
+    const giveUp = setTimeout(stop, 5 * 60 * 1000);
+    return () => {
+      clearInterval(poll);
+      clearTimeout(giveUp);
+    };
+  }, [preparing, token]);
 
   async function runImport(file: File) {
     const ok = await confirm({
@@ -102,12 +139,36 @@ export function BackupPanel({ isEmpty }: { isEmpty: boolean }) {
           appeared, complete, at the very end.
         */}
         <a
-          href="/api/admin/backup"
+          href={`/api/admin/backup${token ? `?t=${token}` : ""}`}
           download
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
+          aria-disabled={preparing}
+          onClick={(e) => {
+            // A second click would start a second assembly of the same archive.
+            if (preparing) {
+              e.preventDefault();
+              return;
+            }
+            // Deliberately NOT preventing the default: the browser does the
+            // download. This only starts watching for the token to come back.
+            setPreparing(true);
+          }}
+          className={cn(
+            "mt-5 inline-flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-ember-400",
+            preparing && "pointer-events-none opacity-60",
+          )}
         >
-          <Download className="size-4" />
-          <T k="admin.settings.backup.exportAction" />
+          {preparing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          <T
+            k={
+              preparing
+                ? "admin.settings.backup.exportBusy"
+                : "admin.settings.backup.exportAction"
+            }
+          />
         </a>
         <p className="mt-3 text-xs text-sand-100/50">
           <T k="admin.settings.backup.exportWait" />
