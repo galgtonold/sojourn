@@ -32,14 +32,16 @@ export default async function BackupSettingsPage() {
     (posts.data?.length ?? 0) === 0 && (trips.data?.length ?? 0) === 0;
 
   return (
-    <div>
-      <h1 className="sr-only">
+    <>
+      <h2 className="font-display text-3xl font-semibold">
         <T k="admin.settings.backup.title" />
-      </h1>
-      <p className="mb-8 text-sm text-sand-100/70">
+      </h2>
+      <p className="mt-2 max-w-2xl text-sand-100/60">
         <T k="admin.settings.backup.lead" />
       </p>
-      <BackupPanel isEmpty={isEmpty} />
-    </div>
+      <div className="mt-8">
+        <BackupPanel isEmpty={isEmpty} />
+      </div>
+    </>
   );
 }

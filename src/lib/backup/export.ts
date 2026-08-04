@@ -15,6 +15,7 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { SOJOURN_VERSION } from "@/lib/version";
 import { buildZip, type ZipEntry } from "@/lib/backup/zip";
+import { mapPool } from "@/lib/backup/pool";
 import {
   EXPORTED_TABLES,
   EXCLUDED_TABLES,
@@ -53,6 +54,15 @@ export class ExportTooLarge extends Error {
 
 const BUCKET = "photos";
 
+/**
+ * How many photographs to fetch at once.
+ *
+ * Eight is well clear of the point where a small storage container stops
+ * getting faster, and low enough that the peak memory is a handful of images
+ * rather than all of them.
+ */
+const PHOTO_CONCURRENCY = 8;
+
 /** Every distinct storage path the photo rows reference. */
 function photoPaths(rows: Record<string, unknown>[]): string[] {
   const paths = new Set<string>();
@@ -75,12 +85,21 @@ export async function buildExport(at: Date = new Date()): Promise<{
 
   const entries: ZipEntry[] = [];
   const tables: Record<string, number> = {};
-  let photoRows: Record<string, unknown>[] = [];
 
-  for (const table of EXPORTED_TABLES) {
-    const { data, error } = await admin.from(table).select("*");
-    if (error) throw new Error(`could not read ${table}: ${error.message}`);
-    const rows = (data ?? []) as Record<string, unknown>[];
+  // All at once. These are eleven independent reads with no ordering between
+  // them — the import order in EXPORTED_TABLES governs writing, not reading —
+  // and doing them in sequence meant eleven round trips stacked end to end for
+  // no reason at all.
+  const read = await Promise.all(
+    EXPORTED_TABLES.map(async (table) => {
+      const { data, error } = await admin.from(table).select("*");
+      if (error) throw new Error(`could not read ${table}: ${error.message}`);
+      return { table, rows: (data ?? []) as Record<string, unknown>[] };
+    }),
+  );
+
+  let photoRows: Record<string, unknown>[] = [];
+  for (const { table, rows } of read) {
     tables[table] = rows.length;
     if (table === "photos") photoRows = rows;
     entries.push({
@@ -99,20 +118,30 @@ export async function buildExport(at: Date = new Date()): Promise<{
   const paths = photoPaths(photoRows);
   const limit = exportLimitBytes();
 
+  // The slow part, and the one worth parallelising: each photograph is its own
+  // request, and they do not depend on each other. Bounded, because every
+  // result stays in memory until the archive is packed — see mapPool.
+  const fetched = await mapPool(paths, PHOTO_CONCURRENCY, async (path) => {
+    const { data, error } = await admin.storage.from(BUCKET).download(path);
+    // Recorded, not thrown. A photo whose file has already gone is a fact about
+    // this instance, and the export is more useful than the failure.
+    if (error || !data) return { path, data: null };
+    return { path, data: new Uint8Array(await data.arrayBuffer()) };
+  });
+
   const missing: string[] = [];
   let bytes = 0;
-  for (const path of paths) {
-    const { data, error } = await admin.storage.from(BUCKET).download(path);
-    if (error || !data) {
-      // Recorded, not thrown. A photo whose file has already gone is a fact
-      // about this instance, and the export is more useful than the failure.
+  for (const { path, data } of fetched) {
+    if (!data) {
       missing.push(path);
       continue;
     }
-    const buf = new Uint8Array(await data.arrayBuffer());
-    bytes += buf.byteLength;
+    bytes += data.byteLength;
+    // Checked here rather than inside the pool so the ceiling is applied to a
+    // deterministic running total, not to whichever downloads happened to land
+    // first — otherwise the same instance could export or refuse by luck.
     if (bytes > limit) throw new ExportTooLarge(bytes, limit);
-    entries.push({ name: `photos/${path}`, data: buf });
+    entries.push({ name: `photos/${path}`, data });
   }
 
   const manifest: ExportManifest = {

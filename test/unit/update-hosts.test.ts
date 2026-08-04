@@ -68,7 +68,7 @@ describe("Updates as a settings area", () => {
     // reason (arrived at rarely and urgently, not browsed), so assert the
     // intent rather than a position that any new area would break.
     expect(settingsHref("updates")).toBe("/admin/settings/updates");
-    const order = SETTINGS_AREAS.map((a) => a.id);
+    const order: string[] = SETTINGS_AREAS.map((a) => a.id);
     for (const daily of ["site", "writing", "ai", "privacy"]) {
       expect(order.indexOf(daily)).toBeLessThan(order.indexOf("updates"));
     }

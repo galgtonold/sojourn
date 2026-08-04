@@ -105,3 +105,19 @@ export function readingTime(
   for (let i = 0; i < images; i++) seconds += Math.max(3, 12 - i);
   return Math.max(1, Math.round(seconds / 60));
 }
+
+/**
+ * A size a person can read, in the same spirit as formatDistance: one unit, one
+ * decimal at most, no false precision. "1.4 MB", not "1,468,006 bytes".
+ *
+ * Binary units, because this reports progress against a Content-Length and
+ * every file manager the reader might compare it with does the same.
+ */
+export function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0 KB";
+  if (n < 1024) return `${Math.round(n)} B`;
+  const kb = n / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  const mb = kb / 1024;
+  return mb < 1024 ? `${mb.toFixed(1)} MB` : `${(mb / 1024).toFixed(1)} GB`;
+}

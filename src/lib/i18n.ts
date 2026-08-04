@@ -314,6 +314,8 @@ const en = {
     "One ZIP with your trips, posts, photographs, comments and settings. Keep it somewhere that is not this server.",
   "admin.settings.backup.exportAction": "Download export",
   "admin.settings.backup.exportBusy": "Gathering everything…",
+  "admin.settings.backup.gathering": "Gathering everything…",
+  "admin.settings.backup.downloading": "Downloading — {done} of {total}",
   "admin.settings.backup.notIncluded":
     "Not included: accounts and passwords, API keys, invitations and push subscriptions. After importing, create your owner account through the usual first-run setup.",
   "admin.settings.backup.importTitle": "Import into a fresh site",
@@ -1161,6 +1163,8 @@ const de: Dict = {
     "Ein ZIP mit deinen Reisen, Beiträgen, Fotos, Kommentaren und Einstellungen. Bewahre es außerhalb dieses Servers auf.",
   "admin.settings.backup.exportAction": "Export herunterladen",
   "admin.settings.backup.exportBusy": "Alles wird zusammengetragen…",
+  "admin.settings.backup.gathering": "Alles wird zusammengetragen…",
+  "admin.settings.backup.downloading": "Wird geladen — {done} von {total}",
   "admin.settings.backup.notIncluded":
     "Nicht enthalten: Konten und Passwörter, API-Schlüssel, Einladungen und Push-Abos. Lege dein Eigentümerkonto nach dem Import wie gewohnt bei der Ersteinrichtung an.",
   "admin.settings.backup.importTitle": "In eine leere Seite importieren",

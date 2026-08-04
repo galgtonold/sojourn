@@ -120,4 +120,48 @@ describe.runIf(hasPython())("the export archive", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  // The photographs used to be fetched one after another, so an instance with a
+  // couple of hundred paid a round trip each, end to end, while the owner
+  // watched a spinner. This is a wall-clock assertion because that is the thing
+  // that was wrong — a pool that exists but is not wired in passes every other
+  // test in this file.
+  it("fetches photographs several at a time, not one after another", async () => {
+    const DELAY = 20;
+    const COUNT = 16;
+    const { db } = makeSeed({ photoCount: COUNT });
+    for (const p of db.photos as { storage_path: string }[]) {
+      storage.files.set(p.storage_path, new Uint8Array([1, 2, 3]));
+    }
+
+    const slow = {
+      ...makeFakeSupabase(db as never),
+      from: makeFakeSupabase(db as never).from.bind(makeFakeSupabase(db as never)),
+      storage: {
+        from: () => ({
+          async download(path: string) {
+            await new Promise((r) => setTimeout(r, DELAY));
+            const f = storage.files.get(path);
+            return f
+              ? { data: { arrayBuffer: async () => f.buffer }, error: null }
+              : { data: null, error: { message: "not found" } };
+          },
+        }),
+      },
+    };
+    sb.client = slow;
+
+    const started = performance.now();
+    const { manifest } = await buildExport(new Date(Date.UTC(2026, 7, 4)));
+    const elapsed = performance.now() - started;
+
+    expect(manifest.photos.files).toBe(COUNT);
+    // Sequential would be at least COUNT * DELAY (320ms). Eight at a time is
+    // ~40ms. The threshold sits well clear of both, so a slow machine does not
+    // make this flaky but a reverted pool does fail it.
+    expect(
+      elapsed,
+      `took ${Math.round(elapsed)}ms — sequential would be ~${COUNT * DELAY}ms`,
+    ).toBeLessThan((COUNT * DELAY) / 2);
+  });
 });
