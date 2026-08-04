@@ -324,10 +324,47 @@ runtime are all left out because Sojourn does not use them — that is most of t
 difference between needing 4 GB and needing 2. The compose file says why for
 each.
 
-**Back up two things:** the `db-data` volume and the `storage-data` volume. A
-database dump without the photographs is an archive of captions. Keep
-`.env.selfhost` somewhere safe too — losing it does not lose your posts, but it
-means re-minting every key and signing everyone out.
+### Backups
+
+Two commands. Both halves travel together, because a database dump without the
+photographs is an archive of captions, and a folder of photographs without the
+database is files nothing can find.
+
+```bash
+sh scripts/backup.sh backups
+```
+
+That writes one `backups/sojourn-<timestamp>.tar.gz` holding the full database
+dump — every schema, including `auth`, which is your login — the photo files,
+and a manifest saying what it contains. Put it somewhere that is not this
+machine; a backup on the disk you are protecting against is not one.
+
+To put it back:
+
+```bash
+sh scripts/restore.sh backups/sojourn-20260804-125913Z.tar.gz
+```
+
+It asks before replacing anything, then tells you how many posts, accounts and
+photo files actually landed. Finally — and this bit matters — **recreate** the
+app container rather than restarting it:
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d --force-recreate web
+```
+
+Next caches rendered pages inside the container's own filesystem, and a restart
+keeps them. Skip this and the site carries on serving pages it built from the
+data you just replaced, for up to an hour, and the restore looks like it failed.
+
+**Restore once, on purpose, before you need to.** An untested backup is a
+belief. The cycle above — back up, `down -v`, `up -d`, restore — is exactly how
+these scripts were verified, and it takes about three minutes.
+
+**Keep `.env.selfhost` with your backups.** It is deliberately not inside the
+archive, so an archive is safe to copy around. Restoring into a stack with a
+different JWT secret still returns every post and photograph; it just signs
+everyone out, and passwords keep working.
 
 ## Deployment — Docker / VPS
 
