@@ -34,6 +34,10 @@ yarn-error.log*
 .env
 .env*.local
 .env.production
+# Per-instance secrets for the all-in-one stack: Postgres password, the JWT
+# secret Supabase's services trust each other with, and the keys minted from
+# it. Committing this hands anyone a service_role token for your database.
+.env.selfhost
 
 # vercel
 .vercel

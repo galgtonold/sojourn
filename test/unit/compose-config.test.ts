@@ -60,3 +60,85 @@ describe("docker-compose passes through what the app reads", () => {
     expect(COMPOSE).toMatch(/^\s*DATABASE_URL:\s*\$\{DATABASE_URL:-\}/m);
   });
 });
+
+// ── the all-in-one stack ─────────────────────────────────────────────────────
+//
+// Sojourn plus the five Supabase services it actually needs, for people who
+// want a blog rather than a Supabase account. Everything below is something
+// that broke while building it and cost a full teardown to find.
+const ALL_IN_ONE = readFileSync("docker-compose.all-in-one.yml", "utf8");
+const KONG = readFileSync("docker/kong.yml", "utf8");
+
+describe("the all-in-one stack", () => {
+  it("hands the app every name it needs to reach Supabase", () => {
+    for (const name of [
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "DATABASE_URL",
+      "SITE_URL",
+      "SOURCE_URL",
+    ]) {
+      expect(ALL_IN_ONE, `web service never sets ${name}`).toMatch(
+        new RegExp(`^\\s*${name}:`, "m"),
+      );
+    }
+  });
+
+  it("waits for storage to be HEALTHY before starting the app", () => {
+    // storage-api creates the `storage` schema by running its own migrations on
+    // first boot, and Sojourn's 0001_init writes policies on storage.objects.
+    // Start on `service_started` instead and the very first migration dies with
+    // `42P01: relation "storage.buckets" does not exist` — which reads like a
+    // broken migration rather than a race.
+    expect(ALL_IN_ONE).toMatch(/storage:\s*\n\s*condition:\s*service_healthy/);
+  });
+
+  it("healthchecks storage over IPv4, not `localhost`", () => {
+    // storage-api binds IPv4 only, and `localhost` resolves to ::1 first inside
+    // that image. The check is refused while the service is perfectly healthy,
+    // so nothing depending on it ever starts.
+    expect(ALL_IN_ONE).toContain("http://127.0.0.1:5000/status");
+    expect(ALL_IN_ONE).not.toContain("http://localhost:5000/status");
+  });
+
+  it("sets the service role passwords after the image creates the roles", () => {
+    // The supabase/postgres image creates these roles but leaves them with a
+    // password this instance does not know, so GoTrue and storage-api fail with
+    // 28P01. The fix has to sort AFTER the image's own migrate.sh, or it fails
+    // with `role "authenticator" does not exist` instead.
+    expect(ALL_IN_ONE).toMatch(/init-roles\.sh:\/docker-entrypoint-initdb\.d\/zz-/);
+  });
+
+  it("keeps Kong's format version a string", () => {
+    // The entrypoint substitutes the keys with `eval "echo \"$(cat ...)\""`,
+    // which eats double quotes — Kong then reads 2.1 as a number and refuses to
+    // start. Single quotes survive.
+    expect(KONG).toMatch(/_format_version:\s*'2\.1'/);
+    expect(KONG).not.toMatch(/_format_version:\s*"2\.1"/);
+  });
+
+  it("locks the data API behind a key, and leaves auth open", () => {
+    // Signing in cannot require a key you only get by signing in.
+    expect(KONG).toMatch(/name: rest-v1[\s\S]*?name: key-auth/);
+    expect(KONG).not.toMatch(/name: auth-v1[\s\S]*?key-auth[\s\S]*?name: rest-v1/);
+  });
+
+  it("names volumes for the two things that are not replaceable", () => {
+    // The database and the photographs. Everything else in this stack can be
+    // pulled again.
+    expect(ALL_IN_ONE).toMatch(/db-data:\/var\/lib\/postgresql\/data/);
+    expect(ALL_IN_ONE).toMatch(/storage-data:\/var\/lib\/storage/);
+  });
+
+  it("pins every image, so a fresh install gets what was tested", () => {
+    const images = [...ALL_IN_ONE.matchAll(/^\s*image:\s*(\S+)/gm)].map((m) => m[1]);
+    expect(images.length).toBeGreaterThan(4);
+    const floating = images.filter(
+      (i) => !i.includes(":") || i.endsWith(":latest") || i.includes("${SOJOURN_TAG"),
+    );
+    // Sojourn's own image is the one exception — a self-hoster upgrades the app
+    // deliberately, and SOJOURN_TAG is how.
+    expect(floating.every((i) => i.includes("sojourn"))).toBe(true);
+  });
+});

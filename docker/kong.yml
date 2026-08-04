@@ -1,0 +1,80 @@
+# Kong routes one public URL onto the three Supabase services Sojourn uses.
+#
+# The `$SUPABASE_*` placeholders are substituted at container start by the
+# entrypoint in docker-compose.all-in-one.yml, so this file stays free of
+# secrets and can live in git. Trimmed from Supabase's own self-hosted config:
+# no realtime, no analytics, no studio, no edge functions — see the compose file
+# for why each of those is absent.
+# Single-quoted on purpose. The entrypoint substitutes the keys with
+# `eval "echo \"$(cat ...)\""`, and that eats double quotes — Kong then reads
+# 2.1 as a number and refuses to start with "expected a string".
+_format_version: '2.1'
+_transform: true
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: $SUPABASE_ANON_KEY
+  - username: service_role
+    keyauth_credentials:
+      - key: $SUPABASE_SERVICE_KEY
+
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+services:
+  # Auth. Sign-in, token refresh and invite acceptance are unauthenticated by
+  # definition — you have no key until you have signed in — so no key-auth here.
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-all
+        strip_path: true
+        paths:
+          - /auth/v1/
+    plugins:
+      - name: cors
+
+  # The data API. Row-level security is what actually protects this; the key
+  # only decides which Postgres role PostgREST assumes.
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  # Photo storage. Same story: bucket policies do the work.
+  - name: storage-v1
+    url: http://storage:5000/
+    routes:
+      - name: storage-v1-all
+        strip_path: true
+        paths:
+          - /storage/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon

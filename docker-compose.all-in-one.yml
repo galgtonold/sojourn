@@ -1,0 +1,199 @@
+# Sojourn plus everything it needs — one command, one host, no accounts.
+#
+#   node scripts/selfhost-init.mjs
+#   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
+#
+# Use this when you want a blog on your own machine and nothing else to think
+# about. Use the plain docker-compose.yml instead when you already have Supabase
+# (hosted or your own) — it is one container and runs happily in 1 GB.
+#
+# ── what is here, and what is deliberately not ───────────────────────────────
+#
+# Five services, ~800 MB: Postgres, Kong, PostgREST, GoTrue, storage-api. What a
+# full Supabase stack also starts, and why Sojourn does not need it:
+#
+#   realtime   244 MB   nothing subscribes — `.channel(` appears in zero files
+#   analytics  647 MB   log aggregation for the Supabase dashboard
+#   studio     259 MB   that dashboard. `psql` is enough to look at your data
+#   pg_meta    128 MB   an API the dashboard uses to introspect the schema
+#   imgproxy            storage-side image transforms; Sojourn resizes with
+#                       next/image instead (ENABLE_IMAGE_TRANSFORMATION=false)
+#   edge-runtime        Deno, for functions that exist only to dodge Vercel's
+#                       request timeout. A host you own has no such timeout, so
+#                       that work runs in the app — see src/lib/ai/translate-run
+#
+# Leaving them out is most of the difference between needing 4 GB and needing 2.
+#
+# ── the two URLs that actually matter ────────────────────────────────────────
+#
+# SUPABASE_PUBLIC_URL is handed to the visitor's browser, so it has to be a URL
+# their machine can resolve — and the app container has to reach the same one.
+# `localhost` satisfies only the first. The default is host.docker.internal for
+# local use; on a real host, put your domain or IP there and publish port 8000.
+
+name: sojourn
+
+services:
+  db:
+    image: public.ecr.aws/supabase/postgres:17.6.1.147
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/selfhost-init.mjs first}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET:?}
+      JWT_EXP: 3600
+    volumes:
+      # Your posts live here. This is the thing to back up — see README.
+      - db-data:/var/lib/postgresql/data
+      # Runs once, on an empty data directory, and LAST: the image's own
+      # migrate.sh is what creates these roles, so anything sorting before it
+      # fails with `role "authenticator" does not exist`.
+      - ./docker/init-roles.sh:/docker-entrypoint-initdb.d/zz-sojourn-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published by default: nothing outside this network needs Postgres, and
+    # an open 5432 is how self-hosted databases get found. Uncomment to run
+    # migrations or take a dump from the host.
+    # ports:
+    #   - "5432:5432"
+
+  auth:
+    image: public.ecr.aws/supabase/gotrue:v2.190.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${SUPABASE_PUBLIC_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${SITE_URL}/**
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_AUD: authenticated
+      # Sojourn creates its owner through first-run setup and everyone else by
+      # invitation. Open signup on a personal journal is only ever a mistake.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      # No SMTP out of the box, so a new account cannot be asked to confirm by
+      # email — it would never arrive and the account would be unusable.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+
+  rest:
+    image: public.ecr.aws/supabase/postgrest:v14.13
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+
+  storage:
+    image: public.ecr.aws/supabase/storage-api:v1.60.20
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      POSTGREST_URL: http://rest:3000
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      # Off, so no imgproxy container. Sojourn hands photos to next/image, which
+      # resizes them in the app.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      # Your photographs. Back this up alongside the database — a dump without
+      # these is an archive of captions.
+      - storage-data:/var/lib/storage
+    healthcheck:
+      # 127.0.0.1, not localhost: storage-api binds IPv4 only, and `localhost`
+      # resolves to ::1 first inside this image — so the check is refused while
+      # the service is perfectly healthy, and nothing that depends on it starts.
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:5000/status || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  kong:
+    image: public.ecr.aws/supabase/kong:2.8.1
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+      - storage
+    ports:
+      - "${SUPABASE_PORT:-8000}:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+    volumes:
+      - ./docker/kong.yml:/home/kong/template.yml:ro
+    # The config is a template so the keys stay out of git; substitute them into
+    # place at start. Upstream Supabase does exactly this.
+    entrypoint: >
+      bash -c 'eval "echo \"$$(cat /home/kong/template.yml)\"" > /home/kong/kong.yml
+      && exec /docker-entrypoint.sh kong docker-start'
+
+  web:
+    image: ghcr.io/galgtonold/sojourn:${SOJOURN_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      # storage-api creates the `storage` schema by running its own migrations
+      # on first boot, and Sojourn's 0001_init writes policies on
+      # storage.objects. Start before it is healthy and the very first migration
+      # fails with `relation "storage.buckets" does not exist`.
+      storage:
+        condition: service_healthy
+      kong:
+        condition: service_started
+    ports:
+      - "${SOJOURN_PORT:-3000}:3000"
+    environment:
+      SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_KEY}
+      # Direct connection for the migration runner, which speaks SQL rather than
+      # going through PostgREST. Never the pooler.
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      SITE_URL: ${SITE_URL}
+      SITE_NAME: ${SITE_NAME:-Sojourn}
+      SOURCE_URL: ${SOURCE_URL:-}
+      MAP_STYLE_URL: ${MAP_STYLE_URL:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+    extra_hosts:
+      # So SUPABASE_PUBLIC_URL can name one host that both the browser and this
+      # container resolve, which is the whole difficulty with a public URL.
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  db-data:
+  storage-data:

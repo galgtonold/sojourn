@@ -292,7 +292,48 @@ Setting it up by hand instead:
 
 Sojourn deliberately avoids Vercel-only APIs, so the **exact same project also produces a standard Docker image** (Next standalone output). Vercel is a convenience, not a dependency.
 
+## Deployment — all-in-one (Sojourn + its own Supabase)
+
+One command, one host, no accounts anywhere. Use this if you want a blog and
+would rather not think about the rest.
+
+```bash
+node scripts/selfhost-init.mjs
+```
+
+That mints this instance's Postgres password, JWT secret and API keys into
+`.env.selfhost` — per-instance, never to be committed or copied from anywhere.
+Open it and set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host, then:
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
+```
+
+Six containers come up in order, the schema is created from nothing, and
+`/admin` offers to create your owner account. Roughly **1 GB of RAM**; a 2 GB VPS
+is comfortable.
+
+**`SUPABASE_PUBLIC_URL` is the one to get right.** It is handed to the visitor's
+browser, so it must be a URL *their* machine resolves — and the app container has
+to reach the same one. `localhost` satisfies only the first. On a real host, put
+your domain or IP there and publish port 8000.
+
+Five Supabase services run, not eleven: Postgres, Kong, PostgREST, GoTrue and
+storage-api. Realtime, analytics, Studio, pg_meta, imgproxy and the Deno edge
+runtime are all left out because Sojourn does not use them — that is most of the
+difference between needing 4 GB and needing 2. The compose file says why for
+each.
+
+**Back up two things:** the `db-data` volume and the `storage-data` volume. A
+database dump without the photographs is an archive of captions. Keep
+`.env.selfhost` somewhere safe too — losing it does not lose your posts, but it
+means re-minting every key and signing everyone out.
+
 ## Deployment — Docker / VPS
+
+Already have Supabase — hosted, or your own? Then this is one container, and it
+is happy in 1 GB.
+
 
 ```bash
 docker compose pull && docker compose up -d
