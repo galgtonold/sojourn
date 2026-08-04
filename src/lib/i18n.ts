@@ -314,8 +314,8 @@ const en = {
     "One ZIP with your trips, posts, photographs, comments and settings. Keep it somewhere that is not this server.",
   "admin.settings.backup.exportAction": "Download export",
   "admin.settings.backup.exportBusy": "Gathering everything…",
-  "admin.settings.backup.gathering": "Gathering everything…",
-  "admin.settings.backup.downloading": "Downloading — {done} of {total}",
+  "admin.settings.backup.exportWait":
+    "Your browser starts the download once the archive is ready — on a site with many photographs that can take a minute.",
   "admin.settings.backup.notIncluded":
     "Not included: accounts and passwords, API keys, invitations and push subscriptions. After importing, create your owner account through the usual first-run setup.",
   "admin.settings.backup.importTitle": "Import into a fresh site",
@@ -328,7 +328,7 @@ const en = {
   "admin.settings.backup.importDone": "Imported {n} row(s) and {p} photo(s).",
   "admin.settings.backup.deepTitle": "A full copy, including accounts",
   "admin.settings.backup.deepBody":
-    "Self-hosting with Docker? scripts/backup.sh on the machine itself takes everything this page cannot reach, accounts included.",
+    "Self-hosting with Docker? This one runs on the host — not inside a container — from the folder you started the stack in. It reaches into the containers itself and takes everything this page cannot, accounts included.",
   "admin.settings.nav.updates": "Updates",
   "admin.updates.intro":
     "What you're running, whether there's a newer release, and how to get it on this host. Sojourn doesn't update itself — its database schema does.",
@@ -1163,8 +1163,8 @@ const de: Dict = {
     "Ein ZIP mit deinen Reisen, Beiträgen, Fotos, Kommentaren und Einstellungen. Bewahre es außerhalb dieses Servers auf.",
   "admin.settings.backup.exportAction": "Export herunterladen",
   "admin.settings.backup.exportBusy": "Alles wird zusammengetragen…",
-  "admin.settings.backup.gathering": "Alles wird zusammengetragen…",
-  "admin.settings.backup.downloading": "Wird geladen — {done} von {total}",
+  "admin.settings.backup.exportWait":
+    "Dein Browser startet den Download, sobald das Archiv fertig ist — bei vielen Fotos kann das eine Minute dauern.",
   "admin.settings.backup.notIncluded":
     "Nicht enthalten: Konten und Passwörter, API-Schlüssel, Einladungen und Push-Abos. Lege dein Eigentümerkonto nach dem Import wie gewohnt bei der Ersteinrichtung an.",
   "admin.settings.backup.importTitle": "In eine leere Seite importieren",
@@ -1177,7 +1177,7 @@ const de: Dict = {
   "admin.settings.backup.importDone": "{n} Zeile(n) und {p} Foto(s) importiert.",
   "admin.settings.backup.deepTitle": "Eine vollständige Kopie, mit Konten",
   "admin.settings.backup.deepBody":
-    "Du hostest mit Docker selbst? scripts/backup.sh auf dem Rechner selbst sichert auch das, was diese Seite nicht erreichen kann — Konten eingeschlossen.",
+    "Du hostest mit Docker selbst? Dieses Skript läuft auf dem Host — nicht im Container — in dem Ordner, aus dem du den Stack gestartet hast. Es greift selbst in die Container und sichert auch das, was diese Seite nicht erreichen kann, Konten eingeschlossen.",
   "admin.settings.nav.updates": "Updates",
   "admin.updates.intro":
     "Was hier läuft, ob es eine neuere Version gibt und wie du sie auf diesem Host bekommst. Sojourn aktualisiert sich nicht selbst — sein Datenbankschema schon.",

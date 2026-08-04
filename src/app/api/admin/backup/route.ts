@@ -3,7 +3,6 @@
 // Owner only, and through `requireOwner`, which also refuses on the read-only
 // demo deployment — an export walks every table with the service-role client,
 // which is exactly the client RLS cannot hold back.
-import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/api/admin-auth";
 import { buildExport, ExportTooLarge } from "@/lib/backup/export";
 import { exportFilename } from "@/lib/backup/manifest";
@@ -16,11 +15,23 @@ export const maxDuration = 300;
 // export is a quietly stale one.
 export const dynamic = "force-dynamic";
 
+/**
+ * Plain text, not JSON.
+ *
+ * This route is reached by a real download link, so whatever comes back is
+ * handed to the browser rather than to code. JSON would be saved as a file the
+ * reader then has to open to discover it is not their journal; text is shown.
+ */
+function problem(message: string, status: number): Response {
+  return new Response(`${message}\n`, {
+    status,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
 export async function GET(): Promise<Response> {
   const gate = await requireOwner();
-  if (!gate.ok) {
-    return NextResponse.json({ error: "forbidden" }, { status: gate.status });
-  }
+  if (!gate.ok) return problem("Not allowed.", gate.status);
 
   const at = new Date();
   try {
@@ -46,12 +57,13 @@ export async function GET(): Promise<Response> {
       },
     });
   } catch (e) {
-    if (e instanceof ExportTooLarge) {
-      // 413, and the message names the tool that does handle this size.
-      return NextResponse.json({ error: e.message }, { status: 413 });
-    }
+    // 413, and the message names the tool that does handle this size.
+    if (e instanceof ExportTooLarge) return problem(e.message, 413);
     const message = e instanceof Error ? e.message : String(e);
     console.error(`[export] failed: ${message}`);
-    return NextResponse.json({ error: "export failed" }, { status: 500 });
+    return problem(
+      "The export could not be built. The server log has the details.",
+      500,
+    );
   }
 }
