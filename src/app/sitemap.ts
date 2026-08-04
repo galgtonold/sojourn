@@ -3,8 +3,14 @@ import { env } from "@/lib/env";
 import { getPostSummaries, getTrips } from "@/lib/content";
 
 // Enumerate every public surface so crawlers can discover all posts and trips.
-// Static, regenerated on demand alongside the rest of the ISR content.
-export const revalidate = false;
+//
+// Hourly rather than `false`. `false` means "prerender once and never again",
+// which is right only when the build knows the truth — and the portable Docker
+// image is built with no database and no site URL, so what it froze was six
+// localhost URLs and not one post. Every self-hosted instance then served that
+// to every crawler, permanently, while production served twenty-one entries.
+// A number makes it regenerate against whatever deployment is actually running.
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.siteUrl.replace(/\/$/, "");

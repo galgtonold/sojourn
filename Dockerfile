@@ -31,6 +31,15 @@ ENV NEXT_PUBLIC_SUPABASE_URL=https://build.invalid
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=build-placeholder-anon-key
 RUN npm run build
 
+# Everything the step above prerendered is wrong here, and only here: this build
+# has no database, so each page was rendered empty and stamped with
+# `https://build.invalid` as the Supabase URL to hand the browser. Next would
+# ship that HTML and serve it to the first visitor of every route — measured:
+# "0 Geschichten" against a database holding 43 posts, correct only on reload.
+# Discarding it turns those routes into a cache miss, which Next fills by
+# rendering against the deployment that is actually running.
+RUN node scripts/strip-prerender.mjs
+
 # ─── runner ──────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
