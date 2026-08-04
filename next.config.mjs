@@ -93,6 +93,17 @@ function contentSecurityPolicy() {
     `script-src 'self' 'unsafe-inline'${
       process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""
     }`,
+    // MapLibre builds its Web Worker from a blob: URL, and `worker-src` falls
+    // back to `script-src` when unset — so the line above silently killed every
+    // map on the site the moment it shipped. Stated separately rather than by
+    // adding blob: to script-src, which would let injected markup run a blob as
+    // a page script too.
+    //
+    // It failed quietly in a way worth remembering: `new Worker(blobUrl)` does
+    // NOT throw when CSP blocks it, so a probe that only checked for an
+    // exception reported success. The evidence was a `blob:` request marked
+    // FAILED in the network log, and an `onerror` on the worker itself.
+    "worker-src 'self' blob:",
     // Nothing here embeds Flash-era plugins; this closes an old XSS route.
     "object-src 'none'",
     // Stops injected markup re-pointing every relative URL on the page.
