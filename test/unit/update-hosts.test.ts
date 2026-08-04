@@ -62,9 +62,16 @@ describe("the recipe for each host", () => {
 });
 
 describe("Updates as a settings area", () => {
-  it("is reachable and last in the nav", () => {
+  it("is reachable, and sits after the settings people actually browse", () => {
+    // The point was never the last index — it was that Updates does not crowd
+    // out the five areas read daily. Backup joined it at the end for the same
+    // reason (arrived at rarely and urgently, not browsed), so assert the
+    // intent rather than a position that any new area would break.
     expect(settingsHref("updates")).toBe("/admin/settings/updates");
-    expect(SETTINGS_AREAS[SETTINGS_AREAS.length - 1].id).toBe("updates");
+    const order = SETTINGS_AREAS.map((a) => a.id);
+    for (const daily of ["site", "writing", "ai", "privacy"]) {
+      expect(order.indexOf(daily)).toBeLessThan(order.indexOf("updates"));
+    }
   });
 
   it("wins the longest-prefix match against the settings root", () => {

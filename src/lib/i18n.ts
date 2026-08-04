@@ -305,6 +305,28 @@ const en = {
   "admin.settings.nav.writing": "Writing",
   "admin.settings.nav.ai": "AI",
   "admin.settings.nav.privacy": "Privacy",
+  "admin.settings.nav.backup": "Backup",
+  "admin.settings.backup.title": "Backup & moving",
+  "admin.settings.backup.lead":
+    "Download everything this site holds as a single file, or rebuild a new Sojourn from one.",
+  "admin.settings.backup.exportTitle": "Download an export",
+  "admin.settings.backup.exportBody":
+    "One ZIP with your trips, posts, photographs, comments and settings. Keep it somewhere that is not this server.",
+  "admin.settings.backup.exportAction": "Download export",
+  "admin.settings.backup.exportBusy": "Gathering everything…",
+  "admin.settings.backup.notIncluded":
+    "Not included: accounts and passwords, API keys, invitations and push subscriptions. After importing, create your owner account through the usual first-run setup.",
+  "admin.settings.backup.importTitle": "Import into a fresh site",
+  "admin.settings.backup.importBody":
+    "For moving to another host, or rebuilding after a loss. This only works on a Sojourn with nothing in it — it will not merge with, or overwrite, writing that is already here.",
+  "admin.settings.backup.importAction": "Import this file",
+  "admin.settings.backup.importBusy": "Importing…",
+  "admin.settings.backup.importBlocked":
+    "This site already has writing in it, so importing is not available. Import into a new, empty Sojourn instead.",
+  "admin.settings.backup.importDone": "Imported {n} row(s) and {p} photo(s).",
+  "admin.settings.backup.deepTitle": "A full copy, including accounts",
+  "admin.settings.backup.deepBody":
+    "Self-hosting with Docker? scripts/backup.sh on the machine itself takes everything this page cannot reach, accounts included.",
   "admin.settings.nav.updates": "Updates",
   "admin.updates.intro":
     "What you're running, whether there's a newer release, and how to get it on this host. Sojourn doesn't update itself — its database schema does.",
@@ -1130,6 +1152,28 @@ const de: Dict = {
   "admin.settings.nav.writing": "Schreiben",
   "admin.settings.nav.ai": "KI",
   "admin.settings.nav.privacy": "Datenschutz",
+  "admin.settings.nav.backup": "Backup",
+  "admin.settings.backup.title": "Backup & Umzug",
+  "admin.settings.backup.lead":
+    "Lade alles, was diese Seite enthält, als eine Datei herunter — oder baue daraus ein neues Sojourn auf.",
+  "admin.settings.backup.exportTitle": "Export herunterladen",
+  "admin.settings.backup.exportBody":
+    "Ein ZIP mit deinen Reisen, Beiträgen, Fotos, Kommentaren und Einstellungen. Bewahre es außerhalb dieses Servers auf.",
+  "admin.settings.backup.exportAction": "Export herunterladen",
+  "admin.settings.backup.exportBusy": "Alles wird zusammengetragen…",
+  "admin.settings.backup.notIncluded":
+    "Nicht enthalten: Konten und Passwörter, API-Schlüssel, Einladungen und Push-Abos. Lege dein Eigentümerkonto nach dem Import wie gewohnt bei der Ersteinrichtung an.",
+  "admin.settings.backup.importTitle": "In eine leere Seite importieren",
+  "admin.settings.backup.importBody":
+    "Für den Umzug auf einen anderen Host oder den Wiederaufbau nach einem Verlust. Das funktioniert nur bei einem Sojourn ohne Inhalte — vorhandene Texte werden weder zusammengeführt noch überschrieben.",
+  "admin.settings.backup.importAction": "Diese Datei importieren",
+  "admin.settings.backup.importBusy": "Wird importiert…",
+  "admin.settings.backup.importBlocked":
+    "Diese Seite enthält bereits Inhalte, deshalb ist der Import nicht verfügbar. Importiere stattdessen in ein neues, leeres Sojourn.",
+  "admin.settings.backup.importDone": "{n} Zeile(n) und {p} Foto(s) importiert.",
+  "admin.settings.backup.deepTitle": "Eine vollständige Kopie, mit Konten",
+  "admin.settings.backup.deepBody":
+    "Du hostest mit Docker selbst? scripts/backup.sh auf dem Rechner selbst sichert auch das, was diese Seite nicht erreichen kann — Konten eingeschlossen.",
   "admin.settings.nav.updates": "Updates",
   "admin.updates.intro":
     "Was hier läuft, ob es eine neuere Version gibt und wie du sie auf diesem Host bekommst. Sojourn aktualisiert sich nicht selbst — sein Datenbankschema schon.",

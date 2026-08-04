@@ -15,7 +15,13 @@
 
 import type { DictKey } from "@/lib/i18n";
 
-export type SettingsAreaId = "site" | "writing" | "ai" | "privacy" | "updates";
+export type SettingsAreaId =
+  | "site"
+  | "writing"
+  | "ai"
+  | "privacy"
+  | "updates"
+  | "backup";
 
 export type SettingsArea = {
   id: SettingsAreaId;
@@ -58,6 +64,14 @@ export const SETTINGS_AREAS: readonly SettingsArea[] = [
     id: "updates",
     href: "/admin/settings/updates",
     label: "admin.settings.nav.updates",
+  },
+  // Last, and for the same reason as updates: nobody browses here. They arrive
+  // because they are moving hosts or because something has gone wrong, and on
+  // both occasions they want it findable rather than prominent.
+  {
+    id: "backup",
+    href: "/admin/settings/backup",
+    label: "admin.settings.nav.backup",
   },
 ] as const;
 
