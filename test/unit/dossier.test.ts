@@ -8,7 +8,6 @@ import {
 import { makeFakeSupabase } from "../helpers/fake-supabase";
 
 // buildDossier/buildStyleGuide take a SupabaseClient directly — pass the fake.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const client = (db: Parameters<typeof makeFakeSupabase>[0]) =>
   makeFakeSupabase(db) as any;
 

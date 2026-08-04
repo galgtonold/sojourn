@@ -22,7 +22,6 @@ const track = (name: string | null, features: unknown[]): Track =>
     started_at: null,
     ended_at: null,
     geojson: { type: "FeatureCollection", features },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
 
 describe("trackFeatureCollection", () => {
@@ -79,13 +78,11 @@ describe("trackFeatureCollection", () => {
   });
 
   it("survives tracks with no usable geojson", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const broken = [{ name: "x", geojson: null } as any];
     expect(trackFeatureCollection(broken, "route").features).toEqual([]);
   });
 
   it("handles absent input", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const broken = [{ name: "x", geojson: null } as any, { name: "y" } as any];
     expect(trackFeatureCollection(broken, "route").features).toEqual([]);
     expect(trackFeatureCollection(null, "route").features).toEqual([]);
@@ -129,7 +126,6 @@ describe("addTracksLayer — the wiring the browser would do", () => {
     expect(calls.layers).toHaveLength(1);
     expect(calls.sources[0][0]).toBe(TRACKS_SOURCE);
     expect(calls.layers[0].id).toBe(TRACKS_LAYER);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((calls.sources[0][1] as any).data.features).toHaveLength(200);
   });
 

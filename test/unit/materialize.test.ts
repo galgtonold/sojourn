@@ -7,7 +7,6 @@ import { makeFakeSupabase, type Row } from "../helpers/fake-supabase";
 
 // materializeInteractions takes a SupabaseClient; the in-memory fake covers the
 // exact calls it makes (select sort_order / insert … select id).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const asClient = (c: ReturnType<typeof makeFakeSupabase>) => c as any;
 
 describe("materializeInteractions", () => {

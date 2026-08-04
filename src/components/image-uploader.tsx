@@ -49,7 +49,6 @@ export function ImageUploader({
 
       {value ? (
         <div className="group relative aspect-[16/9] overflow-hidden rounded-2xl bg-ink-800">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <Image
             src={value}
             alt={t("admin.upload.coverAlt")}

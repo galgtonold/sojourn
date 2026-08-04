@@ -6,6 +6,5 @@ import "server-only";
 // server logs instead of silently invisible. Quiet under tests.
 export function logError(scope: string, err: unknown): void {
   if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
-  // eslint-disable-next-line no-console
   console.error(`[sojourn:${scope}]`, err);
 }

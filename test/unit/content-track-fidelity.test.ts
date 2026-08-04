@@ -36,7 +36,6 @@ const row = () => ({
 });
 
 const pointsOf = (post: { tracks: { geojson: unknown }[] }) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ((post.tracks[0].geojson as any).features[0].geometry.coordinates as number[][]).length;
 
 beforeEach(() => {
@@ -64,7 +63,6 @@ describe("track geometry per surface", () => {
 
   it("ships no elevation to the journey map, which never reads it", async () => {
     const posts = await getPublishedPostsByTrip("t1");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const coords = (posts[0].tracks[0].geojson as any).features[0].geometry
       .coordinates as number[][];
     expect(coords.every((c) => c.length === 2)).toBe(true);
@@ -72,7 +70,6 @@ describe("track geometry per surface", () => {
 
   it("keeps elevation on post pages, where the chart needs it", async () => {
     const post = await getPostBySlug("day-one");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const coords = (post!.tracks[0].geojson as any).features[0].geometry
       .coordinates as number[][];
     expect(coords.every((c) => c.length === 3)).toBe(true);
