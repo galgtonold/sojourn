@@ -85,6 +85,10 @@ services:
       # email — it would never arrive and the account would be unusable.
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # Defence in depth behind Kong's limit. GoTrue has no setting for the
+      # password grant — this covers refresh-token grinding only, which is the
+      # part it does police.
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: "60"
 
   rest:
     image: public.ecr.aws/supabase/postgrest:v14.13
@@ -150,7 +154,7 @@ services:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
-      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,rate-limiting
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
     volumes:

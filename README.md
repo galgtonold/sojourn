@@ -318,6 +318,20 @@ browser, so it must be a URL *their* machine resolves — and the app container 
 to reach the same one. `localhost` satisfies only the first. On a real host, put
 your domain or IP there and publish port 8000.
 
+**Change its scheme too, not just its host.** Everything the browser sends to
+Supabase travels over that URL, including the password you sign in with and the
+session token every later request carries. On `http://` those are readable by
+anyone on the path. Put a TLS-terminating proxy (Caddy, nginx, Traefik) in front
+and use its `https://` address. Sojourn warns about this in its logs at start-up
+and will not stop you — the default stays `http://host.docker.internal:8000`
+because that is genuinely correct for a local trial.
+
+Sign-in is rate limited at the gateway: 30 attempts a minute per IP, 200 an hour.
+GoTrue itself has no limit for password attempts, so without this, guessing an
+owner's password would be free. If you put a proxy in front, configure Kong's
+`trusted_ips` and `real_ip_header` as well — otherwise every request appears to
+come from the proxy and one noisy visitor throttles everybody.
+
 Five Supabase services run, not eleven: Postgres, Kong, PostgREST, GoTrue and
 storage-api. Realtime, analytics, Studio, pg_meta, imgproxy and the Deno edge
 runtime are all left out because Sojourn does not use them — that is most of the

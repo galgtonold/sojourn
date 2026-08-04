@@ -86,10 +86,17 @@ SUPABASE_SERVICE_KEY=${env.SUPABASE_SERVICE_KEY}
 # ── things you should change ─────────────────────────────────────────────────
 #
 # The URL BROWSERS use to reach Supabase — it is handed to the visitor's
-# JavaScript, so "localhost" only works if you are the only visitor. On a real
-# host this is your domain or IP, and it must also be reachable from the app
-# container (which is why the default below is host.docker.internal rather than
-# localhost: the container cannot reach its own loopback to find Kong).
+# JavaScript, so "localhost" only works if you are the only visitor. It must
+# also be reachable from the app container, which is why the default is
+# host.docker.internal rather than localhost: the container cannot reach its own
+# loopback to find Kong.
+#
+# CHANGE THE SCHEME TOO, not just the host. Everything the browser sends to
+# Supabase goes over this URL — including the password you sign in with and the
+# session token every request afterwards carries. Over http:// on a real host
+# that is all readable by anyone on the path. Put a TLS-terminating proxy in
+# front and use its https:// address. The app warns about this in its logs at
+# start-up, but it will not stop you.
 SUPABASE_PUBLIC_URL=http://host.docker.internal:8000
 
 # Where readers reach Sojourn itself.

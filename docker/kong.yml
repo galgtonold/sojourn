@@ -28,6 +28,10 @@ acls:
 services:
   # Auth. Sign-in, token refresh and invite acceptance are unauthenticated by
   # definition — you have no key until you have signed in — so no key-auth here.
+  # Which makes this the one route where password guessing is free, and GoTrue
+  # does not throttle it: v2.190.0 ships rate limits for token REFRESH, OTP,
+  # verify, email and SMS, and nothing at all for the password grant. So the
+  # ceiling has to live here.
   - name: auth-v1
     url: http://auth:9999/
     routes:
@@ -37,6 +41,25 @@ services:
           - /auth/v1/
     plugins:
       - name: cors
+      - name: rate-limiting
+        config:
+          # Generous for a person signing in, useless for a script. A session
+          # refresh is roughly hourly per reader, so this is nowhere near real
+          # traffic on a personal journal.
+          minute: 30
+          hour: 200
+          # `local` keeps the counters in this Kong's own memory. Correct here
+          # because the all-in-one runs exactly one Kong; a clustered deployment
+          # would need the redis policy and a redis to point it at.
+          policy: local
+          limit_by: ip
+          # Refuse rather than let it through when the counter itself breaks.
+          fault_tolerant: false
+          # NOTE: `ip` is the address KONG sees. Put Cloudflare, nginx or any
+          # other proxy in front without setting Kong's trusted_ips and
+          # real_ip_header and every request arrives from one address — at which
+          # point this stops being per-visitor and throttles everyone the moment
+          # one person is noisy.
 
   # The data API. Row-level security is what actually protects this; the key
   # only decides which Postgres role PostgREST assumes.

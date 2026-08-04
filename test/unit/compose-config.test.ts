@@ -142,3 +142,35 @@ describe("the all-in-one stack", () => {
     expect(floating.every((i) => i.includes("sojourn"))).toBe(true);
   });
 });
+
+describe("the one route that cannot require a key is throttled", () => {
+  // /auth/v1/ has no key-auth by definition — you have no key until you have
+  // signed in — and GoTrue v2.190.0 ships no rate limit for the password grant
+  // (it has them for refresh, OTP, verify, email and SMS, and checking that is
+  // how this got written). So password guessing is free unless Kong stops it.
+  it("attaches rate-limiting to the auth route", () => {
+    const authBlock = /- name: auth-v1[\s\S]*?(?=\n  - name: |\n*$)/.exec(KONG)?.[0] ?? "";
+    expect(authBlock).toContain("name: rate-limiting");
+    expect(authBlock).toMatch(/limit_by: ip/);
+  });
+
+  it("enables the plugin on the node, or the config is ignored", () => {
+    // Kong silently drops plugins missing from KONG_PLUGINS, so a config that
+    // looks throttled would not be.
+    expect(ALL_IN_ONE).toMatch(/KONG_PLUGINS:[^\n]*rate-limiting/);
+  });
+
+  it("counts locally, which is right for exactly one Kong", () => {
+    expect(KONG).toMatch(/policy: local/);
+  });
+
+  it("refuses rather than passes through when the counter breaks", () => {
+    expect(KONG).toMatch(/fault_tolerant: false/);
+  });
+
+  it("does not put key-auth on the auth route", () => {
+    // Requiring a key to sign in would lock everyone out permanently.
+    const authBlock = /- name: auth-v1[\s\S]*?(?=\n  - name: |\n*$)/.exec(KONG)?.[0] ?? "";
+    expect(authBlock).not.toContain("name: key-auth");
+  });
+});
