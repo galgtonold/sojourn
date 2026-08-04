@@ -67,6 +67,7 @@ async function singleCompletion(
   cfg: AiConfig,
   model: string,
 ): Promise<{ content: string; finishReason: string | null }> {
+  const startedAt = Date.now();
   const res = await fetch(`${cfg.deepseekBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -93,6 +94,7 @@ async function singleCompletion(
   }
   const data = await res.json();
   const finishReason = data?.choices?.[0]?.finish_reason ?? null;
+  const durationMs = Date.now() - startedAt;
 
   if (opts.meta) {
     const u = data?.usage ?? {};
@@ -123,13 +125,37 @@ async function singleCompletion(
           u.prompt_cache_miss_tokens ?? Math.max(0, prompt - hit),
         reasoning_tokens: reasoning,
       },
-      // Recorded only when the call was cut off. Usually empty, and empty is
-      // the answer: it means nothing was written before the budget ran out.
+      durationMs,
+      // Recorded only when the call was cut off (or AI_DEBUG is on). Usually
+      // empty, and empty is the answer: nothing was written before the budget
+      // ran out.
       responsePreview: data?.choices?.[0]?.message?.content ?? "",
+      // What it was thinking about, not just how much. This is the difference
+      // between "spent 8000 tokens reasoning" and "spent them re-checking
+      // sentences it had already cleared".
+      reasoningPreview: data?.choices?.[0]?.message?.reasoning_content ?? "",
+      // What was actually SENT. A prompt that has drifted from the code it
+      // belongs to is invisible in every counter and obvious here.
+      requestPreview: describeRequest(messages),
     });
   }
 
   return { content: data?.choices?.[0]?.message?.content ?? "", finishReason };
+}
+
+/** A compact, bounded rendering of the messages, for the usage record. */
+function describeRequest(messages: ChatMessage[]): string {
+  return messages
+    .map((m) => {
+      const text =
+        typeof m.content === "string"
+          ? m.content
+          : m.content
+              .map((part) => (part.type === "text" ? part.text : "[image]"))
+              .join(" ");
+      return `${m.role}: ${text}`;
+    })
+    .join("\n---\n");
 }
 
 export type Completion = { content: string; finishReason: string | null };

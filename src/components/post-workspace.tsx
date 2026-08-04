@@ -16,8 +16,14 @@ import { slugify } from "@/lib/utils";
 import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
-import { ProofreadDialog, proofreadSignature } from "@/components/proofread-dialog";
-import { parseProofKey } from "@/lib/ai/proofread";
+import { ProofreadDialog } from "@/components/proofread-dialog";
+import {
+  parseProofKey,
+  buildProofUnits,
+  proofreadSignature,
+  type ProofUnit,
+} from "@/lib/ai/proofread";
+import { maskProtectedTokens } from "@/lib/ai/token-mask";
 import { updatePhotoFields } from "@/lib/db/photos-client";
 import { applyInteractionFix } from "@/lib/db/interactions-client";
 import { TranslationBadge } from "@/components/translation-badge";
@@ -191,11 +197,30 @@ export function PostWorkspace({
     }
   }
 
+  // Every piece of text the proofreader checks, built by the shared function so
+  // the editor and the route cannot drift apart on what counts. The body is
+  // masked here for the same reason it is masked there — otherwise the two
+  // signatures differ on every post that contains a photo.
+  function currentProofUnits(): ProofUnit[] {
+    return buildProofUnits({
+      title: post.title,
+      excerpt: post.excerpt ?? "",
+      body: maskProtectedTokens(post.body ?? "").masked,
+      photos: photos.map((p) => ({ id: p.id, caption: p.caption, alt: p.alt })),
+      interactions: interactions.map((i) => ({
+        id: i.id,
+        question: i.question,
+        options: i.options,
+        explanation: i.explanation,
+      })),
+    });
+  }
+
   async function togglePublish() {
     const next = !post.published;
     // Nudge a proofread before the first publish of an unproofread version.
     if (next) {
-      const sig = proofreadSignature(post.title, post.excerpt ?? "", post.body ?? "");
+      const sig = proofreadSignature(currentProofUnits());
       if (sig !== proofreadSig) {
         const proceed = await confirm({
           title: t("admin.proofread.nudgeTitle"),
@@ -396,7 +421,17 @@ export function PostWorkspace({
             if (updated) setInteractions(updated);
           });
         }}
-        onRan={(c) => setProofreadSig(proofreadSignature(c.title, c.excerpt, c.body))}
+        onRan={(draft) => {
+          // Take the dialog's final text for anything it touched, rather than
+          // re-reading state: a caption or quiz fix is persisted asynchronously,
+          // so the gallery and the block list may not have caught up yet. Read
+          // state here and the signature would record the pre-fix text and nudge
+          // on the very next publish.
+          const units = currentProofUnits().map((u) =>
+            draft[u.key] === undefined ? u : { ...u, text: draft[u.key] },
+          );
+          setProofreadSig(proofreadSignature(units));
+        }}
       />
     </div>
   );

@@ -18,6 +18,10 @@ import { validateFindings, type ProofUnit } from "@/lib/ai/proofread";
 // production failed. These tests read the actual route file for that reason.
 
 const ROUTE = readFileSync("src/app/api/admin/ai/proofread/route.ts", "utf8");
+// Keys are constructed by the shared builder, which both the route and the
+// editor's pre-publish signature call. The prompt lives in the route; the keys
+// it promises live here. Both halves of the contract, two files.
+const BUILDER = readFileSync("src/lib/ai/proofread.ts", "utf8");
 
 describe("the prompt asks for what the validator reads", () => {
   it("tells the model to answer with `key`", () => {
@@ -43,8 +47,8 @@ describe("the prompt asks for what the validator reads", () => {
   });
 
   it("actually builds each of those kinds", () => {
-    // The mirror of the test above: the prompt promising a kind the route never
-    // sends is just as broken as the reverse.
+    // The mirror of the test above: a prompt promising a kind that nothing
+    // builds is just as broken as a kind built but never described.
     for (const built of [
       "${CAPTION_PREFIX}${p.id}",
       "alt:${p.id}",
@@ -52,7 +56,7 @@ describe("the prompt asks for what the validator reads", () => {
       "option:${b.id}:${oi}",
       "explanation:${b.id}",
     ]) {
-      expect(ROUTE, `route never builds ${built}`).toContain(built);
+      expect(BUILDER, `nothing builds ${built}`).toContain(built);
     }
   });
 

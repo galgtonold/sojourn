@@ -81,6 +81,7 @@ export const MIGRATIONS = [
   "0042_update_check.sql",
   "0043_authenticated_is_not_a_trust_boundary.sql",
   "0044_ai_usage_diagnostics.sql",
+  "0045_ai_usage_transparency.sql",
 ];
 
 /**

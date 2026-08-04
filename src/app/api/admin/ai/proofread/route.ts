@@ -8,9 +8,8 @@ import {
 import { maskProtectedTokens } from "@/lib/ai/token-mask";
 import {
   validateFindings,
-  CAPTION_PREFIX,
+  buildProofUnits,
   POST_KEYS,
-  type ProofUnit,
 } from "@/lib/ai/proofread";
 
 // A single bounded JSON call; keep headroom for a long post.
@@ -88,41 +87,27 @@ async function proofread({
     explanation: string | null;
   };
 
-  const photoUnits = ((photos ?? []) as PhotoRow[]).flatMap((p, i) => [
-    // Position in the gallery, so the author can find it. Numbering counts every
-    // photo, not just the ones with text — "caption 4" has to mean the fourth
-    // photo or it sends them hunting.
-    { key: `${CAPTION_PREFIX}${p.id}`, text: p.caption ?? "", ordinal: i + 1 },
-    { key: `alt:${p.id}`, text: p.alt ?? "", ordinal: i + 1 },
-  ]);
-
-  const blockUnits = ((blocks ?? []) as BlockRow[]).flatMap((b, i) => [
-    { key: `question:${b.id}`, text: b.question ?? "", ordinal: i + 1 },
-    ...(Array.isArray(b.options) ? (b.options as unknown[]) : []).map(
-      (o, oi) => ({
-        key: `option:${b.id}:${oi}`,
-        text: typeof o === "string" ? o : "",
-        ordinal: i + 1,
-      }),
-    ),
-    { key: `explanation:${b.id}`, text: b.explanation ?? "", ordinal: i + 1 },
-  ]);
-
-  const units: ProofUnit[] = [
-    { key: "title", text: title },
-    { key: "excerpt", text: excerpt },
-    { key: "body", text: masked },
-    ...photoUnits,
-    ...blockUnits,
-  ].filter((u) => u.text.trim() !== "");
+  // Same builder the editor uses for the pre-publish signature, so the two can
+  // never disagree about what "the text" is.
+  const units = buildProofUnits({
+    title,
+    excerpt,
+    body: masked,
+    photos: (photos ?? []) as PhotoRow[],
+    interactions: ((blocks ?? []) as BlockRow[]).map((b) => ({
+      id: b.id,
+      question: b.question,
+      options: Array.isArray(b.options) ? (b.options as string[]) : [],
+      explanation: b.explanation,
+    })),
+  });
 
   // What actually went to the model. Token arithmetic could not settle whether
   // captions were reaching the call — this says so outright, in the runtime log,
   // without a schema change or a guess.
   console.log(
     `[proofread] post=${postId} units=${units.length} ` +
-      `photoUnits=${photoUnits.filter((u) => u.text.trim()).length} ` +
-      `blockUnits=${blockUnits.filter((u) => u.text.trim()).length} ` +
+      `extras=${units.filter((u) => !(POST_KEYS as readonly string[]).includes(u.key)).length} ` +
       `photosRead=${photos?.length ?? "null"} blocksRead=${blocks?.length ?? "null"}` +
       (photosError ? ` photosError=${photosError.code ?? photosError.message}` : ""),
   );

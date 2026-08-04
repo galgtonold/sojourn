@@ -11,14 +11,6 @@ import {
 
 // Signature of the user-written content, used by the publish nudge to tell
 // whether the current text has been proofread.
-export function proofreadSignature(
-  title: string,
-  excerpt: string,
-  body: string,
-): string {
-  return `${title} ${excerpt} ${body}`;
-}
-
 type Status = "pending" | "applied" | "skipped" | "stale";
 
 export function ProofreadDialog({
@@ -40,7 +32,8 @@ export function ProofreadDialog({
   excerpt: string;
   body: string;
   onApply: (key: string, value: string) => void;
-  onRan?: (content: { title: string; excerpt: string; body: string }) => void;
+  /** The final text of every unit the dialog touched, keyed as sent. */
+  onRan?: (draft: Record<string, string>) => void;
 }) {
   const t = useT();
   const [loading, setLoading] = useState(false);
@@ -112,18 +105,9 @@ export function ProofreadDialog({
   if (!open) return null;
 
   function close() {
-    if (ran) {
-      // Only the post fields feed the "already proofread" signature. Captions
-      // deliberately do not: the workspace cannot recompute a signature over
-      // text it does not hold, and a signature it cannot reproduce would mark
-      // every post permanently stale. Editing a caption therefore does not
-      // re-arm the pre-publish nudge — a known gap, not an oversight.
-      onRan?.({
-        title: draft.title ?? "",
-        excerpt: draft.excerpt ?? "",
-        body: draft.body ?? "",
-      });
-    }
+    // The whole draft: captions, alt text and quiz answers included. The
+    // workspace merges it over its own view to fingerprint what was proofread.
+    if (ran) onRan?.(draft);
     setRan(false);
     onClose();
   }

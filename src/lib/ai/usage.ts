@@ -47,6 +47,12 @@ export async function recordUsage(input: {
    * has no content at all, because reasoning is billed first and arrives first.
    */
   responsePreview?: string | null;
+  /** Opening of the model's chain-of-thought — what it was thinking about. */
+  reasoningPreview?: string | null;
+  /** Opening of what was SENT. Catches a prompt that drifted from the code. */
+  requestPreview?: string | null;
+  /** Round-trip time. "It hung" was unanswerable without this. */
+  durationMs?: number | null;
 }): Promise<void> {
   try {
     const admin = getAdminSupabase();
@@ -64,11 +70,17 @@ export async function recordUsage(input: {
       ok: input.finishReason === "length" ? false : true,
       finish_reason: input.finishReason ?? null,
       reasoning_tokens: input.usage.reasoning_tokens ?? null,
-      // Only on failure — a successful call's output is the post itself.
-      response_preview:
-        input.finishReason === "length"
-          ? (input.responsePreview ?? "").slice(0, 600) || null
-          : null,
+      duration_ms: input.durationMs ?? null,
+      // Content only when it is needed or asked for: on a truncated call, which
+      // is exactly when nobody can see what happened, or with AI_DEBUG set.
+      // Otherwise this table would carry a second copy of every draft.
+      ...(input.finishReason === "length" || aiDebug()
+        ? {
+            response_preview: preview(input.responsePreview),
+            reasoning_preview: preview(input.reasoningPreview),
+            request_preview: preview(input.requestPreview),
+          }
+        : {}),
     });
   } catch {
     /* metering is best effort */
@@ -78,6 +90,23 @@ export async function recordUsage(input: {
 // Record an AI operation that failed before/without a usable response (an API
 // error, a genuinely unparseable reply). Persisted so failures are diagnosable
 // from the same table as usage, and logged for the runtime tail. Best effort.
+/**
+ * Record request/response/reasoning text on SUCCESSFUL calls too.
+ *
+ * Off by default: these are fragments of the operator's own drafts and a
+ * metering table is a poor place to keep a second copy of them. Worth turning on
+ * while chasing something — a prompt that stopped matching the code, a model
+ * that changed its mind about how much to think — and worth turning off after.
+ */
+function aiDebug(): boolean {
+  return process.env.AI_DEBUG === "1";
+}
+
+/** Bounded, and null rather than "" so an empty column reads as "not recorded". */
+function preview(v: string | null | undefined): string | null {
+  return (v ?? "").slice(0, 2000) || null;
+}
+
 export async function recordAiFailure(input: {
   operation: string;
   model: string;
@@ -85,12 +114,10 @@ export async function recordAiFailure(input: {
   postId?: string | null;
   userId?: string | null;
   finishReason?: string | null;
-  /**
-   * The first few hundred characters of what came back, recorded only when the
-   * call failed. Empty is itself informative: a cap-truncated response usually
-   * has no content at all, because reasoning is billed first and arrives first.
-   */
   responsePreview?: string | null;
+  reasoningPreview?: string | null;
+  requestPreview?: string | null;
+  durationMs?: number | null;
 }): Promise<void> {
   console.error(
     `[ai] ${input.operation} failed (${input.model}` +
@@ -113,7 +140,10 @@ export async function recordAiFailure(input: {
       ok: false,
       error: input.error.slice(0, 500),
       finish_reason: input.finishReason ?? null,
-      response_preview: (input.responsePreview ?? "").slice(0, 600) || null,
+      response_preview: preview(input.responsePreview),
+      reasoning_preview: preview(input.reasoningPreview),
+      request_preview: preview(input.requestPreview),
+      duration_ms: input.durationMs ?? null,
     });
   } catch {
     /* best effort */

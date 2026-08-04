@@ -186,3 +186,77 @@ export function validateFindings(raw: unknown, units: ProofUnit[]): Finding[] {
   }
   return out;
 }
+
+// ─── Building the units, once, for both callers ─────────────────────────────
+//
+// The route builds these to send to the model. The editor builds them to decide
+// whether the post has been proofread since it last changed. If those two ever
+// disagree about what counts as "the text", the pre-publish nudge either never
+// fires or never stops — so they call the same function.
+
+export type ProofSource = {
+  title: string;
+  excerpt: string;
+  /** Already masked — see maskProtectedTokens. Both callers must mask. */
+  body: string;
+  photos: { id: string; caption: string | null; alt: string | null }[];
+  interactions: {
+    id: string;
+    question: string | null;
+    options: string[];
+    explanation: string | null;
+  }[];
+};
+
+export function buildProofUnits(src: ProofSource): ProofUnit[] {
+  const photoUnits = src.photos.flatMap((p, i) => [
+    // Ordinal counts every photo, not just the ones with text: "caption 4" has
+    // to mean the fourth photo in the gallery or it sends the author hunting.
+    { key: `${CAPTION_PREFIX}${p.id}`, text: p.caption ?? "", ordinal: i + 1 },
+    { key: `alt:${p.id}`, text: p.alt ?? "", ordinal: i + 1 },
+  ]);
+
+  const blockUnits = src.interactions.flatMap((b, i) => [
+    { key: `question:${b.id}`, text: b.question ?? "", ordinal: i + 1 },
+    ...(b.options ?? []).map((o, oi) => ({
+      key: `option:${b.id}:${oi}`,
+      text: typeof o === "string" ? o : "",
+      ordinal: i + 1,
+    })),
+    { key: `explanation:${b.id}`, text: b.explanation ?? "", ordinal: i + 1 },
+  ]);
+
+  return [
+    { key: "title", text: src.title },
+    { key: "excerpt", text: src.excerpt },
+    { key: "body", text: src.body },
+    ...photoUnits,
+    ...blockUnits,
+  ].filter((u) => u.text.trim() !== "");
+}
+
+/**
+ * A short, stable fingerprint of everything the proofreader would check.
+ *
+ * Used to answer one question before publishing: has anything changed since the
+ * last proofread? It covers captions, alt text and quiz answers now, so fixing
+ * a typo in a caption and publishing no longer slips past the nudge — which it
+ * did, because the old signature was `title + excerpt + body` and nothing else.
+ *
+ * Order-independent (keys are sorted) so re-ordering the gallery is not mistaken
+ * for an edit, and hashed so it stays small next to a 6,000-character body.
+ */
+export function proofreadSignature(units: ProofUnit[]): string {
+  const canonical = [...units]
+    .map((u) => `${u.key}\u0000${u.text}`)
+    .sort()
+    .join("\u0001");
+  // FNV-1a, 32-bit. Not cryptographic — this compares a value with its own
+  // previous self, and a collision costs one unnecessary nudge.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
