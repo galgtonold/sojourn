@@ -751,8 +751,20 @@ export async function searchAll(
   return { posts, photos };
 }
 
+// No `comment_likes(count)` here, for the same reason POST_SELECT carries no
+// `comments(count)` — see the note above it.
+//
+// PostgREST compiles an embedded count to `count(<table>.*)`, and counting a
+// whole row requires SELECT on EVERY column of that table. `comment_likes` is
+// column-scoped (0048 took `visitor_token` away from anon), so the embed came
+// back `42501: permission denied for table comment_likes`, the whole comments
+// query failed, and every post rendered with no comments at all — server-side
+// and through /api/comments alike.
+//
+// Raw `count(*)` is fine on a column-scoped table; `count(t.*)` is not. That
+// distinction is the entire bug, and it is invisible from the query as written.
 export const COMMENT_SELECT =
-  "id, post_id, parent_id, author_name, body, created_at, comment_likes(count)";
+  "id, post_id, parent_id, author_name, body, created_at";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function hydrateComment(row: any): Comment {
@@ -763,8 +775,43 @@ export function hydrateComment(row: any): Comment {
     author_name: row.author_name,
     body: row.body,
     created_at: row.created_at,
-    like_count: row.comment_likes?.[0]?.count ?? 0,
+    // Filled in by withLikeCounts — see COMMENT_SELECT for why it cannot be
+    // embedded in the query.
+    like_count: 0,
   };
+}
+
+/**
+ * Attach like counts to already-hydrated comments.
+ *
+ * One extra round trip instead of an embedded aggregate. It selects only
+ * `comment_id`, a column anon is granted, and counts in memory — so it works
+ * against the column-scoped grant that the embed could not.
+ */
+export async function withLikeCounts(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  comments: Comment[],
+): Promise<Comment[]> {
+  if (!comments.length) return comments;
+  try {
+    const { data, error } = await supabase
+      .from("comment_likes")
+      .select("comment_id")
+      .in(
+        "comment_id",
+        comments.map((c) => c.id),
+      );
+    if (error || !data) return comments;
+    const counts = new Map<string, number>();
+    for (const row of data as { comment_id: string }[]) {
+      counts.set(row.comment_id, (counts.get(row.comment_id) ?? 0) + 1);
+    }
+    return comments.map((c) => ({ ...c, like_count: counts.get(c.id) ?? 0 }));
+  } catch {
+    // A missing count is a wrong number; a thrown error is no comments at all.
+    return comments;
+  }
 }
 
 export async function getComments(postId: string): Promise<Comment[]> {
@@ -779,7 +826,7 @@ export async function getComments(postId: string): Promise<Comment[]> {
       .order("created_at", { ascending: false })
       .limit(200);
     if (error || !data) return [];
-    return data.map(hydrateComment).reverse();
+    return withLikeCounts(supabase, data.map(hydrateComment).reverse());
   } catch {
     return [];
   }

@@ -22,6 +22,7 @@ const MIGRATION = readFileSync(
 const REACTIONS_ROUTE = readFileSync("src/app/api/reactions/route.ts", "utf8");
 const LIKES_ROUTE = readFileSync("src/app/api/comments/like/route.ts", "utf8");
 const MANIFEST = readFileSync("src/lib/migrations.mjs", "utf8");
+const CONTENT = readFileSync("src/lib/content.ts", "utf8");
 
 describe("the visitor token stops being readable", () => {
   it("re-grants SELECT column by column, never at table level", () => {
@@ -96,6 +97,25 @@ describe("the routes use the functions", () => {
     expect(REACTIONS_ROUTE).toMatch(/p_token: token/);
     expect(LIKES_ROUTE).toMatch(/rpc\("add_comment_like"/);
     expect(LIKES_ROUTE).toMatch(/p_token: token/);
+  });
+});
+
+describe("nothing embeds an aggregate on a column-scoped table", () => {
+  it("keeps comment_likes(count) out of COMMENT_SELECT", () => {
+    // 0048 column-scoped `comment_likes`, and PostgREST compiles an embedded
+    // count to `count(comment_likes.*)` — which needs SELECT on every column,
+    // including the one just revoked. The result was 42501 on the whole
+    // comments query: every post rendered with no comments, server-side and
+    // through /api/comments alike. Shipped and live for four hours.
+    const select = /export const COMMENT_SELECT\s*=\s*([\s\S]*?);/.exec(CONTENT)?.[1] ?? "";
+    expect(select).toBeTruthy();
+    expect(select).not.toMatch(/comment_likes\s*\(/);
+  });
+
+  it("counts them separately instead", () => {
+    expect(CONTENT).toMatch(/export async function withLikeCounts/);
+    // Only the granted column, counted in memory.
+    expect(CONTENT).toMatch(/from\("comment_likes"\)[\s\S]{0,80}select\("comment_id"\)/);
   });
 });
 

@@ -34,7 +34,6 @@ const fake = makeFakeSupabase({
       body: "first",
       created_at: "2026-06-01T10:00:00Z",
       hidden: false,
-      comment_likes: [{ count: 2 }],
     },
     {
       id: "c2",
@@ -44,8 +43,15 @@ const fake = makeFakeSupabase({
       body: "second",
       created_at: "2026-06-02T10:00:00Z",
       hidden: false,
-      comment_likes: [],
     },
+  ],
+  // Real rows, because the count is no longer embedded in the comments query:
+  // PostgREST compiles `comment_likes(count)` to `count(comment_likes.*)`,
+  // which needs SELECT on every column of a table anon is only granted three
+  // of. See COMMENT_SELECT.
+  comment_likes: [
+    { id: "l1", comment_id: "c1", created_at: "2026-06-01T11:00:00Z" },
+    { id: "l2", comment_id: "c1", created_at: "2026-06-01T12:00:00Z" },
   ],
   interactions: [
     {
@@ -88,10 +94,10 @@ describe("content layer (faked backend)", () => {
     expect(comments[1].like_count).toBe(0);
   });
 
-  it("hydrateComment reads the nested like count", () => {
-    expect(
-      hydrateComment({ id: "x", comment_likes: [{ count: 7 }] }).like_count,
-    ).toBe(7);
+  it("hydrateComment leaves the like count to withLikeCounts", () => {
+    // It no longer reads a nested aggregate, because the query no longer asks
+    // for one. Zero is the honest starting value; withLikeCounts fills it.
+    expect(hydrateComment({ id: "x" }).like_count).toBe(0);
     expect(hydrateComment({ id: "y" }).like_count).toBe(0);
   });
 

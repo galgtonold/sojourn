@@ -127,6 +127,30 @@ describe.runIf(enabled)("what anon can read", () => {
     expect(r.code, "counting comments is refused — this is the 0043 outage").toBeUndefined();
   });
 
+  it("counts comment likes the way the app must, not the way PostgREST embeds", async () => {
+    // This is the bug 0048 shipped. A column-scoped grant leaves plain
+    // `count(*)` working, so every probe said the migration was fine — but
+    // PostgREST compiles an embedded `comment_likes(count)` to
+    // `count(comment_likes.*)`, and counting a WHOLE ROW needs SELECT on every
+    // column. The embed came back 42501, the whole comments query failed with
+    // it, and every post rendered with no comments at all.
+    //
+    // Both halves are asserted because the difference between them is the
+    // entire defect and is invisible in the query as written.
+    const plain = await attempt(`select count(*) from comment_likes`);
+    expect(plain.code, "plain count(*) should still work").toBeUndefined();
+
+    const wholeRow = await attempt(`select count(cl.*) from comment_likes cl`);
+    expect(
+      wholeRow.code,
+      "count(t.*) now works, so an embedded count would too — check the grant did not widen",
+    ).toBe("42501");
+
+    // And the shape the app actually uses instead.
+    const asUsed = await attempt(`select comment_id from comment_likes limit 1`);
+    expect(asUsed.code, "the app selects comment_id and counts in memory").toBeUndefined();
+  });
+
   it("cannot read an unpublished post", async () => {
     const r = await attempt(`select id, body from posts where id = '${DRAFT}'`);
     // RLS filters rather than errors, so the tell is zero rows.

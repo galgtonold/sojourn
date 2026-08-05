@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
-import { COMMENT_SELECT, hydrateComment } from "@/lib/content";
+import { COMMENT_SELECT, hydrateComment, withLikeCounts } from "@/lib/content";
 import { notifyComment, notifyCommentAuthor } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -30,7 +30,10 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
-    comments: (data ?? []).map(hydrateComment).reverse(),
+    comments: await withLikeCounts(
+      supabase,
+      (data ?? []).map(hydrateComment).reverse(),
+    ),
     total: count ?? 0,
   });
 }
