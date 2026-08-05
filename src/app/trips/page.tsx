@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state";
 import { getTrips } from "@/lib/content";
 import { Reveal } from "@/components/reveal";
 import { TripCard } from "@/components/trip-card";
@@ -22,17 +23,23 @@ export default async function TripsPage() {
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
         <T k="trips.title" />
       </h1>
-      <p className="mt-2 max-w-xl text-sand-100/60">
-        <T k="trips.subtitle" />
-      </p>
+      {trips.length > 0 && (
+        <p className="mt-2 max-w-xl text-sand-100/60">
+          <T k="trips.subtitle" />
+        </p>
+      )}
 
-      <div className="mt-10 grid gap-6 md:grid-cols-2">
-        {trips.map((trip, i) => (
-          <Reveal key={trip.id} index={i}>
-            <TripCard trip={trip} />
-          </Reveal>
-        ))}
-      </div>
+      {trips.length === 0 ? (
+        <EmptyState titleKey="empty.trips.title" bodyKey="empty.trips.body" />
+      ) : (
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
+          {trips.map((trip, i) => (
+            <Reveal key={trip.id} index={i}>
+              <TripCard trip={trip} />
+            </Reveal>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

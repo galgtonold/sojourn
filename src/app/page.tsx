@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state";
 import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { getPostSummaries, getTrips } from "@/lib/content";
@@ -140,9 +141,7 @@ export default async function HomePage() {
         </Reveal>
 
         {posts.length === 0 ? (
-          <p className="text-sand-100/60">
-            <T k="home.noMore" />
-          </p>
+          <EmptyState titleKey="empty.stories.title" bodyKey="empty.stories.body" />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post, i) => (

@@ -1,4 +1,5 @@
 "use client";
+import { EmptyState } from "@/components/empty-state";
 import { useEffect, useReducer } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -106,9 +107,11 @@ export function SearchResults() {
   return (
     <>
       {empty && (
-        <p className="mt-10 text-sm text-sand-100/50">
-          <T k="search.noResults" vars={{ q }} />
-        </p>
+        <EmptyState
+          titleKey="search.noResults"
+          titleVars={{ q }}
+          bodyKey="empty.search.body"
+        />
       )}
 
       {posts.length > 0 && (

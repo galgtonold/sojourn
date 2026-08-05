@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state";
 import { Suspense } from "react";
 import { getPostSummaries } from "@/lib/content";
 import { PostsArchive } from "@/components/posts-archive";
@@ -23,13 +24,19 @@ export default async function PostsPage() {
       <h1 className="font-display text-4xl font-semibold sm:text-5xl">
         <T k="archive.title" />
       </h1>
-      <p className="mt-2 text-sand-100/60">
-        <T k="archive.subtitle" vars={{ n: total }} />
-      </p>
+      {total > 0 && (
+        <p className="mt-2 text-sand-100/60">
+          <T k="archive.subtitle" vars={{ n: total }} />
+        </p>
+      )}
 
-      <Suspense>
-        <PostsArchive posts={posts} total={total} />
-      </Suspense>
+      {total === 0 ? (
+        <EmptyState titleKey="empty.stories.title" bodyKey="empty.stories.body" />
+      ) : (
+        <Suspense>
+          <PostsArchive posts={posts} total={total} />
+        </Suspense>
+      )}
     </div>
   );
 }

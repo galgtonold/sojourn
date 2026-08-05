@@ -49,7 +49,6 @@ const en = {
   "home.tripsTitle": "Journeys",
   "home.tripsSub": "Every trip, gathered — routes, stories and galleries.",
   "home.browseAll": "Browse all {n, plural, one {# story} other {# stories}}",
-  "home.noMore": "No more stories yet — check back soon.",
   "home.mapTitle": "Every step, on the map",
   "home.mapBody":
     "Follow the routes, pins and detours across {n, plural, one {# story} other {# stories}} and counting.",
@@ -215,6 +214,16 @@ const en = {
   "archive.subtitle":
     "{n, plural, one {# story} other {# stories}} from the road.",
   "archive.empty": "Nothing here yet.",
+  // Shown when a public surface has nothing in it yet. See @/components/empty-state.
+  "empty.stories.title": "Nothing written up yet",
+  "empty.stories.body": "The first story lands here the moment it is published.",
+  "empty.photos.title": "Nothing plotted yet",
+  "empty.photos.body": "Photographs taken with a location — and the routes between them — show up on this map.",
+  "empty.trips.title": "No journeys yet",
+  "empty.trips.body": "A journey gathers the stories from one trip. The first one appears here.",
+  "empty.search.title": "Nothing matched",
+  "empty.search.body": "Try a place, a month, or a word you would have written yourself.",
+  "empty.action.stories": "Read the stories",
 
   "map.title": "The whole map",
   "map.subtitle": "Every route and photo on one map. Tap a photo to view it — or open its story.",
@@ -224,7 +233,6 @@ const en = {
     "Every geotagged photo, where it was taken. Zoom in to explore; tap a pin to open the story.",
   "photos.count":
     "{n, plural, one {# photo} other {# photos}} on the map.",
-  "photos.empty": "No geotagged photos yet.",
   "photos.inView": "{n} in view",
   "photos.noneInView": "No photos in view — zoom out or pan to find more.",
 
@@ -892,7 +900,6 @@ const de: Dict = {
   "home.tripsSub": "Jede Reise, gesammelt — Routen, Geschichten und Galerien.",
   "home.browseAll":
     "Alle {n, plural, one {# Geschichte} other {# Geschichten}} ansehen",
-  "home.noMore": "Noch keine weiteren Geschichten — schau bald wieder vorbei.",
   "home.mapTitle": "Jeder Schritt, auf der Karte",
   "home.mapBody":
     "Folge den Routen, Pins und Abstechern über {n, plural, one {# Geschichte} other {# Geschichten}} und mehr.",
@@ -1061,6 +1068,16 @@ const de: Dict = {
   "archive.subtitle":
     "{n, plural, one {# Geschichte} other {# Geschichten}} von unterwegs.",
   "archive.empty": "Hier ist noch nichts.",
+  // Siehe @/components/empty-state.
+  "empty.stories.title": "Noch nichts aufgeschrieben",
+  "empty.stories.body": "Die erste Geschichte erscheint hier, sobald sie veröffentlicht ist.",
+  "empty.photos.title": "Noch nichts eingezeichnet",
+  "empty.photos.body": "Fotos mit Standort — und die Routen dazwischen — erscheinen auf dieser Karte.",
+  "empty.trips.title": "Noch keine Reisen",
+  "empty.trips.body": "Eine Reise bündelt die Geschichten einer Tour. Die erste erscheint hier.",
+  "empty.search.title": "Nichts gefunden",
+  "empty.search.body": "Versuch es mit einem Ort, einem Monat oder einem Wort, das du selbst geschrieben hättest.",
+  "empty.action.stories": "Zu den Geschichten",
 
   "map.title": "Die ganze Karte",
   "map.subtitle":
@@ -1071,7 +1088,6 @@ const de: Dict = {
     "Jedes Foto mit Standort, dort wo es entstand. Zoome hinein; tippe einen Pin an, um die Geschichte zu öffnen.",
   "photos.count":
     "{n, plural, one {# Foto} other {# Fotos}} auf der Karte.",
-  "photos.empty": "Noch keine Fotos mit Standort.",
   "photos.inView": "{n} im Blick",
   "photos.noneInView":
     "Keine Fotos im Blick — zoome heraus oder verschiebe die Karte.",
