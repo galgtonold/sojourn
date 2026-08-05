@@ -132,7 +132,7 @@ npm run gen:vapid  # generate a VAPID key pair (web-push)
 - **Content is public-read.** Trips, posts, photos, maps, comments, and reactions are shared by URL — there are no viewer accounts.
 - **Only `/admin` is gated.** Authentication is Supabase Auth for a single admin, enforced by Next middleware in `src/middleware.ts`. On a fresh install, `/admin/setup` lets the first visitor claim the owner account (atomic via a single-owner unique index; a permanent redirect-to-login tombstone once an owner exists).
 - **Data access layer:** `src/lib/content.ts` — public reads via a cookieless anon client (RLS-bounded); query failures return empty, never fabricated content.
-- **Schema, RLS, and storage:** `supabase/migrations/` — 44 files applied in the order declared by `src/lib/migrations.mjs`. `0001_init.sql` is where it starts, not the whole of it.
+- **Schema, RLS, and storage:** `supabase/migrations/` — applied in the order declared by `src/lib/migrations.mjs`, which is the authoritative list. `0001_init.sql` is where it starts, not the whole of it.
 
 ### Database tables
 

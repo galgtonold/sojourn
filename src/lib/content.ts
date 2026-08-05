@@ -7,6 +7,7 @@
 // content, so a transient outage can't masquerade as real data.
 import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
+import { logError } from "@/lib/log";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAiConfig } from "@/lib/ai-config";
@@ -102,7 +103,8 @@ export async function getPublishedPosts(): Promise<PostWithRelations[]> {
       .order("published_at", { ascending: false });
     if (error || !data) return [];
     return data.map(hydratePost);
-  } catch {
+  } catch (e) {
+    logError("content.getPublishedPosts", e);
     return [];
   }
 }
@@ -173,7 +175,8 @@ export async function getMapPosts(
           : t.geojson,
       })),
     })) as MapPost[];
-  } catch {
+  } catch (e) {
+    logError("content.getMapPosts", e);
     return [];
   }
 }
@@ -199,7 +202,8 @@ export async function getPostSummaries({
       .range(offset, offset + limit - 1);
     if (error || !data) return { posts: [], total: 0 };
     return { posts: asSummaries(data), total: count ?? data.length };
-  } catch {
+  } catch (e) {
+    logError("content.getPostSummaries", e);
     return { posts: [], total: 0 };
   }
 }
@@ -266,7 +270,8 @@ export async function getTripOverview(tripId: string): Promise<TripOverview> {
       out.posts.push(asSummaries([summary])[0]);
     }
     return out;
-  } catch {
+  } catch (e) {
+    logError("content.getTripOverview", e);
     return empty;
   }
 }
@@ -314,7 +319,8 @@ export async function getPublishedPostsByTrip(
       .order("published_at", { ascending: false });
     if (error || !data) return [];
     return data.map(hydratePost).map(withMapGeometry);
-  } catch {
+  } catch (e) {
+    logError("content.getPublishedPostsByTrip", e);
     return [];
   }
 }
@@ -363,7 +369,8 @@ export async function getTripPostNav(
     const idx = data.findIndex((p) => p.slug === currentSlug);
     if (idx === -1) return empty;
     return { prev: toNavLink(data[idx - 1]), next: toNavLink(data[idx + 1]) };
-  } catch {
+  } catch (e) {
+    logError("content.getTripPostNav", e);
     return empty;
   }
 }
@@ -381,7 +388,8 @@ export async function getPostBySlug(
       .maybeSingle();
     if (error || !data) return null;
     return hydratePost(data);
-  } catch {
+  } catch (e) {
+    logError("content.getPostBySlug", e);
     return null;
   }
 }
@@ -397,7 +405,8 @@ export async function getTrips(): Promise<Trip[]> {
       .order("start_date", { ascending: false });
     if (error || !data) return [];
     return data as Trip[];
-  } catch {
+  } catch (e) {
+    logError("content.getTrips", e);
     return [];
   }
 }
@@ -410,7 +419,8 @@ async function embedQuery(q: string): Promise<number[] | null> {
   if (!cfg.isEmbeddingsConfigured) return null;
   try {
     return await embedText(q, { operation: "search_embed" });
-  } catch {
+  } catch (e) {
+    logError("content.embedQuery", e);
     return null;
   }
 }
@@ -557,7 +567,8 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
         },
       ];
     });
-  } catch {
+  } catch (e) {
+    logError("content.getGeotaggedPhotos", e);
     return [];
   }
 }
@@ -632,7 +643,8 @@ async function hybridSearch<T extends { id: string }>(opts: {
       );
     try {
       return await opts.fallback(supabase);
-    } catch {
+    } catch (e) {
+      logError("content.hybridSearch", e);
       return [];
     }
   }
@@ -808,7 +820,8 @@ export async function withLikeCounts(
       counts.set(row.comment_id, (counts.get(row.comment_id) ?? 0) + 1);
     }
     return comments.map((c) => ({ ...c, like_count: counts.get(c.id) ?? 0 }));
-  } catch {
+  } catch (e) {
+    logError("content.withLikeCounts", e);
     // A missing count is a wrong number; a thrown error is no comments at all.
     return comments;
   }
@@ -827,7 +840,8 @@ export async function getComments(postId: string): Promise<Comment[]> {
       .limit(200);
     if (error || !data) return [];
     return withLikeCounts(supabase, data.map(hydrateComment).reverse());
-  } catch {
+  } catch (e) {
+    logError("content.getComments", e);
     return [];
   }
 }

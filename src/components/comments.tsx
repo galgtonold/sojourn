@@ -5,7 +5,7 @@ import { Heart, MessageSquare, Send } from "lucide-react";
 import type { Comment } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { useT, useI18n } from "@/components/i18n";
-import { visitorToken } from "@/lib/visitor";
+import { visitorToken, readStringSet } from "@/lib/visitor";
 import { env } from "@/lib/env";
 
 const NAME_KEY = "sojourn:name";
@@ -49,8 +49,9 @@ export function Comments({
 
   useEffect(() => {
     setName(localStorage.getItem(NAME_KEY) ?? "");
-    const stored = localStorage.getItem(LIKED_KEY);
-    if (stored) setLiked(new Set(JSON.parse(stored) as string[]));
+    // See readStringSet: a stored scalar used to throw "number is not
+    // iterable" from the Set constructor and take out the comments section.
+    setLiked(readStringSet(LIKED_KEY));
     refresh();
   }, [refresh]);
 

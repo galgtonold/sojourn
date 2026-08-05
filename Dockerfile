@@ -5,7 +5,12 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+# `npm ci` only, deliberately. The `|| npm install` that used to be here meant
+# a drifted lockfile produced a SUCCESSFUL build of a different dependency tree,
+# with nothing in the log to distinguish it from a clean one — which defeats the
+# single property npm ci exists to give a published image. CI runs bare npm ci
+# too, so the two paths cannot disagree.
+RUN npm ci
 
 # ─── build ───────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder

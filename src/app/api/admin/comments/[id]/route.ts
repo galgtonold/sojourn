@@ -1,3 +1,4 @@
+import { revalidatePostPage } from "@/lib/revalidate-post";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -45,6 +46,7 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data?.length)
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  await revalidatePostPage(supabase, { commentId: id });
   return NextResponse.json({ ok: true });
 }
 
@@ -59,6 +61,14 @@ export async function DELETE(
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // Read the post BEFORE the delete — afterwards there is no row to find it
+  // from, which is the same trap the photo objects fell into.
+  const { data: owner } = await supabase
+    .from("comments")
+    .select("post_id")
+    .eq("id", id)
+    .maybeSingle();
+
   // Replies cascade at the DB level; the returned row is the parent we matched.
   const { data, error } = await supabase
     .from("comments")
@@ -69,5 +79,7 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data?.length)
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const postId = (owner as { post_id?: string } | null)?.post_id;
+  if (postId) await revalidatePostPage(supabase, { postId });
   return NextResponse.json({ ok: true });
 }

@@ -1,0 +1,60 @@
+# Nobody was watching the dependencies.
+#
+# The pre-release review found four high-severity advisories sitting in the
+# production tree, one of them a Next patch that had been available for a while.
+# Nothing in the repository would ever have mentioned them — `npm audit` is not
+# part of CI, and a personal project does not get looked at weekly.
+#
+# Grouped on purpose. Ungrouped, this opens a PR per package per week, and the
+# reliable outcome of that on a one-maintainer project is that all of them get
+# ignored. One PR for patches, one for minors, and majors on their own where
+# they can be read properly.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Routine. Expected to be boring, and to go in after CI passes.
+      patch-and-minor:
+        applies-to: version-updates
+        update-types: ["patch", "minor"]
+      # Security fixes arrive as their own group so they are never queued
+      # behind a routine bump — this is the one that matters.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      # Next majors move the App Router in ways that need reading, not merging.
+      # `npm audit fix --force` wanted to take 15 → 16 to clear two transitive
+      # advisories; that is a migration, not an update.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+
+  # The workflows pin actions by tag; without this they silently rot.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore(ci)
+
+  # The all-in-one stack pins every Supabase image deliberately (see the test in
+  # compose-config), so these want reviewing rather than merging — but knowing a
+  # pinned image has moved is the point.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore(docker)

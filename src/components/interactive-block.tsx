@@ -1,21 +1,12 @@
 "use client";
+import { visitorToken } from "@/lib/visitor";
 import { useEffect, useState } from "react";
 import { BarChart3, Check, HelpCircle, X } from "lucide-react";
 import type { Interaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n";
 
-const VID_KEY = "sojourn:vid";
 
-function visitorToken(): string {
-  if (typeof window === "undefined") return "";
-  let t = localStorage.getItem(VID_KEY);
-  if (!t) {
-    t = crypto.randomUUID();
-    localStorage.setItem(VID_KEY, t);
-  }
-  return t;
-}
 
 type State = {
   voted: boolean;

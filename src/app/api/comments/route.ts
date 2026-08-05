@@ -1,3 +1,4 @@
+import { revalidatePostPage } from "@/lib/revalidate-post";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -75,6 +76,12 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
+
+  // The post page is `revalidate = false`, so without this the server-rendered
+  // comment list stays as it was at the last deploy. Readers did not notice
+  // because the component refetches on mount; crawlers, link previews and the
+  // pre-hydration paint all saw the stale list.
+  await revalidatePostPage(supabase, { postId });
 
   // after(), not a floating promise — see @/lib/after-response. Left loose,
   // these are frozen with the response and usually never sent.

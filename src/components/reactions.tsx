@@ -1,4 +1,6 @@
 "use client";
+import { readStringSet } from "@/lib/visitor";
+import { visitorToken } from "@/lib/visitor";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -8,17 +10,7 @@ import {
   type ReactionSummary,
 } from "@/lib/types";
 
-const TOKEN_KEY = "sojourn:vid";
 
-function visitorToken(): string {
-  if (typeof window === "undefined") return "";
-  let t = localStorage.getItem(TOKEN_KEY);
-  if (!t) {
-    t = crypto.randomUUID();
-    localStorage.setItem(TOKEN_KEY, t);
-  }
-  return t;
-}
 
 export function Reactions({
   postId,
@@ -36,8 +28,10 @@ export function Reactions({
 
   // Restore which reactions this visitor already gave.
   useEffect(() => {
-    const stored = localStorage.getItem(`sojourn:react:${postId}`);
-    if (stored) setMine(new Set(JSON.parse(stored) as ReactionKind[]));
+    // Bare JSON.parse here threw on corrupt storage, inside a useEffect —
+    // which escapes to the error boundary and takes the whole reactions block
+    // out, on a page the visitor can only fix by clearing site data.
+    setMine(readStringSet(`sojourn:react:${postId}`) as Set<ReactionKind>);
   }, [postId]);
 
   // The page bakes counts at build time, so they drift between saves. Refetch the
