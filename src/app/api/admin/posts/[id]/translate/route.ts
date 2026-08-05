@@ -53,6 +53,34 @@ export async function POST(
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // A session is not a permission — and here it was the only question asked.
+  //
+  // Everything below runs through getAdminSupabase(), the service-role client
+  // RLS cannot hold back, and `force: true` skips the "already translated"
+  // early return every time. So any holder of any Supabase session could spend
+  // the operator's provider key on an unbounded number of 8000-token runs, and
+  // a collaborator granted one trip could force translation of the owner's
+  // unpublished drafts in trips they were never given.
+  //
+  // The proof is an UPDATE through the RLS client, not a SELECT: `read
+  // published posts` lets anyone read a published row, so reading one proves
+  // nothing. The posts UPDATE policy is `is_owner() or can_edit_post(id)`, so a
+  // row coming back is the database itself confirming this caller may edit this
+  // post. A session with no profile satisfies neither branch and gets the same
+  // 403 as a member reaching outside their trips.
+  //
+  // Setting `pending` is not a side effect invented for the check —
+  // triggerPostTranslation sets exactly this a moment later.
+  const { data: permitted, error: permitError } = await supabase
+    .from("posts")
+    .update({ translation_status: "pending" })
+    .eq("id", id)
+    .select("id");
+  if (permitError)
+    return NextResponse.json({ error: "unavailable" }, { status: 500 });
+  if (!permitted?.length)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
   await triggerPostTranslation(id, { force: true });
 
   const { data } = await supabase

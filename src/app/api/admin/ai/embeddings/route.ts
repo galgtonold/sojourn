@@ -34,6 +34,22 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // A session is not a permission (see @/lib/api/admin-route, which every AI
+  // route but this one goes through). The reads below are RLS-scoped, so a
+  // profile-less session sees only published posts — but `onlyEmpty` defaults
+  // true and `limit` allows 200, so embedBatch is called, and billed, for all
+  // of them before the first write is refused. Capability comes from a
+  // `profiles` row; that is what is_owner() and can_edit_post() read.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "owner" && role !== "member") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success)
     return NextResponse.json({ error: "invalid" }, { status: 400 });

@@ -44,6 +44,33 @@ The pipeline depends on exactly two external things, both mocked per test file:
   with the in-memory fake. The materializer, dossier builder and validation all
   run for real against it.
 
+## Row-level security (real Postgres)
+
+The in-memory fake models the SHAPE of PostgREST responses — not row-level
+security, not column grants, not EXECUTE privileges. So until this suite
+existed, the policies in 48 migrations were checked by reading them, and the
+history shows the cost: 0036 broke `select=*` and was found during a backup;
+0043 broke `comments(count)` and every post page rendered as not-found until
+someone browsed to one; 0043 itself documents four security defects that had
+been live for months; 0048 fixed a fifth of the same kind.
+
+These run as the `anon` role against a real database and assert both
+directions — what a visitor must not reach, and what the public site depends on
+reaching. Over-tightening has taken the site down twice; a leak is not the only
+way to get this wrong.
+
+Opt-in, because it needs a database. The all-in-one stack brings one up:
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d db storage
+DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:5432/postgres node scripts/migrate.mjs
+RLS_DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:5432/postgres npm run test:rls
+```
+
+Point it at a **throwaway** database. It writes fixtures and removes them again,
+but it is not something to aim at anything you care about. With
+`RLS_DATABASE_URL` unset the whole file skips, so `npm test` is unaffected.
+
 ## Live smoke test (real DeepSeek)
 
 Hits the real API (a few cents per run, non-deterministic — assertions stay

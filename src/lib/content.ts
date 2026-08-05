@@ -198,7 +198,7 @@ export async function getPostSummaries({
       .order("published_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (error || !data) return { posts: [], total: 0 };
-    return { posts: data as PostSummary[], total: count ?? data.length };
+    return { posts: asSummaries(data), total: count ?? data.length };
   } catch {
     return { posts: [], total: 0 };
   }
@@ -263,7 +263,7 @@ export async function getTripOverview(tripId: string): Promise<TripOverview> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (p: any) => p.lat != null && p.lng != null,
       ).length;
-      out.posts.push(summary as PostSummary);
+      out.posts.push(asSummaries([summary])[0]);
     }
     return out;
   } catch {
@@ -470,16 +470,58 @@ function trimCaptionI18n(
   }
   return Object.keys(out).length ? out : undefined;
 }
-function trimTitleI18n(
+function pickI18n(
   i18n: unknown,
+  fields: readonly (keyof PostTranslation)[],
 ): Partial<Record<Locale, PostTranslation>> | undefined {
   const src = (i18n ?? {}) as Partial<Record<Locale, PostTranslation>>;
   const out: Partial<Record<Locale, PostTranslation>> = {};
   for (const loc of LOCALES) {
-    const title = src[loc]?.title;
-    if (title) out[loc] = { title };
+    const from = src[loc];
+    if (!from) continue;
+    const kept: PostTranslation = {};
+    let any = false;
+    for (const f of fields) {
+      const v = from[f];
+      if (v != null) {
+        (kept as Record<string, unknown>)[f] = v;
+        any = true;
+      }
+    }
+    if (any) out[loc] = kept;
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+function trimTitleI18n(i18n: unknown) {
+  return pickI18n(i18n, ["title"]);
+}
+
+/**
+ * The overlay a summary card actually consumes.
+ *
+ * A post's `i18n` column holds the COMPLETE translated article in both
+ * languages, `body` included. PostCard is a client component, so whatever is
+ * handed to it is serialized into the page — meaning the archive shipped two
+ * full copies of every published article to render a grid of titles. Roughly
+ * 9 KB of dead weight per post on a 4,600-character entry; approaching a
+ * megabyte at a hundred of them.
+ *
+ * This is the same defect the trip overview already fixed by dropping
+ * `tracks(*)` — see the TripOverview note above. `localizePostSummary` overlays
+ * exactly title, excerpt and location and never touches `body`, so those three
+ * are the whole requirement.
+ */
+function trimSummaryI18n(i18n: unknown) {
+  return pickI18n(i18n, ["title", "excerpt", "location"]);
+}
+
+/** Strip the unused half of every summary's translation overlay. */
+function asSummaries(rows: unknown[]): PostSummary[] {
+  return (rows as PostSummary[]).map((r) => ({
+    ...r,
+    i18n: trimSummaryI18n((r as { i18n?: unknown }).i18n),
+  })) as PostSummary[];
 }
 
 // Every geotagged photo across published posts, for the global photo map.
@@ -614,7 +656,7 @@ export async function searchPosts(
         .select(SUMMARY_SELECT)
         .eq("published", true)
         .in("id", ids);
-      return error ? null : (data as PostSummary[] | null);
+      return error ? null : data ? asSummaries(data) : null;
     },
     // RPC/migration not present (older deployments): plain full-text search.
     fallback: async (supabase) => {
@@ -624,7 +666,7 @@ export async function searchPosts(
         .eq("published", true)
         .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
         .limit(50);
-      return error || !data ? [] : (data as PostSummary[]);
+      return error || !data ? [] : asSummaries(data);
     },
   });
 }
