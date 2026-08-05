@@ -117,6 +117,23 @@ function contentSecurityPolicy() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Publish a story, walk to the home page, and see the site as it was before
+  // you wrote it. Next 15.5 ships `staleTimes: { dynamic: 0, static: 300 }`,
+  // and every index route here is prerendered — so a SOFT navigation re-uses
+  // the RSC payload the client already holds, for five minutes, without
+  // asking. A hard refresh looks like the fix, which is exactly why this reads
+  // as a fluke rather than a setting.
+  //
+  // Worth being precise about what it is not, because both were suspected
+  // first: the server is right (`revalidatePath` runs on publish, and a fresh
+  // request renders the new story immediately), and so is the service worker
+  // (its navigation handler is network-first, and a reload with the worker in
+  // control returns the new page).
+  //
+  // `static: 0` means revalidate, not re-render — the server still answers
+  // from the ISR cache, so this costs one RSC request per navigation and buys
+  // a site that is never confidently wrong about its own contents.
+  experimental: { staleTimes: { dynamic: 0, static: 0 } },
   // Emit a self-contained server bundle so the same image runs on Vercel,
   // any container host, or a bare VPS (`node .next/standalone/server.js`).
   output: "standalone",
