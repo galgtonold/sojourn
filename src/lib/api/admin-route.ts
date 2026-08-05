@@ -29,6 +29,14 @@ export type AdminCtx<T> = {
    * for the routes whose behaviour merely *differs* by role.
    */
   role: ProfileRole;
+  /**
+   * Route params for a dynamic segment, already awaited.
+   *
+   * Dynamic routes used to be a reason to opt OUT of this wrapper, and opting
+   * out is how three routes ended up never applying the profile check below.
+   * Widening it is the cheaper half of that trade.
+   */
+  params: Record<string, string>;
 };
 
 type Options = {
@@ -43,12 +51,15 @@ type Options = {
  * `Response` directly (for domain-specific statuses like 403/404) or any
  * JSON-serializable value, which is wrapped in a 200 response.
  */
-export function adminRoute<S extends z.ZodTypeAny>(
+function runGate<S extends z.ZodTypeAny>(
   schema: S,
   handler: (ctx: AdminCtx<z.infer<S>>) => Promise<Response | unknown>,
-  options: Options = {},
+  options: Options,
 ) {
-  return async (req: Request): Promise<Response> => {
+  return async (
+    req: Request,
+    params: Record<string, string>,
+  ): Promise<Response> => {
     const supabase = await getServerSupabase();
     if (!supabase) {
       return NextResponse.json({ error: "not configured" }, { status: 503 });
@@ -95,6 +106,8 @@ export function adminRoute<S extends z.ZodTypeAny>(
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
+    // `z.any()` is how a body-less route (a GET, or a POST whose meaning is the
+    // URL) opts out of body validation without opting out of the auth rule.
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
@@ -106,6 +119,7 @@ export function adminRoute<S extends z.ZodTypeAny>(
         user,
         input: parsed.data,
         role,
+        params,
       });
       return result instanceof Response ? result : NextResponse.json(result);
     } catch (e) {
@@ -115,4 +129,40 @@ export function adminRoute<S extends z.ZodTypeAny>(
       );
     }
   };
+}
+
+/**
+ * Wraps a handler with auth + body validation, for a route with no dynamic
+ * segment. See runGate for what the gate actually does.
+ */
+export function adminRoute<S extends z.ZodTypeAny>(
+  schema: S,
+  handler: (ctx: AdminCtx<z.infer<S>>) => Promise<Response | unknown>,
+  options: Options = {},
+) {
+  const gate = runGate(schema, handler, options);
+  return (req: Request): Promise<Response> => gate(req, {});
+}
+
+/**
+ * The same gate, for a route with a dynamic segment.
+ *
+ * Next type-checks route handlers against its own signature: a static route
+ * takes `(req)`, a dynamic one takes `(req, { params })`, and that second
+ * argument may not be optional. One exported function cannot satisfy both — so
+ * there are two names over one implementation, rather than eleven routes
+ * opting out of the gate because the wrapper did not fit. That opt-out is
+ * precisely how F1.1, F1.2 and F1.3 each ended up never applying the profile
+ * check.
+ */
+export function adminRouteWithParams<S extends z.ZodTypeAny>(
+  schema: S,
+  handler: (ctx: AdminCtx<z.infer<S>>) => Promise<Response | unknown>,
+  options: Options = {},
+) {
+  const gate = runGate(schema, handler, options);
+  return async (
+    req: Request,
+    routeCtx: { params: Promise<Record<string, string>> },
+  ): Promise<Response> => gate(req, await routeCtx.params);
 }

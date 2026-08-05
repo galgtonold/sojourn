@@ -126,23 +126,58 @@ export async function runImport(archive: Buffer): Promise<ImportResult> {
     );
   }
 
+  // Read and validate EVERY table before writing anything.
+  //
+  // This parse used to sit inside the insert loop, unguarded, below
+  // assertEmpty. A malformed `data/<table>.json` in an otherwise-valid archive
+  // therefore threw a raw SyntaxError halfway through — after earlier tables
+  // had already been inserted. The route turns a non-ImportRefused throw into a
+  // flat `{"error":"import failed"}` 500, naming neither the table nor the fact
+  // that anything had been written; and because the database was no longer
+  // empty, assertEmpty then refused the retry. The operator was locked out of
+  // the only recovery path the feature has, on the worst day they were having.
+  //
+  // The insert-error branch below already reasoned about exactly this ("a
+  // partial import that carries on is a journal nobody can trust the shape
+  // of"), which makes the parse an oversight rather than a decision.
+  //
+  // Parsing first also means a corrupt archive is refused with the database
+  // untouched, so the retry is still available.
+  const parsed = new Map<string, Record<string, unknown>[]>();
+  for (const table of EXPORTED_TABLES) {
+    const raw = byName.get(`data/${table}.json`);
+    if (!raw) {
+      // An older export legitimately predates a table. Absent is not empty, but
+      // it is also not an error.
+      parsed.set(table, []);
+      continue;
+    }
+    let rows: unknown;
+    try {
+      rows = JSON.parse(new TextDecoder().decode(raw));
+    } catch (e) {
+      throw new ImportRefused(
+        `data/${table}.json is not readable JSON (${e instanceof Error ? e.message : e}). ` +
+          `Nothing has been imported.`,
+        400,
+      );
+    }
+    if (!Array.isArray(rows)) {
+      throw new ImportRefused(
+        `data/${table}.json is not a list of rows. Nothing has been imported.`,
+        400,
+      );
+    }
+    parsed.set(table, rows as Record<string, unknown>[]);
+  }
+
   // Checked as late as possible before the first write, and this is the guard
   // the whole feature rests on.
   await assertEmpty(admin);
 
   const tables: Record<string, number> = {};
   for (const table of EXPORTED_TABLES) {
-    const raw = byName.get(`data/${table}.json`);
-    if (!raw) {
-      // An older export legitimately predates a table. Absent is not empty, but
-      // it is also not an error.
-      tables[table] = 0;
-      continue;
-    }
-    let rows = JSON.parse(new TextDecoder().decode(raw)) as Record<string, unknown>[];
-    if (!Array.isArray(rows)) {
-      throw new ImportRefused(`data/${table}.json is not a list of rows.`, 400);
-    }
+    let rows = parsed.get(table) ?? [];
     if (rows.length === 0) {
       tables[table] = 0;
       continue;

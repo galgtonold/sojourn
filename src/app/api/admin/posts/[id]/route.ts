@@ -96,7 +96,7 @@ export async function PUT(
     ? (await materializeInteractions(supabase, id, p.body)).body
     : null;
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("posts")
     .update({
       title,
@@ -116,9 +116,16 @@ export async function PUT(
           ? new Date().toISOString()
           : existing?.published_at ?? null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // RLS filters rather than errors, so a write this caller may not make comes
+  // back as zero rows and no error. Without this the route answered
+  // `200 {"ok":true}` for an edit that never happened — the silent no-op the
+  // comments moderation route explicitly guards against, in the same codebase.
+  if (!updated?.length)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   // Refresh the post's semantic-search embedding (best-effort, never blocks the
   // save). No-ops when embeddings aren't configured.

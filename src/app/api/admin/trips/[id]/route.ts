@@ -70,7 +70,7 @@ export async function PUT(
     .eq("id", id)
     .maybeSingle();
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("trips")
     .update({
       title: t.title,
@@ -81,9 +81,14 @@ export async function PUT(
       start_date: t.start_date || null,
       end_date: t.end_date || null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Same as posts: an RLS denial is zero rows, not an error, and answering
+  // `ok: true` to an edit that did not happen is worse than a 403.
+  if (!updated?.length)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   // Translate the trip's title + summary into the other language (background).
   await triggerTripTranslation(id).catch(() => {});
