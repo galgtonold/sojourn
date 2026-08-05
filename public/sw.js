@@ -117,6 +117,58 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Browsers rotate a push subscription from time to time, and revoke one when
+// site data is cleared. Without this listener the endpoint the server stored
+// goes on answering 410 and this device silently receives nothing — which the
+// reader experiences as notifications that worked for a while and then just
+// stopped, with no way to tell that from a quiet week.
+//
+// A worker cannot rebuild the record on its own: audience, user_id and
+// visitor_token live in localStorage or a session, and it has access to
+// neither. So it reports only which endpoint replaced which, and the server
+// carries the rest across (see /api/push/migrate).
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(carrySubscriptionOver(event));
+});
+
+async function carrySubscriptionOver(event) {
+  try {
+    const old = event.oldSubscription;
+    // Without the old endpoint there is nothing to match the stored row
+    // against, and guessing would mean creating subscriptions from thin air.
+    if (!old || !old.endpoint) return;
+
+    // Chrome commonly fires this without the replacement attached, so take it
+    // from wherever it can be found before asking for a new one.
+    let fresh = event.newSubscription;
+    if (!fresh) fresh = await self.registration.pushManager.getSubscription();
+    if (!fresh) {
+      const key = old.options && old.options.applicationServerKey;
+      if (!key) return;
+      fresh = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key,
+      });
+    }
+
+    const json = fresh.toJSON ? fresh.toJSON() : fresh;
+    if (!json || !json.endpoint || !json.keys) return;
+
+    await fetch("/api/push/migrate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        oldEndpoint: old.endpoint,
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      }),
+    });
+  } catch {
+    // Best effort. The next subscribe from a page repairs the record anyway,
+    // and throwing here would only produce an unhandled rejection nobody sees.
+  }
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || "/";
