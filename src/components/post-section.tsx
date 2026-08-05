@@ -49,7 +49,7 @@ export function PostSection({
         </span>
         <span className="font-display text-base font-semibold text-sand-50">{title}</span>
         {summary && (
-          <span className="truncate text-xs text-sand-100/45">· {summary}</span>
+          <span className="truncate text-xs text-sand-100/50">· {summary}</span>
         )}
         <ChevronDown
           className={cn(

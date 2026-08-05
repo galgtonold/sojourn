@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useT } from "@/components/i18n";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   applyFinding,
   parseProofKey,
@@ -102,6 +103,29 @@ export function ProofreadDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // `aria-modal="true"` tells assistive technology that everything outside this
+  // dialog is inert. Claiming that without trapping focus is worse than not
+  // claiming it: a keyboard user tabs straight out into content their screen
+  // reader has just been told does not exist. confirm-dialog next door does all
+  // four of these; this one did none.
+  //
+  // Above the early return, and gated on `open`: a hook after a conditional
+  // return runs in a different order on the render where it is skipped.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
   if (!open) return null;
 
   function close() {
@@ -165,14 +189,19 @@ export function ProofreadDialog({
       className="fixed inset-0 z-[130] grid place-items-center bg-ink-950/70 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="proofread-dialog-title"
       onClick={close}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-lg rounded-2xl border border-white/10 bg-ink-900 p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-sand-50">
+          <h2
+            id="proofread-dialog-title"
+            className="font-display text-lg font-semibold text-sand-50"
+          >
             {t("admin.proofread.title")}
           </h2>
           <button
@@ -235,14 +264,14 @@ export function ProofreadDialog({
               {/* The fix shown in its sentence: struck original, then the
                   suggestion, so the author sees where the change lands. */}
               <p className="rounded-lg bg-ink-800/70 px-3 py-2.5 leading-relaxed text-sand-100/85">
-                <span className="text-sand-100/45">{current.before}</span>
+                <span className="text-sand-100/50">{current.before}</span>
                 <del className="rounded bg-red-500/15 px-0.5 text-red-300 line-through decoration-red-400/60">
                   {current.original}
                 </del>{" "}
                 <ins className="rounded bg-sage-500/15 px-0.5 text-sage-200 no-underline">
                   {current.suggestion}
                 </ins>
-                <span className="text-sand-100/45">{current.after}</span>
+                <span className="text-sand-100/50">{current.after}</span>
               </p>
               <p className="text-xs text-sand-100/60">{current.explanation}</p>
             </div>

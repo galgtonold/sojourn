@@ -185,7 +185,7 @@ export function AiProvidersForm({
         s === "inherited" &&
           "border border-sage-400/25 bg-sage-400/10 text-sage-300",
         s === "unset" &&
-          "border border-dashed border-white/15 text-sand-100/35",
+          "border border-dashed border-white/15 text-sand-100/60",
       )}
     >
       {t(`admin.settings.aiSource.${s}`)}

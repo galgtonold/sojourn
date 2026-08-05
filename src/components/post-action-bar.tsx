@@ -34,7 +34,7 @@ export function PostActionBar({
           <Eye className="size-4" />
           <span className="hidden sm:inline">{t("admin.preview")}</span>
         </a>
-        <span className="ml-auto hidden text-xs text-sand-100/45 sm:block">{statusLabel}</span>
+        <span className="ml-auto hidden text-xs text-sand-100/50 sm:block">{statusLabel}</span>
         <button
           type="button"
           onClick={onSave}

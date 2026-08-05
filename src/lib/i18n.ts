@@ -28,6 +28,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 const en = {
   "nav.stories": "Stories",
+  "nav.skipToContent": "Skip to content",
   "nav.trips": "Trips",
   "nav.map": "Map",
   "nav.photos": "Photos",
@@ -878,6 +879,7 @@ type Dict = Record<keyof typeof en, string>;
 
 const de: Dict = {
   "nav.stories": "Geschichten",
+  "nav.skipToContent": "Zum Inhalt springen",
   "nav.trips": "Reisen",
   "nav.map": "Karte",
   "nav.photos": "Fotos",

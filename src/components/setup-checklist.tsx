@@ -58,7 +58,7 @@ export function SetupChecklist(facts: OnboardingFacts) {
                 className={
                   step.done
                     ? "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-sage-500/20 text-sage-400"
-                    : "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-sand-100/25"
+                    : "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-sand-100/50"
                 }
                 aria-hidden
               >
@@ -85,7 +85,7 @@ export function SetupChecklist(facts: OnboardingFacts) {
                   </span>
                 )}
                 {!step.done && (
-                  <span className="mt-0.5 block text-xs text-sand-100/45">
+                  <span className="mt-0.5 block text-xs text-sand-100/50">
                     <T k={HINT[step.key]} />
                   </span>
                 )}

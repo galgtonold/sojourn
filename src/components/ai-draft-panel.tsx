@@ -615,7 +615,7 @@ export function AiDraftPanel({
             if (items.length === 0) return null;
             return (
               <div key={kind} className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-sand-100/45">
+                <p className="text-xs font-medium uppercase tracking-wide text-sand-100/50">
                   {t(
                     kind === "gap"
                       ? "admin.ai.questions.gaps"

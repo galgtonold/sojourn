@@ -493,7 +493,7 @@ export function PhotoExplorer({
       </div>
 
       <div className="border-t border-white/10 bg-ink-900/80">
-        <p className="px-4 pt-3 text-xs uppercase tracking-[0.18em] text-sand-100/45">
+        <p className="px-4 pt-3 text-xs uppercase tracking-[0.18em] text-sand-100/50">
           {shown.length > 0
             ? t("photos.inView", { n: shown.length })
             : t("photos.noneInView")}

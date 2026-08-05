@@ -192,7 +192,9 @@ export function DateField({
                       ? "bg-ember-500 font-semibold text-ink-950"
                       : c.inMonth
                         ? "text-sand-100/85 hover:bg-white/10"
-                        : "text-sand-100/25 hover:bg-white/5",
+                        // Days from the neighbouring month: de-emphasised,
+                        // but still a clickable date. /25 measured 1.97:1.
+                        : "text-sand-100/50 hover:bg-white/5",
                     // A ring rather than a fill, so "today" never competes with
                     // the selected day for attention.
                     !isSelected && isToday && "ring-1 ring-inset ring-ember-400/50",

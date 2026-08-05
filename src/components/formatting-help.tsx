@@ -69,7 +69,7 @@ export function FormattingHelp() {
       <p className="text-sand-100/70">{t("admin.editor.help.intro")}</p>
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="text-left text-[0.7rem] uppercase tracking-wider text-sand-100/35">
+          <tr className="text-left text-[0.7rem] uppercase tracking-wider text-sand-100/60">
             <th className="pb-1.5 pr-4 font-medium">
               {t("admin.editor.help.colType")}
             </th>
