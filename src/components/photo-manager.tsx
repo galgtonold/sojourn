@@ -376,12 +376,14 @@ export function PhotoManager({
       confirmLabel: t("common.delete"),
     });
     if (!ok) return;
-    const supabase = getBrowserSupabase();
     setPhotos((p) => p.filter((x) => x.id !== photo.id));
-    await supabase.from("photos").delete().eq("id", photo.id);
-    if (photo.storage_path) {
-      await supabase.storage.from("photos").remove([photo.storage_path]);
-    }
+    // Server-side: 0043 narrowed the bucket's delete policy to is_owner(), so
+    // from here a collaborator could remove the row and never the file. The
+    // route proves the right to delete through the row delete itself, then
+    // removes the object with the service role.
+    await fetch(`/api/admin/photos/${photo.id}`, { method: "DELETE" }).catch(
+      () => {},
+    );
     revalidatePublicPost(slug);
   }
 

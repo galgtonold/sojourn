@@ -1,9 +1,17 @@
 # Sojourn — working notes for Claude
 
-## Shipping changes (do this by default)
+> **Scope: the maintainer's own checkout.** This file is instructions to an
+> agent working directly on the deployment, which is why it says to push to
+> `main`. It is not the contribution process. If you are contributing, read
+> [CONTRIBUTING.md](CONTRIBUTING.md) instead — open an issue, then a PR.
+>
+> The rest of this file is still worth your time: the gotchas below are real
+> ones, each paid for once already.
+
+## Shipping changes (maintainer, working on the deployment)
 Production deploys automatically when `main` is updated (Vercel ↔ GitHub).
 So once a change is done and verified, **commit and push to `main`** — don't leave
-work sitting locally.
+work sitting locally. Contributors: open a PR instead; `verify` runs on it.
 
 **Validate before pushing** (production builds straight from `main`, so never push red):
 1. `npm ci` — only needed on a fresh checkout (`node_modules` is gitignored)

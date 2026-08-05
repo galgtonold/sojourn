@@ -521,10 +521,10 @@ processing to disclose. Which is exactly why none of it is on for you already.
 Built and working, but room to grow:
 
 - **Map clustering** — cluster pins on the global `/map` as trips accumulate.
-- **Discoverability** — `sitemap.xml`, `robots.txt`, JSON-LD, and canonical/`hreflang` for the bilingual site.
+- **`hreflang` for the bilingual site** — the rest of discoverability is done (see the note below); this one is blocked on language living in the URL rather than a cookie, which is a design decision rather than a missing tag.
 - **Share surface** — dynamic per-post Open Graph images and a native share sheet.
 
-> Several earlier roadmap items — direct **photo upload**, a **comment moderation** UI, **rich Markdown** post bodies, **AI authoring**, **collaborators**, and **i18n** — are now implemented and listed under [Features](#features).
+> Several earlier roadmap items — direct **photo upload**, a **comment moderation** UI, **rich Markdown** post bodies, **AI authoring**, **collaborators**, **i18n**, and **`sitemap.xml` / `robots.txt` / JSON-LD** — are now implemented and listed under [Features](#features).
 
 ## License
 

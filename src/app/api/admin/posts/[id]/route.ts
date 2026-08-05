@@ -8,7 +8,8 @@ import { env } from "@/lib/env";
 import { slugify } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { embedPostRecord } from "@/lib/ai/embed-records";
-import { triggerPostTranslation } from "@/lib/ai/translate";
+import { triggerPostTranslation } from "@/lib/ai/translate";
+import { photoPathsForPost, removePhotoObjects } from "@/lib/photo-objects";
 
 // Translation runs in-process when no Edge Function is configured (see
 // @/lib/ai/translate), scheduled with `after()` — so the model calls are billed
@@ -170,8 +171,15 @@ export async function DELETE(
     .eq("id", id)
     .maybeSingle();
 
+  // Read the object paths BEFORE the delete: `photos.post_id` cascades, so a
+  // moment later there are no rows left to learn them from — which is how every
+  // photograph of a deleted entry stayed live at its original public URL.
+  const paths = await photoPathsForPost(id);
+
   const { error } = await supabase.from("posts").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await removePhotoObjects(paths);
 
   revalidatePublic(existing?.slug);
   return NextResponse.json({ ok: true });

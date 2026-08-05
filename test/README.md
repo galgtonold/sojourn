@@ -8,10 +8,17 @@ npm run test:watch
 npm run test:coverage   # text + HTML report under coverage/
 ```
 
-~90 tests run in a couple of seconds and cover `src/lib` at ~95% of statements
-(100% of functions). Coverage is scoped to logic worth unit-testing — not React
-components, browser-only clients, or thin Supabase wrappers (see the `exclude`
-list in `vitest.config.ts`).
+Over a thousand tests run in a few seconds, with no network. Coverage is scoped
+to logic worth unit-testing — not React components, browser-only clients, or
+thin Supabase wrappers (see the `exclude` list in `vitest.config.ts`) — and sits
+around 75% of statements in `src/lib`.
+
+That number used to be quoted here as ~95%, against ~90 tests. Both had drifted
+a long way, in the flattering direction, which is the failure mode a coverage
+claim in a README always has: nothing recomputes it. Run `npm run test:coverage`
+rather than believing this paragraph, and treat the shape as the useful part —
+the gap is concentrated in modules that talk to Supabase and in the auth guards,
+not spread evenly.
 
 ## Layout
 
