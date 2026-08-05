@@ -48,12 +48,16 @@ export async function POST(req: Request) {
   const supabase = await getServerSupabase();
 
   if (action === "add") {
-    const { error } = await supabase
-      .from("reactions")
-      .upsert(
-        { post_id: postId, kind, visitor_token: token },
-        { onConflict: "post_id,kind,visitor_token", ignoreDuplicates: true },
-      );
+    // Through a security-definer function for the same reason the removal
+    // below goes through one (0046), plus a second: 0048 column-scoped
+    // `visitor_token` away from anon, and `on conflict (post_id, kind,
+    // visitor_token)` needs SELECT on its arbiter columns to resolve. A direct
+    // upsert now fails with 42501.
+    const { error } = await supabase.rpc("add_reaction", {
+      p_post_id: postId,
+      p_kind: kind,
+      p_token: token,
+    });
     if (error) {
       return NextResponse.json({ error: "unavailable" }, { status: 500 });
     }

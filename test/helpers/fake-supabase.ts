@@ -168,6 +168,37 @@ export function makeFakeSupabase(seed: FakeDb, userId = "user-1") {
         store[table] = keep;
         return { data: removed, error: null };
       };
+      /**
+       * 0048 moved the WRITES behind functions too. anon holds no INSERT on
+       * either table any more, and the upsert's conflict target names
+       * `visitor_token`, which anon can no longer read — so a fake that still
+       * accepted a direct `.upsert()` would pass while production returned
+       * 42501. Same token floor as the removals.
+       */
+      const add = (table: string, row: Row, dupe: (r: Row) => boolean) => {
+        if (!usable) return { data: 0, error: null };
+        const rows = (store[table] ??= []);
+        if (rows.some(dupe)) return { data: 0, error: null };
+        rows.push({ id: randomUUID(), ...row });
+        return { data: 1, error: null };
+      };
+      if (name === "add_reaction") {
+        return add(
+          "reactions",
+          { post_id: args.p_post_id, kind: args.p_kind, visitor_token: token },
+          (r) =>
+            r.post_id === args.p_post_id &&
+            r.kind === args.p_kind &&
+            r.visitor_token === token,
+        );
+      }
+      if (name === "add_comment_like") {
+        return add(
+          "comment_likes",
+          { comment_id: args.p_comment_id, visitor_token: token },
+          (r) => r.comment_id === args.p_comment_id && r.visitor_token === token,
+        );
+      }
       if (name === "remove_reaction") {
         if (!usable) return { data: 0, error: null };
         return remove(

@@ -26,12 +26,12 @@ export async function POST(req: Request) {
   const supabase = await getServerSupabase();
 
   if (action === "add") {
-    const { error } = await supabase
-      .from("comment_likes")
-      .upsert(
-        { comment_id: commentId, visitor_token: token },
-        { onConflict: "comment_id,visitor_token", ignoreDuplicates: true },
-      );
+    // See 0048: anon no longer holds INSERT here, and the conflict target
+    // names `visitor_token`, which anon can no longer read either.
+    const { error } = await supabase.rpc("add_comment_like", {
+      p_comment_id: commentId,
+      p_token: token,
+    });
     if (error) return NextResponse.json({ error: "unavailable" }, { status: 500 });
     // after(), not a floating promise — see @/lib/after-response.
     afterResponse("notify.like", () =>
