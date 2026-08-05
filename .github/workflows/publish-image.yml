@@ -67,6 +67,16 @@ jobs:
             org.opencontainers.image.title=Sojourn
             org.opencontainers.image.description=A travel journal you host yourself.
             org.opencontainers.image.licenses=AGPL-3.0-only
+          # Same three again as ANNOTATIONS, which ride on the manifest rather
+          # than the image config. Without this block the action derives them
+          # from what GitHub detected on the repo, and GitHub reports plain
+          # `AGPL-3.0` — the deprecated SPDX id whose entire problem is that it
+          # says nothing about "or later". That is exactly the distinction this
+          # project made on purpose, so the manifest must not blur it back.
+          annotations: |
+            org.opencontainers.image.title=Sojourn
+            org.opencontainers.image.description=A travel journal you host yourself.
+            org.opencontainers.image.licenses=AGPL-3.0-only
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -76,6 +86,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           # Layer cache lives in the registry alongside the image, so the second
           # release does not recompile what the first already did.
           cache-from: type=gha
