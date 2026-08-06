@@ -78,10 +78,16 @@ docs/superpowers/
 # and a poor control — especially once the repo is public and other people are
 # staging things. memory/ holds business notes and a personal address.
 memory/
-docs/reviews/
-docs/*-review.html
-docs/security-audit.html
 prod-licenses.txt
+
+# Everything under docs/ that is a snapshot of one afternoon's work rather than
+# documentation: audits, QA passes, review write-ups. They were written to be
+# acted on and then to stop being true, and a reader who finds a bug log from
+# June has no way to know which of it still applies. One folder, one rule —
+# previously three patterns that each had to be remembered separately.
+# docs/adr/ deliberately stays: ADR-0002 is cited from ten places in shipped
+# source, including an error message the app shows its operator.
+docs/internal/
 
 # Editor/agent local settings. .claude/launch.json is deliberately tracked (it
 # is how the dev server gets started); nothing else in there should be.

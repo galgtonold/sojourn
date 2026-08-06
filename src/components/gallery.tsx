@@ -17,8 +17,7 @@ export function Gallery({ photos }: { photos: Photo[] }) {
   // data URL on the client — using it during render makes next/image's
   // placeholder differ between SSR and hydration (a hydration mismatch on every
   // photo that has a blurhash). Gate it behind mount so the first client render
-  // matches the server (no blur), then upgrade to the blur placeholder. See
-  // docs/qa/03-bug-log.md (BUG-003).
+  // matches the server (no blur), then upgrade to the blur placeholder.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

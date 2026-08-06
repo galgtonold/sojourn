@@ -76,8 +76,9 @@ export default async function PostPage({
   // the footer, and an empty page between them — no message, nothing to click.
   // Verified in a browser, and adding not-found boundaries in the segment did
   // not change it. Returning the view directly sidesteps boundary resolution
-  // entirely and always renders. See docs/qa/03-bug-log.md (BUG-001) for why
-  // the status stays 200; `robots: noindex` above keeps it out of search.
+  // entirely and always renders. The status stays 200 because `dynamicParams`
+  // must stay true (see src/app/not-found.tsx); `robots: noindex` above is what
+  // keeps a missing page out of search instead.
   if (!post) return <NotFoundView />;
 
   // Interactions are authored content (safe fields only) — baked into the cached

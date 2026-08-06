@@ -6,8 +6,8 @@ import { NotFoundView } from "@/components/not-found-view";
 // /posts/[slug]) with a 200 status rather than 404 — and `dynamicParams` must
 // stay `true` so newly-published slugs render on demand without a redeploy. So a
 // real 404 status isn't available here without regressing on-demand publishing;
-// `noindex` ensures crawlers still never index a missing/deleted page. See
-// docs/qa/03-bug-log.md (BUG-001).
+// `noindex` ensures crawlers still never index a missing/deleted page.
+// Guarded by test/unit/not-found-noindex.test.ts.
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
