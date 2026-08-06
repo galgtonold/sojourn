@@ -378,14 +378,24 @@ export function PhotoExplorer({
           duration: 0,
         });
       }
-      // Reveal as soon as the framed camera + markers are up — don't wait for
-      // full `idle` (every basemap tile). The pins sit in their final positions
-      // immediately and the basemap streams in behind them, so on a slow
-      // connection the reader sees the markers from the start rather than a blank
-      // panel that then visibly settles. The camera is already at the exact fit
-      // (jumpTo above + this fitBounds), so nothing zooms after reveal.
+      // Reveal once the map has actually drawn something, not merely once its
+      // style is ready.
+      //
+      // This used to reveal here, at the end of `load`, on the reasoning that
+      // the pins are already in their final positions and the basemap could
+      // stream in behind them. Measured on a cold visit to the live site, that
+      // is not what a reader gets: the panel lifts onto an empty cream canvas —
+      // no tiles, no clusters — and stays that way for five to eight seconds
+      // before the whole map appears at once. An unexplained blank rectangle on
+      // the page the site is most proud of.
+      //
+      // `idle` means every tile for the current view has landed. The 2s cap is
+      // what keeps the old reasoning alive: on a slow connection we stop
+      // waiting and let the basemap stream in behind the pins, rather than
+      // holding the placeholder indefinitely on a stalled tile server. Same
+      // pattern as trip-map, which has had it all along.
       recomputeVisible();
-      setReady(true);
+      map.once("idle", () => setReady(true));
       map.on("moveend", recomputeVisible);
 
       map.on("click", "photo-clusters", (e) => {
@@ -422,9 +432,10 @@ export function PhotoExplorer({
       });
     });
 
-    // Backstop only: we now reveal inside the `load` handler, so this just
-    // covers the rare case where `load` never fires (a broken style fetch).
-    // Long enough not to pre-empt a slow `load` with a blank panel.
+    // Backstop only: the reveal now waits for `idle`, so this covers the cases
+    // where that never comes — a broken style fetch, or a tile server that
+    // stalls part-way. Long enough that it does not pre-empt a slow but working
+    // load and put the reader back in front of a half-drawn map.
     const reveal = setTimeout(() => setReady(true), 8000);
 
     return () => {
@@ -480,13 +491,18 @@ export function PhotoExplorer({
   return (
     <div className="overflow-hidden rounded-3xl ring-1 ring-white/10">
       {/* The map element is left untouched; a sibling overlay fades out once the
-          map has settled, hiding the load flicker without moving the canvas. */}
+          map has settled, hiding the load flicker without moving the canvas.
+
+          It shimmers rather than sitting flat, because this is the same wait the
+          route's own loading.tsx already covers with a skeleton — a reader
+          arriving cold sees one continuous placeholder instead of a shimmer
+          handing over to a dark rectangle and then to a blank cream canvas. */}
       <div className="relative">
         <div ref={container} className="h-[58dvh] min-h-[400px] w-full" />
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-0 bg-ink-900 transition-opacity duration-300",
+            "skeleton pointer-events-none absolute inset-0 transition-opacity duration-300",
             ready ? "opacity-0" : "opacity-100",
           )}
         />

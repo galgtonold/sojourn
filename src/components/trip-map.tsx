@@ -337,9 +337,11 @@ export function TripMap({
         ref={container}
         className="h-full w-full overflow-hidden rounded-3xl ring-1 ring-white/10"
       />
+      {/* Shimmers rather than sitting flat, so the wait reads as loading — the
+          same placeholder the route-level skeletons use. */}
       <div
         aria-hidden
-        className={`pointer-events-none absolute inset-0 rounded-3xl bg-ink-900 transition-opacity duration-300 ${ready ? "opacity-0" : "opacity-100"}`}
+        className={`skeleton pointer-events-none absolute inset-0 rounded-3xl transition-opacity duration-300 ${ready ? "opacity-0" : "opacity-100"}`}
       />
     </div>
   );
