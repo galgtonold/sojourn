@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { intrinsicRatio, slideBox, slideFade } from "@/lib/viewer-geometry";
+import { cellKey, intrinsicRatio, slideBox, slideFade } from "@/lib/viewer-geometry";
 
 // Two things the viewer used to get wrong, both visible on every single page.
 //
@@ -52,6 +52,61 @@ describe("intrinsicRatio", () => {
     expect(intrinsicRatio({ width: 0, height: 100 })).toBe(0);
     expect(intrinsicRatio({ width: -4, height: 3 })).toBe(0);
     expect(Number.isFinite(intrinsicRatio({ width: 100, height: 0 }))).toBe(true);
+  });
+});
+
+describe("cellKey", () => {
+  /** The keys React sees for the three mounted cells at a given index. */
+  const mounted = (index: number, count: number) =>
+    [-1, 0, 1].map((off) => ({
+      off,
+      key: cellKey((index + off + count) % count, off, count),
+    }));
+
+  it("hands the incoming photo's node straight to the centre", () => {
+    // The whole point. Paging 8 → 9: the cell that was "next" must be the SAME
+    // node once it is "current", or its <img> keeps its identity while its src
+    // changes, and the browser paints the photo you just left until the new one
+    // decodes. That flash is the bug.
+    const before = mounted(8, 15);
+    const after = mounted(9, 15);
+    const incoming = before.find((c) => c.off === 1)!.key;
+    const centred = after.find((c) => c.off === 0)!.key;
+    expect(centred).toBe(incoming);
+  });
+
+  it("keeps the photo you came from mounted, on the other side", () => {
+    const before = mounted(8, 15);
+    const after = mounted(9, 15);
+    expect(after.find((c) => c.off === -1)!.key).toBe(
+      before.find((c) => c.off === 0)!.key,
+    );
+  });
+
+  it("mounts exactly one new cell per step — the neighbour coming into range", () => {
+    const before = new Set(mounted(8, 15).map((c) => c.key));
+    const after = mounted(9, 15).map((c) => c.key);
+    expect(after.filter((k) => !before.has(k))).toEqual(["photo-10"]);
+  });
+
+  it("never collides, which would be a React error rather than a flicker", () => {
+    for (let count = 1; count <= 8; count++) {
+      for (let index = 0; index < count; index++) {
+        const keys = (count > 1 ? [-1, 0, 1] : [0]).map((off) =>
+          cellKey((index + off + count) % count, off, count),
+        );
+        expect(new Set(keys).size, `count=${count} index=${index}`).toBe(keys.length);
+      }
+    }
+  });
+
+  it("falls back to slot keys for two photos, where indices would collide", () => {
+    // With two, the same picture is both the previous and the next cell. Slot
+    // keys reintroduce the src swap — harmless here, because with two photos
+    // both are already decoded and the swap has nothing to flash.
+    expect(cellKey(1, -1, 2)).not.toBe(cellKey(1, 1, 2));
+    expect(cellKey(0, 0, 2)).toBe("slot-0");
+    expect(cellKey(0, 0, 3)).toBe("photo-0");
   });
 });
 

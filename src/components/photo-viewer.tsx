@@ -28,7 +28,7 @@ import { swipeTarget, wasDragged } from "@/lib/swipe";
 import { PhotoSlide, type ViewerItem } from "@/components/photo-slide";
 import { useT } from "@/components/i18n";
 import { useFocusTrap } from "@/lib/use-focus-trap";
-import { intrinsicRatio, slideFade } from "@/lib/viewer-geometry";
+import { cellKey, intrinsicRatio, slideFade } from "@/lib/viewer-geometry";
 
 export type { ViewerItem };
 
@@ -275,10 +275,17 @@ export function PhotoViewer({
               between 0 and 1. */}
           <div className="pointer-events-none absolute inset-0 opacity-70">
             {offsets.map((off) => {
-              const s = items[(safeIndex + off + count) % count];
+              const i = (safeIndex + off + count) % count;
+              const s = items[i];
               const url = backdropFor(s);
               return url ? (
-                <SlideBackdrop key={off} src={url} off={off} x={x} width={view.width} />
+                <SlideBackdrop
+                  key={cellKey(i, off, count)}
+                  src={url}
+                  off={off}
+                  x={x}
+                  width={view.width}
+                />
               ) : null;
             })}
           </div>
@@ -303,7 +310,7 @@ export function PhotoViewer({
               const slide = items[i];
               return (
                 <div
-                  key={off}
+                  key={cellKey(i, off, count)}
                   style={{ left: `${off * 100}%` }}
                   // Video: swallow the click so the controls work and a tap
                   // doesn't close. Image: let it bubble to onDismiss.

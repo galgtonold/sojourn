@@ -31,6 +31,30 @@ export function intrinsicRatio(item: {
 }
 
 /**
+ * The React key for a mounted cell — identifying the PHOTO, not the slot.
+ *
+ * Three cells are mounted at a time and the index commits only once the slide
+ * has finished, so at that moment the cell that was "next" becomes "current".
+ * Keyed by its offset, React reuses that DOM node for a different photo: the
+ * <img> keeps its identity and only its `src` changes, and a browser goes on
+ * painting the image it already has until the new one decodes. The result is a
+ * flash back to the picture you just left, on the photo and — more visibly —
+ * on the blurred wash, which had already handed over during the slide.
+ *
+ * Keyed by the photo's index the node simply moves: the cell showing the
+ * incoming photo survives the commit with its pixels intact, and the only new
+ * mount is the neighbour coming into range, which is meant to be loading.
+ *
+ * With exactly two photos the same picture is both the previous and the next
+ * cell, so index keys would collide. Those fall back to slot keys — and two
+ * photos is precisely the case where both are already decoded, so the swap has
+ * nothing to flash.
+ */
+export function cellKey(index: number, off: number, count: number): string {
+  return count > 2 ? `photo-${index}` : `slot-${off}`;
+}
+
+/**
  * The caps the slide is fitted inside, kept next to the Tailwind classes that
  * declare them in photo-slide.tsx. The two must agree: these compute the box,
  * those are the safety net for photos whose ratio is unknown.
