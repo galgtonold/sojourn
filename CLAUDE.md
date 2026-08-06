@@ -30,6 +30,28 @@ Next.js 15 (App Router) · React 19 · Tailwind v4 · Supabase · MapLibre GL ·
 User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code strings.
 
 ## Gotchas learned the hard way
+- **maplibre must be imported from `@/lib/maplibre`, never from `maplibre-gl`.** v6 is
+  ESM-only and no longer inlines its Web Worker; it derives the worker's location from
+  `import.meta.url`, which under webpack is not an http(s) URL — so `defaultWorkerUrl()`
+  returns `''` and `workerFactory` calls `new Worker('', {type:'module'})`. An empty
+  specifier resolves to the **page**, the worker dies parsing HTML, and nothing says so:
+  no exception, no console error, no failed request. Vector tiles are fetched *inside*
+  the worker, so they simply never appear in the network log while raster tiles keep
+  arriving and the map looks alive. The vector source never finishes, `style.loaded()`
+  stays false, and **`map.on('load')` never fires** — taking every source, layer and
+  marker this app adds with it. Symptom: a basemap with no data, or, above the relief
+  layer's zoom-6 cap, a blank rectangle. `@/lib/maplibre` sets `setWorkerUrl` to a copy
+  that `scripts/copy-maplibre-worker.mjs` puts in `public/` (worker **and** the shared
+  chunk it imports relatively — one without the other 404s just as silently).
+  Diagnose by watching the worker, not the map: wrap `window.Worker`, and look for an
+  empty URL and an immediate close. `test/unit/maplibre-worker.test.ts` guards both halves.
+- **A map that looks broken locally is usually a stale `next start`, not the code.**
+  Those servers hold the *old* build in memory and keep serving it, and an ISR
+  revalidation on a page like `/map` **writes that stale HTML back into `.next/server/app/`**
+  — so a freshly built tree starts serving chunk hashes that no longer exist and the
+  page 404s its own JavaScript. It reads exactly like a broken build. Kill by port owner
+  (`taskkill /F /T`) and confirm the port refuses connections before rebuilding; stopping
+  the `npx` wrapper leaves the node child alive and listening.
 - **Rounded image cards: corner fringe needs `.paint-group`.** A bright cover under a
   dark scrim, both clipped by the card's rounded corner, leaves a 1px light arc at the
   corners: each layer antialiases its own ~half-coverage edge pixels against the same
