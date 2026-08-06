@@ -26,7 +26,7 @@ export default async function PostsAdminPage() {
       : ["00000000-0000-0000-0000-000000000000"];
   let query = supabase
     .from("posts")
-    .select("id, title, slug, published, published_at, trip_id, cover_image")
+    .select("id, title, slug, published, published_at, created_at, trip_id, cover_image")
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false });
   if (scope) query = query.in("trip_id", scope);

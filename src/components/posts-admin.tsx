@@ -21,6 +21,7 @@ export type AdminPostRow = {
   slug: string;
   published: boolean;
   published_at: string | null;
+  created_at: string | null;
   trip_id: string | null;
   cover_image: string | null;
 };
@@ -155,7 +156,16 @@ export function PostsAdmin({
                   href={`/admin/posts/${p.id}`}
                   className="block truncate font-medium hover:text-ember-300"
                 >
-                  {p.title}
+                  {/* An untitled draft used to render an empty line: three of
+                      them in a row were indistinguishable, and telling them
+                      apart cost a click each. The date below does the
+                      disambiguating; deliberately not the body's first line,
+                      which would drag every draft's article into this list. */}
+                  {p.title || (
+                    <span className="italic text-sand-100/60">
+                      {t("admin.posts.untitled")}
+                    </span>
+                  )}
                 </Link>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-sand-100/60">
                   <span
@@ -173,10 +183,17 @@ export function PostsAdmin({
                       {tripTitle}
                     </span>
                   )}
-                  {p.published_at && (
+                  {p.published_at ? (
                     <span className="hidden sm:inline">
                       {formatDate(p.published_at, locale)}
                     </span>
+                  ) : (
+                    p.created_at && (
+                      <span className="hidden sm:inline">
+                        {t("admin.posts.createdOn")}{" "}
+                        {formatDate(p.created_at, locale)}
+                      </span>
+                    )
                   )}
                 </div>
               </div>

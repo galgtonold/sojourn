@@ -248,7 +248,14 @@ export async function getTripOverview(tripId: string): Promise<TripOverview> {
       .select(TRIP_OVERVIEW_SELECT)
       .eq("published", true)
       .eq("trip_id", tripId)
-      .order("published_at", { ascending: false });
+      // Chronological, not newest-first.
+      //
+      // A trip is a narrative container — /trips says so itself: "geordnet nach
+      // dem Weg, der sie verband". Read top to bottom under the blog default
+      // you met the arrival home before the departure. Newest-first is right
+      // for /posts and the home page, where the unit is "the latest thing";
+      // inside one journey the unit is the journey.
+      .order("published_at", { ascending: true });
     if (error || !data) return empty;
 
     const out = { ...empty, posts: [] as PostSummary[] };
@@ -317,7 +324,9 @@ export async function getPublishedPostsByTrip(
       .select(POST_SELECT)
       .eq("published", true)
       .eq("trip_id", tripId)
-      .order("published_at", { ascending: false });
+      // Same reason as getTripOverview: this feeds the journey map, where the
+      // stops must run in the order they were walked.
+      .order("published_at", { ascending: true });
     if (error || !data) return [];
     return data.map(hydratePost).map(withMapGeometry);
   } catch (e) {

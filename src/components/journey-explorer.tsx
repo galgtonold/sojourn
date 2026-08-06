@@ -4,7 +4,7 @@ import Link from "next/link";
 import maplibregl from "maplibre-gl";
 import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { ArrowLeft, Route, Camera, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { env } from "@/lib/env";
 import { optimizedSrc } from "@/lib/utils";
 import { buildConnectorSegments, orderJourneyStops } from "@/lib/journey-connector";
@@ -43,6 +43,16 @@ export type JourneyStop = {
   postTitleI18n?: Partial<Record<Locale, PostTranslation>>;
 };
 
+/**
+ * The stop index that means "the whole trip", not a stop.
+ *
+ * Opening on it is the fix for two camera moves racing on mount: the
+ * constructor framed the journey, then the fly-to-stop effect immediately
+ * pulled in to stop 1, and the map's late `load` re-fit yanked back out a
+ * second later. Now the opening frame is a state the reader can return to.
+ */
+const OVERVIEW = -1;
+
 export function JourneyExplorer({
   title: rawTitle,
   backHref,
@@ -61,7 +71,10 @@ export function JourneyExplorer({
   const { t, locale } = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const [index, setIndex] = useState(0);
+  // Opens on the overview, not on stop 1 — see OVERVIEW above.
+  const [index, setIndex] = useState(OVERVIEW);
+  const boundsRef = useRef<maplibregl.LngLatBounds | null>(null);
+  const fitOptsRef = useRef<Record<string, unknown>>({});
   const [lightbox, setLightbox] = useState<JourneyStop | null>(null);
 
   // Localize the trip title and each stop's caption/label to the reader's
@@ -131,6 +144,8 @@ export function JourneyExplorer({
       padding: { top: 64, bottom: 196, left: 32, right: 32 },
       maxZoom: 15,
     };
+    boundsRef.current = initialBounds;
+    fitOptsRef.current = fitOpts;
     const view = initialView(initialBounds, 15);
 
     const map = new maplibregl.Map({
@@ -226,10 +241,15 @@ export function JourneyExplorer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fly to the active stop.
+  // Fly to the active stop — or frame the whole journey at the overview.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || ordered.length === 0) return;
+    if (index === OVERVIEW) {
+      const b = boundsRef.current;
+      if (b && !b.isEmpty()) map.fitBounds(b, { ...fitOptsRef.current, duration: 600 });
+      return;
+    }
     const s = ordered[index];
     map.flyTo({ center: [s.lng, s.lat], zoom: 14.5, speed: 0.7, essential: true });
   }, [index, ordered]);
@@ -238,8 +258,10 @@ export function JourneyExplorer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (lightbox) return; // the lightbox handles its own keys
-      if (e.key === "ArrowRight") setIndex((i) => (i + 1) % ordered.length);
-      if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + ordered.length) % ordered.length);
+      if (e.key === "ArrowRight")
+        setIndex((i) => (i >= ordered.length - 1 ? OVERVIEW : i + 1));
+      if (e.key === "ArrowLeft")
+        setIndex((i) => (i <= OVERVIEW ? ordered.length - 1 : i - 1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -258,70 +280,94 @@ export function JourneyExplorer({
         <ArrowLeft className="size-4" /> {t("journey.back", { label: backLabel })}
       </Link>
 
-      {/* Stepper card */}
-      {current && (
+      {/* Stepper card. Also rendered at the overview, which has no `current`. */}
+      {(current || index === OVERVIEW) && (
         <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
           <div className="glass w-full rounded-2xl p-4 sm:w-96">
             <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-ember-300">
               <span className="truncate">{title}</span>
               <span className="shrink-0 text-ember-300/70">
-                · {index + 1} / {ordered.length}
+                {index === OVERVIEW
+                  ? `· ${t("journey.overview")}`
+                  : `· ${index + 1} / ${ordered.length}`}
               </span>
             </p>
 
-            <div className="mt-2 flex items-center gap-3">
-              {current.type === "photo" && current.photoUrl ? (
-                <button
-                  onClick={() => setLightbox(current)}
-                  className="relative size-16 shrink-0 overflow-hidden rounded-xl"
-                  aria-label={t("journey.openPhoto")}
-                >
-                  <BlurImg
-                    src={optimizedSrc(current.photoUrl, 256, 70)}
-                    blurhash={current.blurhash}
-                    alt={current.caption ?? ""}
-                  />
-                </button>
-              ) : (
+            {index === OVERVIEW ? (
+              // The whole journey, as a state rather than a leftover of the
+              // camera race that used to decide the opening view.
+              <div className="mt-2 flex items-center gap-3">
                 <div className="grid size-16 shrink-0 place-items-center rounded-xl bg-ember-500/15 text-ember-400">
-                  <MapPin className="size-6" />
+                  <Route className="size-6" />
                 </div>
-              )}
-
-              <div className="min-w-0 flex-1">
-                <p className="flex min-w-0 items-center gap-1.5 font-display text-lg font-semibold">
-                  {current.type === "photo" && (
-                    <Camera className="size-4 shrink-0 text-ember-400" />
-                  )}
-                  <span className="truncate">{current.name}</span>
-                </p>
-                {(current.href ||
-                  (current.type === "photo" && current.photoUrl)) && (
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-                    {current.type === "photo" && current.photoUrl && (
-                      <button
-                        onClick={() => setLightbox(current)}
-                        className="text-ember-400 hover:underline"
-                      >
-                        {t("journey.openPhoto")}
-                      </button>
-                    )}
-                    {current.href && (
-                      <Link
-                        href={current.href}
-                        className="text-sand-100/60 hover:underline"
-                      >
-                        {t("journey.viewStory")}
-                      </Link>
-                    )}
+                <div className="min-w-0 flex-1">
+                  {/* Not the trip title again — the eyebrow above already says
+                      it. This line says what you are looking at. */}
+                  <p className="font-display text-lg font-semibold">
+                    {t("journey.wholeTrip")}
+                  </p>
+                  <p className="mt-0.5 text-xs text-sand-100/60">
+                    {t("journey.stops", { n: ordered.length })}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 flex items-center gap-3">
+                {current.type === "photo" && current.photoUrl ? (
+                  <button
+                    onClick={() => setLightbox(current)}
+                    className="relative size-16 shrink-0 overflow-hidden rounded-xl"
+                    aria-label={t("journey.openPhoto")}
+                  >
+                    <BlurImg
+                      src={optimizedSrc(current.photoUrl, 256, 70)}
+                      blurhash={current.blurhash}
+                      alt={current.caption ?? ""}
+                    />
+                  </button>
+                ) : (
+                  <div className="grid size-16 shrink-0 place-items-center rounded-xl bg-ember-500/15 text-ember-400">
+                    <MapPin className="size-6" />
                   </div>
                 )}
+  
+                <div className="min-w-0 flex-1">
+                  <p className="flex min-w-0 items-center gap-1.5 font-display text-lg font-semibold">
+                    {current.type === "photo" && (
+                      <Camera className="size-4 shrink-0 text-ember-400" />
+                    )}
+                    <span className="truncate">{current.name}</span>
+                  </p>
+                  {(current.href ||
+                    (current.type === "photo" && current.photoUrl)) && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                      {current.type === "photo" && current.photoUrl && (
+                        <button
+                          onClick={() => setLightbox(current)}
+                          className="text-ember-400 hover:underline"
+                        >
+                          {t("journey.openPhoto")}
+                        </button>
+                      )}
+                      {current.href && (
+                        <Link
+                          href={current.href}
+                          className="text-sand-100/60 hover:underline"
+                        >
+                          {t("journey.viewStory")}
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-3 flex items-center justify-between">
               <button
-                onClick={() => setIndex((i) => (i - 1 + ordered.length) % ordered.length)}
+                onClick={() =>
+                  setIndex((i) => (i <= OVERVIEW ? ordered.length - 1 : i - 1))
+                }
                 className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-sm transition hover:border-white/25"
               >
                 <ChevronLeft className="size-4" /> {t("journey.prev")}
@@ -350,6 +396,16 @@ export function JourneyExplorer({
                 </button>
               ) : (
                 <div className="flex gap-1">
+                  <button
+                    onClick={() => setIndex(OVERVIEW)}
+                    aria-label={t("journey.overview")}
+                    // A pill, not a dot: it is the whole trip, not one stop.
+                    className={`h-1.5 w-3 rounded-full transition ${
+                      index === OVERVIEW
+                        ? "bg-ember-400"
+                        : "bg-white/25 hover:bg-white/50"
+                    }`}
+                  />
                   {ordered.map((s, i) => (
                     <button
                       key={s.id}
@@ -365,7 +421,9 @@ export function JourneyExplorer({
                 </div>
               )}
               <button
-                onClick={() => setIndex((i) => (i + 1) % ordered.length)}
+                onClick={() =>
+                  setIndex((i) => (i >= ordered.length - 1 ? OVERVIEW : i + 1))
+                }
                 className="inline-flex items-center gap-1 rounded-full bg-ember-500 px-3 py-1.5 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
               >
                 {t("journey.next")} <ChevronRight className="size-4" />

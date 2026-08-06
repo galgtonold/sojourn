@@ -54,11 +54,34 @@ describe("onboardingSteps", () => {
     });
   });
 
-  it("marks only AI as optional", () => {
+  it("requires only the two things that make a journal", () => {
+    // Branding used to be required, which meant the card could never retire
+    // for an owner happy with the defaults: `nameSet` means "typed something",
+    // and leaving it unset IS a decision. Required is now somewhere to put
+    // stories, and a story.
+    const required = onboardingSteps(nothing)
+      .filter((s) => !s.optional)
+      .map((s) => s.key);
+    expect(required).toEqual(["trip", "post"]);
+  });
+
+  it("still offers branding and AI as suggestions", () => {
     const optional = onboardingSteps(nothing)
       .filter((s) => s.optional)
       .map((s) => s.key);
-    expect(optional).toEqual(["ai"]);
+    expect(optional).toEqual(["name", "tagline", "ai"]);
+  });
+
+  it("retires once there is a trip and a published story", () => {
+    // The behaviour the card's own doc comment promises — "renders nothing
+    // once the required steps are done, so it retires itself without anyone
+    // having to dismiss it" — and which the branding steps quietly prevented.
+    const steps = onboardingSteps({
+      ...nothing,
+      hasTrip: true,
+      hasPublishedPost: true,
+    });
+    expect(onboardingComplete(steps)).toBe(true);
   });
 
   it("ticks each step off its own fact", () => {

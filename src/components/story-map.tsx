@@ -233,16 +233,29 @@ export function StoryMap({
               return <InteractiveBlock key={i} interaction={b.interaction} />;
             }
             if (b.kind === "photo") {
+              // Every photo is an anchor, located or not.
+              //
+              // Only geotagged photos used to emit one, so a passage of
+              // un-located photos fired no intersection at all and the map
+              // simply held its last position. On the Walberla story that
+              // meant the map sat on Forchheim old town through the entire
+              // summit sequence — 7km from what the reader was looking at —
+              // and only came back to life for the descent. A reader who has
+              // learned that the map follows them watches it go dead at the
+              // climax.
+              //
+              // Without coordinates the honest answer is not a point but the
+              // route: fall back to the story's own bounds, which is what the
+              // opening overview shows. Consecutive un-located photos share
+              // one target, so the map settles there instead of ping-ponging.
               const geo = b.photo.lat != null && b.photo.lng != null;
               return (
                 <div
                   key={i}
-                  {...(geo
-                    ? {
-                        "data-story-anchor": true,
-                        "data-target": `${b.photo.lng},${b.photo.lat}`,
-                      }
-                    : {})}
+                  data-story-anchor
+                  data-target={
+                    geo ? `${b.photo.lng},${b.photo.lat}` : "overview"
+                  }
                 >
                   <Figure
                     id={`photo-${b.photo.id}`}

@@ -17,6 +17,10 @@ export function SiteHeader() {
   const t = useT();
   const { siteName } = useI18n();
   const pathname = usePathname();
+  // A section, not an exact page: /posts/vom-wasserschloss should still light
+  // "Geschichten". "/" is exact, or it would match everything.
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : (pathname ?? "").startsWith(href);
   const [open, setOpen] = useState(false);
   // The draft-preview banner is a fixed h-9 strip at the very top; drop the
   // header below it on the preview route so they don't overlap.
@@ -56,7 +60,16 @@ export function SiteHeader() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-full px-3 py-1.5 text-sand-100/80 transition hover:bg-white/5 hover:text-sand-50"
+                // The admin nav has marked its current section since it was
+                // written; the public one never did, so on /map, /trips and
+                // /posts the header gave a reader no idea where they were.
+                aria-current={isActive(l.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-1.5 transition hover:bg-white/5 hover:text-sand-50",
+                  isActive(l.href)
+                    ? "bg-white/10 text-sand-50"
+                    : "text-sand-100/80",
+                )}
               >
                 <T k={l.label} />
               </Link>
@@ -113,7 +126,13 @@ export function SiteHeader() {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="rounded-xl px-3 py-2.5 text-sand-100/80 transition hover:bg-white/5 active:bg-white/10"
+                  aria-current={isActive(l.href) ? "page" : undefined}
+                  className={cn(
+                    "rounded-xl px-3 py-2.5 transition hover:bg-white/5 active:bg-white/10",
+                    isActive(l.href)
+                      ? "bg-white/10 text-sand-50"
+                      : "text-sand-100/80",
+                  )}
                 >
                   <T k={l.label} />
                 </Link>
