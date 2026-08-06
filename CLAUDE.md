@@ -72,3 +72,19 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   specificity, so a heading's own `mt-10` is silently overridden, leaving headings flush
   with body text. Own block rhythm on the container with sibling selectors
   (`[&>*+h2]:mt-10`, …), not via `mt-*` on the element.
+- **An npm failure that "must be a version skew" is almost certainly `.npmrc`.** The
+  repo's `.npmrc` sets `legacy-peer-deps=true`, so peer resolution differs completely
+  between a directory that has it and one that does not. The Dockerfile once copied
+  only `package.json` and `package-lock.json`, which made the image the sole
+  environment resolving peers strictly, and `npm ci` there demanded 48 packages
+  "missing from lock file" against a lockfile everything else accepted — killing
+  v0.1.3's release build. It reads exactly like npm versions disagreeing, and
+  reproducing it in a scratch directory holding just the two files "confirms" that
+  false story, because the scratch directory is missing the same file. **Any scratch
+  reproduction of a dependency problem must include `.npmrc`.**
+- **Never `npm ci` the workspace inside a container.** `npm ci` deletes and rebuilds
+  `node_modules`, so `docker run -v "$PWD":/w … npm ci` leaves musl binaries in a glibc
+  checkout. CI's lockfile guard did this and the next native module to load blamed the
+  lockfile — vitest 4's rolldown reported "Cannot find native binding" for a lock that
+  was correct. Copy `package.json`, `package-lock.json` and `.npmrc` somewhere else and
+  run it there; `node_modules` is not one of the inputs to the question being asked.
