@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { addTracksLayer } from "@/lib/map-tracks";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { env } from "@/lib/env";

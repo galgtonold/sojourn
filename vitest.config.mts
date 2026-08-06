@@ -16,6 +16,13 @@ export default defineConfig({
       { find: /^@\/(.*)$/, replacement: `${src}/$1` },
     ],
   },
+  // Vitest 4 transforms with oxc instead of esbuild, and oxc leaves JSX alone by
+  // default — it expects a framework plugin to claim it. There is none here (the
+  // suite tests logic, not rendering), so JSX survived the transform and then hit
+  // the SSR parser, which reports "Unexpected JSX expression" pointing at a `.tsx`
+  // file that is perfectly valid. Only one test imports a component module at all
+  // (not-found-noindex, for `metadata`), which is why exactly one file failed.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "node",
     setupFiles: ["./test/setup.ts"],
