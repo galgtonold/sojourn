@@ -1,4 +1,13 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import { createRequire } from "node:module";
+
+// The maplibre version this build copied into public/ (see
+// scripts/copy-maplibre-worker.mjs). It rides along as a query on the worker URL
+// so an upgrade can never leave a browser pairing a cached old worker with a new
+// bundle. Inlining it at build time is right here — unlike the Supabase URL, it
+// describes the BUILD rather than the deployment, and the file it names was put
+// there by this same build.
+const maplibreVersion = createRequire(import.meta.url)("maplibre-gl/package.json").version;
 
 // A value that changes on every deploy, exposed to the client so the service
 // worker can name its cache per-build and purge the previous one on activate.
@@ -141,7 +150,10 @@ const nextConfig = {
   // directory can't make Next infer the wrong workspace root (the dev warning).
   outputFileTracingRoot: import.meta.dirname,
   reactStrictMode: true,
-  env: { NEXT_PUBLIC_SW_VERSION: swVersion },
+  env: {
+    NEXT_PUBLIC_SW_VERSION: swVersion,
+    NEXT_PUBLIC_MAPLIBRE_VERSION: maplibreVersion,
+  },
   images: imageConfig(),
   eslint: {
     // Lint is run explicitly in CI; don't fail production builds on it.

@@ -23,6 +23,11 @@ const config = [
       ".claude/**",
       "next-env.d.ts",
       "node_modules/**",
+      // maplibre's minified worker, copied out of node_modules on every build
+      // (scripts/copy-maplibre-worker.mjs). It is a dependency that happens to
+      // sit in public/, and linting it reports a thousand problems in somebody
+      // else's generated code.
+      "public/maplibre/**",
       "backups/**",
       "coverage/**",
       "supabase/functions/**", // Deno, with its own globals and import style

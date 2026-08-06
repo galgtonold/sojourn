@@ -87,3 +87,8 @@ prod-licenses.txt
 # is how the dev server gets started); nothing else in there should be.
 .claude/*
 !.claude/launch.json
+
+# Copied out of node_modules by scripts/copy-maplibre-worker.mjs on every build
+# and dev start, so it always matches the installed maplibre. Generated, not
+# authored — committing it would be a second copy free to drift from the first.
+public/maplibre/
