@@ -8,8 +8,15 @@ COPY package.json package-lock.json* ./
 # `npm ci` only, deliberately. The `|| npm install` that used to be here meant
 # a drifted lockfile produced a SUCCESSFUL build of a different dependency tree,
 # with nothing in the log to distinguish it from a clean one — which defeats the
-# single property npm ci exists to give a published image. CI runs bare npm ci
-# too, so the two paths cannot disagree.
+# single property npm ci exists to give a published image.
+#
+# CI runs bare npm ci too, but that is not enough to keep the two paths honest:
+# it runs a NEWER npm than this image, and the two disagree about whether a lock
+# may omit an unrecorded peer dependency. v0.1.3's lock passed CI and failed
+# here. So CI also runs `npm ci` inside this base image — see the "Lockfile
+# satisfies the image's npm" step. If you regenerate the lock, do it with the
+# older npm (this image), whose output the newer one accepts; the reverse is not
+# true.
 RUN npm ci
 
 # ─── build ───────────────────────────────────────────────────────────────────
