@@ -1,0 +1,330 @@
+# Deploying Sojourn
+
+Three ways to run it, differing only in who looks after the database. Every one
+of them ends at the same place: a site whose schema keeps itself current and
+whose first visitor creates the owner account.
+
+| | Pick this if | What it costs you |
+| --- | --- | --- |
+| [All-in-one](#all-in-one--sojourn-and-its-own-supabase) | you want a blog and would rather not think about the rest | one host, ~1 GB of RAM, no accounts anywhere |
+| [Vercel](#vercel) | you'd rather not run a server at all | two free-tier accounts, a deploy button |
+| [Docker / VPS](#docker--vps) | you already have a Postgres/Supabase you like | one container, ~1 GB of RAM |
+
+Whichever you pick, finish with [First run](#first-run) and read
+[the claim window](#the-claim-window) before you point a domain anywhere.
+
+## All-in-one — Sojourn and its own Supabase
+
+One command, one host, no accounts anywhere.
+
+```bash
+node scripts/selfhost-init.mjs
+```
+
+That mints this instance's Postgres password, JWT secret and API keys into
+`.env.selfhost` — per-instance, never to be committed or copied from anywhere.
+Open it and set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host, then:
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
+```
+
+Six containers come up in order, the schema is created from nothing, and
+`/admin` offers to create your owner account. Roughly **1 GB of RAM**; a 2 GB VPS
+is comfortable.
+
+**`SUPABASE_PUBLIC_URL` is the one to get right.** It is handed to the visitor's
+browser, so it must be a URL *their* machine resolves — and the app container has
+to reach the same one. `localhost` satisfies only the first. On a real host, put
+your domain or IP there and publish port 8000.
+
+**Change its scheme too, not just its host.** Everything the browser sends to
+Supabase travels over that URL, including the password you sign in with and the
+session token every later request carries. On `http://` those are readable by
+anyone on the path. Put a TLS-terminating proxy (Caddy, nginx, Traefik) in front
+and use its `https://` address. Sojourn warns about this in its logs at start-up
+and will not stop you — the default stays `http://host.docker.internal:8000`
+because that is genuinely correct for a local trial.
+
+Sign-in is rate limited at the gateway: 30 attempts a minute per IP, 200 an hour.
+GoTrue itself has no limit for password attempts, so without this, guessing an
+owner's password would be free. If you put a proxy in front, configure Kong's
+`trusted_ips` and `real_ip_header` as well — otherwise every request appears to
+come from the proxy and one noisy visitor throttles everybody.
+
+Five Supabase services run, not eleven: Postgres, Kong, PostgREST, GoTrue and
+storage-api. Realtime, analytics, Studio, pg_meta, imgproxy and the Deno edge
+runtime are all left out because Sojourn does not use them — that is most of the
+difference between needing 4 GB and needing 2. The compose file says why for
+each.
+
+## Bringing your own Supabase
+
+Both remaining paths need a Supabase project with Sojourn's schema in it. This
+section is that, once.
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com).
+
+2. **Give Sojourn the database URL, and it runs its own migrations.** Copy the
+   **direct** connection string — Supabase dashboard → **Project Settings →
+   Database → Connection string → URI**, port **5432**, not the transaction
+   pooler on 6543 — and set it as `DATABASE_URL`:
+
+   ```bash
+   DATABASE_URL=postgresql://postgres:PASSWORD@db.YOUR-PROJECT.supabase.co:5432/postgres
+   ```
+
+   Every build and every container start now applies whatever the database is
+   missing, in order, before the app that needs it starts — an empty project
+   gets all ~40 files; a project that is already current gets nothing. There is
+   no button to press and no step to forget, which is the point: the schema can
+   no longer fall behind the code. See
+   [ADR-0002](adr/0002-updates-and-schema-migrations.md).
+
+   On Vercel this is **only** already done for you if you added Supabase
+   through the **Vercel marketplace integration**, which writes a set of
+   `POSTGRES_*` variables the runner picks up on its own. If you created the
+   project at supabase.com and pasted the keys in yourself — the path described
+   just above — you have no such variable and you do need this step. Check
+   under **Settings → Environment Variables**: no `POSTGRES_URL_NON_POOLING`
+   means no automatic migrations.
+
+   To see what would happen without doing it: `npm run migrate:status`.
+
+   <details>
+   <summary>Or apply them with the Supabase CLI instead</summary>
+
+   ```bash
+   supabase link --project-ref YOUR-PROJECT-REF
+   supabase db push
+   ```
+
+   > **Pick one and stay with it.** The CLI keeps its own ledger, in its own
+   > naming scheme, in `supabase_migrations.schema_migrations`; Sojourn keeps a
+   > watermark in `public.sojourn_schema`. Neither can read the other. Running
+   > `db push` against a database the runner built will find an empty ledger and
+   > try to apply everything again.
+
+   > **`db push` can be noisy and still have worked.** Some CLI versions print a
+   > wall of certificate / edge-runtime errors and then say `Finished supabase db
+   > push.` — the migrations have usually applied fine. Don't retry blindly;
+   > check first. In the Supabase dashboard the **Table Editor** should list
+   > `trips`, `posts`, `photos` and friends, or run this in the **SQL Editor**:
+   >
+   > ```sql
+   > select count(*) as applied from supabase_migrations.schema_migrations;
+   > ```
+   >
+   > It should match the number of files in `supabase/migrations`. If it does,
+   > you're done — the errors were noise.
+
+   </details>
+
+3. **Copy your keys** into the deployment's environment (or `.env.local`
+   locally — copy `.env.example` first):
+
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only
+   ```
+
+4. **Turn off public sign-ups.** Supabase dashboard → **Authentication → Sign In
+   / Providers** → switch off *"Allow new users to sign up"*.
+
+   Sojourn has exactly two kinds of account: the owner, and members the owner
+   adds. Nobody signs themselves up. Left on, anyone can create an account on
+   your project with the anon key that appears in every page — it will not get
+   them a profile, and without one they can do nothing (that is what migration
+   `0043` is for), but there is no reason to hand out sessions at all.
+
+## Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn&project-name=sojourn&repository-name=sojourn&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,DATABASE_URL&envDescription=From%20your%20Supabase%20project%3A%20Settings%20%E2%86%92%20API&envLink=https%3A%2F%2Fgithub.com%2Fgalgtonold%2Fsojourn%2Fblob%2Fmain%2Fdocs%2Fdeployment.md%23bringing-your-own-supabase)
+
+The button clones the repo and asks for the values it can't guess. You still need
+a Supabase project with the migrations applied first — see
+[Bringing your own Supabase](#bringing-your-own-supabase).
+
+> **Don't let Vercel create the database for you.** Vercel's Supabase
+> integration offers two paths and **pre-selects the wrong one**: "Create New
+> Supabase Account (Vercel Native)" provisions a database that *Vercel* owns and
+> invoices. `supabase link` against one is refused — *"your account does not have
+> the necessary privileges"* — so you cannot run the migrations, which is step
+> two of that guide. Create the project in Supabase yourself.
+>
+> The integration's other path — **"Link Existing Supabase Account"** — is fine,
+> and genuinely convenient: point it at a project you created yourself and it
+> syncs the connection variables into Vercel for you, so there is nothing to
+> copy. It writes both the classic names and Supabase's newer
+> `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY`; Sojourn
+> accepts either, so it works untouched. You still apply the migrations
+> yourself, which is why the database has to be yours.
+
+Setting it up by hand instead:
+
+1. Connect the repository in Vercel.
+2. Set your environment variables — see [Configuration](configuration.md).
+3. Deploy.
+
+Sojourn deliberately avoids Vercel-only APIs, so the **exact same project also
+produces a standard Docker image**. Vercel is a convenience, not a dependency.
+
+> **Preview deployments are turned off for Dependabot branches** (`vercel.json`,
+> `git.deploymentEnabled`). A preview gets no Supabase configuration, so it
+> cannot build the pages that read content — and even if it could, it would
+> deploy a site with no database behind it. The question a dependency bump
+> actually raises is "does this still build", and CI answers that on every pull
+> request with a typecheck, a lint, the test suite and a full production build.
+> If you want previews that work, give the Preview environment its own Supabase
+> project and remove the rule.
+
+## Docker / VPS
+
+Already have Supabase — hosted, or your own? Then this is one container, and it
+is happy in 1 GB.
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Runs the published image from GitHub's registry. Updating later is the same two
+commands — and schema migrations apply themselves at container start, so there is
+no second step (see [ADR-0002](adr/0002-updates-and-schema-migrations.md)).
+
+Pin how much change you take unattended with `SOJOURN_TAG` — `0.2.1`, `0.2`, `v0`
+or the default `latest`.
+
+To build from source instead — a fork, a patch, an architecture we don't publish:
+
+```bash
+docker compose up -d --build
+```
+
+> Expect this to want about a gigabyte of free memory and to take a few minutes,
+> which is exactly why the prebuilt image exists.
+
+**Nothing deployment-specific is baked into the image**, including the Supabase
+URL and key the browser needs. The server reads its environment on every request
+and hands the result to the page, so one image serves any deployment. Set your
+variables in `.env.local` or through `docker-compose.yml`; there are no build
+arguments to pass. This is also why the `NEXT_PUBLIC_*` names have unprefixed
+twins — see [Configuration](configuration.md#running-a-prebuilt-image).
+
+## First run
+
+Open the site. While it is unclaimed, **every page** redirects to
+**`/admin/setup`**, where you create the owner account (name your site, pick an
+email and password) and land signed in. This needs `SUPABASE_SERVICE_ROLE_KEY`.
+
+On an anon-key-only deploy, create it by hand instead: Supabase dashboard →
+**Auth → Users → Add user**, then in the **SQL Editor** give that user a profile,
+because nothing else will:
+
+```sql
+insert into public.profiles (id, email, role)
+values ('<the new user id>', '<their email>', 'owner');
+```
+
+Because content is public-read, **no viewer accounts are ever needed** — the only
+account that exists is the admin, plus any members they add.
+
+### The claim window
+
+An unclaimed install can be claimed by whoever reaches it first, so that state is
+deliberately short-lived: **60 minutes** from the moment the schema is installed
+(`site_settings.setup_opened_at`). After that `/admin/setup` explains itself and
+stops accepting a claim, so a half-finished deploy can't sit there indefinitely
+waiting to be adopted.
+
+> **Claim it before you point a domain at it.** Newly issued TLS certificates are
+> published publicly (Certificate Transparency), so a custom domain is
+> discoverable within minutes. Claiming on the plain host or `*.vercel.app` URL
+> first avoids the race entirely.
+
+Missed the window? **Restart the server (Docker) or redeploy (Vercel)** — an
+unclaimed install opens a fresh window for a deployment it hasn't seen before.
+That isn't a loophole: only whoever controls the deployment can restart it, so
+it proves the same thing a setup token would, without a secret to store. Note
+this tracks the *deployment*, not the process — serverless cold starts happen
+constantly and deliberately don't count.
+
+If restarting is awkward, the expired page also prints the manual way back in:
+
+```sql
+update public.site_settings set setup_opened_at = now() where id = 1;
+```
+
+Tune it with `SETUP_WINDOW_MINUTES` (default `60`; `0` disables the guard, which
+is reasonable on a LAN). Claiming also clears any stored AI provider config, so
+a reclaimed install never inherits credentials or endpoints from whoever held it
+before. Note this bounds neglect, not a determined attacker: someone who reaches
+`/admin/setup` inside the window can still claim it. If that matters for your
+deployment, claim the install immediately and keep it off a public domain until
+you have.
+
+## Backups
+
+Two commands. Both halves travel together, because a database dump without the
+photographs is an archive of captions, and a folder of photographs without the
+database is files nothing can find.
+
+```bash
+sh scripts/backup.sh backups
+```
+
+That writes one `backups/sojourn-<timestamp>.tar.gz` holding the full database
+dump — every schema, including `auth`, which is your login — the photo files,
+and a manifest saying what it contains. Put it somewhere that is not this
+machine; a backup on the disk you are protecting against is not one.
+
+To put it back:
+
+```bash
+sh scripts/restore.sh backups/sojourn-20260804-125913Z.tar.gz
+```
+
+It asks before replacing anything, then tells you how many posts, accounts and
+photo files actually landed. Finally — and this bit matters — **recreate** the
+app container rather than restarting it:
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d --force-recreate web
+```
+
+Next caches rendered pages inside the container's own filesystem, and a restart
+keeps them. Skip this and the site carries on serving pages it built from the
+data you just replaced, for up to an hour, and the restore looks like it failed.
+
+**Restore once, on purpose, before you need to.** An untested backup is a
+belief. The cycle above — back up, `down -v`, `up -d`, restore — is exactly how
+these scripts were verified, and it takes about three minutes.
+
+**Keep `.env.selfhost` with your backups.** It is deliberately not inside the
+archive, so an archive is safe to copy around. Restoring into a stack with a
+different JWT secret still returns every post and photograph; it just signs
+everyone out, and passwords keep working.
+
+## Moving to a VPS later
+
+This is the whole point of Sojourn's architecture: you can start on hosted
+infrastructure and move to your own server with **config-only** changes — no
+rewrite.
+
+There are two pieces, and each is independently portable:
+
+1. **The web app is already a portable container.** Next standalone output means
+   the app has no Vercel-specific runtime requirements. `docker compose up -d
+   --build` on any VPS gives you the same running app.
+
+2. **The data layer is your choice.** Either:
+   - **Self-host Supabase** with its official Docker Compose stack, point
+     `DATABASE_URL` at it and let the migration runner apply
+     `supabase/migrations/` on the next build; **or**
+   - **Keep hosted Supabase** and just move the web container — the database
+     doesn't have to move at all.
+
+Because we avoided proprietary lock-in (keyless maps, standard Postgres, a
+vanilla Next build), migration comes down to **pointing your env vars at the new
+Postgres/Supabase and running the same migration SQL**. The application code is
+identical in every environment.

@@ -489,7 +489,7 @@ const en = {
   "admin.setup.errorGeneric": "Setup failed. Check the server logs and try again.",
   "admin.setup.notReadyTitle": "Almost there",
   "admin.setup.notReadyBody":
-    "First-run setup needs the server-side service role key (SUPABASE_SERVICE_ROLE_KEY) and the database migrations from supabase/migrations. Add them and reload — or create the owner manually in the Supabase dashboard (Auth → Users), as described in the README.",
+    "First-run setup needs the server-side service role key (SUPABASE_SERVICE_ROLE_KEY) and the database migrations from supabase/migrations. Add them and reload — or create the owner manually in the Supabase dashboard (Auth → Users), as described in docs/deployment.md.",
 
   "admin.setup.siteName": "What is this site called?",
   "admin.setup.expiredTitle": "Setup window closed",
@@ -1357,7 +1357,7 @@ const de: Dict = {
     "Einrichtung fehlgeschlagen. Prüfe die Server-Logs und versuche es erneut.",
   "admin.setup.notReadyTitle": "Fast geschafft",
   "admin.setup.notReadyBody":
-    "Die Ersteinrichtung braucht serverseitig den Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) und die Datenbank-Migrationen aus supabase/migrations. Beides ergänzen und neu laden — oder das Inhaber-Konto manuell im Supabase-Dashboard anlegen (Auth → Users), wie im README beschrieben.",
+    "Die Ersteinrichtung braucht serverseitig den Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) und die Datenbank-Migrationen aus supabase/migrations. Beides ergänzen und neu laden — oder das Inhaber-Konto manuell im Supabase-Dashboard anlegen (Auth → Users), wie in docs/deployment.md beschrieben.",
 
   "admin.setup.siteName": "Wie heißt diese Site?",
   "admin.setup.expiredTitle": "Einrichtungsfenster geschlossen",

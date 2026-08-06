@@ -51,9 +51,9 @@ Reporting these is welcome but they are known and deliberate:
   Unpublished posts and trips are a different matter and must stay private.
 - **The first-run claim window.** A freshly deployed, unclaimed install can be
   claimed by whoever reaches it first, for a bounded period
-  (`SETUP_WINDOW_MINUTES`, default 60). This is documented in the README, and the
-  advice to claim your install before pointing a domain at it is there for a
-  reason. A way to *re-open* that window on an already-claimed install would be a
+  (`SETUP_WINDOW_MINUTES`, default 60). This is documented in
+  [the deployment guide](docs/deployment.md#the-claim-window), and the advice to
+  claim your install before pointing a domain at it is there for a reason. A way to *re-open* that window on an already-claimed install would be a
   vulnerability.
 
 ## If you self-host
@@ -61,7 +61,8 @@ Reporting these is welcome but they are known and deliberate:
 Two things do more for your security than anything else in this file:
 
 1. **Turn off public sign-ups** on your Supabase project (Authentication → Sign
-   In / Providers). The README's *Going live* section covers this.
+   In / Providers). [Bringing your own
+   Supabase](docs/deployment.md#bringing-your-own-supabase) covers this.
 2. **Keep `SUPABASE_SERVICE_ROLE_KEY` server-side.** It bypasses row-level
    security entirely. It must never appear in a `NEXT_PUBLIC_*` variable, a
    client component, or a build argument.

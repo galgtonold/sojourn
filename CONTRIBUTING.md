@@ -4,15 +4,27 @@ Thanks for your interest! Bug reports, docs fixes, translations, and features ar
 
 ## Getting set up
 
-Follow the **Quick start** in the [README](README.md) — you'll need Docker + the Supabase CLI for the local stack. `supabase/seed.sql` gives you sample trips, posts, and admin users so every feature is exercisable locally.
+Follow **[Running it locally](docs/development.md#running-it-locally)** — you'll need Docker + the Supabase CLI for the local stack. `supabase/seed.sql` gives you sample trips, posts, and admin users so every feature is exercisable locally.
 
-Before opening a PR, make sure all three pass:
+Before opening a PR, make sure all four pass:
 
 ```bash
 npm run typecheck
+```
+
+```bash
+npm run lint
+```
+
+```bash
 npm test
+```
+
+```bash
 npm run build
 ```
+
+CI runs the same four on every pull request.
 
 ## Ground rules
 

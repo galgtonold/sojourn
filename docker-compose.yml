@@ -2,7 +2,7 @@
 #
 # This runs the Next.js app as a container. For the cloud/dev phase you'll point
 # it at hosted Supabase via the env vars. For a full self-hosted VPS later, you
-# can add the Supabase stack here too (see README → "Moving to a VPS").
+# can add the Supabase stack here too (see docs/deployment.md → "Moving to a VPS later").
 services:
   web:
     # Two ways to get the app, and they share this one name:
@@ -56,7 +56,7 @@ services:
     env_file:
       # `required: false` because a fresh clone has no .env.local — it is
       # gitignored — and Compose treats a missing env_file as a hard error.
-      # Without this, the very first command in the README's Docker section
+      # Without this, the very first command in docs/deployment.md's Docker section
       # fails on a machine that has done nothing wrong. (Needs Compose ≥ 2.24.)
       - path: .env.local
         required: false

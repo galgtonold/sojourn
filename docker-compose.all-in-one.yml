@@ -43,7 +43,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?}
       JWT_EXP: 3600
     volumes:
-      # Your posts live here. This is the thing to back up — see README.
+      # Your posts live here. This is the thing to back up — see docs/deployment.md.
       - db-data:/var/lib/postgresql/data
       # Runs once, on an empty data directory, and LAST: the image's own
       # migrate.sh is what creates these roles, so anything sorting before it
