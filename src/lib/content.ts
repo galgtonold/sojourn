@@ -8,6 +8,7 @@
 import "server-only";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { logError } from "@/lib/log";
+import { unaccentQuery } from "@/lib/search-normalize";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAiConfig } from "@/lib/ai-config";
@@ -623,11 +624,13 @@ async function hybridSearch<T extends { id: string }>(opts: {
     const emb =
       opts.embedding !== undefined ? opts.embedding : await embedQuery(opts.q);
     const { data: ranked, error } = await supabase.rpc(opts.rpc, {
-      query_text: opts.q,
+      // Unaccented to match the stored index (0049). Both sides must agree, or
+      // "Vrango" never finds "Vrångö" — which is what it did.
+      query_text: unaccentQuery(opts.q),
       query_embedding: emb ? toVectorLiteral(emb) : null,
       match_count: opts.matchCount,
       max_distance: opts.maxDistance,
-      ts_query: buildExpandedTsQuery(opts.q),
+      ts_query: buildExpandedTsQuery(unaccentQuery(opts.q)),
     });
     if (error) throw error;
     const ids = ((ranked ?? []) as { id: string }[]).map((r) => r.id);
@@ -676,7 +679,7 @@ export async function searchPosts(
         .from("posts")
         .select(SUMMARY_SELECT)
         .eq("published", true)
-        .textSearch("search_tsv", q, { type: "websearch", config: "simple" })
+        .textSearch("search_tsv", unaccentQuery(q), { type: "websearch", config: "simple" })
         .limit(50);
       return error || !data ? [] : asSummaries(data);
     },
