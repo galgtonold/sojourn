@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ─── deps ────────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 # .npmrc IS NOT OPTIONAL HERE, and leaving it out is what broke v0.1.3's
@@ -25,7 +25,7 @@ COPY package.json package-lock.json* .npmrc ./
 RUN npm ci
 
 # ─── build ───────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -58,7 +58,7 @@ RUN npm run build
 RUN node scripts/strip-prerender.mjs
 
 # ─── runner ──────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
