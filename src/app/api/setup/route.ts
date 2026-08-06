@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { hasOwner, getClaimWindow } from "@/lib/setup";
+import { hasOwner } from "@/lib/setup";
+import { getClaimWindow } from "@/lib/setup-window";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // First-run claim of the owner account. Public by necessity — nobody can be

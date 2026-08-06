@@ -5,9 +5,11 @@ const rl = vi.hoisted(() => ({ allow: true }));
 const win = vi.hoisted(() => ({ state: "open" as "open" | "expired" }));
 vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => adm.client }));
 // Keep the real owner lookup (it drives most of these cases); only the clock
-// is stubbed, so the window can be moved without touching timers.
-vi.mock("@/lib/setup", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/setup")>()),
+// is stubbed, so the window can be moved without touching timers. The route
+// takes `hasOwner` from @/lib/setup and the window from @/lib/setup-window, so
+// only the latter is replaced.
+vi.mock("@/lib/setup-window", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/setup-window")>()),
   getClaimWindow: () => Promise.resolve(win.state),
 }));
 vi.mock("@/lib/rate-limit", () => ({

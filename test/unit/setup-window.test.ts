@@ -4,7 +4,7 @@ import {
   claimWindowDecision,
   deriveInstance,
   currentInstance,
-} from "@/lib/setup";
+} from "@/lib/setup-window";
 
 const opened = "2026-07-28T12:00:00.000Z";
 const at = (iso: string) => new Date(iso).getTime();

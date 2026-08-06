@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSetupState, getClaimWindow } from "@/lib/setup";
+import { getSetupState } from "@/lib/setup";
+import { getClaimWindow } from "@/lib/setup-window";
 import SetupForm, { type SetupMode } from "@/components/setup-form";
 
 // First-run setup: claim the owner account on a fresh install. Once an owner
