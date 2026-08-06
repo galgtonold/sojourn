@@ -2,12 +2,18 @@
 import { useEffect, useState } from "react";
 import { optimizedSrc } from "@/lib/utils";
 import { shouldRotatePhoto } from "@/lib/photo-rotation";
+import { slideBox } from "@/lib/viewer-geometry";
+import { blurhashToDataURL } from "@/lib/blurhash";
 
 export type ViewerItem = {
   url: string;
   alt?: string;
   caption?: string | null;
   blurhash?: string | null;
+  /** Display dimensions as stored on the photo, used to shape the slide before
+   *  the image arrives. Optional: a few photos predate the columns. */
+  width?: number | null;
+  height?: number | null;
   mediaType?: "image" | "video" | null;
   posterUrl?: string | null;
 };
@@ -55,6 +61,12 @@ export function PhotoSlide({
   useEffect(() => setHiRes(false), [item.url]);
 
   const rotated = shouldRotatePhoto({ portrait, ratio });
+  // The photo's own colours, decoded from the blurhash, painted under the image
+  // until it arrives. Cached per hash+size, so the three mounted slides don't
+  // each pay for a decode.
+  const placeholder = isVideo ? null : blurhashToDataURL(item.blurhash ?? null, 32, 32);
+  // The photo's box, known from its stored dimensions rather than waited for.
+  const box = slideBox(ratio, rotated);
   // Turned, the photo is measured against the viewport with its axes swapped:
   // its width is bounded by the screen's HEIGHT and vice versa.
   const fitCls = rotated
@@ -88,12 +100,32 @@ export function PhotoSlide({
       className={`relative flex shrink-0 ${rotated ? "rotate-90" : ""} [filter:drop-shadow(0_24px_45px_rgba(10,9,8,0.55))]`}
     >
       {/* Low-res (usually a cache hit from the page behind) — shows quickly, and
-          sizes the unit that everything else is positioned against. */}
+          sizes the unit that everything else is positioned against.
+
+          `slideBox` is what stops that sizing from waiting for the download: it
+          states the contain fit the browser would otherwise have computed from
+          the loaded image, so the box is the right shape and size from the first
+          frame. Without it the unit is 0x0 until the image arrives, the caption
+          — anchored to its bottom edge — paints in the middle of the screen and
+          then jumps onto the photo, and the blurhash has no rect to fill.
+
+          The max-* classes stay as the fallback for photos with no stored
+          dimensions, which still measure on load as they always did. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={optimizedSrc(item.url, 1600, 80)}
         alt={item.alt ?? ""}
         draggable={false}
+        style={{
+          ...box,
+          ...(placeholder
+            ? {
+                backgroundImage: `url(${placeholder})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : null),
+        }}
         onLoad={(e) => {
           const el = e.currentTarget;
           if (el.naturalHeight)

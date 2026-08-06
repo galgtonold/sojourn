@@ -541,6 +541,8 @@ export function PhotoExplorer({
         alt={lightbox?.caption ?? lightbox?.postTitle ?? ""}
         blurhash={lightbox?.blurhash}
         caption={lightbox?.caption ?? null}
+        width={lightbox?.width ?? null}
+        height={lightbox?.height ?? null}
         onClose={() => setLightbox(null)}
       />
     </div>

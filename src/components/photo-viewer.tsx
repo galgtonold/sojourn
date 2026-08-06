@@ -16,6 +16,8 @@ import {
   animate,
   motion,
   useMotionValue,
+  useTransform,
+  type MotionValue,
   type PanInfo,
 } from "framer-motion";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -26,6 +28,7 @@ import { swipeTarget, wasDragged } from "@/lib/swipe";
 import { PhotoSlide, type ViewerItem } from "@/components/photo-slide";
 import { useT } from "@/components/i18n";
 import { useFocusTrap } from "@/lib/use-focus-trap";
+import { intrinsicRatio, slideFade } from "@/lib/viewer-geometry";
 
 export type { ViewerItem };
 
@@ -34,6 +37,48 @@ export type { ViewerItem };
 // rendered (and returns null) on the server, where useLayoutEffect warns.
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/** The blurred wash for one slide: its decoded blurhash, else the 1600px tier
+ *  it is already showing (a cache hit). Video carries its own poster. */
+function backdropFor(item: ViewerItem | undefined): string | null {
+  if (!item || item.mediaType === "video") return null;
+  return (
+    blurhashToDataURL(item.blurhash ?? null, 32, 32) ??
+    (item.url ? optimizedSrc(item.url, 1600, 80) : null)
+  );
+}
+
+/**
+ * One slide's wash, lit in proportion to how centred its slide is.
+ *
+ * Its own component because the opacity is a hook, and the number of mounted
+ * slides changes with the collection size.
+ */
+function SlideBackdrop({
+  src,
+  off,
+  x,
+  width,
+}: {
+  src: string;
+  off: number;
+  x: MotionValue<number>;
+  width: number;
+}) {
+  const { input, output } = slideFade(off, width);
+  const opacity = useTransform(x, input, output);
+  return (
+    <motion.img
+      src={src}
+      alt=""
+      aria-hidden
+      decoding="sync"
+      fetchPriority="high"
+      style={{ opacity }}
+      className="absolute inset-0 size-full scale-110 object-cover blur-2xl"
+    />
+  );
+}
 
 /**
  * The single full-screen media viewer for the whole site — article images, the
@@ -197,12 +242,6 @@ export function PhotoViewer({
   if (!mounted) return null;
 
   const src = item?.url ?? null;
-  // Instant placeholder (decoded blurhash, else the already-displayed 1600px
-  // tier — a cache hit). Skipped for video, which carries its own poster.
-  const backdrop = isVideo
-    ? null
-    : (blurhashToDataURL(item?.blurhash ?? null, 32, 32) ??
-      (src ? optimizedSrc(src, 1600, 80) : null));
   const wantHiRes =
     Math.max(window.innerWidth, window.innerHeight) *
       (window.devicePixelRatio || 1) >
@@ -229,17 +268,20 @@ export function PhotoViewer({
           style={{ WebkitTapHighlightColor: "transparent" }}
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-ink-950/90 p-2 backdrop-blur-sm sm:p-4"
         >
-          {backdrop && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={backdrop}
-              alt=""
-              aria-hidden
-              decoding="sync"
-              fetchPriority="high"
-              className="pointer-events-none absolute inset-0 size-full scale-110 object-cover opacity-70 blur-2xl"
-            />
-          )}
+          {/* One wash per mounted slide, each fading against the same motion
+              value the track rides — so the background travels WITH the photo
+              instead of swapping once it has arrived (see slideFade). The
+              group carries the 70% so the pair underneath can cross-fade
+              between 0 and 1. */}
+          <div className="pointer-events-none absolute inset-0 opacity-70">
+            {offsets.map((off) => {
+              const s = items[(safeIndex + off + count) % count];
+              const url = backdropFor(s);
+              return url ? (
+                <SlideBackdrop key={off} src={url} off={off} x={x} width={view.width} />
+              ) : null;
+            })}
+          </div>
 
           <motion.div
             style={{ x }}
@@ -282,7 +324,7 @@ export function PhotoViewer({
                       active={off === 0}
                       portrait={view.portrait}
                       wantHiRes={wantHiRes}
-                      ratio={ratios[slide.url] ?? 0}
+                      ratio={ratios[slide.url] ?? intrinsicRatio(slide)}
                       onRatio={onRatio}
                     />
                   )}
@@ -356,6 +398,8 @@ function toItem(p: Photo): ViewerItem {
     alt: p.caption ?? "",
     caption: p.caption ?? null,
     blurhash: p.blurhash ?? null,
+    width: p.width,
+    height: p.height,
     mediaType: p.media_type ?? "image",
     posterUrl: p.poster_url ?? null,
   };

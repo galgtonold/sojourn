@@ -468,6 +468,10 @@ export type GeoPhoto = {
   url: string;
   caption: string | null;
   blurhash: string | null;
+  // Two integers so the full-screen viewer can shape the slide before the
+  // image lands — without them the caption paints mid-screen and jumps.
+  width: number | null;
+  height: number | null;
   postSlug: string;
   postTitle: string;
   i18n?: Partial<Record<Locale, PhotoTranslation>>;
@@ -551,7 +555,7 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
     const { data, error } = await supabase
       .from("photos")
       .select(
-        "id, url, caption, blurhash, lat, lng, i18n, posts!inner(slug, title, published, i18n)",
+        "id, url, caption, blurhash, width, height, lat, lng, i18n, posts!inner(slug, title, published, i18n)",
       )
       .not("lat", "is", null)
       .not("lng", "is", null)
@@ -570,6 +574,8 @@ export async function getGeotaggedPhotos(): Promise<GeoPhoto[]> {
           url: r.url,
           caption: r.caption,
           blurhash: r.blurhash,
+          width: r.width ?? null,
+          height: r.height ?? null,
           postSlug: post.slug,
           postTitle: post.title,
           i18n: trimCaptionI18n(r.i18n),
