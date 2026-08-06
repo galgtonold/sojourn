@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ─── deps ────────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
@@ -11,16 +11,21 @@ COPY package.json package-lock.json* ./
 # single property npm ci exists to give a published image.
 #
 # CI runs bare npm ci too, but that is not enough to keep the two paths honest:
-# it runs a NEWER npm than this image, and the two disagree about whether a lock
-# may omit an unrecorded peer dependency. v0.1.3's lock passed CI and failed
-# here. So CI also runs `npm ci` inside this base image — see the "Lockfile
-# satisfies the image's npm" step. If you regenerate the lock, do it with the
-# older npm (this image), whose output the newer one accepts; the reverse is not
-# true.
+# it runs a DIFFERENT npm than this image, and they disagree about whether the
+# lock may omit `@sentry/webpack-plugin`'s webpack peer. v0.1.3's lock passed CI
+# and failed here. Not a major-version split, tempting as that reading was —
+# npm 11.11 strips the webpack closure out, while npm 10.9 and npm 11.17 both
+# insist on it. So CI also runs `npm ci` inside this base image; see the
+# "Lockfile satisfies the image's npm" step.
+#
+# REGENERATE THE LOCK IN HERE, not on your machine:
+#   docker run --rm -v "$PWD":/w -w /w node:24-alpine npm install
+# A local `npm install` can silently produce a lock this image then rejects,
+# which is the whole failure being guarded against.
 RUN npm ci
 
 # ─── build ───────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -53,7 +58,7 @@ RUN npm run build
 RUN node scripts/strip-prerender.mjs
 
 # ─── runner ──────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
