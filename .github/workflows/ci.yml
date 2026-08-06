@@ -40,38 +40,21 @@ jobs:
           node-version: 24 # matches package.json "engines" and Vercel
           cache: npm
 
-      # Run the npm the IMAGE runs, rather than whatever setup-node happens to
-      # bundle with its Node 24 patch release. Three npm 11.x releases, three
-      # different answers about the same lockfile:
-      #
-      #   11.11  writes a lock without `@sentry/webpack-plugin`'s webpack peer
-      #   11.16  installs from a lock but SKIPS the platform-matched optional
-      #          dependency it needs — rolldown's linux-x64-gnu binding, so
-      #          vitest 4 died on "Cannot find native binding" with 621 of 665
-      #          packages installed and no error from npm itself
-      #   11.17  correct on both counts; it is what node:24-alpine ships
-      #
-      # Pinning a literal version here would just start a new drift. Asking the
-      # base image what it runs cannot drift by construction, and costs nothing:
-      # the "Lockfile satisfies the image's npm" step below pulls that image
-      # anyway.
-      - name: Match the image's npm
-        run: npm install -g "npm@$(docker run --rm node:24-alpine npm -v)"
-
       - name: Install dependencies
         run: npm ci
 
-      # Belt and braces, now that the step above makes the two npms the same
-      # version: this asserts it, against the actual image rather than against
-      # the assumption. `@sentry/webpack-plugin` declares a non-optional
-      # `peerDependencies: { webpack: ">=5.0.0" }`, and a lock written without
-      # that closure passed every check here and then failed the v0.1.3 image
-      # build — the one build nobody can rerun cheaply, because it is the
-      # release.
+      # `npm ci` a second time, in the image's own base, because the step above
+      # cannot speak for the environment that publishes. v0.1.3's lockfile
+      # passed every check here and then failed the release image on forty-eight
+      # packages "missing from lock file" — the one build nobody can rerun
+      # cheaply, because it is the release.
       #
-      # Practical consequence for anyone touching dependencies: a bare local
-      # `npm install` may quietly strip the lock back down. Regenerate it inside
-      # node:24-alpine (see the Dockerfile) and let this step confirm it.
+      # The cause turned out to be a missing .npmrc in the Dockerfile's COPY, so
+      # only the image resolved peer dependencies strictly (see the Dockerfile).
+      # That is fixed, which makes this step agree with the one above rather than
+      # contradict it — and that is exactly the state worth asserting on every
+      # push, since nothing about a Dockerfile edit announces that it has changed
+      # how dependencies resolve.
       #
       # Scripts are skipped: this asks whether the lock RESOLVES, not whether
       # native modules compile.

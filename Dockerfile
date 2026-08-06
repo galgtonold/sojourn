@@ -4,24 +4,24 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
-COPY package.json package-lock.json* ./
+# .npmrc IS NOT OPTIONAL HERE, and leaving it out is what broke v0.1.3's
+# release image. It carries `legacy-peer-deps=true` (see the file for why), so
+# without it this stage is the ONLY place in the project that resolves peer
+# dependencies strictly — and a lockfile written everywhere else then looks
+# incomplete to it. The symptom was `npm ci` demanding forty-eight packages
+# "missing from lock file", the whole webpack closure under
+# `@sentry/webpack-plugin`'s webpack peer, against a lockfile every other
+# environment was happy with. It reads like a corrupt lockfile or an npm
+# version skew. It is neither: it is this COPY line, one filename short.
+COPY package.json package-lock.json* .npmrc ./
 # `npm ci` only, deliberately. The `|| npm install` that used to be here meant
 # a drifted lockfile produced a SUCCESSFUL build of a different dependency tree,
 # with nothing in the log to distinguish it from a clean one — which defeats the
 # single property npm ci exists to give a published image.
 #
-# CI runs bare npm ci too, but that is not enough to keep the two paths honest:
-# it runs a DIFFERENT npm than this image, and they disagree about whether the
-# lock may omit `@sentry/webpack-plugin`'s webpack peer. v0.1.3's lock passed CI
-# and failed here. Not a major-version split, tempting as that reading was —
-# npm 11.11 strips the webpack closure out, while npm 10.9 and npm 11.17 both
-# insist on it. So CI also runs `npm ci` inside this base image; see the
-# "Lockfile satisfies the image's npm" step.
-#
-# REGENERATE THE LOCK IN HERE, not on your machine:
-#   docker run --rm -v "$PWD":/w -w /w node:24-alpine npm install
-# A local `npm install` can silently produce a lock this image then rejects,
-# which is the whole failure being guarded against.
+# CI runs `npm ci` in this same base image as well, so the check that failed
+# only on a release now runs on every push; see the "Lockfile satisfies the
+# image's npm" step. With .npmrc present it is a true apples-to-apples check.
 RUN npm ci
 
 # ─── build ───────────────────────────────────────────────────────────────────
