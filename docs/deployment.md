@@ -169,14 +169,22 @@ Setting it up by hand instead:
 Sojourn deliberately avoids Vercel-only APIs, so the **exact same project also
 produces a standard Docker image**. Vercel is a convenience, not a dependency.
 
-> **Preview deployments are turned off for Dependabot branches** (`vercel.json`,
-> `git.deploymentEnabled`). A preview gets no Supabase configuration, so it
-> cannot build the pages that read content — and even if it could, it would
-> deploy a site with no database behind it. The question a dependency bump
-> actually raises is "does this still build", and CI answers that on every pull
-> request with a typecheck, a lint, the test suite and a full production build.
-> If you want previews that work, give the Preview environment its own Supabase
-> project and remove the rule.
+> **Point preview deployments at a throwaway database, not your real one.** A
+> preview build prerenders the pages that read content, so it needs Supabase
+> configured or it fails outright — but pointing it at production means every
+> branch you push reads live data, and `DATABASE_URL` there would let a branch
+> migrate the real database before you have reviewed it.
+>
+> Give the Preview environment `NEXT_PUBLIC_SUPABASE_URL`,
+> `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_DEMO_MODE=1` from a seeded
+> demo project instead, and give it **no** `DATABASE_URL` and **no**
+> `SUPABASE_SERVICE_ROLE_KEY`. Previews then render every public page against
+> real content, cannot migrate anything, and cannot write — demo mode refuses
+> every mutation in middleware.
+>
+> Worth having rather than skipping: CI proves a change *builds*, which is not
+> the same as proving it *works*. A maplibre upgrade once passed a green build
+> and shipped a blank map, because the failure only exists in a browser.
 
 ## Docker / VPS
 

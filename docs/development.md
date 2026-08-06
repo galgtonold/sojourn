@@ -80,9 +80,11 @@ read fails, the content helpers return empty, and the pages still compile. What
 that proves is that the code builds, which is all CI can honestly check without a
 database.
 
-Vercel preview deployments are switched off for Dependabot branches
-(`vercel.json`); CI is the gate that actually answers the question a dependency
-bump raises. See [Deployment](deployment.md#vercel).
+CI answers "does it build". A **preview deployment** answers "does it work",
+which is a different question and the one a browser has to be involved in — the
+upstream deployment gives its Preview environment a seeded demo database so
+every branch renders real content without touching anything live. See
+[Deployment](deployment.md#vercel) for how that is wired.
 
 ## Tech stack
 
