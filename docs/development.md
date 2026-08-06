@@ -110,12 +110,17 @@ Node **24.x** (`engines`), which is what CI, the image and Vercel all run.
   anon client (RLS-bounded); query failures return empty, never fabricated
   content.
 - **Schema, RLS, and storage:** `supabase/migrations/` — applied in the order
-  declared by `src/lib/migrations.mjs`, which is the authoritative list.
-  `0001_init.sql` is where it starts, not the whole of it.
-- **The AI draft pipeline is orchestrated client-side**, deliberately — see
-  [ADR-0001](adr/0001-client-orchestrated-ai-pipeline.md).
-- **Updates and schema migrations** are one motion, not two — see
-  [ADR-0002](adr/0002-updates-and-schema-migrations.md).
+  declared by `src/lib/migrations.mjs`, which is the authoritative list, not
+  filename sort order (`00271_…` sorts before `0027_…`). `0001_init.sql` is
+  where it starts, not the whole of it.
+- **The AI draft pipeline is orchestrated client-side**, deliberately. The full
+  run takes minutes across many model calls — longer than a serverless request
+  can hold — so the browser sequences the steps and the slow ones offload to a
+  Supabase Edge Function via the `ai_jobs` queue.
+- **Updating the code is a platform gesture; migrations run themselves.** No
+  host we ship to can rebuild itself in place, so `docker compose pull` or a
+  redeploy is the update — but the schema that release expects applies at the
+  release seam, so the two can never separate.
 
 ### Database tables
 

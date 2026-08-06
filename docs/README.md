@@ -13,13 +13,6 @@ a running install. These pages are the rest.
   stack, the scripts, the tech stack, project layout, and how the data layer and
   migrations fit together.
 
-## Architecture decisions
-
-- **[ADR-0001](adr/0001-client-orchestrated-ai-pipeline.md)** — why the AI draft
-  pipeline is sequenced in the browser rather than server-side.
-- **[ADR-0002](adr/0002-updates-and-schema-migrations.md)** — why updating the
-  code and migrating the database are one motion, not two.
-
 ## Elsewhere in the repo
 
 - **[SECURITY.md](../SECURITY.md)** — the security model and how to report a

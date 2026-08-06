@@ -3,7 +3,7 @@ name: Publish image
 # Builds the container image and pushes it to GitHub's registry, so self-hosters
 # can `docker compose pull` instead of compiling Next on their own hardware —
 # which is the point: that build wants roughly a gigabyte of memory and takes
-# the site down while it runs (docs/adr/0002-updates-and-schema-migrations.md).
+# the site down while it runs.
 #
 # NOTHING deployment-specific is baked in. Public configuration — including the
 # Supabase URL and anon key the browser needs — is read from the environment at

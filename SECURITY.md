@@ -35,8 +35,8 @@ rather not. There is no bounty programme — this project has no revenue.
 
 Only the **latest release** is supported. There are no backported fixes: the
 update path is designed so that moving forward is the cheap option, and database
-migrations apply themselves at the release seam
-(see [ADR-0002](docs/adr/0002-updates-and-schema-migrations.md)).
+migrations apply themselves at the release seam — a build on Vercel, a container
+start on Docker — so updating never leaves you on new code against an old schema.
 
 ## Things that are intentional, and not vulnerabilities
 

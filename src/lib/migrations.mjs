@@ -1,8 +1,7 @@
 // @ts-check
 // The order migrations are applied in — declared, not inferred.
 //
-// See docs/adr/0002-updates-and-schema-migrations.md. The short version: the
-// runner needs to know what a given database still owes, and neither the
+// The runner needs to know what a given database still owes, and neither the
 // filesystem nor Supabase's ledger can tell it.
 //
 // Filenames cannot, because they do not sort into the order they ran:
@@ -84,7 +83,7 @@ export const MIGRATIONS = [
   "0045_ai_usage_transparency.sql",
   "0046_scope_anonymous_deletes.sql",
   "0047_shared_rate_limits.sql",
-  "0048_scope_anonymous_tokens.sql",
+  "0048_scope_anonymous_tokens.sql",
   "0049_accent_insensitive_search.sql",
 ];
 

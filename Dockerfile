@@ -76,7 +76,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/LICENSE /app/THIRD-PARTY-NOTICES.txt ./
 
 # ─── the migration runner ────────────────────────────────────────────────────
-# Container start is this host's release seam (docs/adr/0002), and `standalone`
+# Container start is this host's release seam, and `standalone`
 # contains only what Next traced from the app — which is not this, because
 # nothing in the app imports it. So the runner's four pieces are copied in by
 # hand: the script, the SQL it applies, the modules it shares with the app so

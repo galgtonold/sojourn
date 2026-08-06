@@ -1,9 +1,8 @@
 // @ts-check
 // Where a given database sits in the migration order, and what it still owes.
 //
-// See docs/adr/0002-updates-and-schema-migrations.md. The watermark names the
-// last file from ./migrations.mjs that this database has applied. Everything
-// after it in that list is owed.
+// The watermark names the last file from ./migrations.mjs that this database
+// has applied. Everything after it in that list is owed.
 //
 // The bookkeeping table is created by the RUNNER, not by a migration. A
 // migration that creates the table the runner reads to decide which migrations
@@ -131,7 +130,7 @@ export function describeSchema(state) {
       return (
         "this database has Sojourn's schema but no migration watermark, so " +
         "there is no safe way to tell what it still owes — seed it once (see " +
-        "docs/adr/0002-updates-and-schema-migrations.md)"
+        "docs/deployment.md, \"Seeding the schema watermark\")"
       );
     case "unknown":
       return (

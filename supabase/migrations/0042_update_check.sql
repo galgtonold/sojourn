@@ -6,9 +6,9 @@
 -- ship one of those is with a switch next to it.
 --
 -- Default true, because an install that never learns it is out of date is the
--- failure ADR-0002 exists to prevent, and because the answer is only ever
--- fetched while the owner is looking at the Updates page — nothing runs in the
--- background.
+-- whole failure the update story exists to prevent, and because the answer is
+-- only ever fetched while the owner is looking at the Updates page — nothing
+-- runs in the background.
 --
 -- Boolean rather than the empty-string-means-off convention used by
 -- analytics_provider: that column has three states (unset, off, vercel) because

@@ -80,13 +80,16 @@ docs/superpowers/
 memory/
 prod-licenses.txt
 
-# Everything under docs/ that is a snapshot of one afternoon's work rather than
-# documentation: audits, QA passes, review write-ups. They were written to be
-# acted on and then to stop being true, and a reader who finds a bug log from
-# June has no way to know which of it still applies. One folder, one rule —
-# previously three patterns that each had to be remembered separately.
-# docs/adr/ deliberately stays: ADR-0002 is cited from ten places in shipped
-# source, including an error message the app shows its operator.
+# Everything under docs/ that is a record of how this got built rather than
+# documentation for running it: audits, QA passes, review write-ups, and the
+# architecture decision records. They were written to be acted on and then to
+# stop being true, and a reader who finds a bug log from June has no way to know
+# which of it still applies. One folder, one rule — previously three patterns
+# that each had to be remembered separately.
+#
+# Anything an operator actually needs from them has been moved into docs/ proper
+# rather than cited: seeding the schema watermark, in particular, is a recovery
+# path the app itself points people at.
 docs/internal/
 
 # Editor/agent local settings. .claude/launch.json is deliberately tracked (it

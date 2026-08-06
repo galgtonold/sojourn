@@ -4,9 +4,11 @@
 // direct Postgres connection. This asks it again from inside the running app,
 // through PostgREST, for one reason: to notice when the runner never got to.
 //
-// Per ADR-0002 the admin shows versions, not migrations — except on failure,
-// "because that state is real, is currently invisible, and does need a human".
-// This is what makes it visible.
+// The admin deliberately shows versions, not migrations: a list of outstanding
+// DDL is not something an operator can act on, and they consented to it when
+// they deployed the release containing it. The exception is failure — that
+// state is real, otherwise invisible, and does need a human. This makes it
+// visible.
 
 import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";

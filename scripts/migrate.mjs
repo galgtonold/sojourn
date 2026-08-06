@@ -4,8 +4,9 @@
 //
 // Runs at the release seam — `npm run build` on Vercel, the entrypoint on
 // Docker — so that schema can never silently fall behind the code that expects
-// it. See docs/adr/0002-updates-and-schema-migrations.md for why updating the
-// *code* stays a platform gesture while this part is automatic.
+// it. Updating the *code* stays a platform gesture (`docker compose pull`, a
+// redeploy) because none of the hosts can rebuild themselves; schema is the
+// half that can be made automatic safely, because migrations stay additive.
 //
 // ── What it will and will not fail on ────────────────────────────────────────
 //

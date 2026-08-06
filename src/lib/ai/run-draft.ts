@@ -2,8 +2,9 @@
 //   enrich → caption DRAFT → trip brief → outline → per-section
 //   (enqueue → poll → photo-ref repair) → homogenize → caption POLISH → save.
 //
-// Lifted out of the React panel (ADR-0001 keeps it CLIENT-run — this changes
-// nothing about that) so the *sequence and its branch conditions* — which the
+// Lifted out of the React panel — still CLIENT-run, deliberately, because the
+// full pipeline takes minutes and no serverless request can hold it — so that
+// the *sequence and its branch conditions*, which the
 // panel could only express through React state and which no test could reach —
 // become a plain async function over injected effects. The panel supplies
 // fetch/poll/retry + progress callbacks; here we own only the ordering.

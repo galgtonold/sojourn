@@ -14,7 +14,7 @@ export const metadata = { title: defaultTitle("admin.settings.nav.updates") };
 export const dynamic = "force-dynamic";
 
 // What version this is, whether there is a newer one, how to get it *here*, and
-// whether the database kept up. See docs/adr/0002-updates-and-schema-migrations.md.
+// whether the database kept up.
 //
 // There is deliberately no button that updates anything. None of the three
 // hosts can rebuild themselves, and the one that could — a bare-metal checkout

@@ -50,7 +50,7 @@ services:
       # that, setting it is an obligation rather than a preference.
       SOURCE_URL: ${SOURCE_URL:-}
       # Schema migrations run at container start, before the server accepts a
-      # request — see docs/adr/0002. Wants the DIRECT connection (5432), not the
+      # request. Wants the DIRECT connection (5432), not the
       # transaction pooler. Unset means they are skipped, loudly, in the logs.
       DATABASE_URL: ${DATABASE_URL:-}
     env_file:

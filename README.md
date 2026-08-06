@@ -140,7 +140,6 @@ never even downloaded — not loaded-but-inert, absent.
 - **[Deployment](docs/deployment.md)** — the three install paths in full, hosted Supabase setup, the claim window, backups, moving to a VPS later.
 - **[Configuration](docs/configuration.md)** — every environment variable, what turns each optional feature on, AI provider setup, web push, telemetry.
 - **[Development](docs/development.md)** — running it locally, the tech stack, project layout, how the data layer and migrations fit together.
-- **[Architecture decisions](docs/adr/)** — why the AI pipeline is orchestrated client-side, and why updates and schema migrations work the way they do.
 - **[Security policy](SECURITY.md)** · **[Contributing](CONTRIBUTING.md)**
 
 ## Roadmap

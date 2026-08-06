@@ -378,7 +378,7 @@ const en = {
     "This build carries migrations the database hasn't run yet. They apply automatically the next time the site builds or the container starts. If this is still here afterwards, the runner couldn't reach the database — check that a connection string is set.",
   "admin.updates.schemaUnseeded": "Needs seeding",
   "admin.updates.schemaUnseededHint":
-    "This database has Sojourn's schema, but nothing recorded which migrations produced it — so there is no safe way to tell what it still needs. Rather than guess and risk replaying migrations over live data, Sojourn stops. See docs/adr/0002-updates-and-schema-migrations.md for how to set the mark once, by hand.",
+    "This database has Sojourn's schema, but nothing recorded which migrations produced it — so there is no safe way to tell what it still needs. Rather than guess and risk replaying migrations over live data, Sojourn stops. Setting the mark once, by hand, is a few lines of SQL: see “Seeding the schema watermark” in docs/deployment.md.",
   "admin.updates.schemaAhead": "Ahead of this build",
   "admin.updates.schemaAheadHint":
     "The database was migrated by a newer Sojourn than the one running, which usually means the code was rolled back. Deploy that version or newer — the database itself is fine.",
@@ -1241,7 +1241,7 @@ const de: Dict = {
     "Dieser Build bringt Migrationen mit, die die Datenbank noch nicht ausgeführt hat. Sie laufen automatisch beim nächsten Build oder Containerstart. Steht das danach immer noch hier, wurde die Datenbank nicht erreicht — prüfe, ob eine Verbindungszeichenfolge gesetzt ist.",
   "admin.updates.schemaUnseeded": "Muss initialisiert werden",
   "admin.updates.schemaUnseededHint":
-    "Diese Datenbank hat Sojourns Schema, aber nirgends ist festgehalten, welche Migrationen es erzeugt haben — es lässt sich also nicht sicher sagen, was noch fehlt. Statt zu raten und Migrationen womöglich über Live-Daten zu wiederholen, hält Sojourn an. In docs/adr/0002-updates-and-schema-migrations.md steht, wie du die Marke einmalig von Hand setzt.",
+    "Diese Datenbank hat Sojourns Schema, aber nirgends ist festgehalten, welche Migrationen es erzeugt haben — es lässt sich also nicht sicher sagen, was noch fehlt. Statt zu raten und Migrationen womöglich über Live-Daten zu wiederholen, hält Sojourn an. Die Marke einmalig von Hand zu setzen sind ein paar Zeilen SQL: siehe „Seeding the schema watermark“ in docs/deployment.md.",
   "admin.updates.schemaAhead": "Neuer als dieser Build",
   "admin.updates.schemaAheadHint":
     "Die Datenbank wurde von einer neueren Sojourn-Version migriert als der laufenden — meist heißt das, der Code wurde zurückgerollt. Veröffentliche diese Version oder eine neuere; die Datenbank selbst ist in Ordnung.",

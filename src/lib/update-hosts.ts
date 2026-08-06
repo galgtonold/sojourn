@@ -1,7 +1,7 @@
 // Which host this is running on, and the gesture that updates it there.
 //
-// See docs/adr/0002-updates-and-schema-migrations.md: updating the code stays a
-// platform gesture, because none of the three hosts can rebuild themselves —
+// Updating the code stays a platform gesture, because none of the three hosts
+// can rebuild themselves —
 // the Docker runner image has no source or toolchain, Vercel's filesystem is
 // read-only, and a bare-metal rebuild is the case least safe to attempt from
 // inside the process being replaced.

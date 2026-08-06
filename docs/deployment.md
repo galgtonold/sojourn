@@ -78,8 +78,7 @@ section is that, once.
    missing, in order, before the app that needs it starts — an empty project
    gets all ~40 files; a project that is already current gets nothing. There is
    no button to press and no step to forget, which is the point: the schema can
-   no longer fall behind the code. See
-   [ADR-0002](adr/0002-updates-and-schema-migrations.md).
+   no longer fall behind the code.
 
    On Vercel this is **only** already done for you if you added Supabase
    through the **Vercel marketplace integration**, which writes a set of
@@ -190,7 +189,7 @@ docker compose pull && docker compose up -d
 
 Runs the published image from GitHub's registry. Updating later is the same two
 commands — and schema migrations apply themselves at container start, so there is
-no second step (see [ADR-0002](adr/0002-updates-and-schema-migrations.md)).
+no second step.
 
 Pin how much change you take unattended with `SOJOURN_TAG` — `0.2.1`, `0.2`, `v0`
 or the default `latest`.
@@ -210,6 +209,39 @@ and hands the result to the page, so one image serves any deployment. Set your
 variables in `.env.local` or through `docker-compose.yml`; there are no build
 arguments to pass. This is also why the `NEXT_PUBLIC_*` names have unprefixed
 twins — see [Configuration](configuration.md#running-a-prebuilt-image).
+
+### Seeding the schema watermark
+
+Skip this unless **Settings → Updates** says *"Needs seeding"*, or a build log
+says the database has Sojourn's schema but no watermark.
+
+Sojourn records how far a database has been migrated in one row of
+`public.sojourn_schema`, naming the last file from `src/lib/migrations.mjs` that
+has been applied. Installs that predate that bookkeeping have the schema but no
+row, and there is no safe way to infer one: treating the database as empty
+replays `0001_init.sql`, whose `create policy` statements are not idempotent,
+over live data — and treating it as current means genuine migrations never run
+on it again. So the runner stops and asks.
+
+Set it once, by hand, against evidence rather than a guess. Work out which
+migration the database actually has — the **Table Editor** and the column list of
+whatever the most recent migration touched is usually enough — then, in the
+Supabase **SQL Editor**:
+
+```sql
+insert into public.sojourn_schema (id, last_applied)
+values (1, '0041_analytics_setting')
+on conflict (id) do update
+  set last_applied = excluded.last_applied, updated_at = now();
+```
+
+Replace `0041_analytics_setting` with the entry from `src/lib/migrations.mjs`
+that matches your database. **Too low is the dangerous direction** — everything
+after the watermark runs on the next deploy. Too high only means a migration is
+skipped, which you can correct by lowering it again.
+
+Verify with `npm run migrate:status` before deploying anything, and against a
+copy of the database first if it holds anything you care about.
 
 ## First run
 
