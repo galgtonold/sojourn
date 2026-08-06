@@ -30,12 +30,24 @@ export function NotificationBell({
 }) {
   const t = useT();
   const [showHelp, setShowHelp] = useState(false);
+  // Subscribing from the bell said nothing. For a first-time reader the browser
+  // puts up its own permission prompt, so the click is not silent — but once
+  // permission is already granted, one click subscribes with no acknowledgement
+  // beyond a small icon swap. SubscribePrompt has told people what they signed
+  // up for since it was written; this is the bell borrowing that sentence.
+  const [justSubscribed, setJustSubscribed] = useState(false);
   // Start in the neutral "off" state and render immediately (no pop-in on load,
   // unlike waiting for the async getPushState). Refine once we know the real
   // state; only then can we discover an unsupported browser and hide.
   const [state, setState] = useState<PushState>("default");
   const [resolved, setResolved] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!justSubscribed) return;
+    const t = setTimeout(() => setJustSubscribed(false), 6000);
+    return () => clearTimeout(t);
+  }, [justSubscribed]);
 
   useEffect(() => {
     if (!pushAvailable) return;
@@ -75,11 +87,13 @@ export function NotificationBell({
       if (subscribed) {
         await unsubscribeFromPush();
         setState("default");
+        setJustSubscribed(false);
       } else {
         const res = await subscribeToPush("viewer", env.vapidPublicKey);
         setState(
           res.ok ? "subscribed" : res.reason === "denied" ? "denied" : "default",
         );
+        if (res.ok) setJustSubscribed(true);
       }
     } finally {
       setBusy(false);
@@ -107,6 +121,18 @@ export function NotificationBell({
         <Icon className={cn(iconClassName, busy && "animate-spin")} />
         <span className="sr-only">{t("push.viewer")}</span>
       </button>
+      {justSubscribed && (
+        <div
+          // `status` rather than `alert`: worth announcing, not worth
+          // interrupting. Dismissed on click like the help popover, and on a
+          // timer so it does not sit there for the rest of the visit.
+          role="status"
+          onClick={() => setJustSubscribed(false)}
+          className="absolute right-0 top-full z-50 mt-2 w-64 cursor-default rounded-xl border border-white/10 bg-ink-900 p-3 text-xs leading-relaxed text-sand-100/80 shadow-2xl"
+        >
+          {t("subscribe.done")}
+        </div>
+      )}
       {showHelp && (
         <>
           {/* Transparent click-away catcher — closes the popover without dimming

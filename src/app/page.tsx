@@ -107,15 +107,22 @@ export default async function HomePage() {
               href={`/posts/${hero.slug}`}
               className="animate-float-up group mt-8 inline-flex w-fit items-center gap-3 rounded-full bg-sand-50 px-5 py-3 text-sm font-semibold text-ink-950 transition hover:bg-ember-400"
             >
+              {/* Hidden below `sm`: the same place is on this post's card in
+                  the grid directly beneath, and at 375px it was a third of the
+                  reason this pill wrapped into an eight-line slab. */}
               {hero.location && (
-                <span className="flex items-center gap-1 text-ink-700">
+                <span className="hidden items-center gap-1 text-ink-700 sm:flex">
                   <MapPin className="size-4" />
                   {hero.location}
                 </span>
               )}
-              <T k="home.readCta" /> “
-              <LocText source={hero.title} i18n={hero.i18n} field="title" />”
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              {/* Clamped so a long German title degrades to two lines instead of
+                  unboundedly. The title is the hook, so it stays. */}
+              <span className="line-clamp-2 text-left">
+                <T k="home.readCta" /> “
+                <LocText source={hero.title} i18n={hero.i18n} field="title" />”
+              </span>
+              <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
           )}
         </div>
