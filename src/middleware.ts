@@ -5,6 +5,11 @@ import { VIEWER_HEADER, signViewer } from "@/lib/auth-forward";
 import { resolveAdminRoute, resolvePublicRoute } from "@/lib/admin-route";
 import { getSetupState, type SetupState } from "@/lib/setup";
 import { demoBlocks } from "@/lib/demo";
+import {
+  hasSessionCookie,
+  cachedVerification,
+  rememberVerification,
+} from "@/lib/session-verify";
 
 // Once an install is claimed it stays claimed — there is no un-claim flow — so
 // remember that and stop querying. Only the positive is cached: remembering
@@ -48,6 +53,30 @@ export async function middleware(request: NextRequest) {
       : NextResponse.next();
   }
 
+  // Verifying the session is a network round trip to Supabase Auth, and this
+  // runs for EVERY request the matcher covers — including the RSC requests Next
+  // fires to prefetch every <Link> on the page. One /admin load measured 24 such
+  // requests: the navigation and 23 prefetches. The two guards below answer 23
+  // of them without leaving the process; neither loosens the gate.
+  const cookies = request.cookies.getAll();
+
+  // Nothing to verify. Asking Supabase can only come back "no user", so the
+  // round trip buys latency and nothing else — and this is the common case for
+  // anything idly probing /admin.
+  if (!hasSessionCookie(cookies.map((c) => c.name))) {
+    const destination = await resolveAdminRoute(pathname, false, claimState);
+    return destination
+      ? NextResponse.redirect(new URL(destination, request.url))
+      : NextResponse.next();
+  }
+
+  // The session cookie itself is the cache key, so a sign-out (cookie cleared)
+  // and a refresh (cookie rotated) both miss by construction.
+  const sessionToken = cookies
+    .filter((c) => /^sb-.+-auth-token(\.\d+)?$/.test(c.name))
+    .map((c) => `${c.name}=${c.value}`)
+    .join("|");
+
   // The response can't exist yet: its request headers depend on the user, whom
   // we only know after getUser() — which is also what triggers setAll (during a
   // token refresh). So buffer the cookies here and replay them onto the response
@@ -55,22 +84,33 @@ export async function middleware(request: NextRequest) {
   // would silently drop refreshed sessions, i.e. break login.
   const pendingCookies: { name: string; value: string; options?: object }[] = [];
 
-  const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  let userId = cachedVerification(sessionToken, Date.now());
+  if (userId === undefined) {
+    const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookies;
+        },
+        setAll(
+          cookiesToSet: { name: string; value: string; options?: object }[],
+        ) {
+          pendingCookies.push(...cookiesToSet);
+        },
       },
-      setAll(
-        cookiesToSet: { name: string; value: string; options?: object }[],
-      ) {
-        pendingCookies.push(...cookiesToSet);
-      },
-    },
-  });
+    });
+    const {
+      data: { user: verified },
+    } = await supabase.auth.getUser();
+    userId = verified?.id ?? null;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // Only a verification made against THIS token is reusable. A refresh hands
+    // back a new one, and caching under the old key would answer for a cookie
+    // the browser no longer holds.
+    if (pendingCookies.length === 0) {
+      rememberVerification(sessionToken, userId, Date.now());
+    }
+  }
+  const user = userId ? { id: userId } : null;
 
   // Deciding here rather than inside the pages means a redirect is a real 307:
   // an in-page `redirect()` resolves only after Next has streamed the layout,
