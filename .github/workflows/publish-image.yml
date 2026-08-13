@@ -92,3 +92,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
+
+  # ─── the compose files, versioned with the image they describe ─────────────
+  #
+  # A compose file and the image it names are one artifact split in two, and
+  # they drift the moment the docs point at a moving branch: install from
+  # .../main/docker-compose.all-in-one.yml while running SOJOURN_TAG=0.2.1 and
+  # you get next release's stack description wrapped around last release's app.
+  # Attached here instead, so
+  #
+  #   .../releases/latest/download/docker-compose.all-in-one.yml
+  #
+  # always resolves to the file that was tested against the image it names.
+  #
+  # A separate job purely for the permission: publishing the image needs no
+  # write access to the repository, and it keeps none.
+  compose-files:
+    name: attach compose files to the release
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Attach the compose files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --clobber so re-running a release does not fail on assets it already
+        # uploaded, which is the whole reason to rerun it.
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            docker-compose.all-in-one.yml docker-compose.yml --clobber

@@ -71,7 +71,7 @@ docker run --rm ghcr.io/galgtonold/sojourn:latest node scripts/selfhost-init.mjs
 Fetch the one file that describes the stack:
 
 ```bash
-curl -O https://raw.githubusercontent.com/galgtonold/sojourn/main/docker-compose.all-in-one.yml
+curl -O -L https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 ```
 
 Open `.env.selfhost`, set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host,

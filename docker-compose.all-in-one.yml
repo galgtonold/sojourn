@@ -17,12 +17,18 @@
 # now `configs:` blocks at the foot of this file, so this ONE file is the whole
 # install:
 #
-#   curl -O https://raw.githubusercontent.com/galgtonold/sojourn/main/docker-compose.all-in-one.yml
+#   curl -O -L https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 #
-# (Compose also accepts `-f https://github.com/…/sojourn.git` directly, but that
-# form resolves the repository's DEFAULT compose file — the plain one-container
-# docker-compose.yml — not this one. It cannot select a file by name, so for the
-# all-in-one stack fetch the file.)
+# From the RELEASE rather than from main, so the file and the image it names are
+# the same version. Attached by .github/workflows/publish-image.yml.
+#
+# (Compose also accepts `-f https://github.com/…/sojourn.git` directly, and
+# `-f oci://…` for a file published with `docker compose publish`. Neither is
+# used here: the git form resolves the repository's DEFAULT compose file — the
+# plain one-container docker-compose.yml — and cannot select this one by name,
+# while `publish` rejects the short `ports:` syntax below and demands a value
+# for every `${VAR:?}` at publish time, which would mean feeding it secrets to
+# describe a stack that has none.)
 #
 # Requires Compose ≥ 2.23 for `configs.content`. Anything older reports
 # "services.db.configs.0 additional property content is not allowed".
