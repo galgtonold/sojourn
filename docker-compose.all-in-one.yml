@@ -4,6 +4,19 @@
 #     node scripts/selfhost-init.mjs --stdout > .env.selfhost
 #   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
 #
+# Any image tag will do for the first command — it mints random keys and reads
+# nothing from the version it runs in.
+#
+# WHICH VERSION YOU ACTUALLY RUN is `SOJOURN_TAG`, below, and it defaults to
+# `latest`. Downloading this file from a specific release therefore does NOT
+# pin the app to that release: the file is the one that was tested against that
+# version, which is not the same promise. To pin, set it —
+#
+#   SOJOURN_TAG=0.2.0 docker compose -f … up -d
+#
+# — or put it in .env.selfhost. `0.2`, `0` and `latest` each choose how much
+# change you are willing to take unattended.
+#
 # Use this when you want a blog on your own machine and nothing else to think
 # about. Use the plain docker-compose.yml instead when you already have Supabase
 # (hosted or your own) — it is one container and runs happily in 1 GB.

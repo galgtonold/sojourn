@@ -13,7 +13,7 @@ a running install. These pages are the rest.
   stack, the scripts, the tech stack, project layout, and how the data layer and
   migrations fit together.
 - **[Licensing](licensing.md)** — the AGPL in practice, what §13 asks of a
-  modified deployment, commercial terms, third-party notices.
+  modified deployment, third-party notices.
 
 ## Elsewhere in the repo
 

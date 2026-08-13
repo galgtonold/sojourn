@@ -155,6 +155,5 @@ anyone else, and modify it however you like. Running a modified version as a
 service is fine too — the AGPL just asks that the people using it can get its
 source.
 
-Commercial and white-label terms are available if that doesn't suit. That, the
-third-party notices, and what §13 asks of a modified deployment are all in
+The third-party notices and what §13 asks of a modified deployment are in
 **[Licensing](docs/licensing.md)**.

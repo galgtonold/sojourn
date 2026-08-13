@@ -58,6 +58,12 @@ Six containers come up in order, the schema is created from nothing, and
 `/admin` offers to create your owner account. Roughly **1 GB of RAM**; a 2 GB VPS
 is comfortable.
 
+> **Fetching the file from a release does not pin the app.** The compose file
+> is the one that was tested against that release, which is a different promise
+> — the image tag it runs is `SOJOURN_TAG`, and that defaults to `latest`. Set
+> it in `.env.selfhost` to choose how much change you take unattended:
+> `0.2.0`, `0.2`, `0`, or `latest`.
+
 **`SUPABASE_PUBLIC_URL` is the one to get right.** It is handed to the visitor's
 browser, so it must be a URL *their* machine resolves — and the app container has
 to reach the same one. `localhost` satisfies only the first. On a real host, put

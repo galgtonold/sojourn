@@ -30,15 +30,12 @@ SOURCE_URL=https://git.example.org/you/sojourn
 
 Unmodified deployments need do nothing; it already points upstream.
 
-## Commercial and white-label terms
+## Contributing
 
-If the AGPL does not suit — you want to ship a closed modification, white-label
-it, or need different terms — commercial licences are available. Open a GitHub
-issue titled **"Licensing enquiry"** and you'll be pointed at a private channel.
-
-Commercial licensing is what funds the work, which is also why contributions
-come with a lightweight relicensing grant alongside the DCO rather than a
-heavyweight CLA — see [CONTRIBUTING.md](../CONTRIBUTING.md).
+Contributions come with a lightweight Developer Certificate of Origin and a
+relicensing grant rather than a heavyweight CLA — see
+[CONTRIBUTING.md](../CONTRIBUTING.md) for both, and for what the grant does and
+does not cover.
 
 ## Third-party code
 
