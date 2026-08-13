@@ -315,26 +315,29 @@ configs:
           group: admin
 
       services:
-        # Auth. Sign-in, token refresh and invite acceptance are unauthenticated
-        # by definition — you have no key until you have signed in — so no
-        # key-auth here. Which makes this the one route where password guessing
-        # is free, and GoTrue does not throttle it: v2.190.0 ships rate limits
-        # for token REFRESH, OTP, verify, email and SMS, and nothing at all for
-        # the password grant. So the ceiling has to live here.
-        - name: auth-v1
-          url: http://auth:9999/
+        # THE PASSWORD GRANT, and only it. Signing in cannot require a key you
+        # only get by signing in, so nothing under /auth/v1/ has key-auth —
+        # which makes this the one route where guessing is free. GoTrue
+        # v2.190.0 ships rate limits for token REFRESH, OTP, verify, email and
+        # SMS, and nothing at all for the password grant. So the ceiling is
+        # Kong's to enforce, and it belongs HERE rather than on all of
+        # /auth/v1/ — see the note on the general route below for what that
+        # cost when it did.
+        #
+        # `strip_path: true` removes the matched prefix, so the service URL
+        # carries /token; without it GoTrue receives / and answers 404.
+        - name: auth-v1-token
+          url: http://auth:9999/token
           routes:
-            - name: auth-v1-all
+            - name: auth-v1-token
               strip_path: true
               paths:
-                - /auth/v1/
+                - /auth/v1/token
           plugins:
             - name: cors
             - name: rate-limiting
               config:
-                # Generous for a person signing in, useless for a script. A
-                # session refresh is roughly hourly per reader, so this is
-                # nowhere near real traffic on a personal journal.
+                # Generous for a person signing in, useless for a script.
                 minute: 30
                 hour: 200
                 # `local` keeps the counters in this Kong's own memory. Correct
@@ -349,6 +352,44 @@ configs:
                 # and real_ip_header and every request arrives from one address
                 # — at which point this stops being per-visitor and throttles
                 # everyone the moment one person is noisy.
+
+        # Everything else GoTrue serves. Longer prefixes match first, so the
+        # password grant above is taken out of this route before it is reached.
+        #
+        # This carries a ceiling too, but a far higher one, because the traffic
+        # here is the APP rather than a visitor: Sojourn's middleware calls
+        # GET /auth/v1/user to verify the session on every admin request, and
+        # Next prefetches every link on the page — each prefetch being a
+        # request that runs the middleware. One dashboard load was measured at
+        # 26 of them inside a single second.
+        #
+        # Sharing the 30/minute login bucket with that locked the owner out of
+        # a fresh install within seconds of signing in: getUser() started
+        # answering 429, middleware read that as "no session" and redirected to
+        # the login page, and the login POST was then refused by the budget the
+        # prefetches had just spent. The user-visible result was "I clicked
+        # something and it logged me out, and now it says API rate limit
+        # exceeded". None of it was a login problem.
+        #
+        # /user is authenticated by a JWT the caller already holds, so it is
+        # not a guessing surface. The ceiling here is only to bound a runaway
+        # client — it is not the security control.
+        - name: auth-v1
+          url: http://auth:9999/
+          routes:
+            - name: auth-v1-all
+              strip_path: true
+              paths:
+                - /auth/v1/
+          plugins:
+            - name: cors
+            - name: rate-limiting
+              config:
+                minute: 600
+                hour: 6000
+                policy: local
+                limit_by: ip
+                fault_tolerant: false
 
         # The data API. Row-level security is what actually protects this; the
         # key only decides which Postgres role PostgREST assumes.

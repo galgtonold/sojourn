@@ -211,15 +211,64 @@ describe("the all-in-one stack", () => {
   });
 });
 
+/** One `- name: <service>` block out of the Kong config, by exact name. */
+function kongService(name: string): string {
+  const re = new RegExp(
+    `- name: ${name}\\n[\\s\\S]*?(?=\\n  - name: |\\n*$)`,
+    "",
+  );
+  return re.exec(KONG)?.[0] ?? "";
+}
+
+/** The `minute:` ceiling on a service's rate-limiting plugin, if it has one. */
+function minuteLimit(block: string): number | null {
+  const m = /name: rate-limiting[\s\S]*?minute:\s*(\d+)/.exec(block);
+  return m ? Number(m[1]) : null;
+}
+
 describe("the one route that cannot require a key is throttled", () => {
-  // /auth/v1/ has no key-auth by definition — you have no key until you have
-  // signed in — and GoTrue v2.190.0 ships no rate limit for the password grant
-  // (it has them for refresh, OTP, verify, email and SMS, and checking that is
-  // how this got written). So password guessing is free unless Kong stops it.
-  it("attaches rate-limiting to the auth route", () => {
-    const authBlock = /- name: auth-v1[\s\S]*?(?=\n  - name: |\n*$)/.exec(KONG)?.[0] ?? "";
-    expect(authBlock).toContain("name: rate-limiting");
-    expect(authBlock).toMatch(/limit_by: ip/);
+  // Signing in cannot require a key you only get by signing in, so /auth/v1/
+  // has no key-auth — which makes it the one place guessing is free. GoTrue
+  // v2.190.0 ships rate limits for token REFRESH, OTP, verify, email and SMS,
+  // and nothing at all for the password grant. So the ceiling has to be Kong's.
+  //
+  // It has to sit on the PASSWORD GRANT specifically, not on all of /auth/v1/.
+  // Sojourn's own middleware calls GET /auth/v1/user to verify the session on
+  // every admin request, Next prefetches every link on a page, and each
+  // prefetch is a request that runs the middleware — so one dashboard load
+  // measured 26 of them in a single second. Sharing one 30/minute bucket with
+  // the login endpoint meant a fresh install locked its owner out within
+  // seconds of signing in: getUser() 429s, middleware reads that as "no
+  // session" and redirects to login, and the login POST is refused by the
+  // budget the prefetches just spent.
+  it("throttles the password grant", () => {
+    const token = kongService("auth-v1-token");
+    expect(token, "no auth-v1-token service — the password grant is unthrottled").toContain(
+      "name: rate-limiting",
+    );
+    expect(token).toMatch(/limit_by: ip/);
+    expect(minuteLimit(token)).toBeLessThanOrEqual(60);
+  });
+
+  it("routes the password grant to GoTrue's /token, path intact", () => {
+    // `strip_path: true` removes the matched prefix, so the SERVICE has to
+    // carry /token or the upstream receives / and GoTrue answers 404.
+    const token = kongService("auth-v1-token");
+    expect(token).toMatch(/url: http:\/\/auth:9999\/token/);
+    expect(token).toMatch(/paths:\s*\n\s*- \/auth\/v1\/token/);
+  });
+
+  it("does not make the app's own session checks share that budget", () => {
+    // The regression this exists for. /auth/v1/user is authenticated by a JWT
+    // the caller already holds — it is not a guessing surface — and it is
+    // called once per admin request. A ceiling low enough to stop password
+    // guessing is far too low for that.
+    const general = kongService("auth-v1");
+    const limit = minuteLimit(general);
+    expect(
+      limit === null || limit >= 300,
+      `the general /auth/v1/ route allows only ${limit}/minute, which one page load can exhaust`,
+    ).toBe(true);
   });
 
   it("enables the plugin on the node, or the config is ignored", () => {
@@ -236,9 +285,9 @@ describe("the one route that cannot require a key is throttled", () => {
     expect(KONG).toMatch(/fault_tolerant: false/);
   });
 
-  it("does not put key-auth on the auth route", () => {
+  it("puts key-auth on neither auth route", () => {
     // Requiring a key to sign in would lock everyone out permanently.
-    const authBlock = /- name: auth-v1[\s\S]*?(?=\n  - name: |\n*$)/.exec(KONG)?.[0] ?? "";
-    expect(authBlock).not.toContain("name: key-auth");
+    expect(kongService("auth-v1")).not.toContain("name: key-auth");
+    expect(kongService("auth-v1-token")).not.toContain("name: key-auth");
   });
 });
