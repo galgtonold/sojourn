@@ -128,26 +128,34 @@ SITE_NAME=Sojourn
 # SOURCE_URL=https://git.example.org/you/sojourn
 `;
 
+// Same shape as scripts/migrate.mjs: a `sojourn/<tool>` prefix so output from
+// several of them in one `up` is still attributable, and steps indented under
+// the line they belong to. Always stderr — stdout is reserved for the file.
+const say = (msg) => console.error(`sojourn/init  ${msg}`);
+const step = (n, msg) => console.error(`sojourn/init    ${n}. ${msg}`);
+
+const UP = `docker compose -f docker-compose.all-in-one.yml --env-file ${OUT} up -d`;
+
 if (toStdout) {
   process.stdout.write(file);
   // The shell's umask decides the mode of a redirect, and the usual answer is
   // 0644 — world-readable, which for this file is the whole database. We cannot
-  // chmod a file we never opened, so say so where it will be read.
-  console.error(
-    `Minted a Postgres password, a JWT secret and the anon/service_role keys.\n` +
-      `If you redirected this to a file, lock it down now — the default mode is\n` +
-      `world-readable and this holds the secret every service trusts:\n` +
-      `  chmod 600 ${OUT}\n` +
-      `Then edit SUPABASE_PUBLIC_URL and SITE_URL for your host and bring it up.`,
-  );
+  // chmod a file we never opened, so it has to be step one rather than a
+  // paragraph about it.
+  say("minted: Postgres password, JWT secret, anon + service_role keys");
+  step(1, `chmod 600 ${OUT}   ← a redirect leaves it world-readable`);
+  step(2, "set SUPABASE_PUBLIC_URL and SITE_URL in it, for your host");
+  step(3, UP);
 } else {
   // 0600: this holds the JWT secret every service trusts and the Postgres
   // password. The default would be world-readable, which on a shared host is
   // the whole database.
+  //
+  // Not stated in the message below, because it is not true everywhere: Windows
+  // has no POSIX mode bits and Node's `mode` is a no-op there, so the file lands
+  // 0644 and saying otherwise would be a reassurance rather than a fact.
   writeFileSync(OUT, file, { mode: 0o600 });
-  console.error(
-    `Wrote ${OUT}: Postgres password, JWT secret and the anon/service_role keys.\n` +
-      `Edit SUPABASE_PUBLIC_URL and SITE_URL for your host, then:\n` +
-      `  docker compose -f docker-compose.all-in-one.yml --env-file ${OUT} up -d`,
-  );
+  say(`wrote ${OUT}: Postgres password, JWT secret, anon + service_role keys`);
+  step(1, "set SUPABASE_PUBLIC_URL and SITE_URL in it, for your host");
+  step(2, UP);
 }
