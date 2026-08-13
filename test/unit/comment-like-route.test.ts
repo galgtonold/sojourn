@@ -6,7 +6,7 @@ const spies = vi.hoisted(() => ({ notifyCommentAuthor: vi.fn(() => Promise.resol
 
 vi.mock("@/lib/supabase/server", () => ({ getServerSupabase: async () => sb.client }));
 vi.mock("@/lib/notify", () => spies);
-vi.mock("@/lib/rate-limit", () => ({ rateLimit: () => true, clientIp: () => "1.1.1.1" }));
+vi.mock("@/lib/rate-limit", () => ({ rateLimit: () => true, clientIp: () => "1.1.1.1", limitFor: (_r: unknown, l: number) => ({ ip: "1.1.1.1", limit: l }) }));
 
 import { POST } from "@/app/api/comments/like/route";
 

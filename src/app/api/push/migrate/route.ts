@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { isAllowedPushEndpoint } from "@/lib/push-endpoint";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,8 @@ const schema = z.object({
 export async function POST(req: Request) {
   // Anonymous by necessity — a rotation happens without anyone being signed in
   // — so it needs the same ceiling as subscribing.
-  if (!(await rateLimit(`push-migrate:${clientIp(req)}`, 20, 60 * 60_000))) {
+  const { ip, limit } = limitFor(req, 20);
+  if (!(await rateLimit(`push-migrate:${ip}`, limit, 60 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
 

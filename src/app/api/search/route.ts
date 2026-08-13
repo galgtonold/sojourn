@@ -1,4 +1,4 @@
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { searchAll } from "@/lib/content";
 import { logError } from "@/lib/log";
@@ -13,7 +13,8 @@ export async function GET(req: Request) {
   // a ceiling. Search is submit-driven and the client caches per query, so a
   // reader makes a handful a minute; 20 is far above that and well below what a
   // loop would want. Tighter than reactions (40) because each one costs money.
-  if (!(await rateLimit(`search:${clientIp(req)}`, 20, 60_000))) {
+  const { ip, limit } = limitFor(req, 20);
+  if (!(await rateLimit(`search:${ip}`, limit, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const q = new URL(req.url).searchParams.get("q") ?? "";

@@ -22,6 +22,7 @@ vi.mock("@/lib/supabase/admin", () => ({ getAdminSupabase: () => admin.client })
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: () => Promise.resolve(limit.allow),
   clientIp: () => "1.1.1.1",
+  limitFor: (_r: unknown, l: number) => ({ ip: "1.1.1.1", limit: l }),
 }));
 
 import { POST } from "@/app/api/push/refresh/route";

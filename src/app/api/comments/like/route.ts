@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { notifyCommentAuthor } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 
@@ -14,7 +14,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!(await rateLimit(`like:${clientIp(req)}`, 60, 60_000))) {
+  const { ip, limit } = limitFor(req, 60);
+  if (!(await rateLimit(`like:${ip}`, limit, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));

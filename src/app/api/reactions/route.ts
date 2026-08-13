@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { summarizeReactions } from "@/lib/content";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { REACTION_KINDS } from "@/lib/types";
 
 const schema = z.object({
@@ -34,7 +34,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await rateLimit(`reactions:${clientIp(req)}`, 40, 60_000))) {
+  const { ip, limit } = limitFor(req, 40);
+  if (!(await rateLimit(`reactions:${ip}`, limit, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));

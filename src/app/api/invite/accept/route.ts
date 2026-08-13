@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 
 // Public on purpose: the invitee isn't signed in yet, so this is gated entirely
 // by the secret invite token (256 bits of entropy). It validates our own 7-day
@@ -23,7 +23,8 @@ export async function POST(req: Request) {
   // database on every invalid one, and until now it would do that as fast as
   // anyone could ask. Twenty attempts an hour is far more than an invitee
   // clicking a link in an email will ever need.
-  if (!(await rateLimit(`invite-accept:${clientIp(req)}`, 20, 60 * 60_000))) {
+  const { ip, limit } = limitFor(req, 20);
+  if (!(await rateLimit(`invite-accept:${ip}`, limit, 60 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
   const admin = getAdminSupabase();

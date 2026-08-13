@@ -30,6 +30,7 @@ vi.mock("@/lib/notify", () => spies);
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: () => Promise.resolve(true),
   clientIp: () => "1.1.1.1",
+  limitFor: (_r: unknown, l: number) => ({ ip: "1.1.1.1", limit: l }),
 }));
 
 import { POST as postComment } from "@/app/api/comments/route";

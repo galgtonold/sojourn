@@ -88,11 +88,71 @@ export async function rateLimit(
   }
 }
 
+/** The key used when the caller cannot be told apart from anyone else. */
+export const SHARED_CLIENT = "shared";
+
+/**
+ * How much higher the ceiling sits when the bucket holds everybody.
+ *
+ * A per-visitor number is a fairness rule; a shared one can only be a flood
+ * guard, and the two want different sizes. Leaving comments at 10/minute once
+ * the bucket is site-wide means ten comments a minute between all readers —
+ * which is how an install with no proxy in front started refusing its own
+ * visitors. 20x turns that into 200/minute: still a ceiling, no longer a rule
+ * about individuals.
+ */
+export const SHARED_LIMIT_FACTOR = 20;
+
+/**
+ * Can `x-forwarded-for` be believed on this deployment?
+ *
+ * Only whoever runs it knows. The header is set by whatever sits in front, and
+ * with nothing in front it is simply whatever the client typed — so trusting it
+ * unconditionally means the limit is skipped by sending a different value each
+ * time, which is exactly what it did.
+ *
+ * Vercel is the one case we can answer for ourselves: it sets the header and
+ * overwrites any inbound copy, so there it is authoritative. Everywhere else an
+ * operator opts in, having put a proxy in front that both SETS the header and
+ * STRIPS what arrived with the request. Both halves matter — a proxy that only
+ * appends leaves the forged value in front, where `.split(",")[0]` finds it.
+ */
+export function trustsForwardedFor(): boolean {
+  return Boolean(process.env.VERCEL) || process.env.TRUST_PROXY_HEADERS === "1";
+}
+
+/**
+ * Who to count this request against — or SHARED_CLIENT when that is unknowable.
+ *
+ * Never invent an identity: answering "unknown" per request would be the same
+ * bucket under a different name, and answering with the forged header would be
+ * no bucket at all.
+ */
 export function clientIp(req: Request): string {
+  if (!trustsForwardedFor()) return SHARED_CLIENT;
   const xff = req.headers.get("x-forwarded-for");
   return (
     xff?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
-    "unknown"
+    SHARED_CLIENT
   );
+}
+
+/**
+ * The key fragment and the limit that belong together.
+ *
+ * Callers pass the per-visitor allowance they want; this decides whether the
+ * request can be attributed to a visitor at all, and scales the limit when it
+ * cannot. Keeping the two together is the point — a shared key with a
+ * per-visitor number is the bug.
+ */
+export function limitFor(
+  req: Request,
+  perClient: number,
+): { ip: string; limit: number } {
+  const ip = clientIp(req);
+  return {
+    ip,
+    limit: ip === SHARED_CLIENT ? perClient * SHARED_LIMIT_FACTOR : perClient,
+  };
 }

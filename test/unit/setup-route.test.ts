@@ -15,6 +15,7 @@ vi.mock("@/lib/setup-window", async (importOriginal) => ({
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: () => rl.allow,
   clientIp: () => "1.1.1.1",
+  limitFor: (_r: unknown, l: number) => ({ ip: "1.1.1.1", limit: l }),
 }));
 
 import { POST } from "@/app/api/setup/route";

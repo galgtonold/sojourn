@@ -25,6 +25,7 @@ vi.mock("@/lib/ai/translate", () => ({
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: () => Promise.resolve(limiter.allow),
   clientIp: () => "1.1.1.1",
+  limitFor: (_r: unknown, l: number) => ({ ip: "1.1.1.1", limit: l }),
 }));
 vi.mock("@/lib/content", () => ({ searchAll: async () => ({ posts: [], photos: [] }) }));
 

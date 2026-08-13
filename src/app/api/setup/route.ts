@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { hasOwner } from "@/lib/setup";
 import { getClaimWindow } from "@/lib/setup-window";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 
 // First-run claim of the owner account. Public by necessity — nobody can be
 // signed in before the first account exists — and a permanent 410 tombstone the
@@ -17,7 +17,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!(await rateLimit(`setup:${clientIp(req)}`, 5, 10 * 60_000))) {
+  const { ip, limit } = limitFor(req, 5);
+  if (!(await rateLimit(`setup:${ip}`, limit, 10 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
   const admin = getAdminSupabase();

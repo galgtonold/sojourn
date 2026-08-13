@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { isAllowedPushEndpoint } from "@/lib/push-endpoint";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,8 @@ export async function POST(req: Request) {
   // Anonymous by design — a visitor opting their own browser in — so it needs a
   // ceiling. Without one, this endpoint would write an unbounded number of rows
   // and hand out an unbounded number of URLs for the push sender to call later.
-  if (!(await rateLimit(`push-subscribe:${clientIp(req)}`, 20, 60 * 60_000))) {
+  const { ip, limit } = limitFor(req, 20);
+  if (!(await rateLimit(`push-subscribe:${ip}`, limit, 60 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
   const parsed = subscribeSchema.safeParse(await req.json().catch(() => null));

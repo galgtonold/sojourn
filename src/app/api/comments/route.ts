@@ -6,7 +6,7 @@ import { getPublicSupabase } from "@/lib/supabase/public";
 import { COMMENT_SELECT, hydrateComment, withLikeCounts } from "@/lib/content";
 import { notifyComment, notifyCommentAuthor } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!(await rateLimit(`comments:${clientIp(req)}`, 10, 60_000))) {
+  const { ip, limit } = limitFor(req, 10);
+  if (!(await rateLimit(`comments:${ip}`, limit, 60_000))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));

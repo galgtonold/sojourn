@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, limitFor } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,8 @@ export async function POST(req: Request) {
   // A read, and one every subscribed browser makes about once a day, so the
   // ceiling is higher than subscribing's — but still a ceiling, since this
   // takes an arbitrary endpoint and is reachable by anyone.
-  if (!(await rateLimit(`push-refresh:${clientIp(req)}`, 120, 60 * 60_000))) {
+  const { ip, limit } = limitFor(req, 120);
+  if (!(await rateLimit(`push-refresh:${ip}`, limit, 60 * 60_000))) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429 });
   }
 

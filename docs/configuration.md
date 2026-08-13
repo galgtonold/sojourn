@@ -78,6 +78,7 @@ Without these the app fails fast rather than starting up empty.
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Bypasses RLS for admin/API routes. Never expose to the browser. |
 | `DATABASE_URL` | **server only** | Direct Postgres connection (port 5432), used *only* to apply schema migrations at build/container start. The app itself never opens one — it goes through PostgREST, which cannot execute DDL. On Vercel, `POSTGRES_URL_NON_POOLING` from the Supabase integration is picked up instead. Also accepts `SOJOURN_DATABASE_URL` and `POSTGRES_URL`. |
 | `SETUP_WINDOW_MINUTES` | server | How long a fresh install stays claimable. Default `60`; `0` disables the guard. See [the claim window](deployment.md#the-claim-window). |
+| `TRUST_PROXY_HEADERS` | server | Set to `1` only if a reverse proxy you control sits in front and both **sets** `x-forwarded-for` and **strips** any inbound copy. See [rate limits and client identity](#rate-limits-and-client-identity). Automatic on Vercel. |
 | `EDGE_SHARED_SECRET` | **server only** | Shared secret authenticating Next.js → the Supabase Edge Functions (`llm-call`, `translate`). Must be set to the *same value* in both places: your deployment's environment, and the function secrets (`supabase secrets set`). Unset means slow generations run inline instead. |
 | `SOJOURN_RELEASE_REPO` | server | Which GitHub repo the Updates page checks for a newer release. Defaults to upstream; set it if you maintain a real downstream fork. |
 | `SOJOURN_RUNTIME` | server | Set to `docker` by our own Dockerfile so the Updates page can name the right update command for the host. Nothing else reads it. |
@@ -122,6 +123,30 @@ actually sends.
 | `NEXT_PUBLIC_ANALYTICS` | public | Set to `vercel` to enable Vercel Web Analytics. Unset = no analytics, no script, no request. |
 | `NEXT_PUBLIC_SENTRY_DSN` | public | Browser error reporting. Unset = the Sentry SDK is never loaded. |
 | `SENTRY_DSN` | **server only** | Server + edge error reporting. Separate from the browser one on purpose. |
+
+## Rate limits and client identity
+
+The public endpoints — comments, reactions, likes, search, poll votes, push
+subscriptions, first-run setup — are rate limited per client. Identifying the
+client means reading `x-forwarded-for`, and whether that header can be believed
+depends entirely on what is in front of Sojourn.
+
+**With nothing in front, it cannot.** The header is then just something the
+caller typed, so trusting it would let anyone skip the limits by sending a
+different value on each request. Sojourn therefore ignores it unless told
+otherwise, and counts unidentified traffic against a single shared ceiling —
+twenty times the per-client allowance, which makes it a guard against a flood
+rather than a rule about individuals.
+
+**Set `TRUST_PROXY_HEADERS=1` when you have a proxy you control** that sets
+`x-forwarded-for` *and* strips whatever arrived with the request. Both halves
+matter: the header is read left-to-right, so a proxy that only appends leaves
+the forged value in front of the real one. With it set, each visitor gets their
+own allowance again.
+
+On **Vercel** this is automatic — the platform sets the header itself and
+overwrites any inbound copy, so it is authoritative there and no configuration
+is needed.
 
 ## Running a prebuilt image
 
