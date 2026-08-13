@@ -85,6 +85,11 @@ COPY --from=builder /app/LICENSE /app/THIRD-PARTY-NOTICES.txt ./
 # `postgres` is used rather than `pg` precisely for this line: it has no
 # dependencies, so one directory is the whole driver.
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
+# Travels for the same reason, one step earlier in the story: minting an
+# all-in-one instance's secrets should not require a checkout either.
+#   docker run --rm <image> node scripts/selfhost-init.mjs --stdout > .env.selfhost
+# Node built-ins only, so it costs nothing but its own 4 KB.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/selfhost-init.mjs ./scripts/selfhost-init.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/supabase/migrations ./supabase/migrations
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/migrations.mjs \
      /app/src/lib/schema-version.mjs /app/src/lib/migrate-config.mjs ./src/lib/

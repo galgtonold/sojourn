@@ -61,15 +61,21 @@ There are three ways to run it. They differ only in who looks after the database
 | **[Vercel + hosted Supabase](docs/deployment.md#vercel)** | you'd rather not run a server at all | two free-tier accounts, a deploy button |
 | **[Docker + your own Supabase](docs/deployment.md#docker--vps)** | you already have a Postgres/Supabase you like | one container, ~1 GB of RAM |
 
-The shortest of the three, in full:
+The shortest of the three, in full — no checkout, just Docker. Mint this
+instance's secrets:
 
 ```bash
-node scripts/selfhost-init.mjs
+docker run --rm ghcr.io/galgtonold/sojourn:latest node scripts/selfhost-init.mjs --stdout > .env.selfhost && chmod 600 .env.selfhost
 ```
 
-That mints this instance's Postgres password, JWT secret and API keys into
-`.env.selfhost` — per-instance, never to be committed or copied from anywhere.
-Open it, set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host, then:
+Fetch the one file that describes the stack:
+
+```bash
+curl -O https://raw.githubusercontent.com/galgtonold/sojourn/main/docker-compose.all-in-one.yml
+```
+
+Open `.env.selfhost`, set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host,
+then:
 
 ```bash
 docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d

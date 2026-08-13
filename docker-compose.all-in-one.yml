@@ -1,11 +1,31 @@
 # Sojourn plus everything it needs — one command, one host, no accounts.
 #
-#   node scripts/selfhost-init.mjs
+#   docker run --rm ghcr.io/galgtonold/sojourn:latest \
+#     node scripts/selfhost-init.mjs --stdout > .env.selfhost
 #   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
 #
 # Use this when you want a blog on your own machine and nothing else to think
 # about. Use the plain docker-compose.yml instead when you already have Supabase
 # (hosted or your own) — it is one container and runs happily in 1 GB.
+#
+# ── this file stands alone, deliberately ─────────────────────────────────────
+#
+# Nothing here is bind-mounted from a checkout. Kong's routing table and the
+# Postgres role-password fix used to live in ./docker/ and be mounted in, which
+# meant self-hosting began with `git clone` — of a repository whose source you
+# do not otherwise need, since the app arrives as a published image. They are
+# now `configs:` blocks at the foot of this file, so this ONE file is the whole
+# install:
+#
+#   curl -O https://raw.githubusercontent.com/galgtonold/sojourn/main/docker-compose.all-in-one.yml
+#
+# (Compose also accepts `-f https://github.com/…/sojourn.git` directly, but that
+# form resolves the repository's DEFAULT compose file — the plain one-container
+# docker-compose.yml — not this one. It cannot select a file by name, so for the
+# all-in-one stack fetch the file.)
+#
+# Requires Compose ≥ 2.23 for `configs.content`. Anything older reports
+# "services.db.configs.0 additional property content is not allowed".
 #
 # ── what is here, and what is deliberately not ───────────────────────────────
 #
@@ -45,10 +65,23 @@ services:
     volumes:
       # Your posts live here. This is the thing to back up — see docs/deployment.md.
       - db-data:/var/lib/postgresql/data
+    configs:
       # Runs once, on an empty data directory, and LAST: the image's own
       # migrate.sh is what creates these roles, so anything sorting before it
       # fails with `role "authenticator" does not exist`.
-      - ./docker/init-roles.sh:/docker-entrypoint-initdb.d/zz-sojourn-roles.sh:ro
+      #
+      # A config rather than a volume mount: a named volume mounted over
+      # /docker-entrypoint-initdb.d would be seeded from the image only while it
+      # is still empty, so writing this file into it first would HIDE the
+      # image's own init scripts and the roles would never be created at all.
+      # A config is a single-file mount, which shadows nothing.
+      - source: db-init-roles
+        target: /docker-entrypoint-initdb.d/zz-sojourn-roles.sh
+        # Executable on purpose. The Postgres entrypoint runs a .sh file if it
+        # can and otherwise `source`s it into its own shell, where this script's
+        # `set -euo pipefail` would outlive it. Under the old bind mount that
+        # depended on the host's file permissions, so it varied by machine.
+        mode: 0555
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
       interval: 5s
@@ -155,15 +188,19 @@ services:
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,rate-limiting
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
-    volumes:
-      - ./docker/kong.yml:/home/kong/template.yml:ro
-    # The config is a template so the keys stay out of git; substitute them into
-    # place at start. Upstream Supabase does exactly this.
-    entrypoint: >
-      bash -c 'eval "echo \"$$(cat /home/kong/template.yml)\"" > /home/kong/kong.yml
-      && exec /docker-entrypoint.sh kong docker-start'
+    configs:
+      # Compose substitutes the two keys into the config below as it reads this
+      # file, so Kong gets a finished routing table and the image's own
+      # entrypoint is left alone.
+      #
+      # This replaces a template that was mounted in and rendered at start with
+      # `eval "echo \"$(cat …)\""`. That worked, but it put a shell eval in the
+      # boot path of the component holding the API keys, and it silently ate
+      # double quotes — which is why `_format_version` had to be single-quoted
+      # or Kong would read 2.1 as a number and refuse to start.
+      - source: kong-config
+        target: /home/kong/kong.yml
+        mode: 0444
 
   web:
     image: ghcr.io/galgtonold/sojourn:${SOJOURN_TAG:-latest}
@@ -201,3 +238,136 @@ services:
 volumes:
   db-data:
   storage-data:
+
+# ── the two files this stack used to need a checkout for ─────────────────────
+configs:
+  # Give the Supabase service roles the password THIS instance uses.
+  #
+  # The supabase/postgres image creates these roles, but leaves them with
+  # whatever password it was built with — so GoTrue and storage-api start and
+  # immediately fail with `28P01: password authentication failed`, which reads
+  # like this file has the wrong credentials rather than like the roles were
+  # never told. Upstream's self-hosted compose does the same thing.
+  #
+  # Runs only on an empty data directory, which is the one moment these roles
+  # are guaranteed to exist and nothing has tried to connect yet. Changing
+  # POSTGRES_PASSWORD later means running these ALTERs by hand.
+  db-init-roles:
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      psql -v ON_ERROR_STOP=1 --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" <<-EOSQL
+        alter user authenticator          with password '$$POSTGRES_PASSWORD';
+        alter user supabase_auth_admin    with password '$$POSTGRES_PASSWORD';
+        alter user supabase_storage_admin with password '$$POSTGRES_PASSWORD';
+        alter user supabase_admin         with password '$$POSTGRES_PASSWORD';
+      EOSQL
+
+      echo "sojourn: service role passwords set"
+
+  # Kong routes one public URL onto the three Supabase services Sojourn uses.
+  # Trimmed from Supabase's own self-hosted config: no realtime, no analytics,
+  # no studio, no edge functions — see the top of this file for why each is
+  # absent.
+  #
+  # `$${...}` is a literal dollar for Postgres above; the two `${...}` below are
+  # substituted by Compose from --env-file, which is how the keys stay out of
+  # git while this file carries the config.
+  kong-config:
+    content: |
+      # Single-quoted on purpose: YAML would otherwise read 2.1 as a number, and
+      # Kong refuses to start with "expected a string".
+      _format_version: '2.1'
+      _transform: true
+
+      consumers:
+        - username: anon
+          keyauth_credentials:
+            - key: ${SUPABASE_ANON_KEY:?run selfhost-init first}
+        - username: service_role
+          keyauth_credentials:
+            - key: ${SUPABASE_SERVICE_KEY:?}
+
+      acls:
+        - consumer: anon
+          group: anon
+        - consumer: service_role
+          group: admin
+
+      services:
+        # Auth. Sign-in, token refresh and invite acceptance are unauthenticated
+        # by definition — you have no key until you have signed in — so no
+        # key-auth here. Which makes this the one route where password guessing
+        # is free, and GoTrue does not throttle it: v2.190.0 ships rate limits
+        # for token REFRESH, OTP, verify, email and SMS, and nothing at all for
+        # the password grant. So the ceiling has to live here.
+        - name: auth-v1
+          url: http://auth:9999/
+          routes:
+            - name: auth-v1-all
+              strip_path: true
+              paths:
+                - /auth/v1/
+          plugins:
+            - name: cors
+            - name: rate-limiting
+              config:
+                # Generous for a person signing in, useless for a script. A
+                # session refresh is roughly hourly per reader, so this is
+                # nowhere near real traffic on a personal journal.
+                minute: 30
+                hour: 200
+                # `local` keeps the counters in this Kong's own memory. Correct
+                # here because the all-in-one runs exactly one Kong; a clustered
+                # deployment would need the redis policy and a redis for it.
+                policy: local
+                limit_by: ip
+                # Refuse rather than let it through when the counter breaks.
+                fault_tolerant: false
+                # NOTE: `ip` is the address KONG sees. Put Cloudflare, nginx or
+                # any other proxy in front without setting Kong's trusted_ips
+                # and real_ip_header and every request arrives from one address
+                # — at which point this stops being per-visitor and throttles
+                # everyone the moment one person is noisy.
+
+        # The data API. Row-level security is what actually protects this; the
+        # key only decides which Postgres role PostgREST assumes.
+        - name: rest-v1
+          url: http://rest:3000/
+          routes:
+            - name: rest-v1-all
+              strip_path: true
+              paths:
+                - /rest/v1/
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: true
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
+
+        # Photo storage. Same story: bucket policies do the work.
+        - name: storage-v1
+          url: http://storage:5000/
+          routes:
+            - name: storage-v1-all
+              strip_path: true
+              paths:
+                - /storage/v1/
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: true
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon

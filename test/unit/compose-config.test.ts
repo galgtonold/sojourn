@@ -67,9 +67,59 @@ describe("docker-compose passes through what the app reads", () => {
 // want a blog rather than a Supabase account. Everything below is something
 // that broke while building it and cost a full teardown to find.
 const ALL_IN_ONE = readFileSync("docker-compose.all-in-one.yml", "utf8");
-const KONG = readFileSync("docker/kong.yml", "utf8");
+
+/**
+ * Pull one `configs:` entry's inline `content:` block back out, dedented.
+ *
+ * Kong's routing table and the Postgres role fix used to be files under
+ * ./docker/ that the stack bind-mounted. They live in the compose file itself
+ * now, so that ONE file is a working install and self-hosting no longer starts
+ * with cloning a repository whose source you never need. These assertions are
+ * the same ones; only where they read from changed.
+ */
+function inlineConfig(name: string): string {
+  const head = `  ${name}:\n    content: |\n`;
+  const at = ALL_IN_ONE.indexOf(head);
+  if (at === -1) return "";
+  const out: string[] = [];
+  for (const line of ALL_IN_ONE.slice(at + head.length).split("\n")) {
+    if (line.trim() === "") {
+      out.push("");
+      continue;
+    }
+    if (!line.startsWith("      ")) break;
+    out.push(line.slice(6));
+  }
+  return out.join("\n");
+}
+
+const KONG = inlineConfig("kong-config");
+const DB_INIT = inlineConfig("db-init-roles");
 
 describe("the all-in-one stack", () => {
+  it("found both inline configs", () => {
+    // Guard the guard: if inlineConfig stopped matching — a rename, a change of
+    // indentation — every KONG assertion below would pass against an empty
+    // string and this file would silently stop testing anything.
+    expect(KONG).toContain("_format_version");
+    expect(KONG).toContain("name: rest-v1");
+    expect(DB_INIT).toContain("alter user authenticator");
+  });
+
+  it("mounts nothing from a checkout, so the one file is the whole install", () => {
+    // The point of the configs: `docker compose -f <url> up -d` has to work,
+    // and a bind mount of ./docker/kong.yml makes that a broken stack instead
+    // of an install. Named volumes are fine — they are created, not read from
+    // the host — so only relative host paths are rejected here.
+    const hostMounts = [...ALL_IN_ONE.matchAll(/^\s*-\s+(\.[^\s:]*):/gm)].map(
+      (m) => m[1],
+    );
+    expect(
+      hostMounts,
+      `these are read from the filesystem next to the compose file, so fetching it alone yields a stack that cannot start: ${hostMounts.join(", ")}`,
+    ).toEqual([]);
+  });
+
   it("hands the app every name it needs to reach Supabase", () => {
     for (const name of [
       "SUPABASE_URL",
@@ -106,16 +156,34 @@ describe("the all-in-one stack", () => {
     // The supabase/postgres image creates these roles but leaves them with a
     // password this instance does not know, so GoTrue and storage-api fail with
     // 28P01. The fix has to sort AFTER the image's own migrate.sh, or it fails
-    // with `role "authenticator" does not exist` instead.
-    expect(ALL_IN_ONE).toMatch(/init-roles\.sh:\/docker-entrypoint-initdb\.d\/zz-/);
+    // with `role "authenticator" does not exist` instead — hence the zz- prefix.
+    expect(ALL_IN_ONE).toMatch(
+      /target:\s*\/docker-entrypoint-initdb\.d\/zz-sojourn-roles\.sh/,
+    );
+  });
+
+  it("leaves the role script's own variables for the shell, not Compose", () => {
+    // `$$` is how a literal dollar survives Compose's interpolation. Written
+    // with one, Compose would substitute POSTGRES_USER from the env file at
+    // render time — which is empty there, since the Postgres image is what sets
+    // it — and the script would run `psql --username ""`.
+    expect(DB_INIT).toContain('--username "$$POSTGRES_USER"');
+    expect(DB_INIT).toMatch(/password '\$\$POSTGRES_PASSWORD'/);
   });
 
   it("keeps Kong's format version a string", () => {
-    // The entrypoint substitutes the keys with `eval "echo \"$(cat ...)\""`,
-    // which eats double quotes — Kong then reads 2.1 as a number and refuses to
-    // start. Single quotes survive.
+    // Unquoted, YAML reads 2.1 as a number and Kong refuses to start with
+    // "expected a string".
     expect(KONG).toMatch(/_format_version:\s*'2\.1'/);
     expect(KONG).not.toMatch(/_format_version:\s*"2\.1"/);
+  });
+
+  it("lets Compose substitute the API keys, and fails loudly if they are unset", () => {
+    // One dollar, deliberately: these SHOULD be interpolated as the file is
+    // read. `:?` turns a missing key into a refusal to start rather than a Kong
+    // whose credentials are the empty string — which would accept any request.
+    expect(KONG).toMatch(/- key: \$\{SUPABASE_ANON_KEY:\?/);
+    expect(KONG).toMatch(/- key: \$\{SUPABASE_SERVICE_KEY:\?/);
   });
 
   it("locks the data API behind a key, and leaves auth open", () => {

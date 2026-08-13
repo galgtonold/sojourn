@@ -3,7 +3,18 @@
 //
 // Mint the secrets an all-in-one deployment needs, once.
 //
-//   node scripts/selfhost-init.mjs [--force]
+//   node scripts/selfhost-init.mjs [--force]     # writes ./.env.selfhost, 0600
+//   node scripts/selfhost-init.mjs --stdout      # writes it to stdout instead
+//
+// `--stdout` exists so this can be run straight out of the published image,
+// which is the whole point of it being in there: self-hosting should not begin
+// with cloning a repository whose source you never need.
+//
+//   docker run --rm ghcr.io/galgtonold/sojourn:latest \
+//     node scripts/selfhost-init.mjs --stdout > .env.selfhost
+//
+// Progress and warnings go to stderr, so a redirect of stdout captures exactly
+// the file and nothing else.
 //
 // Supabase's own services authenticate each other with JWTs signed by a shared
 // secret. Self-hosting means minting those yourself, and getting it wrong is
@@ -46,7 +57,12 @@ function secret(bytes) {
   return randomBytes(bytes).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, bytes);
 }
 
-if (existsSync(OUT) && !process.argv.includes("--force")) {
+const toStdout = process.argv.includes("--stdout");
+
+// Only meaningful when we are the one doing the writing. Under --stdout the
+// caller owns the destination, and inside a container there is nothing at OUT
+// to protect anyway.
+if (!toStdout && existsSync(OUT) && !process.argv.includes("--force")) {
   console.error(
     `${OUT} already exists — refusing to overwrite.\n` +
       `Re-running would mint a new JWT secret, which invalidates every existing\n` +
@@ -112,12 +128,26 @@ SITE_NAME=Sojourn
 # SOURCE_URL=https://git.example.org/you/sojourn
 `;
 
-// 0600: this holds the JWT secret every service trusts and the Postgres
-// password. The default would be world-readable, which on a shared host is the
-// whole database.
-writeFileSync(OUT, file, { mode: 0o600 });
-console.error(
-  `Wrote ${OUT}: Postgres password, JWT secret and the anon/service_role keys.\n` +
-    `Edit SUPABASE_PUBLIC_URL and SITE_URL for your host, then:\n` +
-    `  docker compose -f docker-compose.all-in-one.yml --env-file ${OUT} up -d`,
-);
+if (toStdout) {
+  process.stdout.write(file);
+  // The shell's umask decides the mode of a redirect, and the usual answer is
+  // 0644 — world-readable, which for this file is the whole database. We cannot
+  // chmod a file we never opened, so say so where it will be read.
+  console.error(
+    `Minted a Postgres password, a JWT secret and the anon/service_role keys.\n` +
+      `If you redirected this to a file, lock it down now — the default mode is\n` +
+      `world-readable and this holds the secret every service trusts:\n` +
+      `  chmod 600 ${OUT}\n` +
+      `Then edit SUPABASE_PUBLIC_URL and SITE_URL for your host and bring it up.`,
+  );
+} else {
+  // 0600: this holds the JWT secret every service trusts and the Postgres
+  // password. The default would be world-readable, which on a shared host is
+  // the whole database.
+  writeFileSync(OUT, file, { mode: 0o600 });
+  console.error(
+    `Wrote ${OUT}: Postgres password, JWT secret and the anon/service_role keys.\n` +
+      `Edit SUPABASE_PUBLIC_URL and SITE_URL for your host, then:\n` +
+      `  docker compose -f docker-compose.all-in-one.yml --env-file ${OUT} up -d`,
+  );
+}
