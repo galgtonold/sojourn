@@ -12,6 +12,8 @@ a running install. These pages are the rest.
 - **[Development](development.md)** — running it locally against the Supabase CLI
   stack, the scripts, the tech stack, project layout, and how the data layer and
   migrations fit together.
+- **[Licensing](licensing.md)** — the AGPL in practice, what §13 asks of a
+  modified deployment, commercial terms, third-party notices.
 
 ## Elsewhere in the repo
 
