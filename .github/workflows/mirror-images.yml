@@ -8,10 +8,14 @@ name: Mirror upstream images
 # `toomanyrequests` every time — so the suite skipped for reasons that had
 # nothing to do with the commit under test.
 #
-# These packages are PRIVATE and pulled with the workflow's own GITHUB_TOKEN.
-# This is a CI convenience, not a redistribution channel: the all-in-one file
-# people install with still points at upstream, and only docker-compose.ci.yml
-# repoints anything.
+# The packages are PUBLIC: packages published by Actions inherit the
+# repository's visibility, and this one is public. Flip them in the repository's
+# package settings if that is not wanted — both consumers already authenticate
+# with the workflow's own GITHUB_TOKEN, so nothing breaks.
+#
+# Either way this is a CI convenience, not a distribution channel: the
+# all-in-one file people install with still points at upstream, and a test keeps
+# it that way.
 #
 # Run it manually after bumping a Supabase version — `verify` fails until the
 # overlay and the all-in-one file agree, and the mirror is what makes the

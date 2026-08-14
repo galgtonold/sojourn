@@ -1,0 +1,21 @@
+# Publishes Postgres, for the RLS suite only.
+#
+#   docker compose -f docker-compose.all-in-one.yml \
+#                  -f docker-compose.ci.yml \
+#                  -f docker-compose.ci-postgres-port.yml ...
+#
+# The all-in-one file deliberately does not publish 5432 — an open Postgres is
+# how self-hosted databases get found, and nothing outside that network needs
+# it. test/e2e/rls.test.ts is the exception: it connects as a real Postgres
+# client to check policies, grants and EXECUTE privileges, which is the one
+# layer PostgREST cannot answer for.
+#
+# Kept apart from docker-compose.ci.yml so the browser suite, which has no use
+# for a database socket, does not silently acquire one.
+#
+# Bound to 127.0.0.1 rather than 0.0.0.0: a CI runner is not a private machine,
+# and a service container on the same host should not reach this either.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

@@ -3,17 +3,35 @@
 #
 #   docker compose -f docker-compose.all-in-one.yml -f docker-compose.ci.yml ...
 #
-# The all-in-one file deliberately does not publish Postgres — an open 5432 is
-# how self-hosted databases get found, and nothing outside that network needs
-# it. The RLS suite is the exception: it connects as a real Postgres client to
-# check policies, grants and EXECUTE privileges, which is the one layer
-# PostgREST cannot answer for. So this overlay opens the port, on a throwaway
-# database, on an ephemeral runner, and nowhere else.
+# It repoints the Supabase images at a mirror in this repository's GHCR
+# namespace. public.ecr.aws limits anonymous pulls per source IP, and a GitHub
+# runner shares its IP with every other runner in that range — so the browser
+# suite could not fetch the images at all and skipped, over something with no
+# bearing on the commit under test.
 #
-# Bound to 127.0.0.1 rather than 0.0.0.0: a GitHub runner is not a private
-# machine, and a service container on the same host should not be able to reach
-# this either.
+# The all-in-one file people actually install with still points at upstream, and
+# a test asserts it always will: the mirror exists to get CI past a rate limit,
+# not to become a distribution channel anyone depends on.
+#
+# These packages are PUBLIC. Packages published by Actions inherit the
+# repository's visibility, and this repository is public — so mirroring upstream
+# images here re-publishes them under this account. They can be flipped to
+# private in the repository's package settings without breaking anything: both
+# jobs already authenticate with the workflow's own GITHUB_TOKEN.
+#
+# THE TAGS HERE MUST MATCH the all-in-one file exactly, or CI runs a different
+# Postgres than production does. Nothing about editing one file announces the
+# other, so `npm test` asserts they agree (test/unit/mirror-images.test.ts) and
+# .github/workflows/mirror-images.yml is what makes a new tag real. Bump a
+# version → run that workflow → update this file.
 services:
   db:
-    ports:
-      - "127.0.0.1:5432:5432"
+    image: ghcr.io/galgtonold/sojourn-mirror/postgres:17.6.1.147
+  auth:
+    image: ghcr.io/galgtonold/sojourn-mirror/gotrue:v2.190.0
+  rest:
+    image: ghcr.io/galgtonold/sojourn-mirror/postgrest:v14.13
+  storage:
+    image: ghcr.io/galgtonold/sojourn-mirror/storage-api:v1.60.20
+  kong:
+    image: ghcr.io/galgtonold/sojourn-mirror/kong:2.8.1

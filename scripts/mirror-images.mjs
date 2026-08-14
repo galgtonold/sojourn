@@ -14,9 +14,11 @@
 // seconds of backoff, `toomanyrequests` every time — which has nothing to do
 // with the commit under test and left the suite skipping.
 //
-// The mirror is private and pulled with the workflow's own GITHUB_TOKEN. It is
-// a CI convenience, not a redistribution channel: the all-in-one file that
-// people actually install with still points at upstream.
+// The mirror is pulled with the workflow's own GITHUB_TOKEN. Its packages are
+// public, because Actions-published packages inherit the repository's
+// visibility — see docker-compose.ci.yml. It is a CI convenience either way:
+// the all-in-one file people actually install with still points at upstream,
+// and test/unit/mirror-images.test.ts asserts it always will.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";

@@ -38,12 +38,22 @@ const BASE_URL = `http://localhost:${APP_PORT}`;
 /** `up` exits with this when the registry refused to serve the images. */
 export const EXIT_REGISTRY_THROTTLED = 75;
 
+// Extra `-f` overlays, comma-separated. CI passes docker-compose.ci.yml, which
+// repoints the Supabase images at a private GHCR mirror — a local run pulls
+// from upstream like everyone else, and should, since that is the path a reader
+// following the README takes.
+const OVERLAYS = (process.env.E2E_COMPOSE_OVERLAYS ?? "")
+  .split(",")
+  .map((f) => f.trim())
+  .filter(Boolean);
+
 const COMPOSE = [
   "compose",
   "-p",
   PROJECT,
   "-f",
   path.join(ROOT, "docker-compose.all-in-one.yml"),
+  ...OVERLAYS.flatMap((f) => ["-f", path.resolve(ROOT, f)]),
   "--env-file",
   ENV_FILE,
 ];
@@ -164,6 +174,39 @@ async function waitForApp() {
 }
 
 /**
+ * Wait until GoTrue answers through the gateway, not merely until its container
+ * reports healthy.
+ *
+ * Claiming the owner account is the first thing the suite does and the first
+ * thing that touches auth, and a container that has passed its healthcheck can
+ * still be slow enough on its first real request that the claim button sits on
+ * "Wird angelegt…" past the test's timeout. That happened once here, on a
+ * loaded machine, and produced a red run describing nothing.
+ *
+ * The suite retries nothing on purpose — a retried flake is an ignored flake —
+ * so readiness has to be established before it starts rather than absorbed by
+ * it afterwards.
+ */
+async function waitForAuth() {
+  const url = `${supabaseUrl()}/auth/v1/health`;
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        console.log("auth is answering through the gateway");
+        return;
+      }
+    } catch {
+      /* gateway not routing yet */
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  dumpDiagnostics();
+  throw new Error(`GoTrue did not answer on ${url} within 120s`);
+}
+
+/**
  * The stack answering is not the same as the stack working.
  *
  * `down -v` takes the volumes, so every `up` is a genuinely fresh install and
@@ -225,6 +268,7 @@ if (cmd === "env") {
   await pullWithRetry();
   run([...COMPOSE, "up", "-d", "--wait"]);
   await waitForApp();
+  await waitForAuth();
   await assertFreshInstall();
   console.log(`\nE2E_BASE_URL=${BASE_URL}`);
 } else if (cmd === "down") {

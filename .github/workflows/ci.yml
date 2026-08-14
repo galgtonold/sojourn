@@ -117,6 +117,11 @@ jobs:
   rls:
     name: row-level security · real postgres
     runs-on: ubuntu-latest
+    # The Supabase images come from this repository's private GHCR mirror; see
+    # docker-compose.ci.yml for why they are not pulled from upstream here.
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v7
 
@@ -127,6 +132,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # The same generator a real install runs, so a change that breaks it
       # breaks here too rather than in somebody's first five minutes.
@@ -139,7 +151,9 @@ jobs:
       - name: Start Postgres
         run: |
           docker compose -p sojourn-rls \
-            -f docker-compose.all-in-one.yml -f docker-compose.ci.yml \
+            -f docker-compose.all-in-one.yml \
+            -f docker-compose.ci.yml \
+            -f docker-compose.ci-postgres-port.yml \
             --env-file .env up -d --wait db storage
 
       - name: Apply migrations
@@ -176,7 +190,9 @@ jobs:
         if: always()
         run: |
           docker compose -p sojourn-rls \
-            -f docker-compose.all-in-one.yml -f docker-compose.ci.yml \
+            -f docker-compose.all-in-one.yml \
+            -f docker-compose.ci.yml \
+            -f docker-compose.ci-postgres-port.yml \
             --env-file .env down -v
 
   # ── The whole thing, through a browser ─────────────────────────────────────
@@ -194,6 +210,16 @@ jobs:
   e2e:
     name: browser journey · all-in-one stack
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      # Repoints the Supabase images at this repository's private GHCR mirror.
+      # Upstream throttles anonymous pulls per source IP and a runner shares its
+      # IP with the whole fleet, which is why this job used to skip.
+      E2E_COMPOSE_OVERLAYS: docker-compose.ci.yml
+      E2E_BASE_URL: http://localhost:3801
+      E2E_COMPOSE_PROJECT: sojourn-e2e
     steps:
       - uses: actions/checkout@v7
 
@@ -206,6 +232,13 @@ jobs:
         run: npm ci
 
       - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # amd64 only, loaded into the local daemon rather than pushed. The release
       # workflow is what builds arm64; this one only needs something to drive.
@@ -254,9 +287,6 @@ jobs:
 
       - name: Browser journey
         if: steps.stack.outputs.skipped != 'true'
-        env:
-          E2E_BASE_URL: http://localhost:3801
-          E2E_COMPOSE_PROJECT: sojourn-e2e
         run: npm run test:browser
 
       # The trace is the whole point of collecting it — a failure here is a
@@ -274,7 +304,8 @@ jobs:
       - name: Stack logs on failure
         if: failure() && steps.stack.outputs.skipped != 'true'
         run: |
-          docker compose -p sojourn-e2e -f docker-compose.all-in-one.yml \
+          docker compose -p sojourn-e2e \
+            -f docker-compose.all-in-one.yml -f docker-compose.ci.yml \
             --env-file .e2e/.env logs --tail 200 web kong auth || true
 
       - name: Tear down
