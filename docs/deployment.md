@@ -39,7 +39,7 @@ anywhere — a well-known JWT secret means anyone can mint themselves a
 Fetch the one file that describes the stack:
 
 ```bash
-curl -O -L https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 ```
 
 Open `.env.selfhost` and set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host,
@@ -223,7 +223,7 @@ Already have Supabase — hosted, or your own? Then this is one container, and i
 is happy in 1 GB. No checkout needed here either:
 
 ```bash
-curl -O -L https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.yml
+curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.yml
 ```
 
 Put your Supabase URL and keys in `.env.local` beside it (see

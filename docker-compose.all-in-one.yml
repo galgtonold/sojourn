@@ -30,7 +30,7 @@
 # now `configs:` blocks at the foot of this file, so this ONE file is the whole
 # install:
 #
-#   curl -O -L https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+#   curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 #
 # From the RELEASE rather than from main, so the file and the image it names are
 # the same version. Attached by .github/workflows/publish-image.yml.
