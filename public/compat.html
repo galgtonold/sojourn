@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sojourn — browser capability check</title>
+<!--
+  A diagnostic page, deliberately written for a browser that cannot render the
+  site: ES5 only, no build step, no Tailwind, no modules, inline styles in
+  plain hex. Anything modern in here would fail on exactly the device it exists
+  to interrogate, and report nothing.
+
+  Sojourn's styling is Tailwind v4, which builds on @property and color-mix().
+  Neither has a fallback: where they are missing, colours and spacing do not
+  merely degrade, they never resolve — so cards render unstyled or invisible.
+  Tailwind's own floor is Safari 16.4 / Chrome 111 / Firefox 128.
+-->
+<style>
+  body { background:#111; color:#eee; font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p  { color:#aaa; margin:0 0 20px; font-size:14px; }
+  table { border-collapse:collapse; width:100%; max-width:640px; }
+  td { padding:8px 10px; border-bottom:1px solid #333; vertical-align:top; }
+  td.k { color:#bbb; width:52%; }
+  .yes { color:#5ec26a; font-weight:bold; }
+  .no  { color:#ff6b5e; font-weight:bold; }
+  #ua { max-width:640px; word-break:break-all; background:#1c1c1c; padding:10px; border-radius:6px; font:12px/1.5 monospace; color:#ccc; }
+  #verdict { max-width:640px; margin:20px 0; padding:12px; border-radius:6px; font-size:14px; }
+</style>
+</head>
+<body>
+<h1>Browser capability check</h1>
+<p>Open this on the tablet that shows the error, then send back what it says.</p>
+
+<table id="t"></table>
+<div id="verdict"></div>
+<div id="ua"></div>
+
+<script>
+/* eslint-disable */
+(function () {
+  var rows = [];
+  function add(name, ok, note) { rows.push([name, ok, note || ""]); }
+
+  function supports(prop, value) {
+    try { return !!(window.CSS && CSS.supports && CSS.supports(prop, value)); }
+    catch (e) { return false; }
+  }
+
+  /* The two Tailwind v4 depends on. */
+  var colorMix = supports("color", "color-mix(in srgb, red, blue)");
+  var atProperty = !!(window.CSS && typeof CSS.registerProperty === "function");
+  var oklch = supports("color", "oklch(0.5 0.1 200)");
+
+  add("color-mix()", colorMix, "Tailwind v4 core");
+  add("@property", atProperty, "Tailwind v4 core");
+  add("oklch() colours", oklch, "");
+
+  /* What the maps need. */
+  var webgl2 = false;
+  try {
+    var c = document.createElement("canvas");
+    webgl2 = !!(c.getContext && c.getContext("webgl2"));
+  } catch (e) { webgl2 = false; }
+  add("WebGL2", webgl2, "MapLibre v6 requires it");
+
+  var moduleWorker = false;
+  try {
+    var blob = new Blob([""], { type: "text/javascript" });
+    var url = URL.createObjectURL(blob);
+    var w = new Worker(url, { type: "module" });
+    w.terminate(); URL.revokeObjectURL(url); moduleWorker = true;
+  } catch (e) { moduleWorker = false; }
+  add("Module workers", moduleWorker, "MapLibre v6 worker");
+
+  /* A few JS built-ins whose absence throws rather than degrades. */
+  add("Array.at()", typeof Array.prototype.at === "function", "");
+  add("Array.findLast()", typeof Array.prototype.findLast === "function", "");
+  add("Array.toSorted()", typeof Array.prototype.toSorted === "function", "");
+  add("Object.hasOwn()", typeof Object.hasOwn === "function", "");
+  add("structuredClone()", typeof window.structuredClone === "function", "");
+  add("Service worker", !!(navigator && navigator.serviceWorker), "");
+
+  var html = "";
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    html += '<tr><td class="k">' + r[0] + (r[2] ? ' <span style="color:#777">— ' + r[2] + "</span>" : "") +
+            '</td><td class="' + (r[1] ? "yes" : "no") + '">' + (r[1] ? "yes" : "NO") + "</td></tr>";
+  }
+  document.getElementById("t").innerHTML = html;
+
+  var v = document.getElementById("verdict");
+  if (!colorMix || !atProperty) {
+    v.style.background = "#3a1512";
+    v.innerHTML = "<strong>This browser is below Sojourn's floor.</strong><br>" +
+      "Tailwind v4 builds every colour on @property and color-mix(), with no fallback, " +
+      "so the site cannot render correctly here. Updating Android System WebView and " +
+      "Chrome from the Play Store is usually enough.";
+  } else {
+    v.style.background = "#122a16";
+    v.innerHTML = "<strong>CSS support is fine.</strong> Whatever is failing is not the stylesheet — " +
+      "send this page's results back and we'll look at the rest.";
+  }
+
+  var ua = navigator.userAgent || "(no user agent)";
+  var m = /Chrome\/(\d+)/.exec(ua);
+  document.getElementById("ua").textContent =
+    (m ? "Chrome/WebView major version: " + m[1] + "\n\n" : "") + ua;
+})();
+</script>
+</body>
+</html>
