@@ -65,10 +65,21 @@ export default function Error({
             <T k="notFound.back" />
           </Link>
         </div>
-        {/* The digest is the only handle on a specific failure in the logs, so
-            it is shown rather than hidden — quietly, for whoever asks. */}
-        {error.digest && (
-          <p className="mt-6 font-mono text-xs text-sand-100/50">{error.digest}</p>
+        {/* Something to report. The digest is a handle on a SERVER failure in
+            the logs — and it is undefined for a client-side exception, which is
+            most of what actually reaches this boundary. So a reader whose
+            browser threw saw a retry button and nothing else: no message, no
+            identifier, nothing to send anyone. With no Sentry DSN configured
+            the exception is then recorded precisely nowhere.
+
+            React does not redact client-side messages (only server ones, which
+            is what the digest replaces), and this text is already sitting in
+            that browser's console — so showing it quietly costs nothing and is
+            the difference between "it's broken on my tablet" and a name. */}
+        {(error.digest || error.message) && (
+          <p className="mx-auto mt-6 max-w-md break-words font-mono text-xs text-sand-100/50">
+            {error.digest ?? error.message}
+          </p>
         )}
       </div>
     </div>

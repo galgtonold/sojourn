@@ -103,10 +103,55 @@
       "send this page's results back and we'll look at the rest.";
   }
 
+  /* Report whichever engine is actually here. Firefox on Android is not a
+     Chrome skin — it reaches these features at completely different versions
+     (color-mix in 113, @property only in 128), so a Chrome-shaped guess about
+     it is worse than no guess. */
   var ua = navigator.userAgent || "(no user agent)";
-  var m = /Chrome\/(\d+)/.exec(ua);
-  document.getElementById("ua").textContent =
-    (m ? "Chrome/WebView major version: " + m[1] + "\n\n" : "") + ua;
+  var engines = [
+    ["Firefox", /Firefox\/(\d+)/, 128],
+    ["Chrome/WebView", /Chrome\/(\d+)/, 111],
+    ["Safari", /Version\/(\d+[.\d]*).*Safari/, 16.4]
+  ];
+  var line = "";
+  for (var j = 0; j < engines.length; j++) {
+    var hit = engines[j][1].exec(ua);
+    if (hit) {
+      line = engines[j][0] + " " + hit[1] +
+             "   (Sojourn needs " + engines[j][0] + " " + engines[j][2] + "+)\n\n";
+      break;
+    }
+  }
+  document.getElementById("ua").textContent = line + ua;
+
+  /* The maplibre worker and the chunk it imports relatively. One without the
+     other 404s in total silence — no exception, no console error, no failed
+     request in the map itself — so the map draws a basemap and never loads any
+     data. Checked here because this page is same-origin with the site.
+     XHR rather than fetch: this has to run on the browser being diagnosed. */
+  function probe(url) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td class="k">' + url + '</td><td>checking…</td>';
+    document.getElementById("t").appendChild(tr);
+    try {
+      var x = new XMLHttpRequest();
+      x.open("GET", url, true);
+      x.onreadystatechange = function () {
+        if (x.readyState !== 4) return;
+        var ok = x.status >= 200 && x.status < 300;
+        tr.cells[1].className = ok ? "yes" : "no";
+        tr.cells[1].innerHTML = ok ? "200" : "HTTP " + x.status;
+      };
+      x.send();
+    } catch (e) {
+      tr.cells[1].className = "no";
+      tr.cells[1].innerHTML = "blocked";
+    }
+  }
+  if (location.protocol.indexOf("http") === 0) {
+    probe("/maplibre/maplibre-gl-worker.mjs");
+    probe("/maplibre/maplibre-gl-shared.mjs");
+  }
 })();
 </script>
 </body>
