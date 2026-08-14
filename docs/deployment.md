@@ -58,6 +58,27 @@ docker compose up -d
 > keeps working; name them explicitly with `-f` and `--env-file`, or rename them
 > once and stop passing flags.
 
+> **A second copy needs `-p`, not just a second directory.** This file sets
+> `name: sojourn`, and Compose takes the project name from *the file* rather
+> than from the folder you are standing in. So running it somewhere else does
+> not give you a separate stack — it reconciles the one you already have,
+> against whatever `.env` is next to it. With freshly minted secrets that means
+> Postgres keeping the password from the day its volume was created while every
+> other service is handed a new one, and the stack failing on `28P01 password
+> authentication failed`.
+>
+> Nothing is lost when that happens — volumes are untouched, and pointing the
+> project back at its original `.env` restores it. But to run a genuine second
+> instance, give it its own project name and its own ports:
+>
+> ```bash
+> COMPOSE_PROJECT_NAME=sojourn-test SUPABASE_PORT=8600 SOJOURN_PORT=3600 docker compose up -d
+> ```
+>
+> `-p sojourn-test` on every command does the same thing. Both override the
+> file's `name:` — Compose ranks them higher — so no change to this file is
+> needed or would help.
+
 > **Compose ≥ 2.23 required.** The stack carries Kong's routing table and the
 > Postgres role fix as inline `configs:` rather than mounting them from a
 > checkout, which is what makes the single file sufficient. Older Compose
