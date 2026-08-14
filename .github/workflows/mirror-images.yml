@@ -1,0 +1,83 @@
+name: Mirror upstream images
+
+# CI's copy of the Supabase images, so the browser suite can actually start.
+#
+# public.ecr.aws limits anonymous pulls per source IP and a GitHub runner shares
+# its IP with every other runner in that range. The e2e job's first runs could
+# not fetch the images at all — four attempts, ninety seconds of backoff,
+# `toomanyrequests` every time — so the suite skipped for reasons that had
+# nothing to do with the commit under test.
+#
+# These packages are PRIVATE and pulled with the workflow's own GITHUB_TOKEN.
+# This is a CI convenience, not a redistribution channel: the all-in-one file
+# people install with still points at upstream, and only docker-compose.ci.yml
+# repoints anything.
+#
+# Run it manually after bumping a Supabase version — `verify` fails until the
+# overlay and the all-in-one file agree, and the mirror is what makes the
+# overlay's tags real.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monthly. The tags are pinned, so this is about the packages continuing to
+    # exist rather than about picking up anything new.
+    - cron: "0 4 1 * *"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: mirror-images
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: copy Supabase images to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # `imagetools create` copies the manifest LIST, so the mirror keeps every
+      # architecture the original published. Pulling a mirror that had been
+      # flattened to amd64 would work on a runner and fail on an arm64 laptop,
+      # which is the sort of difference that gets discovered late.
+      #
+      # The source list comes from docker-compose.all-in-one.yml, so a version
+      # bump cannot leave this mirroring the old tag.
+      - name: Copy each image
+        run: |
+          set -euo pipefail
+          node scripts/mirror-images.mjs list | while read -r src dest; do
+            echo "::group::$src -> $dest"
+            # ECR throttles anonymous reads; retry rather than lose the run.
+            for attempt in 1 2 3 4 5; do
+              if docker buildx imagetools create --tag "$dest" "$src"; then
+                echo "copied"
+                break
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error title=Mirror failed::could not copy $src after 5 attempts"
+                exit 1
+              fi
+              echo "attempt $attempt failed; waiting $((attempt * 20))s"
+              sleep $((attempt * 20))
+            done
+            echo "::endgroup::"
+          done
+
+      - name: What the mirror now holds
+        run: |
+          node scripts/mirror-images.mjs list | while read -r _src dest; do
+            docker buildx imagetools inspect "$dest" --format '{{.Name}}' || true
+          done
