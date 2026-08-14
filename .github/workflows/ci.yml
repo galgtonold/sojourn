@@ -229,10 +229,31 @@ jobs:
       - name: Teach the runner host.docker.internal
         run: echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
 
+      # public.ecr.aws throttles anonymous pulls per source IP, and a runner
+      # shares its IP with every other runner in that range — so the Supabase
+      # images sometimes cannot be fetched at all, for reasons with no bearing
+      # on the change under test. Exit 75 means exactly that, and only that: any
+      # other failure still fails the build.
+      #
+      # The skip is a WARNING in the run summary, not silence. A suite that
+      # stops running and says nothing is the failure this whole commit exists
+      # to fix — see the `rls` job above, which spent months skipping.
       - name: Start the stack
-        run: node scripts/e2e-stack.mjs up --tag e2e
+        id: stack
+        run: |
+          set +e
+          node scripts/e2e-stack.mjs up --tag e2e
+          code=$?
+          set -e
+          if [ "$code" -eq 75 ]; then
+            echo "::warning title=Browser suite did not run::public.ecr.aws throttled every pull attempt, so the all-in-one stack could not start. The journey and its invariants were NOT checked for this commit."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit $code
 
       - name: Browser journey
+        if: steps.stack.outputs.skipped != 'true'
         env:
           E2E_BASE_URL: http://localhost:3801
           E2E_COMPOSE_PROJECT: sojourn-e2e
@@ -251,7 +272,7 @@ jobs:
           retention-days: 7
 
       - name: Stack logs on failure
-        if: failure()
+        if: failure() && steps.stack.outputs.skipped != 'true'
         run: |
           docker compose -p sojourn-e2e -f docker-compose.all-in-one.yml \
             --env-file .e2e/.env logs --tail 200 web kong auth || true

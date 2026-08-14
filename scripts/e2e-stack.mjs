@@ -35,6 +35,9 @@ const APP_PORT = process.env.E2E_APP_PORT ?? "3801";
 const API_PORT = process.env.E2E_API_PORT ?? "8801";
 const BASE_URL = `http://localhost:${APP_PORT}`;
 
+/** `up` exits with this when the registry refused to serve the images. */
+export const EXIT_REGISTRY_THROTTLED = 75;
+
 const COMPOSE = [
   "compose",
   "-p",
@@ -108,13 +111,22 @@ async function pullWithRetry(attempts = 4) {
 
     const output = `${res.stdout ?? ""}${res.stderr ?? ""}`;
     const throttled = /toomanyrequests|rate exceeded|too many requests/i.test(output);
-    if (!throttled || attempt === attempts) {
+    if (!throttled) {
       process.stderr.write(output);
-      throw new Error(
-        throttled
-          ? `the registry throttled every one of ${attempts} pull attempts`
-          : "docker compose pull failed for a reason other than rate limiting",
+      throw new Error("docker compose pull failed for a reason other than rate limiting");
+    }
+    if (attempt === attempts) {
+      process.stderr.write(output);
+      console.error(
+        `\npublic.ecr.aws throttled every one of ${attempts} pull attempts.\n` +
+          `Nothing about the change under test caused this: the registry limits\n` +
+          `anonymous pulls per source IP, and a CI runner shares its IP with\n` +
+          `every other runner in that range.\n`,
       );
+      // A distinct code so a caller can tell "the registry would not serve us"
+      // from "the stack is broken" — the second must fail a build and the first
+      // must not, or the suite gets muted for something it did not do.
+      process.exit(EXIT_REGISTRY_THROTTLED);
     }
     const wait = attempt * 15;
     console.log(`registry throttled (attempt ${attempt}/${attempts}); waiting ${wait}s`);
