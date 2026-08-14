@@ -134,11 +134,8 @@ SITE_URL=http://localhost:3000
 # whatever the environment says, so putting them in this file only creates a
 # second place to look when one of them is wrong.
 #
-# Which version you run is SOJOURN_TAG, and it defaults to "latest". Pin it if
-# you would rather approve each upgrade — but then "docker compose pull" fetches
-# the pinned tag forever, so updating means editing the line first. Left unset,
-# pull-and-up is the whole update.
-# SOJOURN_TAG=0.2.1
+# Which version you run is SOJOURN_TAG, explained where it is used — at the top
+# of the compose file. It defaults to "latest" and most installs never set it.
 
 # Set this if you modify the code — AGPL §13 asks you to point your readers at
 # the source of the version they are using.

@@ -23,7 +23,13 @@
 #   SOJOURN_TAG=0.2.1 docker compose up -d
 #
 # — or put it in .env. `0.2`, `0` and `latest` each choose how much change you
-# are willing to take unattended.
+# are willing to take unattended, and each keeps updating within its range when
+# you pull.
+#
+# An EXACT pin does not: `SOJOURN_TAG=0.2.1` means `docker compose pull` fetches
+# 0.2.1 forever, so updating starts with editing that line. Which is the point
+# of pinning exactly — just know that the admin will keep reporting a newer
+# release while the update command appears to run fine and change nothing.
 #
 # Use this when you want a blog on your own machine and nothing else to think
 # about. Use the plain docker-compose.yml instead when you already have Supabase
