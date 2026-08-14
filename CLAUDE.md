@@ -45,6 +45,19 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   chunk it imports relatively — one without the other 404s just as silently).
   Diagnose by watching the worker, not the map: wrap `window.Worker`, and look for an
   empty URL and an immediate close. `test/unit/maplibre-worker.test.ts` guards both halves.
+- **Counting requests from a container log means DELTAS — `docker restart` does not
+  clear it.** Kong's access log is the only place that sees what the app asks
+  Supabase for, so it is how you measure round trips per page. Restarting the
+  container to "start fresh" does nothing: `docker logs` replays the whole
+  history of that container, so every total is cumulative. Measured that way, a
+  fix that took one page load from 45 auth calls to 1 read as 136 → 137, i.e. no
+  effect, and was reported as such — twice, once after rebuilding to add
+  diagnostics. Take `n0=$(docker logs … | grep -c …)` before and `n1` after, and
+  subtract. Run an IDLE control first: if 30 seconds of doing nothing shows the
+  same "count" as one request, the number is not measuring what you think.
+  Related: `docker compose up -d --force-recreate` on a service whose IMAGE
+  changed gives a new container and a fresh log; one whose only change is inline
+  `configs.content` does not get recreated at all (see docker-compose.all-in-one.yml).
 - **A map that looks broken locally is usually a stale `next start`, not the code.**
   Those servers hold the *old* build in memory and keep serving it, and an ISR
   revalidation on a page like `/map` **writes that stale HTML back into `.next/server/app/`**
