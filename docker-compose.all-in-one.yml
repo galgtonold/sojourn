@@ -65,10 +65,13 @@
 # So downloading a corrected version of this file and running `up -d` applies
 # nothing, silently. After replacing this file:
 #
-#   docker compose up -d --force-recreate kong db
+#   docker compose pull && docker compose up -d --force-recreate
 #
-# kong and db are the two services with configs here. Naming them keeps the app
-# and your storage container untouched; volumes are never affected either way.
+# No service names. Naming one — `--force-recreate kong` — limits `up -d` to
+# that service, so a new image is pulled and then not used: verified, the app
+# stayed on the old version while Kong updated. Recreating everything is a few
+# seconds of downtime and gets both. Volumes are untouched either way; a trip
+# written before an upgrade is still there afterwards, which is also verified.
 #
 # ── what is here, and what is deliberately not ───────────────────────────────
 #

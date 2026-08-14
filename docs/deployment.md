@@ -367,14 +367,14 @@ Schema migrations apply themselves at container start, so there is nothing
 separate to run.
 
 **When a release changes the compose file itself, that is not enough.** Download
-the new file and force the affected services to be rebuilt from it:
+the new file over your old one, then recreate from it:
 
 ```bash
-curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+curl -fLo docker-compose.yml https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 ```
 
 ```bash
-docker compose up -d --force-recreate kong db
+docker compose pull && docker compose up -d --force-recreate
 ```
 
 Why the extra flag: the stack carries Kong's routing table and the Postgres role
@@ -385,9 +385,14 @@ config still mounted. Replacing the file and running a plain `up -d` therefore
 applies nothing, silently, and the only symptom is that the bug you were fixing
 is still there.
 
-`kong` and `db` are the two services that carry configs; naming them leaves the
-app and storage containers alone. Volumes are never touched either way, so your
-posts and photographs are safe regardless.
+**Do not name a service.** `--force-recreate kong` limits `up -d` to Kong, so
+the new image is pulled and then not used — verified on a real upgrade, where
+the app sat on the old version while Kong updated correctly. Recreating
+everything costs a few seconds of downtime and gets both.
+
+Volumes are untouched either way. A trip written before an upgrade, and the
+owner account, both survive it — also verified rather than assumed, since this
+recreates the container holding your database.
 
 ## Backups
 
