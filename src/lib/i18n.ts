@@ -366,7 +366,7 @@ const en = {
     "If you deployed from your own copy rather than a fork, pull from upstream and push to your main branch instead.",
   "admin.updates.recipeDocker": "From the directory holding your compose file:",
   "admin.updates.recipeDockerNote":
-    "That updates Sojourn itself. If the release notes say the compose file changed, download it again as well and add --force-recreate — Compose does not notice when the contents of an inline config change, so it would otherwise keep the old one and tell you everything is up to date.",
+    "Running the all-in-one stack? Its file is not the default name, so add -f docker-compose.all-in-one.yml --env-file .env.selfhost to both commands. And if the release notes say the compose file itself changed, download it again and add --force-recreate kong db — Compose does not notice when the contents of an inline config change, so it would otherwise keep the old one and report that everything is up to date.",
   "admin.updates.recipeNode": "From your checkout:",
   "admin.updates.recipeNodeNote":
     "Then restart however you run it — systemd, pm2, whatever supervises the process. The build wants roughly a gigabyte of free memory; on a small VPS, build elsewhere and copy the result across.",
@@ -1231,7 +1231,7 @@ const de: Dict = {
     "Wenn du nicht von einem Fork deployst, sondern von einer eigenen Kopie: hole die Änderungen von upstream und pushe sie auf deinen main-Branch.",
   "admin.updates.recipeDocker": "Im Verzeichnis mit deiner Compose-Datei:",
   "admin.updates.recipeDockerNote":
-    "Das aktualisiert Sojourn selbst. Steht in den Release-Notes, dass sich die Compose-Datei geändert hat, lade sie ebenfalls neu herunter und ergänze --force-recreate — Compose merkt nicht, wenn sich der Inhalt eines eingebetteten Configs ändert, und würde sonst den alten behalten und melden, es sei alles aktuell.",
+    "Du betreibst den All-in-one-Stack? Dessen Datei heißt nicht wie der Standard — ergänze bei beiden Befehlen -f docker-compose.all-in-one.yml --env-file .env.selfhost. Und steht in den Release-Notes, dass sich die Compose-Datei selbst geändert hat, lade sie neu herunter und ergänze --force-recreate kong db — Compose merkt nicht, wenn sich der Inhalt eines eingebetteten Configs ändert, und würde sonst den alten behalten und melden, es sei alles aktuell.",
   "admin.updates.recipeNode": "In deinem Checkout:",
   "admin.updates.recipeNodeNote":
     "Danach den Prozess neu starten — je nachdem, womit du ihn betreibst: systemd, pm2 oder was ihn sonst überwacht. Der Build braucht rund ein Gigabyte freien Speicher; auf einem kleinen VPS baust du besser woanders und kopierst das Ergebnis herüber.",
