@@ -4,6 +4,7 @@ import {
   cachedVerification,
   rememberVerification,
   resetVerificationCache,
+  isVerificationInconclusive,
   VERIFY_TTL_MS,
   VERIFY_MAX_ENTRIES,
 } from "@/lib/session-verify";
@@ -78,6 +79,42 @@ describe("cachedVerification", () => {
     for (let i = 0; i < 23; i++) {
       expect(cachedVerification("token-a", 900)).toBe("user-1");
     }
+  });
+});
+
+describe("isVerificationInconclusive", () => {
+  // The distinction the middleware was missing entirely: Supabase reports "no
+  // user" and "could not ask" the same way, so a rate limit read as a logout.
+  // Pressing reload three times should never end a session.
+  it("treats a rate limit as unanswered, not as signed out", () => {
+    expect(isVerificationInconclusive({ status: 429 })).toBe(true);
+  });
+
+  it("treats an upstream failure as unanswered", () => {
+    expect(isVerificationInconclusive({ status: 500 })).toBe(true);
+    expect(isVerificationInconclusive({ status: 502 })).toBe(true);
+    expect(isVerificationInconclusive({ status: 503 })).toBe(true);
+  });
+
+  it("treats a request that never completed as unanswered", () => {
+    // A transport error carries no status. Reading that as "signed out" is how
+    // a flaky network becomes a logout.
+    expect(isVerificationInconclusive({})).toBe(true);
+    expect(isVerificationInconclusive({ status: undefined })).toBe(true);
+  });
+
+  it("treats a rejected token as a real answer", () => {
+    // 401/403 mean the token was seen and refused — the session genuinely is
+    // over, and the login page is the right destination. Keeping these
+    // conclusive is what stops this from becoming a way to stay signed in.
+    expect(isVerificationInconclusive({ status: 401 })).toBe(false);
+    expect(isVerificationInconclusive({ status: 403 })).toBe(false);
+    expect(isVerificationInconclusive({ status: 400 })).toBe(false);
+  });
+
+  it("is false when there was no error at all", () => {
+    expect(isVerificationInconclusive(null)).toBe(false);
+    expect(isVerificationInconclusive(undefined)).toBe(false);
   });
 });
 

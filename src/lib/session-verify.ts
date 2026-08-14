@@ -91,3 +91,28 @@ export function rememberVerification(
 export function resetVerificationCache(): void {
   store.clear();
 }
+
+/**
+ * Did the verification fail to reach an answer, as opposed to answering "no"?
+ *
+ * Supabase reports both with a null user, and treating them alike is what turns
+ * a rate limit, an outage or a dropped connection into an apparent logout: the
+ * visitor's session is perfectly good, the gate simply could not check it, and
+ * they get sent to the login page as though they had signed out. Being asked to
+ * log in again — when you are logged in — is also the one failure users read as
+ * "this software lost my session".
+ *
+ * 401/403 are real answers: the token was seen and rejected, so the session IS
+ * over and the login page is right. 429 and 5xx are not answers at all, and
+ * neither is a fetch that never completed (no status).
+ */
+export function isVerificationInconclusive(
+  error: { status?: number } | null | undefined,
+): boolean {
+  if (!error) return false;
+  const status = error.status;
+  // A transport failure carries no status. Treating that as "signed out" is how
+  // a flaky network becomes a logout.
+  if (typeof status !== "number") return true;
+  return status === 429 || status >= 500;
+}

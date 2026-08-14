@@ -9,6 +9,7 @@ import {
   hasSessionCookie,
   cachedVerification,
   rememberVerification,
+  isVerificationInconclusive,
 } from "@/lib/session-verify";
 
 // Once an install is claimed it stays claimed — there is no un-claim flow — so
@@ -100,7 +101,32 @@ export async function middleware(request: NextRequest) {
     });
     const {
       data: { user: verified },
+      error,
     } = await supabase.auth.getUser();
+
+    // "Could not check" is not "signed out". Only reachable with a session
+    // cookie present (guarded above), so this is someone who almost certainly
+    // IS signed in — and sending them to the login page would be the app
+    // discarding a session that never ended, over a rate limit or a blip.
+    //
+    // Refuse the request instead of the session: no admin content is served, so
+    // the gate is exactly as closed as it was, but the cookie survives and a
+    // reload once the cause has passed puts them straight back where they were.
+    if (isVerificationInconclusive(error)) {
+      return new NextResponse(
+        "Could not verify your session just now — your sign-in is still good. Please try again in a moment.",
+        {
+          status: 503,
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+            // Long enough for a per-minute limiter to roll over.
+            "retry-after": "60",
+            // Never let this be cached as though it were the page.
+            "cache-control": "no-store",
+          },
+        },
+      );
+    }
     userId = verified?.id ?? null;
 
     // Only a verification made against THIS token is reusable. A refresh hands
