@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
 import { getBranding, getAnalyticsProvider } from "@/lib/branding";
@@ -16,36 +15,23 @@ import { SiteAnalytics } from "@/components/site-analytics";
 import { publicConfigFromEnv, publicConfigScript } from "@/lib/public-config";
 import "./globals.css";
 
-// `latin-ext` alongside `latin` because this is a travel journal: Hokkaidō,
-// Kraków, Košice, Tromsø's neighbours. Latin Extended-A (ō ā ē ū š ž ł ő ą) is
-// NOT in the `latin` subset.
+// Fonts are declared in ./fonts.css and served from public/fonts, not fetched
+// from Google during the build. The @font-face rules there were lifted out of a
+// next/font/google build, so nothing about the typography changed — only where
+// the bytes come from. The reasoning for the subset split, which is load-bearing
+// rather than an optimisation, lives with the rules.
 //
-// Without it the browser has to source those letters from the fallback while
-// their neighbours come from Fraunces, and the mark stops riding on its base:
-// measured at 100px, `ō` came out 4px WIDER than `o`, the macron taking an
-// advance of its own and landing on the following character. That is how
-// "Hokkaidō," rendered with the macron over the comma. With the subset present
-// `ō` and `o` measure identically — one composed glyph — for every accent the
-// site is likely to meet.
-//
-// Costs nothing on pages that don't need it: next/font emits one @font-face per
-// subset with its own unicode-range, so the extended file is only fetched when
-// an extended character is actually on the page.
-const inter = Inter({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-fraunces",
-  display: "swap",
-  // Only the optical-size axis is used; SOFT/WONK were never referenced and just
-  // enlarged the variable-font payload. (Checked while chasing the macron above:
-  // this build composes accented glyphs correctly, so it is not implicated.)
-  axes: ["opsz"],
-});
+// The two Latin subsets are preloaded below because next/font is no longer here
+// to emit the link tags: every page uses both (body text and headings), so they
+// are wanted immediately rather than after the CSS has been parsed. The other
+// five files carry Greek, Cyrillic and Vietnamese and are fetched only if a page
+// actually contains those characters — that is what unicode-range is for.
+const PRELOADED_FONTS = [
+  "/fonts/inter-latin.woff2",
+  "/fonts/inter-latin-ext.woff2",
+  "/fonts/fraunces-latin.woff2",
+  "/fonts/fraunces-latin-ext.woff2",
+];
 
 export async function generateMetadata(): Promise<Metadata> {
   const { name, tagline } = await getBranding();
@@ -89,7 +75,24 @@ export default async function RootLayout({
     await Promise.all([getBranding(), getAnalyticsProvider()]);
   const brand = { tagline, heroLead, heroAccent, kicker };
   return (
-    <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang={DEFAULT_LOCALE}>
+      <head>
+        {PRELOADED_FONTS.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/woff2"
+            // Fonts are always fetched anonymously, even same-origin. Without
+            // this the preload is made with different credentials mode than the
+            // CSS request that follows, the two do not match, and the file is
+            // downloaded twice — a preload that costs bandwidth instead of
+            // saving it, and one the console warns about.
+            crossOrigin="anonymous"
+          />
+        ))}
+      </head>
       <body className="min-h-dvh antialiased">
         {/*
           The browser's Supabase URL and key, read from this server's own

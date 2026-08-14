@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Defines --font-inter and --font-fraunces, from files in this repository
+   rather than from Google at build time. See fonts.css for why. */
+@import "./fonts.css";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 @theme {

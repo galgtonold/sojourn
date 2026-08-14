@@ -45,3 +45,8 @@ Sojourn bundles other people's work — MapLibre GL JS, React, Next.js and some
 `npm run notices` after changing dependencies; a test fails if it drifts.
 
 The Docker image additionally embeds LGPL-3.0 libvips by way of `sharp`.
+
+**Fonts.** Inter and Fraunces are redistributed in `public/fonts/`, unmodified,
+under the SIL Open Font License 1.1 — their licence texts sit beside them, which
+is what the OFL asks. They are vendored rather than fetched so that building
+Sojourn needs no network: see `public/fonts/README.txt`.

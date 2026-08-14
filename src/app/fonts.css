@@ -1,0 +1,153 @@
+/* Inter and Fraunces, served from this repository rather than fetched from
+ * Google at build time.
+ *
+ * next/font/google downloads these during `next build`, which makes every build
+ * — including `docker compose up -d --build` on someone else's machine, and the
+ * arm64 half of the release image — depend on fonts.googleapis.com being
+ * reachable. It is not, behind some firewalls and in some countries, and one
+ * release build has already failed on exactly that: "Failed to fetch `Inter`
+ * from Google Fonts" after ten minutes under QEMU. For a project whose pitch is
+ * portability, a build that needs Google is a contradiction.
+ *
+ * These rules and the files beside them were lifted verbatim out of a build made
+ * with next/font/google, so subsets, unicode-ranges and the fallback metric
+ * overrides are identical to what shipped before. Nothing here is hand-written.
+ *
+ * DO NOT collapse the subsets into one file, and do not drop latin-ext. The
+ * split looks like a size optimisation and is also a correctness requirement.
+ *
+ * This is a travel journal: Hokkaidō, Kraków, Košice, Tromsø. Latin Extended-A
+ * (ō ā ē ū š ž ł ő ą) is NOT in the `latin` subset. Without latin-ext present,
+ * the browser sources those letters from the fallback while their neighbours
+ * come from Fraunces, and the mark stops riding on its base: measured at 100px,
+ * `ō` came out 4px WIDER than `o`, the macron taking an advance of its own and
+ * landing on the following character. That is how "Hokkaidō," once rendered
+ * with the macron over the comma. With the subset present, `ō` and `o` measure
+ * identically — one composed glyph.
+ *
+ * It costs nothing on pages that do not need it: one @font-face per subset,
+ * each with its own unicode-range, so a file is fetched only when a character
+ * from its range is actually on the page. That is why Greek, Cyrillic and
+ * Vietnamese can sit here without being downloaded by anyone reading German.
+ *
+ * Fraunces carries only the optical-size axis; SOFT and WONK were never
+ * referenced and just enlarged the payload. (Checked while chasing the macron:
+ * this build composes accented glyphs correctly, so the axes are not implicated.)
+ *
+ * To update: temporarily restore the next/font/google imports in layout.tsx,
+ * run `npm run build`, and re-extract from .next/static/{css,media}. Both
+ * families are OFL-1.1; the licence travels with them in public/fonts/.
+ */
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.woff2") format("woff2");
+  unicode-range: u+00??,u+0131,u+0152-0153,u+02bb-02bc,u+02c6,u+02da,u+02dc,u+0304,u+0308,u+0329,u+2000-206f,u+20ac,u+2122,u+2191,u+2193,u+2212,u+2215,u+feff,u+fffd;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-ext.woff2") format("woff2");
+  unicode-range: u+0100-02ba,u+02bd-02c5,u+02c7-02cc,u+02ce-02d7,u+02dd-02ff,u+0304,u+0308,u+0329,u+1d00-1dbf,u+1e00-1e9f,u+1ef2-1eff,u+2020,u+20a0-20ab,u+20ad-20c0,u+2113,u+2c60-2c7f,u+a720-a7ff;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/fraunces-vietnamese.woff2") format("woff2");
+  unicode-range: u+0102-0103,u+0110-0111,u+0128-0129,u+0168-0169,u+01a0-01a1,u+01af-01b0,u+0300-0301,u+0303-0304,u+0308-0309,u+0323,u+0329,u+1ea0-1ef9,u+20ab;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: u+00??,u+0131,u+0152-0153,u+02bb-02bc,u+02c6,u+02da,u+02dc,u+0304,u+0308,u+0329,u+2000-206f,u+20ac,u+2122,u+2191,u+2193,u+2212,u+2215,u+feff,u+fffd;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: u+0100-02ba,u+02bd-02c5,u+02c7-02cc,u+02ce-02d7,u+02dd-02ff,u+0304,u+0308,u+0329,u+1d00-1dbf,u+1e00-1e9f,u+1ef2-1eff,u+2020,u+20a0-20ab,u+20ad-20c0,u+2113,u+2c60-2c7f,u+a720-a7ff;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-vietnamese.woff2") format("woff2");
+  unicode-range: u+0102-0103,u+0110-0111,u+0128-0129,u+0168-0169,u+01a0-01a1,u+01af-01b0,u+0300-0301,u+0303-0304,u+0308-0309,u+0323,u+0329,u+1ea0-1ef9,u+20ab;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-greek.woff2") format("woff2");
+  unicode-range: u+0370-0377,u+037a-037f,u+0384-038a,u+038c,u+038e-03a1,u+03a3-03ff;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-greek-ext.woff2") format("woff2");
+  unicode-range: u+1f??;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-cyrillic.woff2") format("woff2");
+  unicode-range: u+0301,u+0400-045f,u+0490-0491,u+04b0-04b1,u+2116;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-cyrillic-ext.woff2") format("woff2");
+  unicode-range: u+0460-052f,u+1c80-1c8a,u+20b4,u+2de0-2dff,u+a640-a69f,u+fe2e-fe2f;
+}
+
+@font-face {
+  font-family: Inter Fallback;
+  src:local("Arial");
+  ascent-override:90.44%;
+  descent-override:22.52%;
+  line-gap-override:0.00%;
+  size-adjust:107.12%;
+}
+
+@font-face {
+  font-family: Fraunces Fallback;
+  src:local("Times New Roman");
+  ascent-override:84.71%;
+  descent-override:22.09%;
+  line-gap-override:0.00%;
+  size-adjust:115.45%;
+}
+
+:root {
+  --font-inter: "Inter", "Inter Fallback";
+  --font-fraunces: "Fraunces", "Fraunces Fallback";
+}
