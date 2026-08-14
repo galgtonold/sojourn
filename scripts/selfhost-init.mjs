@@ -122,13 +122,23 @@ SUPABASE_SERVICE_KEY=${env.SUPABASE_SERVICE_KEY}
 # start-up, but it will not stop you.
 SUPABASE_PUBLIC_URL=http://host.docker.internal:8000
 
-# Where readers reach Sojourn itself.
+# Where readers reach Sojourn itself. GoTrue is handed this at start-up as the
+# allowed redirect target, so it lives here rather than in the admin.
 SITE_URL=http://localhost:3000
-SITE_NAME=Sojourn
 
-# Optional. Drafting, proofreading and translation need this; everything else
-# works without it.
-# DEEPSEEK_API_KEY=
+# ── things that do NOT belong here ───────────────────────────────────────────
+#
+# The site's name and tagline, and the AI provider keys, are settings rather
+# than infrastructure: set them at /admin/settings, where a change takes effect
+# without restarting anything. Both are stored in the database and OVERRIDE
+# whatever the environment says, so putting them in this file only creates a
+# second place to look when one of them is wrong.
+#
+# Which version you run is SOJOURN_TAG, and it defaults to "latest". Pin it if
+# you would rather approve each upgrade — but then "docker compose pull" fetches
+# the pinned tag forever, so updating means editing the line first. Left unset,
+# pull-and-up is the whole update.
+# SOJOURN_TAG=0.2.1
 
 # Set this if you modify the code — AGPL §13 asks you to point your readers at
 # the source of the version they are using.
