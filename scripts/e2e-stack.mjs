@@ -83,6 +83,45 @@ function writeEnv(tag) {
   console.log(`wrote ${path.relative(ROOT, ENV_FILE)} (ports ${APP_PORT}/${API_PORT}, tag ${tag})`);
 }
 
+/**
+ * Pull the Supabase images before `up`, retrying the rate limit.
+ *
+ * They come from public.ecr.aws, which throttles anonymous pulls per source IP
+ * — and a GitHub runner shares its IP with every other runner in that range, so
+ * `toomanyrequests: Rate exceeded` arrives with no warning and no relation to
+ * anything in the change being tested. `up --wait` reports it as a failed stack
+ * start, which reads like a broken compose file.
+ *
+ * Separated from `up` so the retry can be about the pull alone: a genuine
+ * compose error still fails immediately rather than being retried four times.
+ */
+async function pullWithRetry(attempts = 4) {
+  // Named services, not everything: `web` is built locally and tagged into the
+  // daemon, so it exists in no registry and pulling it fails every time.
+  const upstream = ["db", "auth", "rest", "storage", "kong"];
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const res = spawnSync("docker", [...COMPOSE, "pull", "--quiet", ...upstream], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    if (res.status === 0) return;
+
+    const output = `${res.stdout ?? ""}${res.stderr ?? ""}`;
+    const throttled = /toomanyrequests|rate exceeded|too many requests/i.test(output);
+    if (!throttled || attempt === attempts) {
+      process.stderr.write(output);
+      throw new Error(
+        throttled
+          ? `the registry throttled every one of ${attempts} pull attempts`
+          : "docker compose pull failed for a reason other than rate limiting",
+      );
+    }
+    const wait = attempt * 15;
+    console.log(`registry throttled (attempt ${attempt}/${attempts}); waiting ${wait}s`);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+  }
+}
+
 function dumpDiagnostics() {
   spawnSync("docker", [...COMPOSE, "ps"], { stdio: "inherit", cwd: ROOT });
   spawnSync("docker", [...COMPOSE, "logs", "--tail", "80", "web"], {
@@ -171,6 +210,7 @@ if (cmd === "env") {
   const tagArg = process.argv.indexOf("--tag");
   const tag = tagArg > -1 ? process.argv[tagArg + 1] : (process.env.SOJOURN_TAG ?? "latest");
   writeEnv(tag);
+  await pullWithRetry();
   run([...COMPOSE, "up", "-d", "--wait"]);
   await waitForApp();
   await assertFreshInstall();
