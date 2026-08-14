@@ -113,6 +113,12 @@ step:
 docker compose pull && docker compose up -d
 ```
 
+> **When the release notes say the compose file changed**, download it again and
+> add `--force-recreate`. Compose compares a config by reference and not by
+> content, so a replaced compose file leaves the old settings mounted while
+> reporting that everything is up to date. See
+> [Upgrading](docs/deployment.md#upgrading).
+
 Pin how much change you take unattended with `SOJOURN_TAG` — `0.2.1`, `0.2`, `v0`
 or the default `latest`. Sojourn also tells you when a release is out, under
 **Settings → Updates**.

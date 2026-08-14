@@ -43,11 +43,29 @@ describe("the recipe for each host", () => {
     expect(updateRecipe("node").command).toContain("npm run build");
   });
 
-  it("does not promise `docker compose pull` before images exist", () => {
-    // docker-compose.yml still builds from source; there is nothing published
-    // to pull. Saying otherwise sends people to an empty registry.
-    expect(updateRecipe("docker").command).not.toContain("compose pull");
-    expect(updateRecipe("docker").command).toContain("--build");
+  it("pulls the published image rather than rebuilding it", () => {
+    // Inverted deliberately. This used to assert the opposite — no `compose
+    // pull` — and was right at the time: docker-compose.yml built from source
+    // because nothing was published, so promising a pull sent people to an
+    // empty registry. GHCR now carries :latest and :X.Y.Z, and the old recipe
+    // had become actively wrong twice over: `git pull` assumes a checkout that
+    // self-hosting no longer needs, and `--build` recompiles Next on the
+    // operator's own box to arrive at the image they could have downloaded.
+    const command = updateRecipe("docker").command ?? "";
+    expect(command).toContain("docker compose pull");
+    expect(command).not.toContain("--build");
+    expect(command).not.toContain("git pull");
+  });
+
+  it("warns that a changed compose file needs --force-recreate", () => {
+    // Compose compares a config by reference, not by content, so replacing the
+    // compose file and running `up -d` leaves the old config mounted and prints
+    // "Running". Verified: same container id before and after. Without this
+    // note an operator follows the page, sees success, and is still broken.
+    const note = updateRecipe("docker").note;
+    expect(note).toBeTruthy();
+    expect(dictionaries.en[note!]).toContain("--force-recreate");
+    expect(dictionaries.de[note!]).toContain("--force-recreate");
   });
 
   it("uses copy that exists in both languages", () => {

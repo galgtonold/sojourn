@@ -50,17 +50,19 @@ const RECIPES: Record<HostKind, UpdateRecipe> = {
     command: null,
     note: "admin.updates.recipeVercelNote",
   },
-  // `--build` rather than `pull`, because docker-compose.yml still builds from
-  // source: there are no published images yet. When GHCR images ship with
-  // :latest and :vX.Y.Z this becomes `docker compose pull && docker compose up
-  // -d`, which is the shorter and better gesture — but promising it before the
-  // images exist would send people to a registry with nothing in it.
+  // This used to be `git pull && docker compose up -d --build`, from when
+  // docker-compose.yml built from source because nothing was published. GHCR
+  // now carries :latest and :X.Y.Z, so the gesture is a pull — and the old one
+  // was worse than merely long: it assumed a checkout, which self-hosting has
+  // not needed since the stack stopped bind-mounting its config, and it
+  // recompiled Next on the operator's box to arrive at the image they could
+  // have downloaded.
   docker: {
     host: "docker",
     label: "admin.updates.hostDocker",
     intro: "admin.updates.recipeDocker",
-    command: "git pull && docker compose up -d --build",
-    note: null,
+    command: "docker compose pull && docker compose up -d",
+    note: "admin.updates.recipeDockerNote",
   },
   // The honest worst case, and the reason there is no button: this rebuild is
   // memory-hungry, takes the site down while it runs, and leaves no way back if

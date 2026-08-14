@@ -46,6 +46,22 @@
 # Requires Compose ≥ 2.23 for `configs.content`. Anything older reports
 # "services.db.configs.0 additional property content is not allowed".
 #
+# ── UPGRADING: a new copy of this file needs --force-recreate ────────────────
+#
+# Compose does not notice when the CONTENT of a config changes. It compares the
+# reference — name, target, mode — decides the service is unchanged, prints
+# "Running", and leaves the old container with the old config mounted. Verified:
+# edit `content`, `up -d`, and the container id is identical.
+#
+# So downloading a corrected version of this file and running `up -d` applies
+# nothing, silently. After replacing this file:
+#
+#   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost \
+#     up -d --force-recreate kong db
+#
+# kong and db are the two services with configs here. Naming them keeps the app
+# and your storage container untouched; volumes are never affected either way.
+#
 # ── what is here, and what is deliberately not ───────────────────────────────
 #
 # Five services, ~800 MB: Postgres, Kong, PostgREST, GoTrue, storage-api. What a

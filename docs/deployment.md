@@ -346,6 +346,40 @@ before. Note this bounds neglect, not a determined attacker: someone who reaches
 deployment, claim the install immediately and keep it off a public domain until
 you have.
 
+## Upgrading
+
+Updating the app is a pull:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Schema migrations apply themselves at container start, so there is nothing
+separate to run.
+
+**When a release changes the compose file itself, that is not enough.** Download
+the new file and force the affected services to be rebuilt from it:
+
+```bash
+curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+```
+
+```bash
+docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d --force-recreate kong db
+```
+
+Why the extra flag: the stack carries Kong's routing table and the Postgres role
+fix as inline `configs:`, and **Compose does not notice when the content of a
+config changes**. It compares the reference — name, target, mode — decides the
+service is unchanged, prints `Running`, and leaves the container with the old
+config still mounted. Replacing the file and running a plain `up -d` therefore
+applies nothing, silently, and the only symptom is that the bug you were fixing
+is still there.
+
+`kong` and `db` are the two services that carry configs; naming them leaves the
+app and storage containers alone. Volumes are never touched either way, so your
+posts and photographs are safe regardless.
+
 ## Backups
 
 Two commands. Both halves travel together, because a database dump without the
