@@ -1,6 +1,6 @@
 {
   "name": "sojourn",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Sojourn — a bold, immersive travel journal. Next.js + Supabase, Docker-portable.",
   "license": "AGPL-3.0-only",
