@@ -3,7 +3,7 @@
 //
 // Mint the secrets an all-in-one deployment needs, once.
 //
-//   node scripts/selfhost-init.mjs [--force]     # writes ./.env.selfhost, 0600
+//   node scripts/selfhost-init.mjs [--force]     # writes ./.env, 0600
 //   node scripts/selfhost-init.mjs --stdout      # writes it to stdout instead
 //
 // `--stdout` exists so this can be run straight out of the published image,
@@ -11,7 +11,7 @@
 // with cloning a repository whose source you never need.
 //
 //   docker run --rm ghcr.io/galgtonold/sojourn:latest \
-//     node scripts/selfhost-init.mjs --stdout > .env.selfhost
+//     node scripts/selfhost-init.mjs --stdout > .env
 //
 // Progress and warnings go to stderr, so a redirect of stdout captures exactly
 // the file and nothing else.
@@ -28,7 +28,14 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 
-const OUT = ".env.selfhost";
+// `.env`, because Compose reads that one without being told. The whole install
+// is then `docker compose up -d` with no flags — and, more to the point, the
+// UPDATE is the same short command the admin's Updates page prints, rather than
+// something an operator has to reconstruct from two remembered filenames.
+//
+// Older installs use `.env.selfhost` and keep working: pass it explicitly with
+// `--env-file .env.selfhost`. Nothing here rewrites an existing file.
+const OUT = ".env";
 
 /** URL-safe base64 with the padding stripped, which is what JWT wants. */
 function b64url(input) {
@@ -134,7 +141,7 @@ SITE_NAME=Sojourn
 const say = (msg) => console.error(`sojourn/init  ${msg}`);
 const step = (n, msg) => console.error(`sojourn/init    ${n}. ${msg}`);
 
-const UP = `docker compose -f docker-compose.all-in-one.yml --env-file ${OUT} up -d`;
+const UP = "docker compose up -d";
 
 if (toStdout) {
   process.stdout.write(file);

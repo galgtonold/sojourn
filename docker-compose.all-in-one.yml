@@ -1,8 +1,16 @@
 # Sojourn plus everything it needs — one command, one host, no accounts.
 #
 #   docker run --rm ghcr.io/galgtonold/sojourn:latest \
-#     node scripts/selfhost-init.mjs --stdout > .env.selfhost
-#   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
+#     node scripts/selfhost-init.mjs --stdout > .env
+#   curl -fLo docker-compose.yml <the release URL below>
+#   docker compose up -d
+#
+# Saved as docker-compose.yml, with the secrets in .env — the two names Compose
+# looks for on its own — so neither installing nor updating needs a flag. That
+# matters most at update time: the admin's Updates page prints the short
+# command, and nobody should have to reconstruct it from filenames they chose
+# months ago. An install using the older docker-compose.all-in-one.yml and
+# .env.selfhost keeps working; name them with -f and --env-file.
 #
 # Any image tag will do for the first command — it mints random keys and reads
 # nothing from the version it runs in.
@@ -12,10 +20,10 @@
 # pin the app to that release: the file is the one that was tested against that
 # version, which is not the same promise. To pin, set it —
 #
-#   SOJOURN_TAG=0.2.0 docker compose -f … up -d
+#   SOJOURN_TAG=0.2.1 docker compose up -d
 #
-# — or put it in .env.selfhost. `0.2`, `0` and `latest` each choose how much
-# change you are willing to take unattended.
+# — or put it in .env. `0.2`, `0` and `latest` each choose how much change you
+# are willing to take unattended.
 #
 # Use this when you want a blog on your own machine and nothing else to think
 # about. Use the plain docker-compose.yml instead when you already have Supabase
@@ -30,7 +38,8 @@
 # now `configs:` blocks at the foot of this file, so this ONE file is the whole
 # install:
 #
-#   curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+#   curl -fLo docker-compose.yml \
+#     https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 #
 # From the RELEASE rather than from main, so the file and the image it names are
 # the same version. Attached by .github/workflows/publish-image.yml.
@@ -56,8 +65,7 @@
 # So downloading a corrected version of this file and running `up -d` applies
 # nothing, silently. After replacing this file:
 #
-#   docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost \
-#     up -d --force-recreate kong db
+#   docker compose up -d --force-recreate kong db
 #
 # kong and db are the two services with configs here. Naming them keeps the app
 # and your storage container untouched; volumes are never affected either way.

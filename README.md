@@ -61,25 +61,27 @@ There are three ways to run it. They differ only in who looks after the database
 | **[Vercel + hosted Supabase](docs/deployment.md#vercel)** | you'd rather not run a server at all | two free-tier accounts, a deploy button |
 | **[Docker + your own Supabase](docs/deployment.md#docker--vps)** | you already have a Postgres/Supabase you like | one container, ~1 GB of RAM |
 
-The shortest of the three, in full — no checkout, just Docker. Mint this
-instance's secrets:
+The shortest of the three, in full — no checkout, just Docker. Make a directory
+for it, then mint this instance's secrets:
 
 ```bash
-docker run --rm ghcr.io/galgtonold/sojourn:latest node scripts/selfhost-init.mjs --stdout > .env.selfhost && chmod 600 .env.selfhost
+docker run --rm ghcr.io/galgtonold/sojourn:latest node scripts/selfhost-init.mjs --stdout > .env && chmod 600 .env
 ```
 
 Fetch the one file that describes the stack:
 
 ```bash
-curl -fLO https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
+curl -fLo docker-compose.yml https://github.com/galgtonold/sojourn/releases/latest/download/docker-compose.all-in-one.yml
 ```
 
-Open `.env.selfhost`, set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host,
-then:
+Open `.env`, set `SUPABASE_PUBLIC_URL` and `SITE_URL` for your host, then:
 
 ```bash
-docker compose -f docker-compose.all-in-one.yml --env-file .env.selfhost up -d
+docker compose up -d
 ```
+
+Both files use the names Compose looks for on its own, so there are no `-f` or
+`--env-file` flags to remember here or when you update.
 
 Six containers come up in order, the schema is created from nothing, and
 `/admin` offers to create your owner account. **[Full instructions, and the two
