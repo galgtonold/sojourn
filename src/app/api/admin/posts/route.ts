@@ -7,7 +7,8 @@ import { notifyViewers } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 import { env } from "@/lib/env";
 import { randomUUID } from "node:crypto";
-import { slugify } from "@/lib/utils";
+import { resolveSlug } from "@/lib/slug";
+import { PLACEHOLDER_SLUG_PREFIXES } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { triggerPostTranslation } from "@/lib/ai/translate";
 
@@ -70,10 +71,13 @@ export async function POST(req: Request) {
 
   // Allow a titleless draft (the "instant draft" create flow): fall back to a
   // unique placeholder slug so the not-null/unique constraint holds. The editor
-  // re-derives the slug from the real title on first save (see post-editor).
+  // re-derives the slug from the real title on first save (see post-workspace).
   const title = p.title ?? "";
-  const slug =
-    p.slug || slugify(title) || `entwurf-${randomUUID().slice(0, 8)}`;
+  const slug = resolveSlug(
+    p.slug,
+    title,
+    `${PLACEHOLDER_SLUG_PREFIXES[0]}${randomUUID().slice(0, 8)}`,
+  );
 
   const { data, error } = await supabase
     .from("posts")

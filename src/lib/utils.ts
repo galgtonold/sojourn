@@ -6,15 +6,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** A URL-safe slug from arbitrary text. */
-export function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "")
-    .slice(0, 80);
+/**
+ * Prefixes the API routes use when minting a slug for a record whose title is
+ * not usable yet — a titleless "instant draft", or a title with no
+ * transliterable content at all. `slug` is `not null unique` on both tables, so
+ * something has to go in the column; these are that something.
+ *
+ * They are placeholders, not choices, and the next save re-derives a real slug
+ * from the title. The editor has to be able to tell the two apart, which is why
+ * this lives in `utils` (client-safe) rather than next to `slugify` in
+ * `@/lib/slug` (which carries a transliteration table far too large to ship to
+ * the browser).
+ */
+export const PLACEHOLDER_SLUG_PREFIXES = ["entwurf-", "reise-"] as const;
+
+export function isPlaceholderSlug(slug: string | null | undefined): boolean {
+  return (
+    !!slug && PLACEHOLDER_SLUG_PREFIXES.some((prefix) => slug.startsWith(prefix))
+  );
 }
 
 /** Human date like "12 May 2026". */

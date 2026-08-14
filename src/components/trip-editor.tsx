@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Trash2 } from "lucide-react";
-import { slugify } from "@/lib/utils";
 import { useBeforeUnload } from "@/lib/use-before-unload";
 import { ImageUploader } from "@/components/image-uploader";
 import { AiContextRefiner } from "@/components/ai-context-refiner";
@@ -57,8 +56,10 @@ export function TripEditor({
     setBusy(true);
     setError(null);
     const payload = {
+      // Slug derivation is the server's job — it pulls in a transliteration
+      // table far too large to ship to the browser. Send what the author typed
+      // (or ""), and the route derives the rest.
       ...trip,
-      slug: trip.slug || slugify(trip.title),
       start_date: trip.start_date || null,
       end_date: trip.end_date || null,
     };

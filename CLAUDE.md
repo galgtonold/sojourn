@@ -103,6 +103,25 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   `humanError()` maps a 504's non-JSON body to the *generic* "try again" message,
   not the network one — so the UI actively misleads you. Any route running an
   8000-token call carries `maxDuration = 180`.
+- **NFKD is not transliteration, and the letters it misses are the ones a travel
+  journal needs.** `normalize("NFKD")` only decomposes characters Unicode defines
+  a decomposition for. Stroked and ligature letters have none — Danish treats `ø`
+  as its own letter, not an `o` wearing a mark — so `ø æ ß þ ð đ ł` fell through
+  to the `[^a-z0-9]` bucket and became hyphens: `Ærøskøbing` → `r-sk-bing`,
+  `Straße` → `stra-e`, `Tromsø` → `troms`. It looks like it works because the
+  accented cases it *does* handle (`ü`, `ó`, `ō`) are the ones you test with.
+  `slugify` lives in `@/lib/slug` and uses `transliteration`; it is **not** in
+  `utils.ts`, because that is imported by client components for `cn()` and the
+  table is ~190KB. The admin editors send the slug the author typed (or `""`)
+  and let the route derive the rest — check `grep -rl transliteration .next/static/`
+  comes back empty after touching this. Two traps inside the fix: lowercasing
+  before transliterating "fixes" `ẞ` and breaks 58 phonetic letters the table
+  keys on their uppercase form (rescue per character instead, only where the
+  first pass produced nothing); and `slugify` legitimately returns `""`, which
+  satisfies `not null` — so every caller needs a fallback or the first such
+  record takes a dead URL and the second 500s on the unique index.
+  `test/unit/slug.test.ts` sweeps every Latin Unicode block so a regression
+  fails there instead of in somebody's URL.
 - **Tailwind v4 `space-y-*` beats per-child `mt-*`.** Its generated selector has higher
   specificity, so a heading's own `mt-10` is silently overridden, leaving headings flush
   with body text. Own block rhythm on the container with sibling selectors

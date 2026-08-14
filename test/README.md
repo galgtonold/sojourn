@@ -24,7 +24,8 @@ not spread evenly.
 
 - `unit/` — pure + lightly-faked logic. The poll/quiz parser + validator
   (`interactions-parse`), body rendering split (`rich`), prompt/dossier builders,
-  cost estimation, loose JSON parsing, `utils` (slugify/optimizedSrc/…), `gpx`
+  cost estimation, loose JSON parsing, `utils` (optimizedSrc/readingTime/…),
+  `slug` (transliteration + a sweep of every Latin Unicode block), `gpx`
   maths, `i18n` translation, and the data layer's demo fallback + hydration
   (`content`). The I/O chokepoints — `deepseekChat`, `reverseGeocode`,
   `recordUsage`, `getViewer` — are tested with `fetch`/Supabase faked.

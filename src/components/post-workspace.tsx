@@ -12,7 +12,7 @@ import {
   SpellCheck,
   Trash2,
 } from "lucide-react";
-import { slugify } from "@/lib/utils";
+import { isPlaceholderSlug } from "@/lib/utils";
 import { useBeforeUnload } from "@/lib/use-before-unload";
 import { useT } from "@/components/i18n";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -164,11 +164,12 @@ export function PostWorkspace({
     setBusy(true);
     setError(null);
     const payload = {
+      // Slug derivation is the server's job — it pulls in a transliteration
+      // table far too large to ship to the browser. Send "" for a slug the
+      // server itself minted as a placeholder, which is its signal to re-derive
+      // from the title; anything else is the author's own choice, so keep it.
       ...current,
-      slug:
-        current.slug && !current.slug.startsWith("entwurf-")
-          ? current.slug
-          : slugify(current.title),
+      slug: isPlaceholderSlug(current.slug) ? "" : current.slug,
       trip_id: current.trip_id || null,
       lat: current.lat ? Number(current.lat) : null,
       lng: current.lng ? Number(current.lng) : null,

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { slugify } from "@/lib/utils";
-import { triggerTripTranslation } from "@/lib/ai/translate";
+import { resolveSlug } from "@/lib/slug";
+import { triggerTripTranslation } from "@/lib/ai/translate";
 
 // Translation runs in-process when no Edge Function is configured (see
 // @/lib/ai/translate), scheduled with `after()` — so the model calls are billed
@@ -62,13 +62,14 @@ export async function PUT(
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const t = parsed.data;
-  const slug = t.slug || slugify(t.title);
 
   const { data: existing } = await supabase
     .from("trips")
     .select("slug")
     .eq("id", id)
     .maybeSingle();
+
+  const slug = resolveSlug(t.slug, t.title, existing?.slug, id);
 
   const { data: updated, error } = await supabase
     .from("trips")

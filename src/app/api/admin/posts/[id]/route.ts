@@ -5,10 +5,10 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 import { env } from "@/lib/env";
-import { slugify } from "@/lib/utils";
+import { resolveSlug } from "@/lib/slug";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { embedPostRecord } from "@/lib/ai/embed-records";
-import { triggerPostTranslation } from "@/lib/ai/translate";
+import { triggerPostTranslation } from "@/lib/ai/translate";
 import { photoPathsForPost, removePhotoObjects } from "@/lib/photo-objects";
 
 // Translation runs in-process when no Edge Function is configured (see
@@ -89,7 +89,7 @@ export async function PUT(
     .maybeSingle();
 
   const title = p.title ?? "";
-  const slug = p.slug || slugify(title) || existing?.slug || id;
+  const slug = resolveSlug(p.slug, title, existing?.slug, id);
 
   // Materialise inline :::poll / :::quiz blocks the author typed by hand.
   const body = p.body

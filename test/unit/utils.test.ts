@@ -1,27 +1,29 @@
 import { describe, it, expect } from "vitest";
 import {
   cn,
-  slugify,
   formatDate,
+  isPlaceholderSlug,
   optimizedSrc,
   readingTime,
 } from "@/lib/utils";
 
-describe("slugify", () => {
-  it("lowercases and hyphenates", () => {
-    expect(slugify("Hello, World!")).toBe("hello-world");
+// slugify moved to @/lib/slug — see test/unit/slug.test.ts.
+
+describe("isPlaceholderSlug", () => {
+  it("recognises slugs the API minted", () => {
+    expect(isPlaceholderSlug("entwurf-a1b2c3d4")).toBe(true);
+    expect(isPlaceholderSlug("reise-a1b2c3d4")).toBe(true);
   });
-  it("strips diacritics", () => {
-    expect(slugify("Über die Pässe")).toBe("uber-die-passe");
+  it("leaves an author's own slug alone", () => {
+    expect(isPlaceholderSlug("lofoten-im-winterlicht")).toBe(false);
+    // A real title that merely starts with the same word is not a placeholder:
+    // the mint always appends a hyphen and a hex suffix.
+    expect(isPlaceholderSlug("reisetagebuch")).toBe(false);
   });
-  it("trims leading/trailing separators", () => {
-    expect(slugify("  --Hi there--  ")).toBe("hi-there");
-  });
-  it("caps length at 80 chars", () => {
-    expect(slugify("a".repeat(200)).length).toBeLessThanOrEqual(80);
-  });
-  it("returns empty string for punctuation-only input", () => {
-    expect(slugify("!!!")).toBe("");
+  it("treats empty and missing as not-a-placeholder", () => {
+    expect(isPlaceholderSlug("")).toBe(false);
+    expect(isPlaceholderSlug(null)).toBe(false);
+    expect(isPlaceholderSlug(undefined)).toBe(false);
   });
 });
 
