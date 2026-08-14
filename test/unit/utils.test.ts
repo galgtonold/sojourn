@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   cn,
   formatDate,
@@ -54,6 +54,36 @@ describe("optimizedSrc", () => {
     expect(s).toContain("url=http%3A%2F%2Fx%2Fa%20b.jpg");
     expect(s).toContain("q=60");
     expect(s).toContain("w=640");
+  });
+});
+
+// The published Docker image is built without knowing the operator's Supabase,
+// so next.config sets images.unoptimized — and /_next/image then answers 404
+// for every remote URL. These two functions build that URL by hand, so the
+// switch has to reach them or a self-hosted instance loses its thumbnails and
+// its share cards to a console 404 and nothing else.
+describe("images on a build with no optimizer", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_IMAGES_UNOPTIMIZED", "1");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("optimizedSrc hands back the original URL", async () => {
+    const { optimizedSrc: raw } = await import("@/lib/utils");
+    expect(raw("https://sb.example/storage/a.jpg", 640, 60)).toBe(
+      "https://sb.example/storage/a.jpg",
+    );
+  });
+
+  it("shareImage stays absolute instead of gluing itself to the site URL", async () => {
+    const { shareImage: raw } = await import("@/lib/utils");
+    expect(raw("https://sb.example/storage/a.jpg", "https://journal.example")).toBe(
+      "https://sb.example/storage/a.jpg",
+    );
   });
 });
 

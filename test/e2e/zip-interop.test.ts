@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,6 +20,13 @@ function hasPython(): boolean {
     return false;
   }
 }
+
+// Spawning a cold interpreter is not 5ms of work, and Vitest's default 5s
+// timeout is measured on a machine that may also be building a container image.
+// These went red on a loaded laptop and green on a rerun, which is the exact
+// pattern that teaches people to rerun instead of read. Give the process room:
+// a genuine hang still fails, just later.
+vi.setConfig({ testTimeout: 30_000 });
 
 describe.runIf(hasPython())("archives open in a reader that did not write them", () => {
   it("round-trips names, bytes and CRCs through CPython's zipfile", () => {

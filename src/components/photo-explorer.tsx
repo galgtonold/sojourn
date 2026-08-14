@@ -287,7 +287,13 @@ export function PhotoExplorer({
               // The routes used to be added before the photo layers, so they
               // sat underneath. Fetched, they arrive after — so put them back
               // below the first photo layer, or the lines cover the pins.
-              if (map.getLayer("photo-clusters")) {
+              //
+              // Both layers, not just the photo one: addTrackFeatures adds
+              // nothing when there are no routes to draw, which is the ordinary
+              // state of a journal with located photographs and no GPX. Moving
+              // a layer that was never added throws, the surrounding catch
+              // resets `stage`, and the zoom refinement quietly stops working.
+              if (map.getLayer(TRACKS_LAYER) && map.getLayer("photo-clusters")) {
                 map.moveLayer(TRACKS_LAYER, "photo-clusters");
               }
             }

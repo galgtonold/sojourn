@@ -55,10 +55,28 @@ const NEXT_IMAGE_WIDTHS = [
 ];
 
 /**
+ * Whether this build turned Next's image optimizer off.
+ *
+ * The published Docker image cannot know at build time where a stranger's
+ * Supabase lives, so `next.config.mjs` sets `images.unoptimized` and photo URLs
+ * are meant to be used as-is. That switch only governs `next/image` — building
+ * a `/_next/image?url=…` string by hand goes to the optimizer route regardless,
+ * and on such a build that route answers **404 for every remote URL**.
+ */
+const IMAGES_UNOPTIMIZED = process.env.NEXT_PUBLIC_IMAGES_UNOPTIMIZED === "1";
+
+/**
  * Routes a remote image through Next's optimizer (resized + WebP/AVIF) instead
- * of serving the raw original.
+ * of serving the raw original — unless this build has no optimizer to route to,
+ * in which case the original URL is the answer.
+ *
+ * Returning the raw URL costs a full-size download, which is the documented
+ * trade of the portable image. Returning an optimizer URL that 404s costs the
+ * picture entirely, silently: broken map thumbnails and share cards pointing at
+ * nothing, with only a console 404 to say so.
  */
 export function optimizedSrc(url: string, width = 2048, quality = 80): string {
+  if (IMAGES_UNOPTIMIZED) return url;
   const w = NEXT_IMAGE_WIDTHS.find((x) => x >= width) ?? 3840;
   return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=${quality}`;
 }
@@ -82,6 +100,11 @@ export function optimizedSrc(url: string, width = 2048, quality = 80): string {
  */
 export function shareImage(url: string, siteUrl: string): string {
   const path = optimizedSrc(url, 1200, 75);
+  // On a build with no optimizer, `optimizedSrc` hands back the original URL,
+  // which is already absolute — prefixing the site would make
+  // "https://sojourn.examplehttps://supabase…/photo.jpg" and every card would
+  // lose its picture, which is the failure this function exists to prevent.
+  if (/^https?:\/\//i.test(path)) return path;
   return `${siteUrl.replace(/\/$/, "")}${path}`;
 }
 

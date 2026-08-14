@@ -21,7 +21,10 @@
     "test:ai:live": "RUN_LIVE_AI=1 vitest run test/e2e/live.test.ts",
     "test:rls": "vitest run test/e2e/rls.test.ts",
     "eval": "vitest run --config vitest.eval.config.mts",
-    "gen:vapid": "web-push generate-vapid-keys"
+    "gen:vapid": "web-push generate-vapid-keys",
+    "test:browser": "playwright test",
+    "e2e:up": "node scripts/e2e-stack.mjs up",
+    "e2e:down": "node scripts/e2e-stack.mjs down"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.60.0",
@@ -47,6 +50,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24.13.3",

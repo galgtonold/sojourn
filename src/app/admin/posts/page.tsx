@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { getTrips } from "@/lib/content";
+import { getTripsForEditor } from "@/lib/content";
 import { getViewer } from "@/lib/auth";
 import { PostsAdmin, type AdminPostRow } from "@/components/posts-admin";
 import { T, DocumentTitle } from "@/components/i18n";
@@ -11,9 +11,13 @@ export const metadata = { title: defaultTitle("meta.adminPosts") };
 export const dynamic = "force-dynamic";
 
 export default async function PostsAdminPage() {
-  // getTrips() uses the public client and takes no arguments — it doesn't
-  // depend on the viewer, so both can fire in the same wave.
-  const [viewer, allTrips] = await Promise.all([getViewer(), getTrips()]);
+  // Editor-scoped, not public: the anon client cannot see a trip with nothing
+  // published in it, so a draft in a brand-new trip would list with no trip
+  // name at all. Neither call takes arguments, so both still fire in one wave.
+  const [viewer, allTrips] = await Promise.all([
+    getViewer(),
+    getTripsForEditor(),
+  ]);
   const tripById: Record<string, string> = Object.fromEntries(
     allTrips.map((t) => [t.id, t.title]),
   );

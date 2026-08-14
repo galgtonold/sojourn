@@ -1,0 +1,19 @@
+# CI-only overlay for docker-compose.all-in-one.yml. Never use it on a host you
+# care about.
+#
+#   docker compose -f docker-compose.all-in-one.yml -f docker-compose.ci.yml ...
+#
+# The all-in-one file deliberately does not publish Postgres — an open 5432 is
+# how self-hosted databases get found, and nothing outside that network needs
+# it. The RLS suite is the exception: it connects as a real Postgres client to
+# check policies, grants and EXECUTE privileges, which is the one layer
+# PostgREST cannot answer for. So this overlay opens the port, on a throwaway
+# database, on an ephemeral runner, and nowhere else.
+#
+# Bound to 127.0.0.1 rather than 0.0.0.0: a GitHub runner is not a private
+# machine, and a service container on the same host should not be able to reach
+# this either.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

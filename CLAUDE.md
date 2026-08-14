@@ -103,6 +103,26 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   `humanError()` maps a 504's non-JSON body to the *generic* "try again" message,
   not the network one — so the UI actively misleads you. Any route running an
   8000-token call carries `maxDuration = 180`.
+- **`images.unoptimized` does not stop code that builds `/_next/image` by hand.**
+  The published Docker image cannot know where a stranger's Supabase lives, so
+  `next.config.mjs` turns the optimizer off — and on such a build `/_next/image`
+  answers **404 for every remote URL**. `optimizedSrc` composed that URL itself,
+  so map thumbnails and `og:image` share cards silently lost their pictures on
+  every self-hosted instance, with nothing but a console 404 to say so. The
+  decision is only knowable at build time, so it is handed to the client as
+  `NEXT_PUBLIC_IMAGES_UNOPTIMIZED` and `optimizedSrc` returns the original URL.
+  `shareImage` builds on it and must not glue `siteUrl` onto an already-absolute
+  result. Found by the browser suite's no-failed-requests invariant, not by
+  looking at the page — the map still drew.
+- **The anon client cannot see a trip with nothing published in it.** RLS's
+  `read published trips` policy is exactly right for the public site and wrong
+  for the admin, where a trip created a moment ago necessarily has no posts. The
+  dashboard used the public `getTrips()`, so a trip you had just saved did not
+  appear in your own admin, the "create your first trip" checklist stayed
+  unticked, and `viewer.isOwner ? allTrips : …` filtered a list RLS had already
+  truncated. Nothing failed: PostgREST returned `200` and `[]`. Admin pages use
+  `getTripsForEditor()` (request-scoped client, carries the session, so
+  `editors read every trip` applies); public pages keep `getTrips()`.
 - **NFKD is not transliteration, and the letters it misses are the ones a travel
   journal needs.** `normalize("NFKD")` only decomposes characters Unicode defines
   a decomposition for. Stroked and ligature letters have none — Danish treats `ø`

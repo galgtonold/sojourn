@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAiConfig } from "@/lib/ai-config";
-import { getTrips } from "@/lib/content";
+import { getTripsForEditor } from "@/lib/content";
 import { getBrandingState } from "@/lib/branding";
 import { SetupChecklist } from "@/components/setup-checklist";
 import { getViewer, type Viewer } from "@/lib/auth";
@@ -115,7 +115,7 @@ export default async function AdminDashboard() {
       getAiConfig(),
       getReaderLocale(),
       loadStats(viewer),
-      getTrips(),
+      getTripsForEditor(),
       getBrandingState(),
     ]);
   const trips = viewer.isOwner

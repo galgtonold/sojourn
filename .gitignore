@@ -101,3 +101,8 @@ docs/internal/
 # and dev start, so it always matches the installed maplibre. Generated, not
 # authored — committing it would be a second copy free to drift from the first.
 public/maplibre/
+
+# Throwaway env + volumes for the browser suite (scripts/e2e-stack.mjs).
+.e2e/
+test-results/
+playwright-report/

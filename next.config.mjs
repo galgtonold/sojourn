@@ -153,6 +153,16 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_SW_VERSION: swVersion,
     NEXT_PUBLIC_MAPLIBRE_VERSION: maplibreVersion,
+    // `unoptimized` above turns off next/image. It does NOT turn off
+    // `/_next/image` for code that builds that URL itself — and `optimizedSrc`
+    // in @/lib/utils does exactly that, for photo thumbnails and og:image.
+    // On the published image the route then answers 404 for every remote URL,
+    // so a self-hosted instance loses its map thumbnails and its share cards
+    // with nothing but a 404 in the browser console to say so.
+    //
+    // The decision is only knowable here, at build time, so it has to be handed
+    // to the client rather than re-derived there.
+    NEXT_PUBLIC_IMAGES_UNOPTIMIZED: buildKnowsItsSupabase() ? "" : "1",
   },
   images: imageConfig(),
   eslint: {

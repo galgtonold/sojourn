@@ -421,6 +421,43 @@ export async function getTrips(): Promise<Trip[]> {
   }
 }
 
+/**
+ * Trips as an EDITOR sees them: every trip, including ones with nothing
+ * published in them yet.
+ *
+ * `getTrips` above uses the cookieless anon client, so RLS applies the
+ * `read published trips` policy — a trip is invisible until it has a published
+ * post. That is right for the public site and wrong for the admin, where a trip
+ * created a moment ago necessarily has nothing in it.
+ *
+ * The dashboard used `getTrips`, and the result was a trip you had just saved
+ * not appearing in your own admin, the "create your first trip" checklist item
+ * staying unticked, and `viewer.isOwner ? allTrips : …` filtering a list RLS
+ * had already truncated — an owner branch that could not put anything back.
+ * Nothing failed: the query returned 200 and an empty array.
+ *
+ * This goes through the request-scoped client, which carries the signed-in
+ * session, so `editors read every trip` applies instead. Public pages must keep
+ * using `getTrips`: this one reads cookies, which opts its caller into dynamic
+ * rendering.
+ */
+export async function getTripsForEditor(): Promise<Trip[]> {
+  try {
+    const supabase = await getServerSupabase();
+    const { data, error } = await supabase
+      .from("trips")
+      .select(
+        "id, slug, title, summary, cover_image, start_date, end_date, source_locale, i18n",
+      )
+      .order("start_date", { ascending: false });
+    if (error || !data) return [];
+    return data as Trip[];
+  } catch (e) {
+    logError("content.getTripsForEditor", e);
+    return [];
+  }
+}
+
 // Embed the query for the semantic half of hybrid search. Returns null when no
 // embeddings provider is configured or the call fails — callers then fall back
 // to pure full-text ranking, which the RPCs handle when query_embedding is null.
