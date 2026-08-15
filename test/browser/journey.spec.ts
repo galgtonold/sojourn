@@ -248,6 +248,25 @@ test("the map holds data, not just a basemap", async ({ page }) => {
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Get this page a signed-in session. Not "prove the login redirect works" —
+ * that is a different claim, and the test above ("a fresh install funnels to
+ * setup and claims an owner") is where it is made.
+ *
+ * This waited on the URL leaving /admin/login, which made every test below
+ * depend on a client-side navigation completing. The login handler awaits
+ * signInWithPassword and then calls router.push("/admin") followed immediately
+ * by router.refresh(); on a loaded CI runner that occasionally did not land, so
+ * a run died on the third sign-in with the button still reading "Anmelden…".
+ * Authentication had succeeded — all three token requests returned 200 and
+ * there was no 5xx or 429 anywhere — which is exactly why hanging seven
+ * unrelated tests off it was the wrong shape.
+ *
+ * So wait for the thing those tests actually need: the session cookie. Then go
+ * to /admin directly if the redirect has not already taken us there. A real
+ * regression in signing in still fails here — no session, no cookie — and a
+ * slow navigation no longer reads as a broken login.
+ */
 async function signIn(page: import("@playwright/test").Page) {
   await page.goto("/admin/login");
   // Already signed in from a previous test in this serial file.
@@ -255,7 +274,22 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.locator("form input").nth(0).fill(OWNER.email);
   await page.locator("form input").nth(1).fill(OWNER.password);
   await page.locator("form button[type=submit]").first().click();
-  await expect(page).toHaveURL(/\/admin(?!\/login)/, { timeout: 60_000 });
+
+  await expect
+    .poll(
+      async () =>
+        (await page.context().cookies()).some((c) => /^sb-.*auth-token/.test(c.name)),
+      {
+        timeout: 60_000,
+        message:
+          "no Supabase session cookie after submitting the login form — the " +
+          "sign-in itself failed, not the navigation that follows it",
+      },
+    )
+    .toBe(true);
+
+  if (page.url().includes("/admin/login")) await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin(?!\/login)/, { timeout: 30_000 });
 }
 
 /**
