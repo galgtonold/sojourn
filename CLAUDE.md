@@ -103,6 +103,23 @@ User-facing copy lives in `src/lib/i18n.ts` (en + de) — never hard-code string
   `humanError()` maps a 504's non-JSON body to the *generic* "try again" message,
   not the network one — so the UI actively misleads you. Any route running an
   8000-token call carries `maxDuration = 180`.
+- **Once the session changes, leave with a document load.** Sign in, the demo
+  one-click, the install claim and sign out all did `router.push(href)` with
+  `router.refresh()` on the next line, and that pairing produced three failures
+  of one shape: stuck on `/admin/login` reading "Anmelden…", stuck on
+  `/admin/setup` reading "Wird angelegt…", twice in CI and once on a loaded
+  laptop. Authentication had **succeeded** every time — token requests 200, no
+  5xx, no 429 in the gateway log — but `busy` is only cleared on the error path,
+  so a push that never lands is indistinguishable from a click that did nothing,
+  permanently. `refresh()` refetches the current route while the push's fetch for
+  the next one is in flight; they race. And a soft navigation is wrong here even
+  when it wins: the router cache was filled under the old session, and `/admin`
+  was probably prefetched while signed out and answered with a redirect to
+  login — which is what the `refresh()` was reaching for. Use
+  `navigateAfterAuth` (`@/lib/auth-navigate`); `test/unit/auth-navigate.test.ts`
+  guards the four sites. Related: the `staleTimes` note in
+  `test/unit/router-cache-staleness.test.ts` is the same cache, seen from the
+  other side.
 - **`images.unoptimized` does not stop code that builds `/_next/image` by hand.**
   The published Docker image cannot know where a stranger's Supabase lives, so
   `next.config.mjs` turns the optimizer off — and on such a build `/_next/image`
