@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Compass } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
+import { navigateAfterAuth } from "@/lib/auth-navigate";
 
 /** The SQL that reopens a lapsed claim window — shown verbatim so it is a
  *  copy-paste, not a puzzle. Kept in sync with 0039_setup_window.sql. */
@@ -22,7 +22,6 @@ export type SetupMode =
 // First-run owner claim. The page decides which of the three states applies;
 // this component just displays it.
 export default function SetupForm({ mode }: { mode: SetupMode }) {
-  const router = useRouter();
   const t = useT();
   const [siteName, setSiteName] = useState("");
   const [email, setEmail] = useState("");
@@ -112,8 +111,7 @@ export default function SetupForm({ mode }: { mode: SetupMode }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ site_name: siteName.trim() }),
       }).catch(() => {});
-      router.push("/admin");
-      router.refresh();
+      navigateAfterAuth("/admin");
     } catch {
       setError(t("admin.setup.errorGeneric"));
       setBusy(false);

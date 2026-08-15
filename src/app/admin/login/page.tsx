@@ -1,15 +1,14 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
 import { env } from "@/lib/env";
+import { navigateAfterAuth } from "@/lib/auth-navigate";
 
 // A fresh install has nobody to sign in: middleware sends those visitors to
 // /admin/setup before this ever renders (see @/lib/admin-route).
 export default function AdminLogin() {
-  const router = useRouter();
   const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,8 +27,7 @@ export default function AdminLogin() {
       setBusy(false);
       return;
     }
-    router.push("/admin");
-    router.refresh();
+    navigateAfterAuth("/admin");
   }
 
   // The showcase deployment lets anyone in with one click. The password lives on
@@ -43,8 +41,7 @@ export default function AdminLogin() {
       setDemoBusy(false);
       return;
     }
-    router.push("/admin");
-    router.refresh();
+    navigateAfterAuth("/admin");
   }
 
   return (

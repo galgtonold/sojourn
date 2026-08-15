@@ -1,18 +1,16 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useT } from "@/components/i18n";
+import { navigateAfterAuth } from "@/lib/auth-navigate";
 
 export function SignOutButton() {
-  const router = useRouter();
   const t = useT();
 
   async function signOut() {
     const supabase = getBrowserSupabase();
     await supabase?.auth.signOut();
-    router.push("/admin/login");
-    router.refresh();
+    navigateAfterAuth("/admin/login");
   }
 
   return (
