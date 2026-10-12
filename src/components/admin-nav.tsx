@@ -68,7 +68,7 @@ export function AdminNav({ isOwner }: { isOwner: boolean }) {
             className="flex shrink-0 items-center gap-2 pr-1 font-display text-base font-semibold tracking-tight"
           >
             <Compass className="size-5 text-ember-400" />
-            <span>Admin</span>
+            <T k="nav.admin" />
           </Link>
 
           {/* Desktop: section pills + account cluster */}
