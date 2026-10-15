@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { resolveSlug, slugify } from "@/lib/slug";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { freeSlug, resolveSlug, slugCandidates, slugify } from "@/lib/slug";
 
 describe("slugify", () => {
   it("lowercases and hyphenates", () => {
@@ -188,5 +189,74 @@ describe("slugify: Latin coverage sweep", () => {
   ] as const)("%s: stays within its known gap", (_label, lo, hi, maxRatio) => {
     const total = lettersIn(lo, hi).length;
     expect(dropped(lo, hi).length / total).toBeLessThanOrEqual(maxRatio);
+  });
+});
+
+describe("slugCandidates", () => {
+  it("tries the base first, then numbered variants", () => {
+    const c = slugCandidates("kanutour");
+    expect(c.slice(0, 3)).toEqual(["kanutour", "kanutour-2", "kanutour-3"]);
+  });
+
+  it("keeps every variant within the 80-character cap", () => {
+    const base = slugify("wort ".repeat(30));
+    for (const c of slugCandidates(base)) {
+      expect(c.length).toBeLessThanOrEqual(80);
+      expect(c).not.toMatch(/--/);
+    }
+  });
+});
+
+/** Just enough of the query builder for `freeSlug`: select → in → neq → await. */
+function fakeClient(rows: { id: string; slug: string }[]) {
+  return {
+    from: () => {
+      let result = rows;
+      const q = {
+        select: () => q,
+        in: (_col: string, values: string[]) => {
+          result = result.filter((r) => values.includes(r.slug));
+          return q;
+        },
+        neq: (_col: string, id: string) => {
+          result = result.filter((r) => r.id !== id);
+          return q;
+        },
+        then: (resolve: (v: { data: typeof rows; error: null }) => unknown) =>
+          resolve({ data: result, error: null }),
+      };
+      return q;
+    },
+  } as unknown as SupabaseClient;
+}
+
+describe("freeSlug", () => {
+  it("keeps a slug nobody else holds", async () => {
+    expect(await freeSlug(fakeClient([]), "posts", "kanutour", "me")).toBe("kanutour");
+  });
+
+  it("numbers a slug another record already holds", async () => {
+    // A published post was renamed and kept its old slug; a new draft is then
+    // given that old title. Before, every save of the draft 409'd.
+    const db = fakeClient([{ id: "other", slug: "kanutour-auf-dem-schwarzen-regen" }]);
+    expect(
+      await freeSlug(db, "posts", "kanutour-auf-dem-schwarzen-regen", "me"),
+    ).toBe("kanutour-auf-dem-schwarzen-regen-2");
+  });
+
+  it("does not count the record being saved as a conflict", async () => {
+    const db = fakeClient([
+      { id: "other", slug: "kanutour" },
+      { id: "me", slug: "kanutour-2" },
+    ]);
+    expect(await freeSlug(db, "posts", "kanutour", "me")).toBe("kanutour-2");
+  });
+
+  it("skips past every taken variant", async () => {
+    const db = fakeClient([
+      { id: "a", slug: "kanutour" },
+      { id: "b", slug: "kanutour-2" },
+    ]);
+    expect(await freeSlug(db, "posts", "kanutour")).toBe("kanutour-3");
   });
 });

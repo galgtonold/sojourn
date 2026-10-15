@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { resolveSlug } from "@/lib/slug";
+import { freeSlug, isChosenSlug, resolveSlug } from "@/lib/slug";
 import { triggerTripTranslation } from "@/lib/ai/translate";
 
 // Translation runs in-process when no Edge Function is configured (see
@@ -69,7 +69,10 @@ export async function PUT(
     .eq("id", id)
     .maybeSingle();
 
-  const slug = resolveSlug(t.slug, t.title, existing?.slug, id);
+  let slug = resolveSlug(t.slug, t.title, existing?.slug, id);
+  if (!isChosenSlug(t.slug) && slug !== existing?.slug) {
+    slug = await freeSlug(supabase, "trips", slug, id);
+  }
 
   const { data: updated, error } = await supabase
     .from("trips")

@@ -7,8 +7,8 @@ import { notifyViewers } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 import { env } from "@/lib/env";
 import { randomUUID } from "node:crypto";
-import { resolveSlug } from "@/lib/slug";
-import { PLACEHOLDER_SLUG_PREFIXES } from "@/lib/utils";
+import { freeSlug, isChosenSlug, resolveSlug } from "@/lib/slug";
+import { PLACEHOLDER_SLUG_PREFIXES, isPlaceholderSlug } from "@/lib/utils";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { triggerPostTranslation } from "@/lib/ai/translate";
 
@@ -73,11 +73,14 @@ export async function POST(req: Request) {
   // unique placeholder slug so the not-null/unique constraint holds. The editor
   // re-derives the slug from the real title on first save (see post-workspace).
   const title = p.title ?? "";
-  const slug = resolveSlug(
+  let slug = resolveSlug(
     p.slug,
     title,
     `${PLACEHOLDER_SLUG_PREFIXES[0]}${randomUUID().slice(0, 8)}`,
   );
+  if (!isChosenSlug(p.slug) && !isPlaceholderSlug(slug)) {
+    slug = await freeSlug(supabase, "posts", slug);
+  }
 
   const { data, error } = await supabase
     .from("posts")

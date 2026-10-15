@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { resolveSlug } from "@/lib/slug";
-import { PLACEHOLDER_SLUG_PREFIXES } from "@/lib/utils";
+import { freeSlug, isChosenSlug, resolveSlug } from "@/lib/slug";
+import { PLACEHOLDER_SLUG_PREFIXES, isPlaceholderSlug } from "@/lib/utils";
 import { triggerTripTranslation } from "@/lib/ai/translate";
 
 // Translation runs in-process when no Edge Function is configured (see
@@ -41,11 +41,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
   const t = parsed.data;
-  const slug = resolveSlug(
+  let slug = resolveSlug(
     t.slug,
     t.title,
     `${PLACEHOLDER_SLUG_PREFIXES[1]}${randomUUID().slice(0, 8)}`,
   );
+  if (!isChosenSlug(t.slug) && !isPlaceholderSlug(slug)) {
+    slug = await freeSlug(supabase, "trips", slug);
+  }
 
   const { data, error } = await supabase
     .from("trips")
