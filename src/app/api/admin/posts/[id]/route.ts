@@ -5,7 +5,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { notifyViewers } from "@/lib/notify";
 import { afterResponse } from "@/lib/after-response";
 import { env } from "@/lib/env";
-import { resolveSlug } from "@/lib/slug";
+import { freeSlug, isChosenSlug, resolveSlug } from "@/lib/slug";
 import { materializeInteractions } from "@/lib/ai/materialize";
 import { embedPostRecord } from "@/lib/ai/embed-records";
 import { triggerPostTranslation } from "@/lib/ai/translate";
@@ -89,7 +89,10 @@ export async function PUT(
     .maybeSingle();
 
   const title = p.title ?? "";
-  const slug = resolveSlug(p.slug, title, existing?.slug, id);
+  let slug = resolveSlug(p.slug, title, existing?.slug, id);
+  if (!isChosenSlug(p.slug) && slug !== existing?.slug) {
+    slug = await freeSlug(supabase, "posts", slug, id);
+  }
 
   // Materialise inline :::poll / :::quiz blocks the author typed by hand.
   const body = p.body

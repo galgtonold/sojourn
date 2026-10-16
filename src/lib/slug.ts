@@ -1,4 +1,5 @@
 import { transliterate } from "transliteration";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPlaceholderSlug } from "@/lib/utils";
 
 /**
@@ -101,4 +102,56 @@ export function resolveSlug(
   const derived = slugify(title);
   if (derived) return derived;
   return fallbacks.find((candidate) => !!candidate) ?? "";
+}
+
+/** How many numbered variants `freeSlug` tries before giving up. */
+const MAX_SLUG_SUFFIX = 50;
+
+/**
+ * The base slug and its numbered variants, in the order they are tried:
+ * `base`, `base-2`, `base-3`, … Each stays within slugify's 80-character cap,
+ * trimming the base rather than the number.
+ */
+export function slugCandidates(base: string): string[] {
+  const out = [base];
+  for (let n = 2; n <= MAX_SLUG_SUFFIX; n++) {
+    const suffix = `-${n}`;
+    out.push(`${base.slice(0, 80 - suffix.length).replace(/-+$/, "")}${suffix}`);
+  }
+  return out;
+}
+
+/**
+ * Make a slug that was *derived from a title* unique on its table.
+ *
+ * Two records can easily want the same title-derived slug: rename a published
+ * post and its slug stays put (it is part of a live URL), so the old title's
+ * slug is still taken when the next post is given that title. The update then
+ * hits `posts_slug_key`, PostgREST answers 409, and every save of that post
+ * fails — the author keeps editing, opens the preview, sees the old text, and
+ * loses the edit on reload. Only derived slugs are moved; one the author typed
+ * is kept as is, so a real conflict there still surfaces.
+ *
+ * RLS can hide rows from this lookup (a collaborator does not see every draft),
+ * so the unique index stays the last word; this only removes the common case.
+ */
+export async function freeSlug(
+  supabase: SupabaseClient,
+  table: "posts" | "trips",
+  slug: string,
+  selfId?: string,
+): Promise<string> {
+  if (!slug) return slug;
+  const candidates = slugCandidates(slug);
+  let query = supabase.from(table).select("slug").in("slug", candidates);
+  if (selfId) query = query.neq("id", selfId);
+  const { data, error } = await query;
+  if (error || !data) return slug;
+  const taken = new Set(data.map((row: { slug: string }) => row.slug));
+  return candidates.find((candidate) => !taken.has(candidate)) ?? slug;
+}
+
+/** True when `resolveSlug` will keep the caller's slug rather than derive one. */
+export function isChosenSlug(requested: string | null | undefined): boolean {
+  return !!requested && !isPlaceholderSlug(requested);
 }
